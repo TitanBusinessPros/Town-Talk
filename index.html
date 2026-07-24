@@ -1155,6 +1155,7 @@ function watchConversations() {
   if (unsubscribeConversations) unsubscribeConversations();
   const list = document.getElementById("conversation-list");
   const empty = document.getElementById("conversation-empty");
+  empty.style.display = "none"; // clear out any old error text from a prior failed attempt
   const q = query(
     collection(db, "conversations"),
     where("participants", "array-contains", currentUid),
@@ -1162,7 +1163,11 @@ function watchConversations() {
   );
   unsubscribeConversations = onSnapshot(q, (snap) => {
     list.innerHTML = "";
-    if (snap.empty) { empty.style.display = "block"; return; }
+    if (snap.empty) {
+      empty.textContent = "No conversations yet — message someone from the feed to get started.";
+      empty.style.display = "block";
+      return;
+    }
     empty.style.display = "none";
     snap.forEach((docSnap) => {
       const data = docSnap.data();
@@ -1176,8 +1181,8 @@ function watchConversations() {
       list.appendChild(item);
     });
   }, (err) => {
-    empty.style.display = "block";
     empty.textContent = `Couldn't load conversations: ${err.message}`;
+    empty.style.display = "block";
   });
 }
 
