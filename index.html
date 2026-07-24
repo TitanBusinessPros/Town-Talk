@@ -78,6 +78,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .nav-links { display: flex; gap: 1.5rem; align-items: center; font-size: 0.95rem; flex-wrap: wrap; }
 .nav-links a, .nav-links button { color: var(--text-muted); text-decoration: none; background: none; border: none; font-family: var(--font-body); font-size: 0.95rem; cursor: pointer; padding: 0; }
 .nav-links a:hover, .nav-links button:hover { color: var(--paper-050); }
+.nav-links a.has-unread { color: var(--amber-500); font-weight: 600; text-shadow: 0 0 12px rgba(217, 165, 68, 0.5); }
+.nav-links a.has-unread::after { content: " ●"; font-size: 0.6em; vertical-align: super; }
+
+.profile-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--ink-700); flex-shrink: 0; }
+.profile-avatar-fallback { width: 40px; height: 40px; border-radius: 50%; background: var(--ink-700); color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 600; flex-shrink: 0; }
+.name-with-avatar { display: flex; align-items: center; gap: 0.6rem; }
+
+.slot-caption { font-family: var(--font-mono); font-size: 0.68rem; color: var(--amber-500); text-align: center; margin-top: 0.35rem; }
+
+.nav-badge-count { display: inline-block; background: var(--amber-500); color: var(--ink-900); font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; padding: 0.05rem 0.4rem; border-radius: 999px; margin-left: 0.3rem; }
+.friend-list-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; margin-bottom: 0.6rem; }
+.friend-list-item .friend-name-row { display: flex; align-items: center; gap: 0.6rem; font-weight: 600; color: var(--paper-050); }
+.friend-list-item .friend-actions { display: flex; gap: 0.5rem; }
 .nav-badge { display: inline-block; background: var(--amber-500); color: var(--ink-900); font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; padding: 0.05rem 0.4rem; border-radius: 999px; margin-left: 0.3rem; }
 
 .page { flex: 1; width: 100%; max-width: 960px; margin: 0 auto; padding: 2.5rem 1.75rem 4rem; }
@@ -259,7 +272,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <nav class="nav-links">
     <a href="#" id="nav-feed">Feed</a>
     <a href="#" id="nav-directory">Profiles</a>
-    <a href="#" id="nav-messages" style="display:none">Messages<span class="nav-badge" id="messages-badge" style="display:none"></span></a>
+    <a href="#" id="nav-messages" style="display:none">Messages</a>
+    <a href="#" id="nav-friends" style="display:none">Friends<span class="nav-badge-count" id="friends-badge" style="display:none"></span></a>
     <a href="#" id="nav-dashboard" style="display:none">Your page</a>
     <a href="#" id="nav-admin" style="display:none">Admin</a>
     <a href="#" id="nav-auth">Sign in</a>
@@ -321,8 +335,16 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <form id="profile-form">
         <label for="display-name">Display name</label>
         <input id="display-name" type="text" maxlength="60" placeholder="What should neighbors call you?" />
-        <label for="neighborhood">Part of Pauls Valley you're in (optional)</label>
-        <input id="neighborhood" type="text" maxlength="80" placeholder="e.g. Downtown, near Wacker Park..." />
+        <label for="neighborhood">What town are you from?</label>
+        <select id="neighborhood">
+          <option value="">Select a town...</option>
+          <option value="Wynnewood">Wynnewood</option>
+          <option value="Pauls Valley">Pauls Valley</option>
+          <option value="Elmore City">Elmore City</option>
+          <option value="Davis">Davis</option>
+          <option value="Sulphur">Sulphur</option>
+          <option value="Paoli">Paoli</option>
+        </select>
         <div class="form-row"><button type="submit">Save details</button></div>
         <div id="profile-message" class="message" style="display:none"></div>
       </form>
@@ -401,6 +423,20 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div id="profile-detail"></div>
   </section>
 
+  <!-- ================= FRIENDS VIEW ================= -->
+  <section id="view-friends" class="view">
+    <p class="eyebrow">Pauls Valley</p>
+    <h1>Friends</h1>
+
+    <h2 style="font-size:1.1rem; margin-top:1.5rem;">Friend requests</h2>
+    <div id="friend-requests-list"></div>
+    <div id="friend-requests-empty" class="empty-state" style="display:none; padding:1.5rem;">No pending requests.</div>
+
+    <h2 style="font-size:1.1rem; margin-top:2rem;">Your friends</h2>
+    <div id="friends-list"></div>
+    <div id="friends-empty" class="empty-state" style="display:none; padding:1.5rem;">No friends yet — add someone from the feed or Profiles search.</div>
+  </section>
+
   <!-- ================= MESSAGES VIEW ================= -->
   <section id="view-messages" class="view">
     <p class="eyebrow">Messages</p>
@@ -475,6 +511,7 @@ function showView(name) {
   document.getElementById(`view-${name}`).classList.add("active");
   if (name === "feed") loadFeed();
   if (name === "directory") loadDirectory();
+  if (name === "friends") loadFriendsView();
   if (name === "admin") loadAdminQueue();
   if (name === "messages") { closeThread(); watchConversations(); }
   else if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
@@ -486,6 +523,7 @@ document.getElementById("nav-directory").addEventListener("click", (e) => { e.pr
 document.getElementById("nav-dashboard").addEventListener("click", (e) => { e.preventDefault(); showView("dashboard"); });
 document.getElementById("nav-admin").addEventListener("click", (e) => { e.preventDefault(); showView("admin"); });
 document.getElementById("nav-messages").addEventListener("click", (e) => { e.preventDefault(); showView("messages"); });
+document.getElementById("nav-friends").addEventListener("click", (e) => { e.preventDefault(); showView("friends"); });
 document.getElementById("nav-auth").addEventListener("click", (e) => { e.preventDefault(); showView("landing"); });
 document.getElementById("nav-logout").addEventListener("click", async (e) => {
   e.preventDefault();
@@ -498,6 +536,7 @@ let isAdminUser = false;
 onAuthStateChanged(auth, async (user) => {
   document.getElementById("nav-dashboard").style.display = user ? "inline" : "none";
   document.getElementById("nav-messages").style.display = user ? "inline" : "none";
+  document.getElementById("nav-friends").style.display = user ? "inline" : "none";
   document.getElementById("nav-logout").style.display = user ? "inline" : "none";
   document.getElementById("nav-auth").style.display = user ? "none" : "inline";
 
@@ -506,6 +545,7 @@ onAuthStateChanged(auth, async (user) => {
     watchUserDoc(user.uid);
     watchMessageLimit(user.uid);
     watchUnreadConversations(user.uid);
+    watchFriendRequestsBadge(user.uid);
 
     // Check admin status by trying to read our own admins/{uid} doc — the
     // rules only allow reading your own, so this can't be used to snoop
@@ -527,6 +567,9 @@ onAuthStateChanged(auth, async (user) => {
     if (unsubscribeMessageLimit) { unsubscribeMessageLimit(); unsubscribeMessageLimit = null; }
     if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
     if (unsubscribeUnreadWatch) { unsubscribeUnreadWatch(); unsubscribeUnreadWatch = null; }
+    if (unsubscribeFriendBadge) { unsubscribeFriendBadge(); unsubscribeFriendBadge = null; }
+    const friendsBadge = document.getElementById("friends-badge");
+    if (friendsBadge) friendsBadge.style.display = "none";
     renderUnreadBadge(0);
     closeThread();
     showView("landing");
@@ -761,6 +804,7 @@ function renderImageSlots(images) {
   container.innerHTML = "";
   for (let i = 0; i < MAX_IMAGES; i++) {
     const img = images[i];
+    const wrap = document.createElement("div");
     const slot = document.createElement("div");
     slot.className = "image-slot";
     if (img) {
@@ -788,7 +832,14 @@ function renderImageSlots(images) {
       slot.style.cursor = "pointer";
       slot.addEventListener("click", () => startUpload());
     }
-    container.appendChild(slot);
+    wrap.appendChild(slot);
+    if (i === 0) {
+      const caption = document.createElement("div");
+      caption.className = "slot-caption";
+      caption.textContent = "Profile picture";
+      wrap.appendChild(caption);
+    }
+    container.appendChild(wrap);
   }
 }
 
@@ -907,15 +958,23 @@ function renderCard(uid, data) {
        </div>`
     : "";
 
+  const avatarUrl = images.length ? images[0].url : null;
+  const initial = (profile.name || "N").trim().charAt(0).toUpperCase();
+  const avatarHtml = avatarUrl
+    ? `<img class="profile-avatar" src="${avatarUrl}" alt="${escapeHtml(profile.name || "Neighbor")}" />`
+    : `<div class="profile-avatar-fallback">${escapeHtml(initial)}</div>`;
+
   card.innerHTML = `
     ${imageHtml}
     <div class="post-body">
-      <div class="post-meta">
+      <div class="post-meta name-with-avatar">
+        ${avatarHtml}
         <span>${escapeHtml(profile.name || "Neighbor")}</span>
         ${profile.neighborhood ? `<span>${escapeHtml(profile.neighborhood)}</span>` : ""}
       </div>
       <p class="post-excerpt">${escapeHtml(postText).replace(/\n/g, "<br>")}</p>
       <button type="button" class="btn msg-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}" style="align-self:flex-start; margin-top:0.4rem;">Message ${escapeHtml(profile.name || "this neighbor")}</button>
+      <div class="friend-action" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}" style="margin-top:0.4rem;"></div>
     </div>
   `;
 
@@ -955,6 +1014,7 @@ async function loadFeed() {
     return;
   }
   snap.forEach((docSnap) => grid.appendChild(renderCard(docSnap.id, docSnap.data())));
+  hydrateFriendActions(grid);
 }
 
 // Delegate clicks on "Message" buttons wherever a profile card is rendered
@@ -1033,6 +1093,7 @@ function showProfile(uid, data) {
   const detail = document.getElementById("profile-detail");
   detail.innerHTML = "";
   detail.appendChild(renderCard(uid, data));
+  hydrateFriendActions(detail);
   showView("profile");
 }
 
@@ -1164,14 +1225,9 @@ function isConversationUnread(data, uid) {
 }
 
 function renderUnreadBadge(count) {
-  const badge = document.getElementById("messages-badge");
-  if (!badge) return;
-  if (count > 0) {
-    badge.style.display = "inline-block";
-    badge.textContent = count;
-  } else {
-    badge.style.display = "none";
-  }
+  const navLink = document.getElementById("nav-messages");
+  if (!navLink) return;
+  navLink.classList.toggle("has-unread", count > 0);
 }
 
 function watchUnreadConversations(uid) {
@@ -1329,6 +1385,189 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
     showMessage(msg, err.message, "error");
   }
 });
+
+// ============================= FRIENDS ====================================
+// Friend requests live in a single "friendRequests" collection, one doc per
+// pair of people (doc id = sorted "uidA_uidB", same trick as conversations).
+// status is "pending" (waiting on the other person) or "accepted".
+function friendPairId(otherUid) {
+  return [currentUid, otherUid].sort().join("_");
+}
+
+let unsubscribeFriendBadge = null;
+
+function watchFriendRequestsBadge(uid) {
+  if (unsubscribeFriendBadge) unsubscribeFriendBadge();
+  const q = query(collection(db, "friendRequests"), where("participants", "array-contains", uid));
+  unsubscribeFriendBadge = onSnapshot(q, (snap) => {
+    let pendingForMe = 0;
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      if (d.status === "pending" && d.requestedBy !== uid) pendingForMe++;
+    });
+    const badge = document.getElementById("friends-badge");
+    if (badge) {
+      if (pendingForMe > 0) { badge.style.display = "inline-block"; badge.textContent = pendingForMe; }
+      else badge.style.display = "none";
+    }
+  }, (err) => console.error("Friend request watch failed:", err));
+}
+
+// Look up the relationship between me and otherUid: null (no relation),
+// "pending-sent" (I asked, waiting on them), "pending-incoming" (they
+// asked, waiting on me), or "friends".
+async function getFriendStatus(otherUid) {
+  try {
+    const snap = await getDoc(doc(db, "friendRequests", friendPairId(otherUid)));
+    if (!snap.exists()) return { state: "none" };
+    const d = snap.data();
+    if (d.status === "accepted") return { state: "friends" };
+    if (d.requestedBy === currentUid) return { state: "pending-sent" };
+    return { state: "pending-incoming" };
+  } catch (err) {
+    console.error("Couldn't check friend status:", err);
+    return { state: "none" };
+  }
+}
+
+async function sendFriendRequest(otherUid, otherName) {
+  const pairId = friendPairId(otherUid);
+  await setDoc(doc(db, "friendRequests", pairId), {
+    participants: [currentUid, otherUid].sort(),
+    participantNames: {
+      [currentUid]: currentUserData.profile?.name || "Neighbor",
+      [otherUid]: otherName,
+    },
+    requestedBy: currentUid,
+    status: "pending",
+    requestedAt: serverTimestamp(),
+  });
+}
+
+async function acceptFriendRequest(otherUid) {
+  await updateDoc(doc(db, "friendRequests", friendPairId(otherUid)), {
+    status: "accepted",
+    respondedAt: serverTimestamp(),
+  });
+}
+
+async function removeFriendOrRequest(otherUid) {
+  await deleteDoc(doc(db, "friendRequests", friendPairId(otherUid)));
+}
+
+// Renders the "Add Friend" / "Request Sent" / "Accept Request" / "Friends"
+// button into any .friend-action placeholder produced by renderCard().
+async function renderFriendAction(container) {
+  const otherUid = container.dataset.uid;
+  const otherName = container.dataset.name;
+  if (!currentUid || otherUid === currentUid) { container.innerHTML = ""; return; }
+
+  const status = await getFriendStatus(otherUid);
+  if (status.state === "friends") {
+    container.innerHTML = `<button type="button" class="secondary small friend-remove-btn">✓ Friends — Remove</button>`;
+  } else if (status.state === "pending-sent") {
+    container.innerHTML = `<button type="button" class="secondary small" disabled>Request sent</button>`;
+  } else if (status.state === "pending-incoming") {
+    container.innerHTML = `<button type="button" class="btn small friend-accept-btn">Accept friend request</button>`;
+  } else {
+    container.innerHTML = `<button type="button" class="secondary small friend-add-btn">+ Add Friend</button>`;
+  }
+
+  container.querySelector(".friend-add-btn")?.addEventListener("click", async () => {
+    container.innerHTML = `<button type="button" class="secondary small" disabled>Sending...</button>`;
+    await sendFriendRequest(otherUid, otherName).catch((err) => console.error(err));
+    renderFriendAction(container);
+  });
+  container.querySelector(".friend-accept-btn")?.addEventListener("click", async () => {
+    await acceptFriendRequest(otherUid).catch((err) => console.error(err));
+    renderFriendAction(container);
+  });
+  container.querySelector(".friend-remove-btn")?.addEventListener("click", async () => {
+    if (!confirm(`Remove ${otherName} from your friends?`)) return;
+    await removeFriendOrRequest(otherUid).catch((err) => console.error(err));
+    renderFriendAction(container);
+  });
+}
+
+// Call this after any renderCard() gets appended to the page, so its
+// friend-action placeholder gets filled in.
+function hydrateFriendActions(root) {
+  root.querySelectorAll(".friend-action").forEach((el) => renderFriendAction(el));
+}
+
+async function loadFriendsView() {
+  const reqList = document.getElementById("friend-requests-list");
+  const reqEmpty = document.getElementById("friend-requests-empty");
+  const friendsList = document.getElementById("friends-list");
+  const friendsEmpty = document.getElementById("friends-empty");
+  reqList.innerHTML = "";
+  friendsList.innerHTML = "";
+
+  const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+  const snap = await getDocs(q).catch((err) => {
+    reqEmpty.textContent = `Couldn't load friends: ${err.message}`;
+    reqEmpty.style.display = "block";
+    return null;
+  });
+  if (!snap) return;
+
+  let hasIncoming = false;
+  let hasFriends = false;
+
+  snap.forEach((docSnap) => {
+    const d = docSnap.data();
+    const otherUid = (d.participants || []).find((p) => p !== currentUid);
+    const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+
+    if (d.status === "pending" && d.requestedBy !== currentUid) {
+      hasIncoming = true;
+      const item = document.createElement("div");
+      item.className = "friend-list-item";
+      item.innerHTML = `
+        <span class="friend-name-row">${escapeHtml(otherName)}</span>
+        <span class="friend-actions">
+          <button type="button" class="btn small" data-action="accept">Accept</button>
+          <button type="button" class="secondary small" data-action="decline">Decline</button>
+        </span>
+      `;
+      item.querySelector('[data-action="accept"]').addEventListener("click", async () => {
+        await acceptFriendRequest(otherUid).catch((err) => console.error(err));
+        loadFriendsView();
+      });
+      item.querySelector('[data-action="decline"]').addEventListener("click", async () => {
+        await removeFriendOrRequest(otherUid).catch((err) => console.error(err));
+        loadFriendsView();
+      });
+      reqList.appendChild(item);
+    } else if (d.status === "accepted") {
+      hasFriends = true;
+      const item = document.createElement("div");
+      item.className = "friend-list-item";
+      item.innerHTML = `
+        <span class="friend-name-row">${escapeHtml(otherName)}</span>
+        <span class="friend-actions">
+          <button type="button" class="secondary small" data-action="message">Message</button>
+          <button type="button" class="secondary small" data-action="remove">Remove</button>
+        </span>
+      `;
+      item.querySelector('[data-action="message"]').addEventListener("click", () => {
+        showView("messages");
+        openThread(otherUid, otherName);
+      });
+      item.querySelector('[data-action="remove"]').addEventListener("click", async () => {
+        if (!confirm(`Remove ${otherName} from your friends?`)) return;
+        await removeFriendOrRequest(otherUid).catch((err) => console.error(err));
+        loadFriendsView();
+      });
+      friendsList.appendChild(item);
+    }
+    // Requests I sent that are still pending show up in neither list here —
+    // they're visible as "Request sent" on that person's profile instead.
+  });
+
+  reqEmpty.style.display = hasIncoming ? "none" : "block";
+  friendsEmpty.style.display = hasFriends ? "none" : "block";
+}
 </script>
 </body>
 </html>
