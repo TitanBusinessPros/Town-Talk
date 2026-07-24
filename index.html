@@ -222,6 +222,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .conversation-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; cursor: pointer; text-align: left; width: 100%; }
 .conversation-item:hover { background: var(--ink-700); }
 .conversation-item .conv-name { font-weight: 600; color: var(--paper-050); }
+.conversation-item .conv-name.unread { color: var(--amber-500); }
+.unread-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--amber-500); margin-right: 0.45rem; vertical-align: middle; }
 .conversation-item .conv-preview { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
 .thread-messages { display: flex; flex-direction: column; gap: 0.6rem; max-height: 420px; overflow-y: auto; }
 .thread-msg { max-width: 75%; padding: 0.55rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.9rem; line-height: 1.4; }
@@ -465,6 +467,7 @@ let unsubscribeSnapshot = null;
 let unsubscribeMessageLimit = null;
 let unsubscribeConversations = null;
 let unsubscribeThread = null;
+let unsubscribeUnreadWatch = null;
 
 // ============================= VIEW ROUTER ==============================
 function showView(name) {
@@ -502,6 +505,7 @@ onAuthStateChanged(auth, async (user) => {
     currentUid = user.uid;
     watchUserDoc(user.uid);
     watchMessageLimit(user.uid);
+    watchUnreadConversations(user.uid);
 
     // Check admin status by trying to read our own admins/{uid} doc — the
     // rules only allow reading your own, so this can't be used to snoop
@@ -522,6 +526,8 @@ onAuthStateChanged(auth, async (user) => {
     if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
     if (unsubscribeMessageLimit) { unsubscribeMessageLimit(); unsubscribeMessageLimit = null; }
     if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
+    if (unsubscribeUnreadWatch) { unsubscribeUnreadWatch(); unsubscribeUnreadWatch = null; }
+    renderUnreadBadge(0);
     closeThread();
     showView("landing");
   }
@@ -1138,13 +1144,62 @@ function renderMessageRemaining() {
   const left = remainingToday();
   const el = document.getElementById("messages-remaining");
   if (el) el.textContent = `${left} / ${DAILY_MESSAGE_LIMIT} messages left today`;
-  const badge = document.getElementById("messages-badge");
-  if (badge) {
-    if (left > 0) { badge.style.display = "inline-block"; badge.textContent = left; }
-    else badge.style.display = "none";
-  }
   const sendBtn = document.getElementById("thread-send-btn");
   if (sendBtn) sendBtn.disabled = left <= 0;
+}
+
+// ---- Unread message tracking ----
+// Each conversation stores lastMessageAt / lastMessageSenderId, plus a
+// readBy map of { uid: timestamp } recording when each participant last
+// opened that thread. A conversation counts as "unread" for you if the
+// last message wasn't from you, and either you've never opened it or you
+// opened it before that last message arrived.
+function isConversationUnread(data, uid) {
+  if (!data.lastMessageAt || !data.lastMessageSenderId) return false;
+  if (data.lastMessageSenderId === uid) return false;
+  const lastMs = data.lastMessageAt.seconds ? data.lastMessageAt.seconds * 1000 : 0;
+  const readTs = data.readBy && data.readBy[uid];
+  const readMs = readTs ? (readTs.seconds ? readTs.seconds * 1000 : 0) : 0;
+  return readMs < lastMs;
+}
+
+function renderUnreadBadge(count) {
+  const badge = document.getElementById("messages-badge");
+  if (!badge) return;
+  if (count > 0) {
+    badge.style.display = "inline-block";
+    badge.textContent = count;
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+function watchUnreadConversations(uid) {
+  if (unsubscribeUnreadWatch) unsubscribeUnreadWatch();
+  const q = query(collection(db, "conversations"), where("participants", "array-contains", uid));
+  unsubscribeUnreadWatch = onSnapshot(q, (snap) => {
+    let unreadCount = 0;
+    snap.forEach((docSnap) => {
+      if (isConversationUnread(docSnap.data(), uid)) unreadCount++;
+    });
+    renderUnreadBadge(unreadCount);
+  }, (err) => console.error("Unread message watch failed:", err));
+}
+
+// Mark a conversation as read by stamping readBy[currentUid] = now.
+// Done as a plain read-then-write (not inside the send transaction) since
+// it only happens when someone opens a thread, not on every message.
+async function markConversationRead(conversationId) {
+  try {
+    const convoRef = doc(db, "conversations", conversationId);
+    const snap = await getDoc(convoRef);
+    if (!snap.exists()) return;
+    const readBy = { ...(snap.data().readBy || {}) };
+    readBy[currentUid] = serverTimestamp();
+    await updateDoc(convoRef, { readBy });
+  } catch (err) {
+    console.error("Couldn't mark conversation as read:", err);
+  }
 }
 
 function conversationIdFor(otherUid) {
@@ -1176,7 +1231,8 @@ function watchConversations() {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "conversation-item";
-      item.innerHTML = `<span class="conv-name">${escapeHtml(otherName)}</span><span class="conv-preview">${escapeHtml(data.lastMessageText || "")}</span>`;
+      const unread = isConversationUnread(data, currentUid);
+      item.innerHTML = `<span class="conv-name${unread ? " unread" : ""}">${unread ? '<span class="unread-dot"></span>' : ""}${escapeHtml(otherName)}</span><span class="conv-preview">${escapeHtml(data.lastMessageText || "")}</span>`;
       item.addEventListener("click", () => openThread(otherUid, otherName));
       list.appendChild(item);
     });
@@ -1203,6 +1259,7 @@ function openThread(otherUid, otherName) {
   const conversationId = conversationIdFor(otherUid);
   const messagesEl = document.getElementById("thread-messages");
   messagesEl.innerHTML = "";
+  markConversationRead(conversationId);
 
   if (unsubscribeThread) unsubscribeThread();
   const q = query(
@@ -1255,9 +1312,12 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
 
       const convoRef = doc(db, "conversations", conversationId);
       const convoSnap = await tx.get(convoRef);
-      const participantNames = (convoSnap.exists() && convoSnap.data().participantNames) || {};
+      const existingData = convoSnap.exists() ? convoSnap.data() : {};
+      const participantNames = existingData.participantNames || {};
       participantNames[currentUid] = currentUserData.profile?.name || "Neighbor";
       participantNames[activeOtherUid] = otherName;
+      const readBy = { ...(existingData.readBy || {}) };
+      readBy[currentUid] = serverTimestamp();
 
       const msgRef = doc(collection(db, "conversations", conversationId, "messages"));
 
@@ -1267,6 +1327,8 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
         participantNames,
         lastMessageAt: serverTimestamp(),
         lastMessageText: text,
+        lastMessageSenderId: currentUid,
+        readBy,
       }, { merge: true });
       tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
     });
