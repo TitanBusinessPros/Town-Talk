@@ -202,6 +202,14 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
 .empty-state { text-align: center; padding: 4rem 1rem; color: var(--text-muted); }
 
+.directory-search-wrap { max-width: 480px; margin: 0 auto 2rem; }
+.directory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.directory-card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem; cursor: pointer; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; font-family: var(--font-body); }
+.directory-card:hover { background: var(--ink-700); }
+.directory-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); background: var(--ink-700); }
+.directory-card .dir-name { font-weight: 600; color: var(--paper-050); font-size: 0.95rem; }
+.directory-card .dir-sub { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+
 .admin-card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-top: 1.5rem; }
 .admin-card .admin-meta { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem; }
 .admin-card .admin-post { white-space: pre-wrap; font-size: 0.92rem; color: var(--paper-050); line-height: 1.55; margin: 0.75rem 0; }
@@ -248,6 +256,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <button class="brand" id="brand-link">Town<span class="brand-mark">Fuss</span></button>
   <nav class="nav-links">
     <a href="#" id="nav-feed">Feed</a>
+    <a href="#" id="nav-directory">Profiles</a>
     <a href="#" id="nav-messages" style="display:none">Messages<span class="nav-badge" id="messages-badge" style="display:none"></span></a>
     <a href="#" id="nav-dashboard" style="display:none">Your page</a>
     <a href="#" id="nav-admin" style="display:none">Admin</a>
@@ -370,6 +379,26 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div id="feed-empty" class="empty-state" style="display:none">No posts yet — check back soon.</div>
   </section>
 
+  <!-- ================= DIRECTORY / SEARCH VIEW ================= -->
+  <section id="view-directory" class="view">
+    <div class="feed-hero">
+      <p class="eyebrow">Pauls Valley</p>
+      <h1>Find a neighbor</h1>
+      <p>Search approved profiles by name or neighborhood.</p>
+    </div>
+    <div class="directory-search-wrap">
+      <input id="directory-search" type="text" placeholder="Search by name or neighborhood..." />
+    </div>
+    <div id="directory-grid" class="directory-grid"></div>
+    <div id="directory-empty" class="empty-state" style="display:none">No matching neighbors found.</div>
+  </section>
+
+  <!-- ================= SINGLE PROFILE VIEW ================= -->
+  <section id="view-profile" class="view">
+    <button type="button" class="secondary small" id="profile-back" style="margin-bottom:1.5rem;">&larr; Back to search</button>
+    <div id="profile-detail"></div>
+  </section>
+
   <!-- ================= MESSAGES VIEW ================= -->
   <section id="view-messages" class="view">
     <p class="eyebrow">Messages</p>
@@ -442,6 +471,7 @@ function showView(name) {
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
   document.getElementById(`view-${name}`).classList.add("active");
   if (name === "feed") loadFeed();
+  if (name === "directory") loadDirectory();
   if (name === "admin") loadAdminQueue();
   if (name === "messages") { closeThread(); watchConversations(); }
   else if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
@@ -449,6 +479,7 @@ function showView(name) {
 
 document.getElementById("brand-link").addEventListener("click", () => showView(auth.currentUser ? "dashboard" : "landing"));
 document.getElementById("nav-feed").addEventListener("click", (e) => { e.preventDefault(); showView("feed"); });
+document.getElementById("nav-directory").addEventListener("click", (e) => { e.preventDefault(); showView("directory"); });
 document.getElementById("nav-dashboard").addEventListener("click", (e) => { e.preventDefault(); showView("dashboard"); });
 document.getElementById("nav-admin").addEventListener("click", (e) => { e.preventDefault(); showView("admin"); });
 document.getElementById("nav-messages").addEventListener("click", (e) => { e.preventDefault(); showView("messages"); });
@@ -916,8 +947,9 @@ async function loadFeed() {
   snap.forEach((docSnap) => grid.appendChild(renderCard(docSnap.id, docSnap.data())));
 }
 
-// Delegate clicks on "Message" buttons in the feed.
-document.getElementById("feed-grid").addEventListener("click", (e) => {
+// Delegate clicks on "Message" buttons wherever a profile card is rendered
+// (the main feed, or a single profile page opened from Search).
+document.body.addEventListener("click", (e) => {
   const btn = e.target.closest(".msg-btn");
   if (!btn) return;
   if (!currentUid) {
@@ -930,6 +962,71 @@ document.getElementById("feed-grid").addEventListener("click", (e) => {
   showView("messages");
   openThread(otherUid, otherName);
 });
+
+// ============================= DIRECTORY / SEARCH =========================
+let directoryUsers = [];
+
+async function loadDirectory() {
+  const grid = document.getElementById("directory-grid");
+  const empty = document.getElementById("directory-empty");
+  grid.innerHTML = "";
+  empty.style.display = "none";
+
+  const q = query(collection(db, "users"), where("approved", "==", true));
+  const snap = await getDocs(q).catch((err) => {
+    empty.style.display = "block";
+    empty.textContent = `Couldn't load profiles: ${err.message}`;
+    return null;
+  });
+  if (!snap) return;
+
+  directoryUsers = snap.docs.map((d) => ({ uid: d.id, data: d.data() }));
+  renderDirectory(document.getElementById("directory-search").value.trim().toLowerCase());
+}
+
+function renderDirectory(searchTerm) {
+  const grid = document.getElementById("directory-grid");
+  const empty = document.getElementById("directory-empty");
+  grid.innerHTML = "";
+
+  const filtered = directoryUsers.filter(({ data }) => {
+    if (!searchTerm) return true;
+    const profile = data.profile || {};
+    return (profile.name || "").toLowerCase().includes(searchTerm)
+        || (profile.neighborhood || "").toLowerCase().includes(searchTerm);
+  });
+
+  if (!filtered.length) { empty.style.display = "block"; return; }
+  empty.style.display = "none";
+
+  filtered.forEach(({ uid, data }) => {
+    const profile = data.profile || {};
+    const images = data.images || [];
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "directory-card";
+    card.innerHTML = `
+      ${images.length ? `<img src="${images[0].url}" alt="${escapeHtml(profile.name || "Neighbor")}" />` : ""}
+      <span class="dir-name">${escapeHtml(profile.name || "Neighbor")}</span>
+      ${profile.neighborhood ? `<span class="dir-sub">${escapeHtml(profile.neighborhood)}</span>` : ""}
+    `;
+    card.addEventListener("click", () => showProfile(uid, data));
+    grid.appendChild(card);
+  });
+}
+
+document.getElementById("directory-search").addEventListener("input", (e) => {
+  renderDirectory(e.target.value.trim().toLowerCase());
+});
+
+function showProfile(uid, data) {
+  const detail = document.getElementById("profile-detail");
+  detail.innerHTML = "";
+  detail.appendChild(renderCard(uid, data));
+  showView("profile");
+}
+
+document.getElementById("profile-back").addEventListener("click", () => showView("directory"));
 
 // ============================= ADMIN REVIEW ==============================
 async function loadAdminQueue() {
