@@ -316,7 +316,6 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
     <section class="card" style="margin-top:2rem">
       <h2>The basics</h2>
-      <p class="field-hint">Signed in as uid: <span id="debug-uid" style="color:var(--paper-050)">—</span> <button type="button" class="secondary small" id="copy-uid-btn" style="margin-left:0.5rem;">Copy</button></p>
       <form id="profile-form">
         <label for="display-name">Display name</label>
         <input id="display-name" type="text" maxlength="60" placeholder="What should neighbors call you?" />
@@ -501,7 +500,6 @@ onAuthStateChanged(auth, async (user) => {
 
   if (user) {
     currentUid = user.uid;
-    document.getElementById("debug-uid").textContent = user.uid;
     watchUserDoc(user.uid);
     watchMessageLimit(user.uid);
 
@@ -534,18 +532,6 @@ function showMessage(el, text, type) {
   el.className = `message ${type}`;
   el.style.display = "block";
 }
-
-document.getElementById("copy-uid-btn").addEventListener("click", async () => {
-  const uidText = document.getElementById("debug-uid").textContent;
-  const btn = document.getElementById("copy-uid-btn");
-  try {
-    await navigator.clipboard.writeText(uidText);
-    btn.textContent = "Copied!";
-  } catch {
-    btn.textContent = "Copy failed — select manually";
-  }
-  setTimeout(() => { btn.textContent = "Copy"; }, 2000);
-});
 
 // ============================= AUTH TABS ================================
 document.querySelectorAll(".tab").forEach((tab) => {
