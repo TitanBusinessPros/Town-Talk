@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Town Fuss — Pauls Valley</title>
+<meta name="description" content="Town Fuss is a community platform for Pauls Valley, Oklahoma. Create a profile, share a post with your neighbors, and message people in town." />
+
+<!-- Open Graph / social share preview -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Town Fuss — Pauls Valley" />
+<meta property="og:description" content="A community platform for Pauls Valley, Oklahoma. Create a profile, share a post, and message your neighbors." />
+<!-- TODO: replace with your own hosted preview image -->
+<!-- <meta property="og:image" content="https://yourdomain.com/preview.jpg" /> -->
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Town Fuss — Pauls Valley" />
+<meta name="twitter:description" content="A community platform for Pauls Valley, Oklahoma. Create a profile, share a post, and message your neighbors." />
+
+<!-- TODO: replace with your own favicon -->
+<!-- <link rel="icon" type="image/png" href="https://yourdomain.com/favicon.png" /> -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* =========================================================================
+   Town Fuss — design tokens (Pauls Valley edition)
+   Same warm dusk palette as the original framework: deep ink-navy anchors
+   the page, amber is the accent/action color, sage is a quiet secondary.
+   ========================================================================= */
+:root {
+  --ink-900: #14181c;
+  --ink-800: #1d2329;
+  --ink-700: #2a323a;
+  --paper-050: #f6f3ec;
+  --amber-500: #d9a544;
+  --amber-600: #c08d2e;
+  --sage-500: #7a8b6f;
+  --line: rgba(246, 243, 236, 0.14);
+  --text-muted: rgba(246, 243, 236, 0.62);
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+body { min-height: 100vh; display: flex; flex-direction: column; }
+a { color: var(--amber-500); }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--amber-500); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+.site-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.75rem; border-bottom: 1px solid var(--line); }
+
+.brand-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.4rem;
+  padding: 2.25rem 1.5rem 1.5rem;
+}
+.brand-banner .brand-banner-title {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: var(--paper-050);
+}
+.brand-banner .brand-banner-sub {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.brand { font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; letter-spacing: 0.01em; color: var(--paper-050); text-decoration: none; background: none; border: none; cursor: pointer; padding: 0; }
+.brand-mark { color: var(--amber-500); }
+.nav-links { display: flex; gap: 1.5rem; align-items: center; font-size: 0.95rem; flex-wrap: wrap; }
+.nav-links a, .nav-links button { color: var(--text-muted); text-decoration: none; background: none; border: none; font-family: var(--font-body); font-size: 0.95rem; cursor: pointer; padding: 0; }
+.nav-links a:hover, .nav-links button:hover { color: var(--paper-050); }
+.nav-badge { display: inline-block; background: var(--amber-500); color: var(--ink-900); font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; padding: 0.05rem 0.4rem; border-radius: 999px; margin-left: 0.3rem; }
+
+.page { flex: 1; width: 100%; max-width: 960px; margin: 0 auto; padding: 2.5rem 1.75rem 4rem; }
+.page--narrow { max-width: 480px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.15; margin: 0 0 0.6em; }
+h1 { font-size: clamp(2rem, 4vw, 2.75rem); }
+h2 { font-size: 1.5rem; }
+p { line-height: 1.6; color: var(--text-muted); }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.14em; color: var(--amber-500); margin-bottom: 0.75rem; }
+
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.75rem; }
+
+label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem; margin-top: 1rem; }
+label:first-of-type { margin-top: 0; }
+input, textarea, select { width: 100%; background: var(--ink-900); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.65rem 0.8rem; color: var(--paper-050); font-family: var(--font-body); font-size: 0.95rem; }
+textarea { resize: vertical; min-height: 160px; }
+.field-hint { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; }
+.field-hint.over-limit { color: #d97757; }
+
+button, .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: none; border-radius: var(--radius-sm); padding: 0.7rem 1.2rem; font-family: var(--font-body); font-size: 0.95rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: var(--ink-900); }
+button:hover { background: var(--amber-600); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+button.secondary:hover { background: var(--ink-700); }
+button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
+
+.form-row { margin-top: 1.5rem; display: flex; gap: 0.75rem; }
+.tabs { display: flex; gap: 0.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+.tab { padding: 0.6rem 1rem; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; background:none; border-top:none; border-left:none; border-right:none; font-family: var(--font-body); }
+.tab.active { color: var(--paper-050); border-bottom-color: var(--amber-500); }
+
+.message { margin-top: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; }
+.message.error { background: rgba(217, 119, 87, 0.15); color: #eea88f; }
+.message.success { background: rgba(122, 139, 111, 0.2); color: #c3d1b8; }
+
+.badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.3rem 0.6rem; border-radius: 999px; }
+.badge--pending { background: rgba(217, 165, 68, 0.15); color: var(--amber-500); }
+.badge--approved { background: rgba(122, 139, 111, 0.2); color: var(--sage-500); }
+.badge--rejected { background: rgba(217, 119, 87, 0.15); color: #d97757; }
+.badge--draft { background: rgba(246, 243, 236, 0.1); color: var(--text-muted); }
+
+.image-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; }
+.image-slot { aspect-ratio: 3 / 4; border: 1px dashed var(--line); border-radius: var(--radius-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; overflow: hidden; position: relative; background: var(--ink-900); }
+.image-slot img { width: 100%; height: 100%; object-fit: cover; }
+.image-slot .slot-label { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); }
+.image-slot .slot-badge { position: absolute; top: 0.5rem; left: 0.5rem; }
+.image-slot .slot-lock { position: absolute; bottom: 0.5rem; left: 0.5rem; right: 0.5rem; font-family: var(--font-mono); font-size: 0.65rem; color: var(--paper-050); background: rgba(20, 24, 28, 0.75); padding: 0.3rem 0.5rem; border-radius: 6px; text-align: center; }
+
+.feed-hero { text-align: center; max-width: 620px; margin: 0 auto 3.5rem; }
+.feed-hero .eyebrow { justify-content: center; display: flex; }
+.feed-hero p { max-width: 480px; margin-left: auto; margin-right: auto; }
+.feed-hero h1 { margin-bottom: 0.5rem; }
+.feed-grid { display: flex; flex-direction: column; }
+.post-card {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 2rem;
+  padding: 2.5rem 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.post-card + .post-card { border-top: 1px solid var(--line); }
+.post-card .post-images { flex: 0 0 300px; width: 300px; border-radius: var(--radius); overflow: hidden; }
+
+.post-images { position: relative; }
+.post-images-scroll {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.post-images-scroll::-webkit-scrollbar { display: none; }
+.post-images-scroll img {
+  flex: 0 0 100%;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--ink-700);
+  scroll-snap-align: start;
+}
+.post-images-hint {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: var(--paper-050);
+  background: rgba(20, 24, 28, 0.6);
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.post-images-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(20, 24, 28, 0.65);
+  color: var(--paper-050);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  padding: 0;
+}
+.post-images-arrow:hover { background: rgba(20, 24, 28, 0.85); }
+.post-images-arrow.prev { left: 0.5rem; }
+.post-images-arrow.next { right: 0.5rem; }
+.post-card .post-body { padding: 0; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; min-width: 0; }
+.post-meta { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+.post-excerpt { font-size: 0.92rem; color: var(--paper-050); line-height: 1.55; flex: 1; }
+
+.empty-state { text-align: center; padding: 4rem 1rem; color: var(--text-muted); }
+
+.admin-card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-top: 1.5rem; }
+.admin-card .admin-meta { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+.admin-card .admin-post { white-space: pre-wrap; font-size: 0.92rem; color: var(--paper-050); line-height: 1.55; margin: 0.75rem 0; }
+.admin-card .admin-images { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 0.75rem 0; }
+.admin-card .admin-images img { width: 120px; height: 120px; object-fit: cover; border-radius: var(--radius-sm); background: var(--ink-700); }
+.admin-card .admin-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
+
+/* -------- Messages -------- */
+.conversation-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.5rem; }
+.conversation-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; cursor: pointer; text-align: left; width: 100%; }
+.conversation-item:hover { background: var(--ink-700); }
+.conversation-item .conv-name { font-weight: 600; color: var(--paper-050); }
+.conversation-item .conv-preview { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+.thread-messages { display: flex; flex-direction: column; gap: 0.6rem; max-height: 420px; overflow-y: auto; }
+.thread-msg { max-width: 75%; padding: 0.55rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.9rem; line-height: 1.4; }
+.thread-msg.mine { align-self: flex-end; background: var(--amber-500); color: var(--ink-900); }
+.thread-msg.theirs { align-self: flex-start; background: var(--ink-700); color: var(--paper-050); }
+.thread-msg .thread-msg-time { display: block; font-family: var(--font-mono); font-size: 0.65rem; opacity: 0.7; margin-top: 0.2rem; }
+
+.site-footer { text-align: center; padding: 2rem 1.5rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid var(--line); }
+
+.view { display: none; }
+.view.active { display: block; }
+
+@media (max-width: 700px) {
+  .post-card { flex-direction: column; gap: 1rem; }
+  .post-card .post-images { flex: 0 0 auto; width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .image-slots { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .site-header { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div class="brand-banner">
+  <div class="brand-banner-title">Town<span class="brand-mark">Fuss</span></div>
+  <div class="brand-banner-sub">Pauls Valley Edition · Oklahoma</div>
+</div>
+
+<header class="site-header">
+  <button class="brand" id="brand-link">Town<span class="brand-mark">Fuss</span></button>
+  <nav class="nav-links">
+    <a href="#" id="nav-feed">Feed</a>
+    <a href="#" id="nav-messages" style="display:none">Messages<span class="nav-badge" id="messages-badge" style="display:none"></span></a>
+    <a href="#" id="nav-dashboard" style="display:none">Your page</a>
+    <a href="#" id="nav-admin" style="display:none">Admin</a>
+    <a href="#" id="nav-auth">Sign in</a>
+    <a href="#" id="nav-logout" style="display:none">Log out</a>
+  </nav>
+</header>
+
+<main class="page">
+
+  <!-- ================= LANDING / AUTH VIEW ================= -->
+  <section id="view-landing" class="view active">
+    <div class="page--narrow" style="margin:0 auto">
+      <p class="eyebrow">Pauls Valley · Oklahoma</p>
+      <h1>Sign in to your account</h1>
+      <p>Create a free account with your email. Your profile stays private until our admin team reviews and approves it.</p>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="login">Log in</button>
+        <button class="tab" data-tab="signup">Sign up</button>
+        <button class="tab" data-tab="reset">Forgot password</button>
+      </div>
+
+      <form id="form-login" class="auth-form">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" required autocomplete="email" />
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" required autocomplete="current-password" />
+        <div class="form-row"><button type="submit">Log in</button></div>
+        <div id="login-message" class="message" style="display:none"></div>
+      </form>
+
+      <form id="form-signup" class="auth-form" style="display:none">
+        <label for="signup-email">Email</label>
+        <input id="signup-email" type="email" required autocomplete="email" />
+        <label for="signup-password">Password</label>
+        <input id="signup-password" type="password" required minlength="6" autocomplete="new-password" />
+        <p class="field-hint">6+ characters. Your profile is private until an admin approves it.</p>
+        <div class="form-row"><button type="submit">Create account</button></div>
+        <div id="signup-message" class="message" style="display:none"></div>
+      </form>
+
+      <form id="form-reset" class="auth-form" style="display:none">
+        <label for="reset-email">Email</label>
+        <input id="reset-email" type="email" required autocomplete="email" />
+        <div class="form-row"><button type="submit">Send reset link</button></div>
+        <div id="reset-message" class="message" style="display:none"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= DASHBOARD VIEW ================= -->
+  <section id="view-dashboard" class="view">
+    <p class="eyebrow">Your private dashboard</p>
+    <h1>Your page</h1>
+    <p>Fill this in whenever you're ready. Nothing here is visible to anyone else until the admin approves it.</p>
+
+    <section class="card" style="margin-top:2rem">
+      <h2>The basics</h2>
+      <form id="profile-form">
+        <label for="display-name">Display name</label>
+        <input id="display-name" type="text" maxlength="60" placeholder="What should neighbors call you?" />
+        <label for="neighborhood">Part of Pauls Valley you're in (optional)</label>
+        <input id="neighborhood" type="text" maxlength="80" placeholder="e.g. Downtown, near Wacker Park..." />
+        <div class="form-row"><button type="submit">Save details</button></div>
+        <div id="profile-message" class="message" style="display:none"></div>
+      </form>
+    </section>
+
+    <section class="card" style="margin-top:1.5rem">
+      <h2>Your post <span id="post-status-badge"></span></h2>
+      <p>Up to 500 words. Once submitted, it goes to the admin for approval before it's visible on the public feed. No profanity or negative words. For everyone's safety, do not ask for money or include phone numbers, email addresses, or links — use Town Fuss messaging instead. Once your profile has been approved, any edit takes it off the public feed until the admin reviews it again, and you can only make one edit every 30 days.</p>
+      <form id="post-form">
+        <textarea id="post-text" maxlength="6000" placeholder="What's going on in your corner of Pauls Valley?"></textarea>
+        <div class="field-hint" id="word-count">0 / 500 words</div>
+        <div class="form-row"><button type="submit">Submit for approval</button></div>
+        <div id="post-message" class="message" style="display:none"></div>
+      </form>
+    </section>
+
+    <section class="card" style="margin-top:1.5rem">
+      <h2>Your photos</h2>
+      <p>You get 3 photos total, and they're permanent once uploaded — choose carefully. Every photo needs admin approval before it appears publicly. No nudity or images showing sensitive body parts will be accepted!</p>
+      <div class="image-slots" id="image-slots"></div>
+      <input type="file" id="image-input" accept="image/*" style="display:none" />
+      <div id="image-message" class="message" style="display:none"></div>
+    </section>
+
+    <section class="card" style="margin-top:1.5rem; border-color:#d97757;">
+      <h2>Delete my account</h2>
+      <p>This permanently removes your profile, post, photos, and messages from our system — nothing is kept. This cannot be undone. Enter your password to confirm.</p>
+      <form id="delete-account-form">
+        <label for="delete-password">Password</label>
+        <input id="delete-password" type="password" required autocomplete="current-password" />
+        <div class="form-row">
+          <button type="submit" style="background:#d97757;">Permanently delete my account</button>
+        </div>
+        <div id="delete-account-message" class="message" style="display:none"></div>
+      </form>
+    </section>
+  </section>
+
+  <!-- ================= ADMIN REVIEW VIEW ================= -->
+  <section id="view-admin" class="view">
+    <p class="eyebrow">Admin</p>
+    <h1>Review queue</h1>
+    <p>Everyone here has submitted something new or edited an already-live profile. Review each, then Approve or Reject.</p>
+    <div id="admin-queue"></div>
+    <div id="admin-empty" class="empty-state" style="display:none">Nothing waiting for review right now.</div>
+  </section>
+
+  <!-- ================= PUBLIC FEED VIEW ================= -->
+  <section id="view-feed" class="view">
+    <div class="feed-hero">
+      <p class="eyebrow">Pauls Valley</p>
+      <h1>What's the Town Fuss?</h1>
+      <p>Posts from your neighbors in Pauls Valley. Every post and photo was reviewed before it appeared.</p>
+    </div>
+    <div id="feed-grid" class="feed-grid"></div>
+    <div id="feed-empty" class="empty-state" style="display:none">No posts yet — check back soon.</div>
+  </section>
+
+  <!-- ================= MESSAGES VIEW ================= -->
+  <section id="view-messages" class="view">
+    <p class="eyebrow">Messages</p>
+    <h1>Conversations</h1>
+    <p class="field-hint" id="messages-remaining">Loading your daily limit...</p>
+
+    <div id="conversation-list-wrap">
+      <div id="conversation-list" class="conversation-list"></div>
+      <div id="conversation-empty" class="empty-state" style="display:none">No conversations yet — message someone from the feed to get started.</div>
+    </div>
+
+    <div id="thread-view" class="card" style="display:none; margin-top:1.5rem;">
+      <button type="button" class="secondary small" id="thread-back" style="margin-bottom:1rem;">&larr; Back to conversations</button>
+      <h2 id="thread-with-name" style="margin-bottom:1rem;"></h2>
+      <div id="thread-messages" class="thread-messages"></div>
+      <form id="thread-form" class="form-row" style="margin-top:1rem;">
+        <input id="thread-input" type="text" maxlength="500" placeholder="Write a message..." style="flex:1" />
+        <button type="submit" id="thread-send-btn">Send</button>
+      </form>
+      <div id="thread-message" class="message" style="display:none"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">Town Fuss · Pauls Valley, Oklahoma</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  sendPasswordResetEmail, onAuthStateChanged, signOut, deleteUser,
+  EmailAuthProvider, reauthenticateWithCredential,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, addDoc,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+// -----------------------------------------------------------------------
+// Town Fuss — Pauls Valley Firebase project config.
+// These values are safe to expose publicly — access control lives in
+// Firestore/Storage security rules, not in hiding this object.
+// -----------------------------------------------------------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+const MAX_IMAGES = 3;
+const DAILY_MESSAGE_LIMIT = 3;
+let currentUid = null;
+let unsubscribeSnapshot = null;
+let unsubscribeMessageLimit = null;
+let unsubscribeConversations = null;
+let unsubscribeThread = null;
+
+// ============================= VIEW ROUTER ==============================
+function showView(name) {
+  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+  document.getElementById(`view-${name}`).classList.add("active");
+  if (name === "feed") loadFeed();
+  if (name === "admin") loadAdminQueue();
+  if (name === "messages") { closeThread(); watchConversations(); }
+  else if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
+}
+
+document.getElementById("brand-link").addEventListener("click", () => showView(auth.currentUser ? "dashboard" : "landing"));
+document.getElementById("nav-feed").addEventListener("click", (e) => { e.preventDefault(); showView("feed"); });
+document.getElementById("nav-dashboard").addEventListener("click", (e) => { e.preventDefault(); showView("dashboard"); });
+document.getElementById("nav-admin").addEventListener("click", (e) => { e.preventDefault(); showView("admin"); });
+document.getElementById("nav-messages").addEventListener("click", (e) => { e.preventDefault(); showView("messages"); });
+document.getElementById("nav-auth").addEventListener("click", (e) => { e.preventDefault(); showView("landing"); });
+document.getElementById("nav-logout").addEventListener("click", async (e) => {
+  e.preventDefault();
+  await signOut(auth);
+  showView("landing");
+});
+
+let isAdminUser = false;
+
+onAuthStateChanged(auth, async (user) => {
+  document.getElementById("nav-dashboard").style.display = user ? "inline" : "none";
+  document.getElementById("nav-messages").style.display = user ? "inline" : "none";
+  document.getElementById("nav-logout").style.display = user ? "inline" : "none";
+  document.getElementById("nav-auth").style.display = user ? "none" : "inline";
+
+  if (user) {
+    currentUid = user.uid;
+    watchUserDoc(user.uid);
+    watchMessageLimit(user.uid);
+
+    // Check admin status by trying to read our own admins/{uid} doc — the
+    // rules only allow reading your own, so this can't be used to snoop
+    // on who else is an admin.
+    const adminSnap = await getDoc(doc(db, "admins", user.uid)).catch(() => null);
+    isAdminUser = !!(adminSnap && adminSnap.exists());
+    document.getElementById("nav-admin").style.display = isAdminUser ? "inline" : "none";
+
+    showView("dashboard");
+  } else {
+    currentUid = null;
+    isAdminUser = false;
+    document.getElementById("nav-admin").style.display = "none";
+    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    if (unsubscribeMessageLimit) { unsubscribeMessageLimit(); unsubscribeMessageLimit = null; }
+    if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
+    closeThread();
+    showView("landing");
+  }
+});
+
+function showMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `message ${type}`;
+  el.style.display = "block";
+}
+
+// ============================= AUTH TABS ================================
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+    document.querySelectorAll(".auth-form").forEach((f) => (f.style.display = "none"));
+    tab.classList.add("active");
+    document.getElementById(`form-${tab.dataset.tab}`).style.display = "block";
+  });
+});
+
+function friendlyAuthError(err) {
+  const code = err.code || "";
+  if (code.includes("email-already-in-use")) return "An account with that email already exists — try logging in instead.";
+  if (code.includes("weak-password")) return "Please choose a password with at least 6 characters.";
+  if (code.includes("invalid-email")) return "That doesn't look like a valid email address.";
+  if (code.includes("user-not-found") || code.includes("wrong-password") || code.includes("invalid-credential")) return "Email or password is incorrect.";
+  return err.message || "Something went wrong. Please try again.";
+}
+
+document.getElementById("form-signup").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("signup-email").value.trim();
+  const password = document.getElementById("signup-password").value;
+  const msg = document.getElementById("signup-message");
+  let cred;
+  try {
+    cred = await createUserWithEmailAndPassword(auth, email, password);
+    await setDoc(doc(db, "users", cred.user.uid), {
+      createdAt: serverTimestamp(),
+      profile: { name: "", neighborhood: "" },
+      postText: "",
+      postWordCount: 0,
+      approved: false,
+      everApproved: false,
+      lastEditedAt: serverTimestamp(),
+      images: [],
+    });
+  } catch (err) {
+    // If the Firestore write got rejected for some reason, don't leave an
+    // orphaned Auth account with no profile behind it.
+    if (cred) {
+      await deleteUser(cred.user).catch(() => {});
+      await signOut(auth).catch(() => {});
+    }
+    showMessage(msg, friendlyAuthError(err), "error");
+  }
+});
+
+document.getElementById("form-login").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const msg = document.getElementById("login-message");
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    showMessage(msg, friendlyAuthError(err), "error");
+  }
+});
+
+document.getElementById("form-reset").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("reset-email").value.trim();
+  const msg = document.getElementById("reset-message");
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showMessage(msg, "Check your email for a reset link.", "success");
+  } catch (err) {
+    showMessage(msg, friendlyAuthError(err), "error");
+  }
+});
+
+// ============================= DASHBOARD ================================
+function watchUserDoc(uid) {
+  if (unsubscribeSnapshot) unsubscribeSnapshot();
+  unsubscribeSnapshot = onSnapshot(doc(db, "users", uid), async (snap) => {
+    if (!snap.exists()) {
+      // Doc is missing (e.g. deleted while testing) — recreate a clean
+      // default so the dashboard always has something to show.
+      await setDoc(doc(db, "users", uid), {
+        createdAt: serverTimestamp(),
+        profile: { name: "", neighborhood: "" },
+        postText: "",
+        postWordCount: 0,
+        approved: false,
+        everApproved: false,
+        lastEditedAt: serverTimestamp(),
+        images: [],
+      }).catch(() => {});
+      return;
+    }
+    renderDashboard(snap.data());
+  });
+}
+
+let currentUserData = {};
+
+function editLockInfo(data) {
+  if (!data.everApproved) return { locked: false };
+  const editedMs = data.lastEditedAt
+    ? (data.lastEditedAt.seconds ? data.lastEditedAt.seconds * 1000 : data.lastEditedAt._seconds * 1000)
+    : 0;
+  const daysSince = (Date.now() - editedMs) / (1000 * 60 * 60 * 24);
+  const daysLeft = Math.ceil(30 - daysSince);
+  return daysLeft > 0 ? { locked: true, daysLeft } : { locked: false };
+}
+
+async function flagForReview() {
+  await setDoc(doc(db, "reviewQueue", currentUid), {
+    requestedAt: serverTimestamp(),
+  }).catch(() => {});
+}
+
+function renderDashboard(data) {
+  currentUserData = data;
+  const profile = data.profile || {};
+  document.getElementById("display-name").value = profile.name ?? "";
+  document.getElementById("neighborhood").value = profile.neighborhood ?? "";
+
+  const badge = document.getElementById("post-status-badge");
+  const lock = editLockInfo(data);
+  if (data.approved) {
+    badge.innerHTML = lock.locked
+      ? `<span class="badge badge--approved">Live · editable again in ${lock.daysLeft}d</span>`
+      : `<span class="badge badge--approved">Live on public feed</span>`;
+  } else if (lock.locked) {
+    badge.innerHTML = `<span class="badge badge--pending">Pending review · editable again in ${lock.daysLeft}d</span>`;
+  } else {
+    badge.innerHTML = `<span class="badge badge--pending">Pending review</span>`;
+  }
+
+  const postTextEl = document.getElementById("post-text");
+  if (document.activeElement !== postTextEl) {
+    postTextEl.value = data.postText || "";
+    updateWordCount();
+  }
+
+  renderImageSlots(data.images || []);
+  currentImages = data.images || [];
+}
+
+document.getElementById("profile-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("profile-message");
+
+  const lock = editLockInfo(currentUserData);
+  if (lock.locked) {
+    showMessage(msg, `You can edit your profile again in ${lock.daysLeft} day(s).`, "error");
+    return;
+  }
+
+  const profile = {
+    name: document.getElementById("display-name").value.trim(),
+    neighborhood: document.getElementById("neighborhood").value.trim(),
+  };
+  const update = { profile, lastEditedAt: serverTimestamp() };
+  if (currentUserData.everApproved) update.approved = false;
+
+  try {
+    await updateDoc(doc(db, "users", currentUid), update);
+    await flagForReview();
+    showMessage(msg, currentUserData.everApproved
+      ? "Saved — this will need admin review again before it's live."
+      : "Saved.", "success");
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
+
+const postTextArea = document.getElementById("post-text");
+postTextArea.addEventListener("input", updateWordCount);
+function updateWordCount() {
+  const words = postTextArea.value.trim().split(/\s+/).filter(Boolean).length;
+  const hint = document.getElementById("word-count");
+  hint.textContent = `${words} / 500 words`;
+  hint.classList.toggle("over-limit", words > 500);
+}
+
+function containsContactInfo(text) {
+  const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
+  const urlPattern = /\b((https?:\/\/)|(www\.))\S+/i;
+  const phonePattern = /(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/;
+  return emailPattern.test(text) || urlPattern.test(text) || phonePattern.test(text);
+}
+
+document.getElementById("post-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("post-message");
+
+  const lock = editLockInfo(currentUserData);
+  if (lock.locked) {
+    showMessage(msg, `You can edit your post again in ${lock.daysLeft} day(s).`, "error");
+    return;
+  }
+
+  const text = postTextArea.value.trim();
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  if (words > 500) {
+    showMessage(msg, `Please trim your post to 500 words or fewer (currently ${words}).`, "error");
+    return;
+  }
+  if (containsContactInfo(text)) {
+    showMessage(msg, "Your post appears to contain a phone number, email address, or link. For everyone's safety, please remove personal contact info or money requests — use Town Fuss messaging instead.", "error");
+    return;
+  }
+  const update = { postText: text, postWordCount: words, lastEditedAt: serverTimestamp() };
+  if (currentUserData.everApproved) update.approved = false;
+
+  try {
+    await updateDoc(doc(db, "users", currentUid), update);
+    await flagForReview();
+    showMessage(msg, "Saved — the admin will review your whole profile before it goes live.", "success");
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
+
+function renderImageSlots(images) {
+  const container = document.getElementById("image-slots");
+  container.innerHTML = "";
+  for (let i = 0; i < MAX_IMAGES; i++) {
+    const img = images[i];
+    const slot = document.createElement("div");
+    slot.className = "image-slot";
+    if (img) {
+      const imgId = `img-slot-${i}-${img.id}`;
+      slot.innerHTML = `<img id="${imgId}" src="${img.url}" alt="Uploaded photo ${i + 1}" />`;
+      // If the file itself is gone (deleted in Storage but the Firestore
+      // record wasn't cleaned up to match), don't leave the slot stuck —
+      // clear the stale record automatically so it becomes uploadable again.
+      const imgEl = slot.querySelector(`#${CSS.escape(imgId)}`);
+      imgEl.addEventListener("error", async () => {
+        slot.innerHTML = `<span class="slot-label">Photo missing — click to re-add</span>`;
+        slot.style.cursor = "pointer";
+        slot.addEventListener("click", async () => {
+          const update = {
+            images: currentImages.filter((entry) => entry.id !== img.id),
+            lastEditedAt: serverTimestamp(),
+          };
+          if (currentUserData.everApproved) update.approved = false;
+          await updateDoc(doc(db, "users", currentUid), update).catch(() => {});
+          startUpload();
+        }, { once: true });
+      });
+    } else {
+      slot.innerHTML = `<span class="slot-label">+ Add photo ${i + 1}</span>`;
+      slot.style.cursor = "pointer";
+      slot.addEventListener("click", () => startUpload());
+    }
+    container.appendChild(slot);
+  }
+}
+
+let currentImages = [];
+
+const imageInput = document.getElementById("image-input");
+function startUpload() {
+  imageInput.value = "";
+  imageInput.click();
+}
+
+imageInput.addEventListener("change", async () => {
+  const file = imageInput.files[0];
+  if (!file) return;
+  const msg = document.getElementById("image-message");
+
+  if (currentImages.length >= MAX_IMAGES) {
+    showMessage(msg, "You've already used all 3 photo slots.", "error");
+    return;
+  }
+
+  const lock = editLockInfo(currentUserData);
+  if (lock.locked) {
+    showMessage(msg, `You can add photos again in ${lock.daysLeft} day(s).`, "error");
+    return;
+  }
+
+  try {
+    const imageId = crypto.randomUUID();
+    const path = `users/${currentUid}/images/${imageId}-${file.name}`;
+    const fileRef = ref(storage, path);
+    await uploadBytes(fileRef, file);
+    const url = await getDownloadURL(fileRef);
+
+    const newImage = {
+      id: imageId,
+      storagePath: path,
+      url,
+      uploadedAt: Timestamp.now(),
+    };
+
+    const update = { images: [...currentImages, newImage], lastEditedAt: serverTimestamp() };
+    if (currentUserData.everApproved) update.approved = false;
+
+    await updateDoc(doc(db, "users", currentUid), update);
+    await flagForReview();
+    showMessage(msg, "Uploaded — waiting on admin approval.", "success");
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
+
+// ============================= DELETE ACCOUNT ============================
+document.getElementById("delete-account-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("delete-account-message");
+  const password = document.getElementById("delete-password").value;
+  const user = auth.currentUser;
+
+  if (!confirm("This will permanently delete your profile, post, and photos. This cannot be undone. Continue?")) {
+    return;
+  }
+
+  try {
+    // Deleting an account is a sensitive operation — Firebase requires a
+    // recent sign-in, which is why we ask for the password again here
+    // rather than trusting however long ago they originally logged in.
+    const credential = EmailAuthProvider.credential(user.email, password);
+    await reauthenticateWithCredential(user, credential);
+
+    // Remove every uploaded photo from Storage.
+    for (const img of currentImages) {
+      await deleteObject(ref(storage, img.storagePath)).catch(() => {});
+    }
+
+    // Remove the Firestore profile document.
+    await deleteDoc(doc(db, "users", user.uid));
+
+    // Remove the Auth account itself — nothing is left anywhere.
+    await deleteUser(user);
+
+    // onAuthStateChanged will detect the sign-out and return to landing.
+  } catch (err) {
+    if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+      showMessage(msg, "That password is incorrect.", "error");
+    } else {
+      showMessage(msg, err.message, "error");
+    }
+  }
+});
+
+// ============================= PUBLIC FEED ===============================
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderCard(uid, data) {
+  const profile = data.profile || {};
+  const images = data.images || [];
+  const postText = data.postText || "";
+
+  const card = document.createElement("article");
+  card.className = "post-card";
+  const imageHtml = images.length
+    ? `<div class="post-images">
+         <div class="post-images-scroll">
+           ${images.map((img) => `<img src="${img.url}" alt="Photo" loading="lazy" />`).join("")}
+         </div>
+         ${images.length > 1 ? `
+           <button type="button" class="post-images-arrow prev" aria-label="Previous photo">‹</button>
+           <button type="button" class="post-images-arrow next" aria-label="Next photo">›</button>
+           <span class="post-images-hint">1 / ${images.length}</span>
+         ` : ""}
+       </div>`
+    : "";
+
+  card.innerHTML = `
+    ${imageHtml}
+    <div class="post-body">
+      <div class="post-meta">
+        <span>${escapeHtml(profile.name || "Neighbor")}</span>
+        ${profile.neighborhood ? `<span>${escapeHtml(profile.neighborhood)}</span>` : ""}
+      </div>
+      <p class="post-excerpt">${escapeHtml(postText).replace(/\n/g, "<br>")}</p>
+      <button type="button" class="btn msg-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}" style="align-self:flex-start; margin-top:0.4rem;">Message ${escapeHtml(profile.name || "this neighbor")}</button>
+    </div>
+  `;
+
+  if (images.length > 1) {
+    const scroller = card.querySelector(".post-images-scroll");
+    const hint = card.querySelector(".post-images-hint");
+    const prevBtn = card.querySelector(".post-images-arrow.prev");
+    const nextBtn = card.querySelector(".post-images-arrow.next");
+
+    const updateHint = () => {
+      const index = Math.round(scroller.scrollLeft / scroller.clientWidth) + 1;
+      hint.textContent = `${index} / ${images.length}`;
+    };
+    scroller.addEventListener("scroll", updateHint);
+
+    prevBtn.addEventListener("click", () => {
+      scroller.scrollBy({ left: -scroller.clientWidth, behavior: "smooth" });
+    });
+    nextBtn.addEventListener("click", () => {
+      scroller.scrollBy({ left: scroller.clientWidth, behavior: "smooth" });
+    });
+  }
+
+  return card;
+}
+
+async function loadFeed() {
+  const grid = document.getElementById("feed-grid");
+  const empty = document.getElementById("feed-empty");
+  grid.innerHTML = "";
+  empty.style.display = "none";
+
+  const q = query(collection(db, "users"), where("approved", "==", true));
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    empty.style.display = "block";
+    return;
+  }
+  snap.forEach((docSnap) => grid.appendChild(renderCard(docSnap.id, docSnap.data())));
+}
+
+// Delegate clicks on "Message" buttons in the feed.
+document.getElementById("feed-grid").addEventListener("click", (e) => {
+  const btn = e.target.closest(".msg-btn");
+  if (!btn) return;
+  if (!currentUid) {
+    showView("landing");
+    return;
+  }
+  const otherUid = btn.dataset.uid;
+  const otherName = btn.dataset.name;
+  if (otherUid === currentUid) return; // can't message yourself
+  showView("messages");
+  openThread(otherUid, otherName);
+});
+
+// ============================= ADMIN REVIEW ==============================
+async function loadAdminQueue() {
+  const container = document.getElementById("admin-queue");
+  const empty = document.getElementById("admin-empty");
+  container.innerHTML = "";
+  empty.style.display = "none";
+
+  const q = query(collection(db, "reviewQueue"), orderBy("requestedAt", "asc"));
+  const queueSnap = await getDocs(q).catch((err) => {
+    container.innerHTML = `<div class="message error">Couldn't load the queue: ${err.message}</div>`;
+    return null;
+  });
+  if (!queueSnap) return;
+
+  if (queueSnap.empty) {
+    empty.style.display = "block";
+    return;
+  }
+
+  for (const queueDoc of queueSnap.docs) {
+    const uid = queueDoc.id;
+    const userSnap = await getDoc(doc(db, "users", uid)).catch(() => null);
+    if (!userSnap || !userSnap.exists()) continue;
+    container.appendChild(renderAdminCard(uid, userSnap.data()));
+  }
+}
+
+function renderAdminCard(uid, data) {
+  const profile = data.profile || {};
+  const images = data.images || [];
+  const card = document.createElement("div");
+  card.className = "admin-card";
+
+  const imagesHtml = images.length
+    ? `<div class="admin-images">${images.map((img) => `<img src="${img.url}" alt="Photo" />`).join("")}</div>`
+    : `<p class="field-hint">No photos uploaded yet.</p>`;
+
+  card.innerHTML = `
+    <div class="admin-meta">
+      ${data.everApproved ? "Re-review after edit" : "First-time submission"}
+      &nbsp;·&nbsp; ${escapeHtml(profile.name || "—")}
+      &nbsp;·&nbsp; ${escapeHtml(profile.neighborhood || "—")}
+    </div>
+    ${imagesHtml}
+    <p class="admin-post">${escapeHtml(data.postText || "(no post written yet)")}</p>
+    <div class="admin-actions">
+      <button type="button" data-action="approve">Approve</button>
+      <button type="button" class="secondary" data-action="reject">Reject</button>
+    </div>
+    <div class="message" style="display:none"></div>
+  `;
+
+  const msg = card.querySelector(".message");
+
+  card.querySelector('[data-action="approve"]').addEventListener("click", async () => {
+    try {
+      await updateDoc(doc(db, "users", uid), { approved: true, everApproved: true });
+      await deleteDoc(doc(db, "reviewQueue", uid));
+      card.remove();
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  });
+
+  card.querySelector('[data-action="reject"]').addEventListener("click", async () => {
+    try {
+      await deleteDoc(doc(db, "reviewQueue", uid));
+      card.remove();
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  });
+
+  return card;
+}
+
+// ============================= MESSAGING =================================
+// 3 messages per user per day, resetting daily. The remaining count is
+// tracked in messageLimits/{uid} using a "day number" derived from the
+// server clock, and Firestore security rules enforce the cap server-side
+// (see firestore.rules) — the client-side check below is just for a
+// responsive UI, it is not what actually stops abuse.
+
+function todayNumber() {
+  return Math.floor(Date.now() / 86400000);
+}
+
+let currentMessageLimit = { day: 0, count: 0 };
+
+function watchMessageLimit(uid) {
+  if (unsubscribeMessageLimit) unsubscribeMessageLimit();
+  unsubscribeMessageLimit = onSnapshot(doc(db, "messageLimits", uid), (snap) => {
+    currentMessageLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderMessageRemaining();
+  });
+}
+
+function remainingToday() {
+  if (currentMessageLimit.day !== todayNumber()) return DAILY_MESSAGE_LIMIT;
+  return Math.max(0, DAILY_MESSAGE_LIMIT - currentMessageLimit.count);
+}
+
+function renderMessageRemaining() {
+  const left = remainingToday();
+  const el = document.getElementById("messages-remaining");
+  if (el) el.textContent = `${left} / ${DAILY_MESSAGE_LIMIT} messages left today`;
+  const badge = document.getElementById("messages-badge");
+  if (badge) {
+    if (left > 0) { badge.style.display = "inline-block"; badge.textContent = left; }
+    else badge.style.display = "none";
+  }
+  const sendBtn = document.getElementById("thread-send-btn");
+  if (sendBtn) sendBtn.disabled = left <= 0;
+}
+
+function conversationIdFor(otherUid) {
+  return [currentUid, otherUid].sort().join("_");
+}
+
+function watchConversations() {
+  if (unsubscribeConversations) unsubscribeConversations();
+  const list = document.getElementById("conversation-list");
+  const empty = document.getElementById("conversation-empty");
+  const q = query(
+    collection(db, "conversations"),
+    where("participants", "array-contains", currentUid),
+    orderBy("lastMessageAt", "desc")
+  );
+  unsubscribeConversations = onSnapshot(q, (snap) => {
+    list.innerHTML = "";
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const otherUid = (data.participants || []).find((p) => p !== currentUid);
+      const otherName = (data.participantNames && data.participantNames[otherUid]) || "Neighbor";
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "conversation-item";
+      item.innerHTML = `<span class="conv-name">${escapeHtml(otherName)}</span><span class="conv-preview">${escapeHtml(data.lastMessageText || "")}</span>`;
+      item.addEventListener("click", () => openThread(otherUid, otherName));
+      list.appendChild(item);
+    });
+  }, (err) => {
+    empty.style.display = "block";
+    empty.textContent = `Couldn't load conversations: ${err.message}`;
+  });
+}
+
+function closeThread() {
+  document.getElementById("thread-view").style.display = "none";
+  document.getElementById("conversation-list-wrap").style.display = "block";
+  if (unsubscribeThread) { unsubscribeThread(); unsubscribeThread = null; }
+}
+
+let activeOtherUid = null;
+
+function openThread(otherUid, otherName) {
+  activeOtherUid = otherUid;
+  document.getElementById("thread-view").style.display = "block";
+  document.getElementById("conversation-list-wrap").style.display = "none";
+  document.getElementById("thread-with-name").textContent = otherName;
+
+  const conversationId = conversationIdFor(otherUid);
+  const messagesEl = document.getElementById("thread-messages");
+  messagesEl.innerHTML = "";
+
+  if (unsubscribeThread) unsubscribeThread();
+  const q = query(
+    collection(db, "conversations", conversationId, "messages"),
+    orderBy("sentAt", "asc")
+  );
+  unsubscribeThread = onSnapshot(q, (snap) => {
+    messagesEl.innerHTML = "";
+    snap.forEach((docSnap) => {
+      const m = docSnap.data();
+      const mine = m.senderId === currentUid;
+      const time = m.sentAt ? new Date(m.sentAt.seconds * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+      const bubble = document.createElement("div");
+      bubble.className = `thread-msg ${mine ? "mine" : "theirs"}`;
+      bubble.innerHTML = `${escapeHtml(m.text || "")}<span class="thread-msg-time">${time}</span>`;
+      messagesEl.appendChild(bubble);
+    });
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  });
+}
+
+document.getElementById("thread-back").addEventListener("click", closeThread);
+
+document.getElementById("thread-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("thread-input");
+  const msg = document.getElementById("thread-message");
+  const text = input.value.trim();
+  if (!text || !activeOtherUid) return;
+
+  if (remainingToday() <= 0) {
+    showMessage(msg, "You've used all 3 messages for today — it resets tomorrow.", "error");
+    return;
+  }
+
+  const conversationId = conversationIdFor(activeOtherUid);
+  const otherName = document.getElementById("thread-with-name").textContent;
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const limitRef = doc(db, "messageLimits", currentUid);
+      const limitSnap = await tx.get(limitRef);
+      const data = limitSnap.exists() ? limitSnap.data() : { day: 0, count: 0 };
+      const today = todayNumber();
+      const sameDay = data.day === today;
+      const newCount = sameDay ? data.count + 1 : 1;
+      if (sameDay && data.count >= DAILY_MESSAGE_LIMIT) {
+        throw new Error("You've used all 3 messages for today — it resets tomorrow.");
+      }
+
+      const convoRef = doc(db, "conversations", conversationId);
+      const convoSnap = await tx.get(convoRef);
+      const participantNames = (convoSnap.exists() && convoSnap.data().participantNames) || {};
+      participantNames[currentUid] = currentUserData.profile?.name || "Neighbor";
+      participantNames[activeOtherUid] = otherName;
+
+      const msgRef = doc(collection(db, "conversations", conversationId, "messages"));
+
+      tx.set(limitRef, { day: today, count: newCount });
+      tx.set(convoRef, {
+        participants: [currentUid, activeOtherUid].sort(),
+        participantNames,
+        lastMessageAt: serverTimestamp(),
+        lastMessageText: text,
+      }, { merge: true });
+      tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
+    });
+    input.value = "";
+    msg.style.display = "none";
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
+</script>
+</body>
+</html>
