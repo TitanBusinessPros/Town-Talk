@@ -1186,19 +1186,17 @@ function watchUnreadConversations(uid) {
   }, (err) => console.error("Unread message watch failed:", err));
 }
 
-// Mark a conversation as read by stamping readBy[currentUid] = now.
-// Done as a plain read-then-write (not inside the send transaction) since
-// it only happens when someone opens a thread, not on every message.
+// Mark a conversation as read by stamping readBy.<uid> = now, using
+// dot-notation so only our own entry changes — the other person's
+// read receipt is left untouched. No read-before-write needed here.
 async function markConversationRead(conversationId) {
   try {
     const convoRef = doc(db, "conversations", conversationId);
-    const snap = await getDoc(convoRef);
-    if (!snap.exists()) return;
-    const readBy = { ...(snap.data().readBy || {}) };
-    readBy[currentUid] = serverTimestamp();
-    await updateDoc(convoRef, { readBy });
+    await updateDoc(convoRef, { [`readBy.${currentUid}`]: serverTimestamp() });
   } catch (err) {
-    console.error("Couldn't mark conversation as read:", err);
+    // "not-found" just means this conversation has no messages yet —
+    // nothing to mark as read, safe to ignore.
+    if (err.code !== "not-found") console.error("Couldn't mark conversation as read:", err);
   }
 }
 
@@ -1311,24 +1309,17 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
       }
 
       const convoRef = doc(db, "conversations", conversationId);
-      const convoSnap = await tx.get(convoRef);
-      const existingData = convoSnap.exists() ? convoSnap.data() : {};
-      const participantNames = existingData.participantNames || {};
-      participantNames[currentUid] = currentUserData.profile?.name || "Neighbor";
-      participantNames[activeOtherUid] = otherName;
-      const readBy = { ...(existingData.readBy || {}) };
-      readBy[currentUid] = serverTimestamp();
-
       const msgRef = doc(collection(db, "conversations", conversationId, "messages"));
 
       tx.set(limitRef, { day: today, count: newCount });
       tx.set(convoRef, {
         participants: [currentUid, activeOtherUid].sort(),
-        participantNames,
+        [`participantNames.${currentUid}`]: currentUserData.profile?.name || "Neighbor",
+        [`participantNames.${activeOtherUid}`]: otherName,
         lastMessageAt: serverTimestamp(),
         lastMessageText: text,
         lastMessageSenderId: currentUid,
-        readBy,
+        [`readBy.${currentUid}`]: serverTimestamp(),
       }, { merge: true });
       tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
     });
