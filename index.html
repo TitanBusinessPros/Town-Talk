@@ -392,8 +392,10 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div id="verify-email-gate" class="card" style="display:none; border-color:#a3282f; text-align:center;">
       <h2>Verify your email to continue</h2>
       <p>Please verify your email address before creating your profile — check your inbox for a link from us. This helps keep Town Fuss free of scammers and fake accounts.</p>
+      <p class="field-hint">After clicking the link in your email, come back to this tab — it checks automatically, or click the button below.</p>
       <div class="form-row" style="justify-content:center;">
-        <button type="button" id="resend-verify-btn">Resend verification email</button>
+        <button type="button" id="check-verified-btn">I've verified — check now</button>
+        <button type="button" class="secondary" id="resend-verify-btn">Resend verification email</button>
       </div>
       <div id="verify-resend-message" class="message" style="display:none"></div>
     </div>
@@ -557,6 +559,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <input id="chatroom-input" type="text" maxlength="500" placeholder="Say something to the room..." style="flex:1" />
         <button type="submit" id="chatroom-send-btn">Send</button>
       </form>
+      <div class="field-hint" id="chatroom-word-count">0 / 50 words</div>
       <div id="chatroom-message" class="message" style="display:none"></div>
     </div>
   </section>
@@ -585,6 +588,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <input id="thread-input" type="text" maxlength="500" placeholder="Write a message..." style="flex:1" />
         <button type="submit" id="thread-send-btn">Send</button>
       </form>
+      <div class="field-hint" id="thread-word-count">0 / 50 words</div>
       <div id="thread-message" class="message" style="display:none"></div>
     </div>
   </section>
@@ -699,6 +703,14 @@ const PROTECTED_VIEWS = ["feed", "directory", "profile", "dashboard", "messages"
 function showView(name) {
   if (PROTECTED_VIEWS.includes(name) && !auth.currentUser) {
     name = "landing";
+  } else if (
+    PROTECTED_VIEWS.includes(name)
+    && auth.currentUser
+    && !auth.currentUser.emailVerified
+    && !isAdminUser
+    && name !== "dashboard"
+  ) {
+    name = "dashboard";
   }
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
   document.getElementById(`view-${name}`).classList.add("active");
@@ -729,13 +741,18 @@ document.getElementById("nav-logout").addEventListener("click", async (e) => {
 
 let isAdminUser = false;
 
+function updateProtectedNavVisibility(user) {
+  const canSeeFullNav = !!user && (user.emailVerified || isAdminUser);
+  document.getElementById("nav-feed").style.display = canSeeFullNav ? "inline" : "none";
+  document.getElementById("nav-directory").style.display = canSeeFullNav ? "inline" : "none";
+  document.getElementById("nav-messages").style.display = canSeeFullNav ? "inline" : "none";
+  document.getElementById("nav-friends").style.display = canSeeFullNav ? "inline" : "none";
+  document.getElementById("nav-chatrooms").style.display = canSeeFullNav ? "inline" : "none";
+}
+
 onAuthStateChanged(auth, async (user) => {
   document.getElementById("nav-dashboard").style.display = user ? "inline" : "none";
-  document.getElementById("nav-feed").style.display = user ? "inline" : "none";
-  document.getElementById("nav-directory").style.display = user ? "inline" : "none";
-  document.getElementById("nav-messages").style.display = user ? "inline" : "none";
-  document.getElementById("nav-friends").style.display = user ? "inline" : "none";
-  document.getElementById("nav-chatrooms").style.display = user ? "inline" : "none";
+  updateProtectedNavVisibility(user);
   document.getElementById("nav-logout").style.display = user ? "inline" : "none";
   document.getElementById("nav-auth").style.display = user ? "none" : "inline";
 
@@ -766,6 +783,7 @@ onAuthStateChanged(auth, async (user) => {
     isAdminUser = !!(adminSnap && adminSnap.exists());
     console.log("Signed in uid:", user.uid, "| isAdmin:", isAdminUser);
     document.getElementById("nav-admin").style.display = isAdminUser ? "inline" : "none";
+    updateProtectedNavVisibility(user);
 
     showView("dashboard");
   } else {
@@ -799,6 +817,52 @@ async function updateLastActive(uid) {
     console.error("Couldn't update last-active timestamp:", err);
   }
 }
+
+// Firebase doesn't automatically notice when you've clicked the email
+// verification link in another tab — the signed-in user object here stays
+// "stale" until we explicitly ask Firebase to refresh it. reload() does
+// that (a lightweight Auth API call, not a Firestore read, so it's free).
+async function refreshVerificationStatus(showFeedback) {
+  if (!auth.currentUser) return;
+  try {
+    await auth.currentUser.reload();
+  } catch (err) {
+    console.error("Couldn't refresh verification status:", err);
+    return;
+  }
+  const verifyGate = document.getElementById("verify-email-gate");
+  const gatedContent = document.getElementById("dashboard-gated-content");
+  const nowVerified = auth.currentUser.emailVerified;
+  if (verifyGate && gatedContent) {
+    verifyGate.style.display = nowVerified ? "none" : "block";
+    gatedContent.style.display = nowVerified ? "block" : "none";
+  }
+  updateProtectedNavVisibility(auth.currentUser);
+  if (showFeedback) {
+    const msg = document.getElementById("verify-resend-message");
+    if (nowVerified) {
+      showMessage(msg, "Verified! You're all set.", "success");
+    } else {
+      showMessage(msg, "Not verified yet — check your inbox, or resend the email below.", "error");
+    }
+  }
+}
+
+document.getElementById("check-verified-btn").addEventListener("click", () => refreshVerificationStatus(true));
+
+// Also check automatically when the person switches back to this tab —
+// covers the normal flow of clicking the email link in a new tab, then
+// returning here, without needing to click anything.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && auth.currentUser && !auth.currentUser.emailVerified) {
+    refreshVerificationStatus(false);
+  }
+});
+window.addEventListener("focus", () => {
+  if (auth.currentUser && !auth.currentUser.emailVerified) {
+    refreshVerificationStatus(false);
+  }
+});
 
 document.getElementById("resend-verify-btn").addEventListener("click", async () => {
   const btn = document.getElementById("resend-verify-btn");
@@ -1031,6 +1095,21 @@ function countWords(text) {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 const MESSAGE_WORD_LIMIT = 50;
+
+function wireWordCounter(inputId, counterId) {
+  const input = document.getElementById(inputId);
+  const counter = document.getElementById(counterId);
+  if (!input || !counter) return;
+  const update = () => {
+    const words = countWords(input.value);
+    counter.textContent = `${words} / ${MESSAGE_WORD_LIMIT} words`;
+    counter.classList.toggle("over-limit", words > MESSAGE_WORD_LIMIT);
+  };
+  input.addEventListener("input", update);
+  update();
+}
+wireWordCounter("thread-input", "thread-word-count");
+wireWordCounter("chatroom-input", "chatroom-word-count");
 
 document.getElementById("post-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -1968,6 +2047,7 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
       tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
     });
     input.value = "";
+    input.dispatchEvent(new Event("input"));
     msg.style.display = "none";
   } catch (err) {
     showMessage(msg, err.message, "error");
@@ -2561,6 +2641,7 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
       });
     });
     input.value = "";
+    input.dispatchEvent(new Event("input"));
     msg.style.display = "none";
   } catch (err) {
     showMessage(msg, err.message, "error");
