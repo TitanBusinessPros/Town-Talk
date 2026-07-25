@@ -29,15 +29,15 @@
    the page, amber is the accent/action color, sage is a quiet secondary.
    ========================================================================= */
 :root {
-  --ink-900: #f0f2f5;
+  --ink-900: #fbf6ef;
   --ink-800: #ffffff;
-  --ink-700: #e4e6eb;
-  --paper-050: #1c1e21;
-  --amber-500: #1877f2;
-  --amber-600: #145dbf;
-  --sage-500: #42b72a;
-  --line: #dddfe2;
-  --text-muted: #65676b;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --sage-500: #74875a;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
   --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
   --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -78,7 +78,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .nav-links { display: flex; gap: 1.5rem; align-items: center; font-size: 0.95rem; flex-wrap: wrap; }
 .nav-links a, .nav-links button { color: var(--text-muted); text-decoration: none; background: none; border: none; font-family: var(--font-body); font-size: 0.95rem; cursor: pointer; padding: 0; }
 .nav-links a:hover, .nav-links button:hover { color: var(--paper-050); }
-.nav-links a.has-unread { color: var(--amber-500); font-weight: 600; text-shadow: 0 0 12px rgba(24, 119, 242, 0.35); }
+.nav-links a.has-unread { color: var(--amber-500); font-weight: 600; text-shadow: 0 0 12px rgba(193, 80, 46, 0.35); }
 .nav-links a.has-unread::after { content: " ●"; font-size: 0.6em; vertical-align: super; }
 
 .profile-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--ink-700); flex-shrink: 0; }
@@ -97,7 +97,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .chat-msg-header { display: flex; align-items: baseline; gap: 0.6rem; }
 .chat-msg-header .chat-msg-name { font-weight: 600; color: var(--amber-500); font-size: 0.88rem; }
 .chat-msg-header .chat-msg-time { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); }
-.chat-msg-text { font-size: 0.9rem; color: var(--paper-050); margin-top: 0.15rem; line-height: 1.4; }
+.chat-msg-text { font-size: 0.9rem; color: var(--paper-050); margin-top: 0.15rem; line-height: 1.4; text-align: left; }
+
+.chatroom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 1.5rem; }
+.chatroom-tile { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 0.75rem; font-size: 0.85rem; font-weight: 600; color: var(--paper-050); cursor: pointer; text-align: center; }
+.chatroom-tile:hover { background: var(--ink-700); }
 .nav-badge { display: inline-block; background: var(--amber-500); color: var(--ink-900); font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; padding: 0.05rem 0.4rem; border-radius: 999px; margin-left: 0.3rem; }
 
 .page { flex: 1; width: 100%; max-width: 960px; margin: 0 auto; padding: 2.5rem 1.75rem 4rem; }
@@ -105,7 +109,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 h1, h2, h3 { font-family: var(--font-display); font-weight: 600; line-height: 1.15; margin: 0 0 0.6em; text-align: center; }
 h1 { font-size: clamp(2rem, 4vw, 2.75rem); }
 h2 { font-size: 1.5rem; }
-p { line-height: 1.6; color: var(--text-muted); }
+p { line-height: 1.6; color: var(--text-muted); text-align: center; }
+.field-hint, .post-excerpt, .admin-post, .tp-excerpt, .conv-preview, .dir-sub { text-align: left; }
 .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.14em; color: var(--amber-500); margin-bottom: 0.75rem; }
 
 .card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.75rem; }
@@ -115,7 +120,7 @@ label:first-of-type { margin-top: 0; }
 input, textarea, select { width: 100%; background: var(--ink-900); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.65rem 0.8rem; color: var(--paper-050); font-family: var(--font-body); font-size: 0.95rem; }
 textarea { resize: vertical; min-height: 160px; }
 .field-hint { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; }
-.field-hint.over-limit { color: #d97757; }
+.field-hint.over-limit { color: #a3282f; }
 
 button, .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: none; border-radius: var(--radius-sm); padding: 0.7rem 1.2rem; font-family: var(--font-body); font-size: 0.95rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: var(--ink-900); }
 button:hover { background: var(--amber-600); }
@@ -131,13 +136,13 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .tab.active { color: var(--paper-050); border-bottom-color: var(--amber-500); }
 
 .message { margin-top: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.9rem; }
-.message.error { background: rgba(217, 119, 87, 0.15); color: #b3421f; }
+.message.error { background: rgba(163, 40, 47, 0.12); color: #7a1f22; }
 .message.success { background: rgba(66, 183, 42, 0.12); color: #2e8b1f; }
 
 .badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.3rem 0.6rem; border-radius: 999px; }
-.badge--pending { background: rgba(24, 119, 242, 0.12); color: var(--amber-500); }
+.badge--pending { background: rgba(193, 80, 46, 0.12); color: var(--amber-500); }
 .badge--approved { background: rgba(66, 183, 42, 0.15); color: #2e8b1f; }
-.badge--rejected { background: rgba(217, 119, 87, 0.15); color: #d97757; }
+.badge--rejected { background: rgba(163, 40, 47, 0.12); color: #a3282f; }
 .badge--draft { background: rgba(28, 30, 33, 0.06); color: var(--text-muted); }
 
 .image-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; }
@@ -420,14 +425,14 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <div id="blocked-users-empty" class="empty-state" style="display:none; padding:1rem;">You haven't blocked anyone.</div>
     </section>
 
-    <section class="card" style="margin-top:1.5rem; border-color:#d97757;">
+    <section class="card" style="margin-top:1.5rem; border-color:#a3282f;">
       <h2>Delete my account</h2>
       <p>This permanently removes your profile, post, photos, and messages from our system — nothing is kept. This cannot be undone. Enter your password to confirm.</p>
       <form id="delete-account-form">
         <label for="delete-password">Password</label>
         <input id="delete-password" type="password" required autocomplete="current-password" />
         <div class="form-row">
-          <button type="submit" style="background:#d97757;">Permanently delete my account</button>
+          <button type="submit" style="background:#a3282f;">Permanently delete my account</button>
         </div>
         <div id="delete-account-message" class="message" style="display:none"></div>
       </form>
@@ -463,7 +468,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <h1>What's the Town Fuss?</h1>
       <p>The 21 most-connected neighbors in each town, ranked by friends. Every post and photo was reviewed before it appeared.</p>
       <p style="font-size:0.8rem; margin-top:0.75rem;">Town Fuss is for adults 18+. If you believe an account belongs to a minor, or you're experiencing harassment, use the <strong>Report</strong> button on that person's profile to notify our admin team.</p>
-      <p style="font-size:0.8rem; margin-top:0.5rem; color:#b3421f;">One profile per person, please — creating multiple accounts (including to appear in more than one town) may result in your IP address being banned from Town Fuss.</p>
+      <p style="font-size:0.8rem; margin-top:0.5rem; color:#7a1f22;">One profile per person, please — creating multiple accounts (including to appear in more than one town) may result in your IP address being banned from Town Fuss.</p>
     </div>
 
     <div id="town-tabs" class="town-tabs"></div>
@@ -477,7 +482,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div class="feed-hero">
       <p class="eyebrow">Pauls Valley</p>
       <h1>Find a neighbor</h1>
-      <p>Search approved profiles by name or neighborhood.</p>
+      <p>Showing the area's top 21 most-connected profiles, ranked by friends. Search by name or town to find anyone specific.</p>
     </div>
     <div class="directory-search-wrap">
       <input id="directory-search" type="text" placeholder="Search by name or neighborhood..." />
@@ -517,7 +522,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     </div>
 
     <div id="chatroom-list-wrap">
-      <div id="chatroom-list" class="conversation-list"></div>
+      <div id="chatroom-list" class="chatroom-grid"></div>
     </div>
 
     <div id="chatroom-thread-view" class="card" style="display:none; margin-top:1.5rem;">
@@ -1207,12 +1212,45 @@ function renderTopProfileCard(uid, data) {
   return card;
 }
 
+const FEED_PAGE_SIZE = 9;
+let feedTopList = [];
+let feedRenderedCount = 0;
+
+function renderFeedNextBatch() {
+  const grid = document.getElementById("feed-grid");
+  const nextBatch = feedTopList.slice(feedRenderedCount, feedRenderedCount + FEED_PAGE_SIZE);
+  nextBatch.forEach(({ uid, data }) => grid.appendChild(renderTopProfileCard(uid, data)));
+  feedRenderedCount += nextBatch.length;
+  updateFeedLoadMoreButton();
+}
+
+function updateFeedLoadMoreButton() {
+  let btn = document.getElementById("feed-load-more-btn");
+  const remaining = feedTopList.length - feedRenderedCount;
+  if (remaining > 0) {
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "feed-load-more-btn";
+      btn.className = "secondary";
+      btn.style.display = "block";
+      btn.style.margin = "1.5rem auto 0";
+      btn.addEventListener("click", renderFeedNextBatch);
+      document.getElementById("feed-grid").insertAdjacentElement("afterend", btn);
+    }
+    btn.textContent = `Load more (${remaining} more)`;
+  } else if (btn) {
+    btn.remove();
+  }
+}
+
 async function loadFeed() {
   renderTownTabs();
   const grid = document.getElementById("feed-grid");
   const empty = document.getElementById("feed-empty");
   grid.innerHTML = "";
   empty.style.display = "none";
+  document.getElementById("feed-load-more-btn")?.remove();
 
   // Two plain equality filters (approved + neighborhood) — Firestore
   // covers this with automatic single-field indexes, no composite index
@@ -1236,13 +1274,14 @@ async function loadFeed() {
   });
 
   candidates.sort((a, b) => (b.data.friendCount || 0) - (a.data.friendCount || 0));
-  const top = candidates.slice(0, TOP_PROFILES_LIMIT);
+  feedTopList = candidates.slice(0, TOP_PROFILES_LIMIT);
+  feedRenderedCount = 0;
 
-  if (top.length === 0) {
+  if (feedTopList.length === 0) {
     empty.style.display = "block";
     return;
   }
-  top.forEach(({ uid, data }) => grid.appendChild(renderTopProfileCard(uid, data)));
+  renderFeedNextBatch();
 }
 
 // Delegate clicks on "Message" buttons wherever a profile card is rendered
@@ -1287,13 +1326,23 @@ function renderDirectory(searchTerm) {
   const empty = document.getElementById("directory-empty");
   grid.innerHTML = "";
 
-  const filtered = directoryUsers.filter(({ uid, data }) => {
+  let filtered = directoryUsers.filter(({ uid, data }) => {
     if (myBlockedUids.has(uid)) return false;
     if (!searchTerm) return true;
     const profile = data.profile || {};
     return (profile.name || "").toLowerCase().includes(searchTerm)
         || (profile.neighborhood || "").toLowerCase().includes(searchTerm);
   });
+
+  // With no active search, show only the area's top 21 most-connected
+  // profiles (ranked by friend count) rather than every approved profile.
+  // Typing a search still looks across everyone, so people can still find
+  // a specific neighbor even if they're not in the top 21.
+  if (!searchTerm) {
+    filtered = [...filtered]
+      .sort((a, b) => (b.data.friendCount || 0) - (a.data.friendCount || 0))
+      .slice(0, TOP_PROFILES_LIMIT);
+  }
 
   if (!filtered.length) { empty.style.display = "block"; return; }
   empty.style.display = "none";
@@ -1447,7 +1496,7 @@ async function loadAdminReports() {
       ${report.details ? `<p class="admin-post">${escapeHtml(report.details)}</p>` : ""}
       <div class="admin-actions">
         <button type="button" class="secondary" data-action="view">View profile</button>
-        <button type="button" style="background:#d97757;" data-action="remove-profile">Remove reported profile</button>
+        <button type="button" style="background:#a3282f;" data-action="remove-profile">Remove reported profile</button>
         <button type="button" class="secondary" data-action="dismiss">Dismiss report</button>
       </div>
       <div class="message" style="display:none"></div>
@@ -1521,7 +1570,7 @@ document.getElementById("scan-inactive-btn").addEventListener("click", async () 
     card.innerHTML = `
       <div class="admin-meta">${escapeHtml(name)} &nbsp;·&nbsp; inactive ${daysInactive} days</div>
       <div class="admin-actions">
-        <button type="button" style="background:#d97757;" data-action="remove">Remove profile</button>
+        <button type="button" style="background:#a3282f;" data-action="remove">Remove profile</button>
       </div>
       <div class="message" style="display:none"></div>
     `;
@@ -2149,8 +2198,8 @@ function renderChatRoomList() {
   CHAT_ROOMS.forEach((room) => {
     const item = document.createElement("button");
     item.type = "button";
-    item.className = "conversation-item";
-    item.innerHTML = `<span class="conv-name">${room.name}</span>`;
+    item.className = "chatroom-tile";
+    item.textContent = room.name;
     item.addEventListener("click", () => openChatRoom(room));
     list.appendChild(item);
   });
