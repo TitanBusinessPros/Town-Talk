@@ -96,6 +96,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .chat-msg-row:last-child { border-bottom: none; }
 .chat-msg-header { display: flex; align-items: baseline; gap: 0.6rem; }
 .chat-msg-header .chat-msg-name { font-weight: 600; color: var(--amber-500); font-size: 0.88rem; }
+.chat-msg-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--ink-700); }
+.chat-msg-avatar-fallback { width: 22px; height: 22px; border-radius: 50%; background: var(--ink-700); color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 0.68rem; font-weight: 600; }
 .chat-msg-header .chat-msg-time { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); }
 .chat-msg-text { font-size: 0.9rem; color: var(--paper-050); margin-top: 0.15rem; line-height: 1.4; text-align: left; }
 
@@ -367,6 +369,10 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
           <input id="signup-age-confirm" type="checkbox" required style="width:auto; margin-top:0.2rem;" />
           <span style="font-size:0.85rem; color:var(--text-muted);">I confirm I am at least 18 years old. Town Fuss is for adults only.</span>
         </label>
+        <label style="display:flex; align-items:flex-start; gap:0.6rem; margin-top:0.75rem; cursor:pointer;">
+          <input id="signup-terms-confirm" type="checkbox" required style="width:auto; margin-top:0.2rem;" />
+          <span style="font-size:0.85rem; color:var(--text-muted);">I agree to the <a href="#" id="signup-terms-link">Terms of Service</a>.</span>
+        </label>
         <div class="form-row"><button type="submit">Create account</button></div>
         <div id="signup-message" class="message" style="display:none"></div>
       </form>
@@ -389,6 +395,20 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <p class="field-hint" style="margin-top:0.5rem;">Heads up: accounts with no login for 30 days may be removed to keep the community active. Just logging in resets the clock — no other action needed.</p>
     </div>
 
+    <div id="terms-gate" class="card" style="display:none; border-color:#a3282f; text-align:center;">
+      <h2>Please agree to our Terms of Service</h2>
+      <p>Our Terms of Service have been updated. Please review and agree before continuing to use Town Fuss.</p>
+      <p><a href="#" id="terms-gate-view-link">Read the full Terms of Service</a></p>
+      <label style="display:flex; align-items:flex-start; gap:0.6rem; justify-content:center; cursor:pointer; margin-top:1rem;">
+        <input id="terms-gate-checkbox" type="checkbox" style="width:auto; margin-top:0.2rem;" />
+        <span style="font-size:0.9rem;">I agree to the Terms of Service.</span>
+      </label>
+      <div class="form-row" style="justify-content:center;">
+        <button type="button" id="terms-gate-continue-btn">Continue</button>
+      </div>
+      <div id="terms-gate-message" class="message" style="display:none"></div>
+    </div>
+
     <div id="verify-email-gate" class="card" style="display:none; border-color:#a3282f; text-align:center;">
       <h2>Verify your email to continue</h2>
       <p>Please verify your email address before creating your profile — check your inbox for a link from us. This helps keep Town Fuss free of scammers and fake accounts.</p>
@@ -405,7 +425,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <h2>The basics</h2>
       <form id="profile-form">
         <label for="display-name">Display name</label>
-        <input id="display-name" type="text" maxlength="60" placeholder="What should neighbors call you?" />
+        <input id="display-name" type="text" maxlength="40" placeholder="What should neighbors call you?" />
         <label for="neighborhood">What town are you from?</label>
         <select id="neighborhood">
           <option value="">Select a town...</option>
@@ -593,6 +613,100 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     </div>
   </section>
 
+  <!-- ================= TERMS OF SERVICE VIEW ================= -->
+  <section id="view-terms" class="view">
+    <button type="button" class="secondary small" id="terms-back" style="margin-bottom:1.5rem;">&larr; Back</button>
+    <div class="view-header">
+      <p class="eyebrow">Legal</p>
+      <h1>Terms of Service</h1>
+      <p class="field-hint">Last updated: July 25, 2026</p>
+    </div>
+
+    <div class="card" style="text-align:left; max-width:760px; margin:0 auto;">
+      <p>These Terms of Service ("Terms") govern your access to and use of the Town Fuss platform and related services (the "Service"), operated by Titan Business Pros LLC ("Company," "we," "us," or "our"). By creating an account, accessing, or using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.</p>
+
+      <h3>1. Eligibility</h3>
+      <p>1.1 You must be at least 18 years old to create an account or use the Service. By registering or using the Service, you represent and warrant that you are 18 or older and have the legal capacity to enter into these Terms.</p>
+      <p>1.2 The Service performs email verification but does not independently verify age or identity. We rely on your representation. If we learn that an account belongs to a person under 18, we will remove the account and related content.</p>
+      <p>1.3 If you believe an account belongs to someone under 18 or that a user is engaged in harassment or other prohibited conduct, use the "Report" feature. We review reports at our sole discretion and may remove accounts or content without prior notice.</p>
+
+      <h3>2. Accounts</h3>
+      <p>2.1 One account per person. Creating multiple accounts (including to appear in more than one town's feed) is prohibited and may result in removal of all associated accounts and, at our discretion, blocking of the associated IP address, device, or email.</p>
+      <p>2.2 You are solely responsible for maintaining the confidentiality of your login credentials and for all activity that occurs under your account. Notify us immediately of any unauthorized use.</p>
+      <p>2.3 A verified email address is required before your profile can be created or made visible to other users.</p>
+      <p>2.4 Accounts with no login activity for 30 consecutive days may be deactivated or permanently removed at our sole discretion.</p>
+      <p>2.5 You may delete your account at any time through your dashboard. Deletion is permanent. Your profile, posts, photos, and message history tied to that account will be removed from public view, subject to our data-retention and legal obligations.</p>
+
+      <h3>3. User Content and Conduct</h3>
+      <p>3.1 All profile information, posts, photos, and other content are subject to review and approval by our administrators before appearing publicly. We reserve the right, at our sole discretion and for any reason or no reason, to reject, remove, edit, or require changes to any content, or to suspend or terminate any account, without prior notice or liability.</p>
+      <p>3.2 You agree not to post, upload, send, or otherwise transmit any content that:</p>
+      <ul style="text-align:left; color:var(--text-muted); line-height:1.7;">
+        <li>is obscene, profane, hateful, discriminatory, harassing, threatening, or violent;</li>
+        <li>is false, misleading, defamatory, or impersonates any person or entity;</li>
+        <li>contains personal contact information (phone numbers, email addresses, physical addresses, social-media handles, or external links) in public posts, profiles, or messages;</li>
+        <li>solicits money, engages in scams, fraud, or promotes illegal activity;</li>
+        <li>sexualizes, endangers, exploits, or otherwise involves a minor;</li>
+        <li>violates any third-party right, including intellectual-property, privacy, publicity, or contractual rights;</li>
+        <li>contains malware, spam, or automated/scripted content intended to disrupt the Service.</li>
+      </ul>
+      <p>3.3 Automated filters help detect prohibited language and contact information but are imperfect. Content that bypasses filters remains subject to these Terms and may still result in removal or account action.</p>
+      <p>3.4 Direct messages and chat-room messages are subject to daily and length limits displayed in the Service. Chat-room messages are visible to all participants in that room and are not private.</p>
+      <p>3.5 You are solely responsible for your interactions with other users, including any in-person meetings arranged through the Service. We do not conduct background checks, verify identities, or guarantee the safety, intentions, or conduct of any user. Meet only in public places, use the blocking and reporting tools, and exercise caution. The Company has no liability for user-to-user interactions, online or offline.</p>
+
+      <h3>4. Blocking and Reporting</h3>
+      <p>4.1 You may block another user. Blocking prevents messaging and limits visibility of certain content within the Service.</p>
+      <p>4.2 You may report profiles, messages, or posts that you believe violate these Terms. We review reports at our sole discretion and are under no obligation to take any particular action or to act within any specific timeframe.</p>
+
+      <h3>5. Intellectual Property</h3>
+      <p>5.1 You retain ownership of content you post. By posting, you grant the Company a non-exclusive, royalty-free, worldwide, perpetual, irrevocable, sublicensable license to use, display, reproduce, modify, distribute, and promote that content solely in connection with operating, improving, and promoting the Service.</p>
+      <p>5.2 The Town Fuss name, logo, design, software, and all related trademarks and intellectual property are the exclusive property of Titan Business Pros LLC. You may not use them without our prior written permission.</p>
+
+      <h3>6. Disclaimer of Warranties</h3>
+      <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, OR THAT THE SERVICE WILL BE UNINTERRUPTED, SECURE, ERROR-FREE, OR FREE OF HARMFUL COMPONENTS. WE DO NOT WARRANT THE ACCURACY, SAFETY, LEGALITY, OR RELIABILITY OF ANY USER CONTENT OR USER CONDUCT.</p>
+
+      <h3>7. Limitation of Liability</h3>
+      <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE COMPANY AND ITS OWNERS, OFFICERS, EMPLOYEES, AGENTS, AND AFFILIATES SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR ANY LOSS OF DATA, PROFITS, REVENUE, GOODWILL, OR BUSINESS OPPORTUNITY, ARISING OUT OF OR RELATED TO YOUR USE OF (OR INABILITY TO USE) THE SERVICE OR ANY INTERACTION WITH ANOTHER USER (ONLINE OR IN PERSON), WHETHER BASED IN CONTRACT, TORT (INCLUDING NEGLIGENCE), STRICT LIABILITY, OR ANY OTHER THEORY, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.</p>
+      <p>OUR TOTAL AGGREGATE LIABILITY FOR ANY CLAIM ARISING OUT OF OR RELATED TO THESE TERMS OR THE SERVICE SHALL NOT EXCEED THE GREATER OF ONE HUNDRED U.S. DOLLARS ($100) OR THE TOTAL AMOUNT YOU PAID TO THE COMPANY IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM.</p>
+      <p>SOME JURISDICTIONS DO NOT ALLOW CERTAIN LIMITATIONS; IN THOSE CASES THE ABOVE LIMITATIONS APPLY TO THE FULLEST EXTENT PERMITTED BY LAW. NOTHING IN THESE TERMS EXCLUDES OR LIMITS LIABILITY FOR GROSS NEGLIGENCE, WILLFUL MISCONDUCT, OR ANY LIABILITY THAT CANNOT BE LIMITED UNDER OKLAHOMA LAW.</p>
+
+      <h3>8. Indemnification</h3>
+      <p>You agree to defend, indemnify, and hold harmless the Company and its owners, officers, employees, agents, and affiliates from and against any and all claims, damages, losses, liabilities, costs, and expenses (including reasonable attorneys' fees) arising out of or related to: (a) your use of the Service; (b) your content; (c) your violation of these Terms or any law; (d) your interactions with other users; or (e) any claim that your content infringes or misappropriates third-party rights.</p>
+
+      <h3>9. Termination</h3>
+      <p>We may suspend, restrict, or permanently terminate your account and access to the Service at any time, with or without notice, for any reason or no reason, including but not limited to violation of these Terms, harm to other users or the Service, or inactivity. Upon termination, your right to use the Service ceases immediately. Sections that by their nature should survive (including intellectual property, disclaimers, limitation of liability, indemnification, arbitration, and governing law) will survive termination.</p>
+
+      <h3>10. Changes to These Terms</h3>
+      <p>We may modify these Terms at any time by posting the revised version on the Service or notifying you by email. The "Last updated" date will change. Continued use of the Service after the effective date of changes constitutes acceptance of the revised Terms. If you do not agree, you must stop using the Service and delete your account.</p>
+
+      <h3>11. Dispute Resolution — Binding Arbitration and Class-Action Waiver</h3>
+      <p><strong>Please read this section carefully. It affects your legal rights.</strong></p>
+      <p>11.1 Agreement to Arbitrate. Except for the limited exceptions below, any dispute, claim, or controversy arising out of or relating to these Terms, the Service, or the relationship between you and the Company (including any claim of fraud, misrepresentation, or statutory violation) shall be resolved exclusively by binding individual arbitration administered by the American Arbitration Association ("AAA") under its Consumer Arbitration Rules (or Commercial Rules if applicable). The arbitration will be conducted in Oklahoma County, Oklahoma, or by telephone/video if both parties agree. Judgment on the award may be entered in any court of competent jurisdiction.</p>
+      <p>11.2 Class-Action and Jury Waiver. You and the Company agree that each may bring claims against the other only in your or its individual capacity and not as a plaintiff or class member in any purported class, collective, consolidated, or representative proceeding. The arbitrator may not consolidate more than one person's claims or preside over any form of class or representative proceeding. You and the Company also waive any right to a jury trial.</p>
+      <p>11.3 Exceptions. Notwithstanding the above:</p>
+      <ul style="text-align:left; color:var(--text-muted); line-height:1.7;">
+        <li>Either party may seek injunctive or other equitable relief in a court of competent jurisdiction to prevent the actual or threatened infringement, misappropriation, or violation of intellectual-property rights or confidential information.</li>
+        <li>Either party may bring an individual action in small-claims court if the claim qualifies and remains in that court.</li>
+        <li>You may opt out of this arbitration agreement by sending written notice of your decision to opt out to titanbusinesspros@gmail.com within 30 days of first accepting these Terms (or of any material change to this Section 11). Your notice must include your name, the email associated with your account, and a clear statement that you wish to opt out of arbitration. Opting out does not affect any other provision of these Terms.</li>
+      </ul>
+      <p>11.4 Costs. Payment of filing, administration, and arbitrator fees will be governed by the AAA rules. We will reimburse those fees for claims totaling less than $10,000 unless the arbitrator determines your claims are frivolous. Each party bears its own attorneys' fees unless the arbitrator awards fees under applicable law or the AAA rules.</p>
+      <p>11.5 Severability of Arbitration Provisions. If any portion of this Section 11 is found unenforceable, the remainder shall continue in effect, except that if the class-action waiver is found unenforceable, this entire Section 11 shall be null and void (and disputes will be resolved in court under Section 12).</p>
+
+      <h3>12. Governing Law and Venue</h3>
+      <p>These Terms are governed by the laws of the State of Oklahoma, without regard to its conflict-of-law principles. Subject to the arbitration provisions above, any court proceedings shall be brought exclusively in the state or federal courts located in Oklahoma County, Oklahoma, and you consent to personal jurisdiction there.</p>
+
+      <h3>13. General Provisions</h3>
+      <p>13.1 Entire Agreement. These Terms, together with any additional policies posted on the Service (Privacy Policy, Community Guidelines, etc.), constitute the entire agreement between you and the Company and supersede all prior agreements.</p>
+      <p>13.2 Severability. If any provision of these Terms is held invalid or unenforceable, the remaining provisions will continue in full force and effect.</p>
+      <p>13.3 Assignment. You may not assign or transfer these Terms or your rights hereunder without our prior written consent. We may assign these Terms without restriction.</p>
+      <p>13.4 No Third-Party Beneficiaries. These Terms do not create any third-party beneficiary rights.</p>
+      <p>13.5 Waiver. Our failure to enforce any provision is not a waiver of our right to enforce it later.</p>
+      <p>13.6 Notices. We may provide notices by email to the address associated with your account, by posting on the Service, or by other reasonable means. Notices to us must be sent to the contact information below.</p>
+
+      <h3>14. Contact</h3>
+      <p>Titan Business Pros LLC<br>Oklahoma City, OK<br>Phone: 405-998-7979<br>Email: titanbusinesspros@gmail.com<br>Website: www.oklahoma.marketing</p>
+    </div>
+  </section>
+
 </main>
 
 <!-- ================= REPORT MODAL ================= -->
@@ -638,6 +752,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <div>405-998-7979 &nbsp;|&nbsp; <a href="mailto:titanbusinesspros@gmail.com">titanbusinesspros@gmail.com</a></div>
   <div><a href="https://www.oklahoma.marketing" target="_blank" rel="noopener">www.oklahoma.marketing</a></div>
   <div>Oklahoma City, OK</div>
+  <div style="margin-top:0.5rem;"><a href="#" id="footer-terms-link">Terms of Service</a></div>
   <div style="margin-top:0.5rem;">&copy; 2026 Titan Business Pros LLC. All rights reserved.</div>
 </footer>
 
@@ -650,7 +765,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
-  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, addDoc,
+  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, addDoc, limitToLast,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
@@ -706,6 +821,14 @@ function showView(name) {
   } else if (
     PROTECTED_VIEWS.includes(name)
     && auth.currentUser
+    && !isAdminUser
+    && !(currentUserData && currentUserData.agreedToTerms)
+    && name !== "dashboard"
+  ) {
+    name = "dashboard";
+  } else if (
+    PROTECTED_VIEWS.includes(name)
+    && auth.currentUser
     && !auth.currentUser.emailVerified
     && !isAdminUser
     && name !== "dashboard"
@@ -725,6 +848,8 @@ function showView(name) {
 }
 
 document.getElementById("brand-link").addEventListener("click", () => showView(auth.currentUser ? "dashboard" : "landing"));
+document.getElementById("footer-terms-link").addEventListener("click", (e) => { e.preventDefault(); showView("terms"); });
+document.getElementById("terms-back").addEventListener("click", () => showView(auth.currentUser ? "dashboard" : "landing"));
 document.getElementById("nav-feed").addEventListener("click", (e) => { e.preventDefault(); showView("feed"); });
 document.getElementById("nav-directory").addEventListener("click", (e) => { e.preventDefault(); showView("directory"); });
 document.getElementById("nav-dashboard").addEventListener("click", (e) => { e.preventDefault(); showView("dashboard"); });
@@ -742,7 +867,8 @@ document.getElementById("nav-logout").addEventListener("click", async (e) => {
 let isAdminUser = false;
 
 function updateProtectedNavVisibility(user) {
-  const canSeeFullNav = !!user && (user.emailVerified || isAdminUser);
+  const agreed = !!(currentUserData && currentUserData.agreedToTerms);
+  const canSeeFullNav = !!user && isAdminUser || (!!user && agreed && user.emailVerified);
   document.getElementById("nav-feed").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-directory").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-messages").style.display = canSeeFullNav ? "inline" : "none";
@@ -765,13 +891,7 @@ onAuthStateChanged(auth, async (user) => {
     watchChatMessageLimit(user.uid);
     loadBlockedList();
     updateLastActive(user.uid);
-
-    const verifyGate = document.getElementById("verify-email-gate");
-    const gatedContent = document.getElementById("dashboard-gated-content");
-    if (verifyGate && gatedContent) {
-      verifyGate.style.display = user.emailVerified ? "none" : "block";
-      gatedContent.style.display = user.emailVerified ? "block" : "none";
-    }
+    updateDashboardGates();
 
     // Check admin status by trying to read our own admins/{uid} doc — the
     // rules only allow reading your own, so this can't be used to snoop
@@ -830,13 +950,8 @@ async function refreshVerificationStatus(showFeedback) {
     console.error("Couldn't refresh verification status:", err);
     return;
   }
-  const verifyGate = document.getElementById("verify-email-gate");
-  const gatedContent = document.getElementById("dashboard-gated-content");
   const nowVerified = auth.currentUser.emailVerified;
-  if (verifyGate && gatedContent) {
-    verifyGate.style.display = nowVerified ? "none" : "block";
-    gatedContent.style.display = nowVerified ? "block" : "none";
-  }
+  updateDashboardGates();
   updateProtectedNavVisibility(auth.currentUser);
   if (showFeedback) {
     const msg = document.getElementById("verify-resend-message");
@@ -849,6 +964,29 @@ async function refreshVerificationStatus(showFeedback) {
 }
 
 document.getElementById("check-verified-btn").addEventListener("click", () => refreshVerificationStatus(true));
+
+document.getElementById("terms-gate-view-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  showView("terms");
+});
+
+document.getElementById("terms-gate-continue-btn").addEventListener("click", async () => {
+  const msg = document.getElementById("terms-gate-message");
+  if (!document.getElementById("terms-gate-checkbox").checked) {
+    showMessage(msg, "Please check the box to agree before continuing.", "error");
+    return;
+  }
+  try {
+    await updateDoc(doc(db, "users", currentUid), {
+      agreedToTerms: true,
+      agreedToTermsAt: serverTimestamp(),
+    });
+    // The real-time listener on this doc (watchUserDoc) will pick up the
+    // change and re-run updateDashboardGates() automatically.
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
 
 // Also check automatically when the person switches back to this tab —
 // covers the normal flow of clicking the email link in a new tab, then
@@ -907,6 +1045,12 @@ function friendlyAuthError(err) {
   return err.message || "Something went wrong. Please try again.";
 }
 
+document.getElementById("signup-terms-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  showView("terms");
+});
+
 document.getElementById("form-signup").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("signup-email").value.trim();
@@ -914,6 +1058,10 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
   const msg = document.getElementById("signup-message");
   if (!document.getElementById("signup-age-confirm").checked) {
     showMessage(msg, "You must confirm you're 18 or older to create an account.", "error");
+    return;
+  }
+  if (!document.getElementById("signup-terms-confirm").checked) {
+    showMessage(msg, "You must agree to the Terms of Service to create an account.", "error");
     return;
   }
   let cred;
@@ -929,6 +1077,8 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
       everApproved: false,
       lastEditedAt: serverTimestamp(),
       images: [],
+      agreedToTerms: true,
+      agreedToTermsAt: serverTimestamp(),
     });
   } catch (err) {
     // If the Firestore write got rejected for some reason, don't leave an
@@ -1045,6 +1195,36 @@ function renderDashboard(data) {
 
   renderImageSlots(data.images || []);
   currentImages = data.images || [];
+  updateDashboardGates();
+}
+
+// Decides which of the three dashboard states to show: agree-to-terms
+// gate, verify-email gate, or the actual profile-creation content. Checked
+// any time either piece of information (terms agreement from Firestore,
+// email verification from Auth) might have changed.
+function updateDashboardGates() {
+  const termsGate = document.getElementById("terms-gate");
+  const verifyGate = document.getElementById("verify-email-gate");
+  const gatedContent = document.getElementById("dashboard-gated-content");
+  if (!termsGate || !verifyGate || !gatedContent) return;
+
+  const agreed = !!(currentUserData && currentUserData.agreedToTerms);
+  const verified = !!(auth.currentUser && auth.currentUser.emailVerified);
+
+  if (!agreed) {
+    termsGate.style.display = "block";
+    verifyGate.style.display = "none";
+    gatedContent.style.display = "none";
+  } else if (!verified) {
+    termsGate.style.display = "none";
+    verifyGate.style.display = "block";
+    gatedContent.style.display = "none";
+  } else {
+    termsGate.style.display = "none";
+    verifyGate.style.display = "none";
+    gatedContent.style.display = "block";
+  }
+  updateProtectedNavVisibility(auth.currentUser);
 }
 
 document.getElementById("profile-form").addEventListener("submit", async (e) => {
@@ -2492,6 +2672,8 @@ const CHAT_ROOMS = [
   { id: "music-chat", name: "Music Chat" },
   { id: "events-chat", name: "Events Chat" },
   { id: "rants-raves-chat", name: "Rants & Raves Chat" },
+  { id: "local-jobs-chat", name: "Local Jobs Chat" },
+  { id: "helping-hands-chat", name: "Helping Hands Chat" },
 ];
 
 let currentChatLimit = { day: 0, count: 0 };
@@ -2550,9 +2732,15 @@ function openChatRoom(room) {
   messagesEl.innerHTML = "";
 
   if (unsubscribeChatRoom) unsubscribeChatRoom();
+  // Capped to the most recent 100 messages — without this, opening a room
+  // re-downloads its ENTIRE history every single time, which is the real
+  // cost driver as a room's message count grows over months (scrolling
+  // itself is free once messages are loaded — see note where this is
+  // called from).
   const q = query(
     collection(db, "chatRooms", room.id, "messages"),
-    orderBy("sentAt", "asc")
+    orderBy("sentAt", "asc"),
+    limitToLast(100)
   );
   unsubscribeChatRoom = onSnapshot(q, (snap) => {
     messagesEl.innerHTML = "";
@@ -2563,8 +2751,13 @@ function openChatRoom(room) {
       const row = document.createElement("div");
       row.className = "chat-msg-row";
       const mine = m.senderId === currentUid;
+      const initial = (m.senderName || "N").trim().charAt(0).toUpperCase();
+      const avatarHtml = m.senderAvatarUrl
+        ? `<img class="chat-msg-avatar" src="${m.senderAvatarUrl}" alt="${escapeHtml(m.senderName || "Neighbor")}" />`
+        : `<div class="chat-msg-avatar-fallback">${escapeHtml(initial)}</div>`;
       row.innerHTML = `
         <div class="chat-msg-header">
+          ${avatarHtml}
           <span class="chat-msg-name">${escapeHtml(m.senderName || "Neighbor")}</span>
           <span class="chat-msg-time">${time}</span>
           ${isAdminUser ? `<button type="button" class="secondary small" data-action="admin-delete" style="margin-left:auto;">Delete</button>` : ""}
@@ -2632,10 +2825,12 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
         throw new Error("You've used all 3 chat room messages for today — it resets tomorrow.");
       }
       const msgRef = doc(collection(db, "chatRooms", activeChatRoom.id, "messages"));
+      const senderImages = currentUserData.images || [];
       tx.set(limitRef, { day: today, count: newCount });
       tx.set(msgRef, {
         senderId: currentUid,
         senderName: currentUserData.profile?.name || "Neighbor",
+        senderAvatarUrl: senderImages.length ? senderImages[0].url : null,
         text,
         sentAt: serverTimestamp(),
       });
