@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Chess Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px 12px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .logo-header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .logo-header a {
+            display: inline-block;
+            text-decoration: none;
+        }
+        
+        .logo-header img {
+            max-width: 140px;
+            width: 30vw;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .logo-header .site-link {
+            display: block;
+            margin-top: 6px;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 14px;
+            text-decoration: none;
+        }
+        
+        .logo-header .site-link:hover {
+            text-decoration: underline;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: clamp(20px, 5vw, 28px);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            touch-action: manipulation;
+            min-height: 44px;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .download-btn {
+            background: #2e8b57;
+        }
+        
+        .download-btn:hover {
+            background: #256e46;
+        }
+        
+        .mode-selector, .difficulty-selector {
+            margin-bottom: 20px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .mode-selector label, .difficulty-selector label {
+            color: #333;
+            font-weight: bold;
+        }
+        
+        select {
+            padding: 10px 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 0;
+            margin: 0 auto;
+            border: 3px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: min(90vw, 480px);
+            aspect-ratio: 1 / 1;
+            touch-action: none;
+            -webkit-user-select: none;
+        }
+        
+        .square {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(20px, 8vw, 40px);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            user-select: none;
+            touch-action: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        
+        .light {
+            background-color: #f0d9b5;
+        }
+        
+        .dark {
+            background-color: #b58863;
+        }
+        
+        .selected {
+            background-color: #7fb3d5 !important;
+        }
+        
+        .valid-move {
+            position: relative;
+        }
+        
+        .valid-move::after {
+            content: '';
+            position: absolute;
+            width: 22%;
+            height: 22%;
+            background-color: rgba(0, 255, 0, 0.5);
+            border-radius: 50%;
+        }
+        
+        .last-move {
+            background-color: #aaffaa !important;
+        }
+        
+        .check {
+            background-color: #ff6b6b !important;
+        }
+        
+        #status {
+            text-align: center;
+            margin-top: 20px;
+            font-size: clamp(15px, 4vw, 18px);
+            font-weight: bold;
+            color: #333;
+            min-height: 30px;
+        }
+        
+        .thinking {
+            color: #667eea;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        footer {
+            margin-top: 30px;
+            padding: 20px 10px 0;
+            border-top: 2px solid #eee;
+            text-align: center;
+        }
+        
+        footer .footer-title {
+            display: block;
+            color: #333;
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        footer .footer-line {
+            display: block;
+            color: #555;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+        
+        footer .footer-copyright {
+            display: block;
+            margin-top: 10px;
+            color: #888;
+            font-size: 12px;
+        }
+        
+        .ad-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .ad-overlay.show {
+            display: flex;
+        }
+        
+        .ad-box {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            max-width: 320px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            animation: adPop 0.3s ease-out;
+        }
+        
+        @keyframes adPop {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .ad-box img {
+            max-width: 130px;
+            margin-bottom: 15px;
+        }
+        
+        .ad-box p {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .ad-box .ad-link {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .ad-countdown {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        @media (max-width: 420px) {
+            .container {
+                padding: 16px;
+            }
+            .mode-selector, .difficulty-selector {
+                flex-direction: column;
+                gap: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-header">
+            <a href="https://www.breadoflifefarms.org" target="_blank" rel="noopener">
+                <img src="LOGO_BASE64_PLACEHOLDER" alt="Bread Of Life Farms">
+            </a>
+            <a class="site-link" href="https://www.breadoflifefarms.org" target="_blank" rel="noopener">www.breadoflifefarms.org</a>
+        </div>
+
+        <h1>♔ Chess Game ♚</h1>
+        
+        <div class="mode-selector">
+            <label>Game Mode:</label>
+            <select id="gameMode" onchange="resetGame()">
+                <option value="2player">Two Player</option>
+                <option value="ai">vs AI</option>
+            </select>
+        </div>
+        
+        <div class="difficulty-selector" id="difficultySelector" style="display: none;">
+            <label>AI Difficulty:</label>
+            <select id="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+                <option value="extra">Extra Hard</option>
+            </select>
+        </div>
+        
+        <div class="controls">
+            <button onclick="resetGame()">New Game</button>
+            <button onclick="undoMove()">Undo Move</button>
+            <button class="download-btn" onclick="downloadGame()">⬇ Download to Play Offline</button>
+        </div>
+        
+        <div id="board"></div>
+        <div id="status">White to move</div>
+
+        <footer>
+            <span class="footer-title">Bread Of Life Farms — Est. 2026 · Oklahoma, USA</span>
+            <span class="footer-line">Bringing hope, feeding communities, and building permanent homes for our homeless neighbors.</span>
+            <span class="footer-line">405-998-8232 &nbsp;|&nbsp; <a href="mailto:info@breadoflifefarms.org">info@breadoflifefarms.org</a> &nbsp;|&nbsp; P.O. Box 104, Pauls Valley, OK 73075</span>
+            <span class="footer-copyright">© 2026 Bread Of Life Farms — Faith, Farming, Forever Homes</span>
+        </footer>
+    </div>
+
+    <div class="ad-overlay" id="adOverlay" style="display: none;">
+        <div class="ad-box">
+            <img src="LOGO_BASE64_PLACEHOLDER" alt="Bread Of Life Farms">
+            <p>Please visit our website!</p>
+            <a class="ad-link" href="https://www.breadoflifefarms.org" target="_blank" rel="noopener">www.breadoflifefarms.org</a>
+            <div class="ad-countdown" id="adCountdown">Closing in 5s...</div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // PASTE YOUR LOGO'S BASE64 STRING ON THE NEXT LINE, BETWEEN THE QUOTES.
+        // Nothing else in the file needs to be touched.
+        // ============================================================
+        const LOGO_BASE64 = "LOGO_BASE64_PLACEHOLDER";
+        
+        document.querySelectorAll('img[src="LOGO_BASE64_PLACEHOLDER"]').forEach(img => {
+            img.src = LOGO_BASE64;
+        });
+
+        const pieces = {
+            'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+            'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
+        };
+        
+        let board = [
+            ['r','n','b','q','k','b','n','r'],
+            ['p','p','p','p','p','p','p','p'],
+            ['','','','','','','',''],
+            ['','','','','','','',''],
+            ['','','','','','','',''],
+            ['','','','','','','',''],
+            ['P','P','P','P','P','P','P','P'],
+            ['R','N','B','Q','K','B','N','R']
+        ];
+        
+        let selectedSquare = null;
+        let currentPlayer = 'white';
+        let moveHistory = [];
+        let lastMove = null;
+        let gameMode = '2player';
+        let aiColor = 'black';
+        let adShown = false;
+        let currentRandomness = 0;
+        
+        const AI_CONFIG = {
+            easy:   { maxDepth: 1, timeLimit: 300,  randomness: 25 },
+            medium: { maxDepth: 3, timeLimit: 700,  randomness: 8  },
+            hard:   { maxDepth: 4, timeLimit: 2000, randomness: 2  },
+            extra:  { maxDepth: 6, timeLimit: 4000, randomness: 0  }
+        };
+        
+        function initBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+
+                    // Mouse click
+                    square.addEventListener('click', () => handleSquareClick(row, col));
+
+                    // Touch — prevent ghost click delay and scrolling interfering
+                    square.addEventListener('touchend', e => {
+                        e.preventDefault();
+                        handleSquareClick(row, col);
+                    }, { passive: false });
+
+                    boardEl.appendChild(square);
+                }
+            }
+            updateBoard();
+        }
+        
+        function updateBoard() {
+            const squares = document.querySelectorAll('.square');
+            squares.forEach(square => {
+                const row = parseInt(square.dataset.row);
+                const col = parseInt(square.dataset.col);
+                const piece = board[row][col];
+                square.textContent = pieces[piece] || '';
+                square.classList.remove('selected', 'valid-move', 'last-move', 'check');
+                
+                if ((row + col) % 2 === 0) {
+                    square.className = 'square light';
+                } else {
+                    square.className = 'square dark';
+                }
+                
+                if (lastMove && 
+                    ((lastMove.from.row === row && lastMove.from.col === col) ||
+                     (lastMove.to.row === row && lastMove.to.col === col))) {
+                    square.classList.add('last-move');
+                }
+            });
+            
+            const kingPos = findKing(currentPlayer);
+            if (kingPos && isInCheck(currentPlayer)) {
+                const kingSquare = document.querySelector(`[data-row="${kingPos.row}"][data-col="${kingPos.col}"]`);
+                kingSquare.classList.add('check');
+            }
+        }
+        
+        function handleSquareClick(row, col) {
+            if (gameMode === 'ai' && currentPlayer === aiColor) return;
+            
+            if (selectedSquare) {
+                if (selectedSquare.row === row && selectedSquare.col === col) {
+                    selectedSquare = null;
+                    updateBoard();
+                    return;
+                }
+                
+                if (isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
+                    makeMove(selectedSquare.row, selectedSquare.col, row, col);
+                    selectedSquare = null;
+                    
+                    if (gameMode === 'ai' && !isGameOver()) {
+                        setTimeout(makeAIMove, 400);
+                    }
+                } else {
+                    const piece = board[row][col];
+                    if (piece && isPlayerPiece(piece, currentPlayer)) {
+                        selectedSquare = {row, col};
+                        showValidMoves(row, col);
+                    }
+                }
+            } else {
+                const piece = board[row][col];
+                if (piece && isPlayerPiece(piece, currentPlayer)) {
+                    selectedSquare = {row, col};
+                    showValidMoves(row, col);
+                }
+            }
+        }
+        
+        function showValidMoves(row, col) {
+            updateBoard();
+            const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            square.classList.add('selected');
+            
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (isValidMove(row, col, r, c)) {
+                        const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+                        targetSquare.classList.add('valid-move');
+                    }
+                }
+            }
+        }
+        
+        function isPlayerPiece(piece, player) {
+            if (player === 'white') return piece === piece.toUpperCase();
+            return piece === piece.toLowerCase();
+        }
+        
+        function isValidMove(fromRow, fromCol, toRow, toCol) {
+            const piece = board[fromRow][fromCol];
+            if (!piece) return false;
+            
+            const targetPiece = board[toRow][toCol];
+            if (targetPiece && isPlayerPiece(piece, currentPlayer) === isPlayerPiece(targetPiece, currentPlayer)) {
+                return false;
+            }
+            
+            const moves = getPieceMoves(fromRow, fromCol);
+            const isValid = moves.some(move => move.row === toRow && move.col === toCol);
+            
+            if (!isValid) return false;
+            
+            const tempBoard = board.map(row => [...row]);
+            board[toRow][toCol] = board[fromRow][fromCol];
+            board[fromRow][fromCol] = '';
+            
+            const inCheck = isInCheck(currentPlayer);
+            
+            board = tempBoard;
+            
+            return !inCheck;
+        }
+        
+        function getPieceMoves(row, col) {
+            const piece = board[row][col].toLowerCase();
+            let moves = [];
+            
+            switch(piece) {
+                case 'p': moves = getPawnMoves(row, col); break;
+                case 'r': moves = getRookMoves(row, col); break;
+                case 'n': moves = getKnightMoves(row, col); break;
+                case 'b': moves = getBishopMoves(row, col); break;
+                case 'q': moves = getQueenMoves(row, col); break;
+                case 'k': moves = getKingMoves(row, col); break;
+            }
+            
+            return moves;
+        }
+        
+        function getPawnMoves(row, col) {
+            const moves = [];
+            const piece = board[row][col];
+            const direction = piece === piece.toUpperCase() ? -1 : 1;
+            const startRow = piece === piece.toUpperCase() ? 6 : 1;
+            
+            if (row + direction >= 0 && row + direction < 8 && !board[row + direction][col]) {
+                moves.push({row: row + direction, col});
+                
+                if (row === startRow && !board[row + 2 * direction][col]) {
+                    moves.push({row: row + 2 * direction, col});
+                }
+            }
+            
+            [-1, 1].forEach(dc => {
+                const newRow = row + direction;
+                const newCol = col + dc;
+                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                    const target = board[newRow][newCol];
+                    if (target && isPlayerPiece(piece, currentPlayer) !== isPlayerPiece(target, currentPlayer)) {
+                        moves.push({row: newRow, col: newCol});
+                    }
+                }
+            });
+            
+            return moves;
+        }
+        
+        function getRookMoves(row, col) {
+            return getSlidingMoves(row, col, [[0,1],[0,-1],[1,0],[-1,0]]);
+        }
+        
+        function getBishopMoves(row, col) {
+            return getSlidingMoves(row, col, [[1,1],[1,-1],[-1,1],[-1,-1]]);
+        }
+        
+        function getQueenMoves(row, col) {
+            return getSlidingMoves(row, col, [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]);
+        }
+        
+        function getSlidingMoves(row, col, directions) {
+            const moves = [];
+            const piece = board[row][col];
+            
+            directions.forEach(([dr, dc]) => {
+                let r = row + dr;
+                let c = col + dc;
+                
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    const target = board[r][c];
+                    if (!target) {
+                        moves.push({row: r, col: c});
+                    } else {
+                        if (isPlayerPiece(piece, currentPlayer) !== isPlayerPiece(target, currentPlayer)) {
+                            moves.push({row: r, col: c});
+                        }
+                        break;
+                    }
+                    r += dr;
+                    c += dc;
+                }
+            });
+            
+            return moves;
+        }
+        
+        function getKnightMoves(row, col) {
+            const moves = [];
+            const offsets = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
+            const piece = board[row][col];
+            
+            offsets.forEach(([dr, dc]) => {
+                const r = row + dr;
+                const c = col + dc;
+                if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    const target = board[r][c];
+                    if (!target || isPlayerPiece(piece, currentPlayer) !== isPlayerPiece(target, currentPlayer)) {
+                        moves.push({row: r, col: c});
+                    }
+                }
+            });
+            
+            return moves;
+        }
+        
+        function getKingMoves(row, col) {
+            const moves = [];
+            const offsets = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+            const piece = board[row][col];
+            
+            offsets.forEach(([dr, dc]) => {
+                const r = row + dr;
+                const c = col + dc;
+                if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    const target = board[r][c];
+                    if (!target || isPlayerPiece(piece, currentPlayer) !== isPlayerPiece(target, currentPlayer)) {
+                        moves.push({row: r, col: c});
+                    }
+                }
+            });
+            
+            return moves;
+        }
+        
+        function makeMove(fromRow, fromCol, toRow, toCol) {
+            moveHistory.push({
+                board: board.map(row => [...row]),
+                player: currentPlayer,
+                lastMove: lastMove
+            });
+            
+            lastMove = {
+                from: {row: fromRow, col: fromCol},
+                to: {row: toRow, col: toCol}
+            };
+            
+            board[toRow][toCol] = board[fromRow][fromCol];
+            board[fromRow][fromCol] = '';
+            
+            const piece = board[toRow][toCol].toLowerCase();
+            if (piece === 'p' && (toRow === 0 || toRow === 7)) {
+                board[toRow][toCol] = currentPlayer === 'white' ? 'Q' : 'q';
+            }
+            
+            currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+            updateBoard();
+            updateStatus();
+            maybeShowAd();
+        }
+        
+        function findKing(player) {
+            const king = player === 'white' ? 'K' : 'k';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (board[r][c] === king) {
+                        return {row: r, col: c};
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function isInCheck(player) {
+            const kingPos = findKing(player);
+            if (!kingPos) return false;
+            
+            const opponent = player === 'white' ? 'black' : 'white';
+            
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece && isPlayerPiece(piece, opponent)) {
+                        const moves = getPieceMoves(r, c);
+                        if (moves.some(move => move.row === kingPos.row && move.col === kingPos.col)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        function hasValidMoves(player) {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece && isPlayerPiece(piece, player)) {
+                        const moves = getPieceMoves(r, c);
+                        for (let move of moves) {
+                            if (isValidMove(r, c, move.row, move.col)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function isGameOver() {
+            if (!hasValidMoves(currentPlayer)) {
+                if (isInCheck(currentPlayer)) {
+                    const winner = currentPlayer === 'white' ? 'Black' : 'White';
+                    document.getElementById('status').textContent = `Checkmate! ${winner} wins!`;
+                } else {
+                    document.getElementById('status').textContent = 'Stalemate! Draw!';
+                }
+                return true;
+            }
+            return false;
+        }
+        
+        function updateStatus() {
+            if (isGameOver()) return;
+            
+            let status = currentPlayer === 'white' ? 'White' : 'Black';
+            status += ' to move';
+            
+            if (isInCheck(currentPlayer)) {
+                status += ' - Check!';
+            }
+            
+            document.getElementById('status').textContent = status;
+        }
+        
+        function getAllValidMoves(player) {
+            const moves = [];
+            const savedPlayer = currentPlayer;
+            currentPlayer = player;
+            
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece && isPlayerPiece(piece, player)) {
+                        const pieceMoves = getPieceMoves(r, c);
+                        pieceMoves.forEach(move => {
+                            if (isValidMove(r, c, move.row, move.col)) {
+                                moves.push({
+                                    from: {row: r, col: c},
+                                    to: {row: move.row, col: move.col}
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+            
+            currentPlayer = savedPlayer;
+            return moves;
+        }
+        
+        function orderMoves(moves) {
+            const pieceValues = {'p':10,'n':30,'b':30,'r':50,'q':90,'k':900};
+            return moves.map(m => {
+                const captured = board[m.to.row][m.to.col];
+                const victim = captured ? (pieceValues[captured.toLowerCase()] || 0) : 0;
+                const attacker = pieceValues[board[m.from.row][m.from.col].toLowerCase()] || 0;
+                return { move: m, score: victim * 10 - attacker };
+            }).sort((a, b) => b.score - a.score).map(x => x.move);
+        }
+        
+        async function makeAIMove() {
+            const difficulty = document.getElementById('difficulty').value;
+            document.getElementById('status').innerHTML = '<span class="thinking">AI is thinking...</span>';
+            
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const config = AI_CONFIG[difficulty];
+            currentRandomness = config.randomness;
+            
+            const move = await getBestMoveIterative(config);
+            
+            if (move) {
+                makeMove(move.from.row, move.from.col, move.to.row, move.to.col);
+            }
+        }
+        
+        async function getBestMoveIterative(config) {
+            const startTime = performance.now();
+            const rootMoves = orderMoves(getAllValidMoves(currentPlayer));
+            if (rootMoves.length === 0) return null;
+            
+            let bestMove = rootMoves[0];
+            let depth = 1;
+            
+            while (depth <= config.maxDepth) {
+                if (performance.now() - startTime > config.timeLimit) break;
+                
+                let bestScoreThisDepth = -Infinity;
+                let bestMoveThisDepth = null;
+                let timedOut = false;
+                
+                for (let move of rootMoves) {
+                    if (performance.now() - startTime > config.timeLimit) {
+                        timedOut = true;
+                        break;
+                    }
+                    
+                    const tempBoard = board.map(row => [...row]);
+                    const capturedPiece = board[move.to.row][move.to.col];
+                    
+                    board[move.to.row][move.to.col] = board[move.from.row][move.from.col];
+                    board[move.from.row][move.from.col] = '';
+                    
+                    let score = minimax(depth - 1, -Infinity, Infinity, false, startTime, config.timeLimit);
+                    
+                    if (capturedPiece) {
+                        const pieceValues = {'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90};
+                        score += (pieceValues[capturedPiece.toLowerCase()] || 0) * 0.1;
+                    }
+                    
+                    if (lastMove &&
+                        move.from.row === lastMove.to.row &&
+                        move.from.col === lastMove.to.col &&
+                        move.to.row === lastMove.from.row &&
+                        move.to.col === lastMove.from.col) {
+                        score -= 50;
+                    }
+                    
+                    board = tempBoard;
+                    
+                    if (score > bestScoreThisDepth) {
+                        bestScoreThisDepth = score;
+                        bestMoveThisDepth = move;
+                    }
+                }
+                
+                if (bestMoveThisDepth && !timedOut) {
+                    bestMove = bestMoveThisDepth;
+                }
+                if (timedOut) break;
+                
+                depth++;
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+            
+            return bestMove;
+        }
+        
+        function minimax(depth, alpha, beta, isMaximizing, startTime, timeLimit) {
+            if (depth === 0 || (performance.now() - startTime > timeLimit)) {
+                return evaluateBoard();
+            }
+            
+            const player = isMaximizing ? aiColor : (aiColor === 'white' ? 'black' : 'white');
+            const moves = orderMoves(getAllValidMoves(player));
+            
+            if (moves.length === 0) {
+                const savedPlayer = currentPlayer;
+                currentPlayer = player;
+                const inCheck = isInCheck(player);
+                currentPlayer = savedPlayer;
+                
+                if (inCheck) {
+                    return isMaximizing ? -10000 : 10000;
+                }
+                return 0;
+            }
+            
+            if (isMaximizing) {
+                let maxScore = -Infinity;
+                for (let move of moves) {
+                    const tempBoard = board.map(row => [...row]);
+                    board[move.to.row][move.to.col] = board[move.from.row][move.from.col];
+                    board[move.from.row][move.from.col] = '';
+                    
+                    const score = minimax(depth - 1, alpha, beta, false, startTime, timeLimit);
+                    board = tempBoard;
+                    
+                    maxScore = Math.max(maxScore, score);
+                    alpha = Math.max(alpha, score);
+                    if (beta <= alpha) break;
+                }
+                return maxScore;
+            } else {
+                let minScore = Infinity;
+                for (let move of moves) {
+                    const tempBoard = board.map(row => [...row]);
+                    board[move.to.row][move.to.col] = board[move.from.row][move.from.col];
+                    board[move.from.row][move.from.col] = '';
+                    
+                    const score = minimax(depth - 1, alpha, beta, true, startTime, timeLimit);
+                    board = tempBoard;
+                    
+                    minScore = Math.min(minScore, score);
+                    beta = Math.min(beta, score);
+                    if (beta <= alpha) break;
+                }
+                return minScore;
+            }
+        }
+        
+        function evaluateBoard() {
+            const pieceValues = {
+                'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900
+            };
+            
+            const pawnTable = [
+                [0,  0,  0,  0,  0,  0,  0,  0],
+                [50, 50, 50, 50, 50, 50, 50, 50],
+                [10, 10, 20, 30, 30, 20, 10, 10],
+                [5,  5, 10, 25, 25, 10,  5,  5],
+                [0,  0,  0, 20, 20,  0,  0,  0],
+                [5, -5,-10,  0,  0,-10, -5,  5],
+                [5, 10, 10,-20,-20, 10, 10,  5],
+                [0,  0,  0,  0,  0,  0,  0,  0]
+            ];
+            
+            const knightTable = [
+                [-50,-40,-30,-30,-30,-30,-40,-50],
+                [-40,-20,  0,  0,  0,  0,-20,-40],
+                [-30,  0, 10, 15, 15, 10,  0,-30],
+                [-30,  5, 15, 20, 20, 15,  5,-30],
+                [-30,  0, 15, 20, 20, 15,  0,-30],
+                [-30,  5, 10, 15, 15, 10,  5,-30],
+                [-40,-20,  0,  5,  5,  0,-20,-40],
+                [-50,-40,-30,-30,-30,-30,-40,-50]
+            ];
+            
+            const bishopTable = [
+                [-20,-10,-10,-10,-10,-10,-10,-20],
+                [-10,  0,  0,  0,  0,  0,  0,-10],
+                [-10,  0,  5, 10, 10,  5,  0,-10],
+                [-10,  5,  5, 10, 10,  5,  5,-10],
+                [-10,  0, 10, 10, 10, 10,  0,-10],
+                [-10, 10, 10, 10, 10, 10, 10,-10],
+                [-10,  5,  0,  0,  0,  0,  5,-10],
+                [-20,-10,-10,-10,-10,-10,-10,-20]
+            ];
+            
+            const rookTable = [
+                [0,  0,  0,  0,  0,  0,  0,  0],
+                [5, 10, 10, 10, 10, 10, 10,  5],
+                [-5,  0,  0,  0,  0,  0,  0, -5],
+                [-5,  0,  0,  0,  0,  0,  0, -5],
+                [-5,  0,  0,  0,  0,  0,  0, -5],
+                [-5,  0,  0,  0,  0,  0,  0, -5],
+                [-5,  0,  0,  0,  0,  0,  0, -5],
+                [0,  0,  0,  5,  5,  0,  0,  0]
+            ];
+            
+            const queenTable = [
+                [-20,-10,-10, -5, -5,-10,-10,-20],
+                [-10,  0,  0,  0,  0,  0,  0,-10],
+                [-10,  0,  5,  5,  5,  5,  0,-10],
+                [-5,  0,  5,  5,  5,  5,  0, -5],
+                [0,  0,  5,  5,  5,  5,  0, -5],
+                [-10,  5,  5,  5,  5,  5,  0,-10],
+                [-10,  0,  5,  0,  0,  0,  0,-10],
+                [-20,-10,-10, -5, -5,-10,-10,-20]
+            ];
+            
+            const kingTable = [
+                [-30,-40,-40,-50,-50,-40,-40,-30],
+                [-30,-40,-40,-50,-50,-40,-40,-30],
+                [-30,-40,-40,-50,-50,-40,-40,-30],
+                [-30,-40,-40,-50,-50,-40,-40,-30],
+                [-20,-30,-30,-40,-40,-30,-30,-20],
+                [-10,-20,-20,-20,-20,-20,-20,-10],
+                [20, 20,  0,  0,  0,  0, 20, 20],
+                [20, 30, 10,  0,  0, 10, 30, 20]
+            ];
+            
+            const tables = {
+                p: pawnTable, n: knightTable, b: bishopTable,
+                r: rookTable, q: queenTable, k: kingTable
+            };
+            
+            let score = 0;
+            
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece) {
+                        const type = piece.toLowerCase();
+                        const value = pieceValues[type];
+                        const table = tables[type];
+                        const positionBonus = piece === piece.toUpperCase() ?
+                            table[r][c] : table[7 - r][c];
+                        
+                        if (isPlayerPiece(piece, aiColor)) {
+                            score += value + positionBonus;
+                        } else {
+                            score -= value + positionBonus;
+                        }
+                    }
+                }
+            }
+            
+            if (currentRandomness > 0) {
+                score += (Math.random() * 2 - 1) * currentRandomness;
+            }
+            
+            return score;
+        }
+        
+        function undoMove() {
+            if (moveHistory.length === 0) return;
+            
+            const lastState = moveHistory.pop();
+            board = lastState.board;
+            currentPlayer = lastState.player;
+            lastMove = lastState.lastMove;
+            
+            selectedSquare = null;
+            updateBoard();
+            updateStatus();
+        }
+        
+        function resetGame() {
+            board = [
+                ['r','n','b','q','k','b','n','r'],
+                ['p','p','p','p','p','p','p','p'],
+                ['','','','','','','',''],
+                ['','','','','','','',''],
+                ['','','','','','','',''],
+                ['','','','','','','',''],
+                ['P','P','P','P','P','P','P','P'],
+                ['R','N','B','Q','K','B','N','R']
+            ];
+            
+            currentPlayer = 'white';
+            selectedSquare = null;
+            moveHistory = [];
+            lastMove = null;
+            adShown = false;
+            hideAd();
+            
+            gameMode = document.getElementById('gameMode').value;
+            const difficultySelector = document.getElementById('difficultySelector');
+            
+            if (gameMode === 'ai') {
+                difficultySelector.style.display = 'flex';
+                aiColor = 'black';
+            } else {
+                difficultySelector.style.display = 'none';
+            }
+            
+            updateBoard();
+            updateStatus();
+        }
+        
+        function maybeShowAd() {
+            if (adShown) return;
+            if (moveHistory.length === 10) {
+                adShown = true;
+                showAd();
+            }
+        }
+        
+        function showAd() {
+            const overlay = document.getElementById('adOverlay');
+            const countdown = document.getElementById('adCountdown');
+            overlay.style.display = 'flex';
+            overlay.classList.add('show');
+            
+            let seconds = 5;
+            countdown.textContent = `Closing in ${seconds}s...`;
+            const interval = setInterval(() => {
+                seconds--;
+                if (seconds > 0) {
+                    countdown.textContent = `Closing in ${seconds}s...`;
+                } else {
+                    clearInterval(interval);
+                    hideAd();
+                }
+            }, 1000);
+        }
+        
+        function hideAd() {
+            const overlay = document.getElementById('adOverlay');
+            overlay.classList.remove('show');
+            overlay.style.display = 'none';
+        }
+        
+        function downloadGame() {
+            try {
+                const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'bread-of-life-chess.html';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                alert('Download failed. You can also just save this page directly from your browser (Ctrl+S / Cmd+S).');
+            }
+        }
+        
+        initBoard();
+    </script>
+</body>
+</html>
