@@ -1,1141 +1,896 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Chess Game</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            padding: 20px 12px;
-        }
-        
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 600px;
-            width: 100%;
-        }
-        
-        .logo-header {
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        
-        .logo-header a {
-            display: inline-block;
-            text-decoration: none;
-        }
-        
-        .logo-header img {
-            max-width: 140px;
-            width: 30vw;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-        }
-        
-        .logo-header .site-link {
-            display: block;
-            margin-top: 6px;
-            color: #667eea;
-            font-weight: bold;
-            font-size: 14px;
-            text-decoration: none;
-        }
-        
-        .logo-header .site-link:hover {
-            text-decoration: underline;
-        }
-        
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-            font-size: clamp(20px, 5vw, 28px);
-        }
-        
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        button {
-            padding: 12px 18px;
-            border: none;
-            border-radius: 8px;
-            background: #667eea;
-            color: white;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-            touch-action: manipulation;
-            min-height: 44px;
-        }
-        
-        button:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-        }
-        
-        button:active {
-            transform: translateY(0);
-        }
-        
-        .download-btn {
-            background: #2e8b57;
-        }
-        
-        .download-btn:hover {
-            background: #256e46;
-        }
-        
-        .mode-selector, .difficulty-selector {
-            margin-bottom: 20px;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .mode-selector label, .difficulty-selector label {
-            color: #333;
-            font-weight: bold;
-        }
-        
-        select {
-            padding: 10px 15px;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            touch-action: manipulation;
-        }
-        
-        #board {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(8, 1fr);
-            gap: 0;
-            margin: 0 auto;
-            border: 3px solid #333;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            width: min(90vw, 480px);
-            aspect-ratio: 1 / 1;
-            touch-action: none;
-            -webkit-user-select: none;
-        }
-        
-        .square {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: clamp(20px, 8vw, 40px);
-            cursor: pointer;
-            transition: background-color 0.2s;
-            user-select: none;
-            touch-action: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-        }
-        
-        .light {
-            background-color: #f0d9b5;
-        }
-        
-        .dark {
-            background-color: #b58863;
-        }
-        
-        .selected {
-            background-color: #7fb3d5 !important;
-        }
-        
-        .valid-move {
-            position: relative;
-        }
-        
-        .valid-move::after {
-            content: '';
-            position: absolute;
-            width: 22%;
-            height: 22%;
-            background-color: rgba(0, 255, 0, 0.5);
-            border-radius: 50%;
-        }
-        
-        .last-move {
-            background-color: #aaffaa !important;
-        }
-        
-        .check {
-            background-color: #ff6b6b !important;
-        }
-        
-        #status {
-            text-align: center;
-            margin-top: 20px;
-            font-size: clamp(15px, 4vw, 18px);
-            font-weight: bold;
-            color: #333;
-            min-height: 30px;
-        }
-        
-        .thinking {
-            color: #667eea;
-            animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        footer {
-            margin-top: 30px;
-            padding: 20px 10px 0;
-            border-top: 2px solid #eee;
-            text-align: center;
-        }
-        
-        footer .footer-title {
-            display: block;
-            color: #333;
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-        
-        footer .footer-line {
-            display: block;
-            color: #555;
-            font-size: 13px;
-            line-height: 1.7;
-        }
-        
-        footer a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        
-        footer a:hover {
-            text-decoration: underline;
-        }
-        
-        footer .footer-copyright {
-            display: block;
-            margin-top: 10px;
-            color: #888;
-            font-size: 12px;
-        }
-        
-        .ad-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .ad-overlay.show {
-            display: flex;
-        }
-        
-        .ad-box {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            text-align: center;
-            max-width: 320px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            animation: adPop 0.3s ease-out;
-        }
-        
-        @keyframes adPop {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        
-        .ad-box img {
-            max-width: 130px;
-            margin-bottom: 15px;
-        }
-        
-        .ad-box p {
-            font-size: 16px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 8px;
-        }
-        
-        .ad-box .ad-link {
-            color: #667eea;
-            font-weight: bold;
-        }
-        
-        .ad-countdown {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #999;
-        }
-        
-        @media (max-width: 420px) {
-            .container {
-                padding: 16px;
-            }
-            .mode-selector, .difficulty-selector {
-                flex-direction: column;
-                gap: 6px;
-            }
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Chess — Town Fuss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --sage-500: #74875a;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); }
+body { min-height: 100vh; }
+a { color: var(--amber-500); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; }
+p { color: var(--text-muted); line-height: 1.6; }
+.page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+.header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+.header-bar a.brand span { color: var(--amber-500); }
+.header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+.header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+.header-nav button.active { color: var(--amber-500); font-weight: 600; }
+
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+
+button { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+button:hover { background: var(--amber-600); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+.table-row, .invite-row, .friend-row, .leader-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+.table-row:last-child, .invite-row:last-child, .friend-row:last-child, .leader-row:last-child { border-bottom: none; }
+.leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+.chess-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.7rem; background: rgba(193,80,46,0.12); color: var(--amber-500); padding: 0.15rem 0.5rem; border-radius: 999px; }
+
+.empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+.message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+.message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+
+#board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); margin: 0 auto; border: 3px solid var(--paper-050); border-radius: 6px; overflow: hidden; width: min(92vw, 460px); aspect-ratio: 1/1; touch-action: none; }
+.square { display: flex; justify-content: center; align-items: center; font-size: clamp(20px, 7.5vw, 38px); cursor: pointer; user-select: none; }
+.light { background-color: #f0d9b5; }
+.dark { background-color: #b58863; }
+.selected { background-color: #7fb3d5 !important; }
+.valid-move { position: relative; }
+.valid-move::after { content: ''; position: absolute; width: 22%; height: 22%; background-color: rgba(66,183,42,0.55); border-radius: 50%; }
+.last-move { background-color: #eadb8f !important; }
+.check { background-color: #d97757 !important; }
+
+#game-status { text-align: center; margin: 1rem 0; font-weight: 600; min-height: 1.4em; }
+.game-players { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.5rem; }
+.game-controls { display: flex; gap: 0.6rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+
+.mini-chat { margin-top: 1.5rem; }
+.mini-chat-messages { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem; }
+.mini-chat-msg { max-width: 80%; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.mini-chat-msg.mine { align-self: flex-end; background: var(--amber-500); color: #fff; }
+.mini-chat-msg.theirs { align-self: flex-start; background: var(--ink-700); }
+.mini-chat-form { display: flex; gap: 0.5rem; }
+.mini-chat-form input { flex: 1; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: var(--font-body); }
+.field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="logo-header">
-            <a href="https://www.breadoflifefarms.org" target="_blank" rel="noopener">
-                <img src="LOGO_BASE64_PLACEHOLDER" alt="Bread Of Life Farms">
-            </a>
-            <a class="site-link" href="https://www.breadoflifefarms.org" target="_blank" rel="noopener">www.breadoflifefarms.org</a>
-        </div>
 
-        <h1>♔ Chess Game ♚</h1>
-        
-        <div class="mode-selector">
-            <label>Game Mode:</label>
-            <select id="gameMode" onchange="resetGame()">
-                <option value="2player">Two Player</option>
-                <option value="ai">vs AI</option>
-            </select>
+<header class="header-bar">
+  <a class="brand" href="index.html">Town<span>Fuss</span> Chess</a>
+  <nav class="header-nav">
+    <button id="nav-waiting" class="active">Waiting Room</button>
+    <button id="nav-leaderboard">Leaderboard</button>
+  </nav>
+</header>
+
+<main class="page">
+
+  <div id="signed-out-notice" class="card" style="display:none; text-align:center;">
+    <h2>Sign in on Town Fuss first</h2>
+    <p>You need a Town Fuss account to play chess with other members.</p>
+    <a href="index.html"><button type="button">Go to Town Fuss</button></a>
+  </div>
+
+  <div id="app-content" style="display:none;">
+
+    <!-- ================= WAITING ROOM ================= -->
+    <section id="view-waiting">
+      <span class="eyebrow">Chess</span>
+      <h1>Waiting Room</h1>
+      <p style="text-align:center;">Join an open table, invite a friend, or wait for someone to challenge you.</p>
+
+      <div class="card">
+        <h2 style="text-align:left;">Open tables</h2>
+        <p style="text-align:left;">Anyone can join one of these.</p>
+        <button type="button" id="create-table-btn">+ Create a table</button>
+        <div id="open-tables-list" style="margin-top:1rem;"></div>
+        <div id="open-tables-empty" class="empty-state" style="display:none;">No open tables right now — create one!</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invites waiting on you</h2>
+        <div id="my-invites-list"></div>
+        <div id="my-invites-empty" class="empty-state" style="display:none;">No pending invites.</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invite a friend</h2>
+        <p style="text-align:left;">Only shows people you're already friends with on Town Fuss.</p>
+        <div id="friends-invite-list"></div>
+        <div id="friends-invite-empty" class="empty-state" style="display:none;">Add some friends on Town Fuss first.</div>
+      </div>
+
+      <div id="waiting-message" class="message" style="display:none;"></div>
+    </section>
+
+    <!-- ================= LEADERBOARD ================= -->
+    <section id="view-leaderboard" style="display:none;">
+      <span class="eyebrow">Chess</span>
+      <h1>Leaderboard</h1>
+      <p style="text-align:center;">Win = 3 points, draw = 1 point. Top 10 get a badge on their Town Fuss profile.</p>
+      <div class="card">
+        <div id="leaderboard-list"></div>
+        <div id="leaderboard-empty" class="empty-state" style="display:none;">No games played yet — be the first!</div>
+      </div>
+    </section>
+
+    <!-- ================= GAME TABLE ================= -->
+    <section id="view-game" style="display:none;">
+      <button type="button" class="secondary small" id="leave-table-btn" style="margin-bottom:1rem;">&larr; Back to Waiting Room</button>
+      <div class="card">
+        <div class="game-players">
+          <span id="player-white-label">White: —</span>
+          <span id="player-black-label">Black: —</span>
         </div>
-        
-        <div class="difficulty-selector" id="difficultySelector" style="display: none;">
-            <label>AI Difficulty:</label>
-            <select id="difficulty">
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-                <option value="extra">Extra Hard</option>
-            </select>
-        </div>
-        
-        <div class="controls">
-            <button onclick="resetGame()">New Game</button>
-            <button onclick="undoMove()">Undo Move</button>
-            <button class="download-btn" onclick="downloadGame()">⬇ Download to Play Offline</button>
-        </div>
-        
         <div id="board"></div>
-        <div id="status">White to move</div>
-
-        <footer>
-            <span class="footer-title">Bread Of Life Farms — Est. 2026 · Oklahoma, USA</span>
-            <span class="footer-line">Bringing hope, feeding communities, and building permanent homes for our homeless neighbors.</span>
-            <span class="footer-line">405-998-8232 &nbsp;|&nbsp; <a href="mailto:info@breadoflifefarms.org">info@breadoflifefarms.org</a> &nbsp;|&nbsp; P.O. Box 104, Pauls Valley, OK 73075</span>
-            <span class="footer-copyright">© 2026 Bread Of Life Farms — Faith, Farming, Forever Homes</span>
-        </footer>
-    </div>
-
-    <div class="ad-overlay" id="adOverlay" style="display: none;">
-        <div class="ad-box">
-            <img src="LOGO_BASE64_PLACEHOLDER" alt="Bread Of Life Farms">
-            <p>Please visit our website!</p>
-            <a class="ad-link" href="https://www.breadoflifefarms.org" target="_blank" rel="noopener">www.breadoflifefarms.org</a>
-            <div class="ad-countdown" id="adCountdown">Closing in 5s...</div>
+        <div id="game-status">Waiting for opponent...</div>
+        <div class="game-controls">
+          <button type="button" class="secondary small" id="resign-btn">Resign</button>
         </div>
-    </div>
+      </div>
 
-    <script>
-        // ============================================================
-        // PASTE YOUR LOGO'S BASE64 STRING ON THE NEXT LINE, BETWEEN THE QUOTES.
-        // Nothing else in the file needs to be touched.
-        // ============================================================
-        const LOGO_BASE64 = "LOGO_BASE64_PLACEHOLDER";
-        
-        document.querySelectorAll('img[src="LOGO_BASE64_PLACEHOLDER"]').forEach(img => {
-            img.src = LOGO_BASE64;
-        });
+      <div class="card mini-chat">
+        <h2 style="text-align:left; font-size:1rem;">Message your opponent</h2>
+        <p class="field-hint" id="chess-msg-remaining">Loading your daily limit...</p>
+        <div id="mini-chat-messages" class="mini-chat-messages"></div>
+        <form id="mini-chat-form" class="mini-chat-form">
+          <input type="text" id="mini-chat-input" maxlength="500" placeholder="Say something..." />
+          <button type="submit">Send</button>
+        </form>
+        <div id="mini-chat-message" class="message" style="display:none;"></div>
+      </div>
+    </section>
 
-        const pieces = {
-            'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
-            'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
-        };
-        
-        let board = [
-            ['r','n','b','q','k','b','n','r'],
-            ['p','p','p','p','p','p','p','p'],
-            ['','','','','','','',''],
-            ['','','','','','','',''],
-            ['','','','','','','',''],
-            ['','','','','','','',''],
-            ['P','P','P','P','P','P','P','P'],
-            ['R','N','B','Q','K','B','N','R']
-        ];
-        
-        let selectedSquare = null;
-        let currentPlayer = 'white';
-        let moveHistory = [];
-        let lastMove = null;
-        let gameMode = '2player';
-        let aiColor = 'black';
-        let adShown = false;
-        let currentRandomness = 0;
-        
-        const AI_CONFIG = {
-            easy:   { maxDepth: 1, timeLimit: 300,  randomness: 25 },
-            medium: { maxDepth: 3, timeLimit: 700,  randomness: 8  },
-            hard:   { maxDepth: 4, timeLimit: 2000, randomness: 2  },
-            extra:  { maxDepth: 6, timeLimit: 4000, randomness: 0  }
-        };
-        
-        function initBoard() {
-            const boardEl = document.getElementById('board');
-            boardEl.innerHTML = '';
-            
-            for (let row = 0; row < 8; row++) {
-                for (let col = 0; col < 8; col++) {
-                    const square = document.createElement('div');
-                    square.className = `square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
-                    square.dataset.row = row;
-                    square.dataset.col = col;
+  </div>
+</main>
 
-                    // Mouse click
-                    square.addEventListener('click', () => handleSquareClick(row, col));
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, runTransaction, addDoc, Timestamp,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-                    // Touch — prevent ghost click delay and scrolling interfering
-                    square.addEventListener('touchend', e => {
-                        e.preventDefault();
-                        handleSquareClick(row, col);
-                    }, { passive: false });
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
 
-                    boardEl.appendChild(square);
-                }
-            }
-            updateBoard();
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  watchChessMessageLimit(currentUid);
+  await checkForActiveGame();
+  showView("waiting");
+});
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ============================= VIEW ROUTER =================================
+let unsubscribeOpenTables = null;
+let unsubscribeMyInvites = null;
+let unsubscribeGame = null;
+let unsubscribeMiniChat = null;
+
+function showView(name) {
+  document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+  document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
+  document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+
+  if (name === "waiting") { watchWaitingRoom(); }
+  else { if (unsubscribeOpenTables) unsubscribeOpenTables(); if (unsubscribeMyInvites) unsubscribeMyInvites(); }
+
+  if (name === "leaderboard") loadLeaderboard();
+  if (name !== "game" && unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+  if (name !== "game" && unsubscribeMiniChat) { unsubscribeMiniChat(); unsubscribeMiniChat = null; }
+}
+
+document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
+
+// If you're already mid-game (e.g. you refreshed the page), jump straight
+// back into it instead of showing the Waiting Room.
+async function checkForActiveGame() {
+  const q = query(
+    collection(db, "chessGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "active")
+  );
+  const snap = await getDocs(q).catch(() => null);
+  if (snap && !snap.empty) {
+    openGame(snap.docs[0].id);
+  }
+}
+
+// ============================= WAITING ROOM =================================
+function watchWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+
+  const openQ = query(
+    collection(db, "chessGames"),
+    where("status", "==", "open"),
+    where("inviteTo", "==", null)
+  );
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("open-tables-list");
+    const empty = document.getElementById("open-tables-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.player1Uid === currentUid) return; // don't show your own open table as joinable
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => joinTable(docSnap.id, g));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "chessGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("my-invites-list");
+    const empty = document.getElementById("my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button";
+      acceptBtn.className = "small";
+      acceptBtn.textContent = "Accept";
+      acceptBtn.addEventListener("click", () => joinTable(docSnap.id, g));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button";
+      declineBtn.className = "secondary small";
+      declineBtn.textContent = "Decline";
+      declineBtn.style.marginLeft = "0.5rem";
+      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "chessGames", docSnap.id)).catch(() => {}));
+      actions.appendChild(acceptBtn);
+      actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadFriendsToInvite();
+}
+
+async function loadFriendsToInvite() {
+  const list = document.getElementById("friends-invite-list");
+  const empty = document.getElementById("friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      if (d.status !== "accepted") return;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Invite to chess";
+      btn.addEventListener("click", () => createTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+
+async function createTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    const gameRef = await addDoc(collection(db, "chessGames"), {
+      player1Uid: currentUid,
+      player1Name: currentUserName,
+      player2Uid: null,
+      player2Name: null,
+      inviteTo: inviteToUid || null,
+      inviteToName: inviteToName || null,
+      participants: [currentUid],
+      status: "open",
+      board: initialBoardState(),
+      turn: "white",
+      winner: null,
+      p1StatsRecorded: false,
+      p2StatsRecorded: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      showMessage(msg, `Invite sent to ${inviteToName}.`, "success");
+    } else {
+      openGame(gameRef.id);
+    }
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+async function joinTable(gameId, gameData) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    await updateDoc(doc(db, "chessGames", gameId), {
+      player2Uid: currentUid,
+      player2Name: currentUserName,
+      participants: [gameData.player1Uid, currentUid],
+      status: "active",
+      updatedAt: serverTimestamp(),
+    });
+    openGame(gameId);
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+function showMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      const points = d.chessPoints || 0;
+      const wins = d.chessWins || 0;
+      const losses = d.chessLosses || 0;
+      const draws = d.chessDraws || 0;
+      if (points > 0 || wins > 0 || losses > 0 || draws > 0) {
+        players.push({ name: d.profile?.name || "Neighbor", points, wins, losses, draws });
+      }
+    });
+    players.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (players.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    players.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `
+        <span class="leader-rank">#${i + 1}</span>
+        <span style="flex:1;">${escapeHtml(p.name)}</span>
+        <span class="field-hint">${p.wins}W-${p.losses}L-${p.draws}D</span>
+        <span style="font-weight:600;">${p.points} pts</span>
+      `;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+
+// ============================= CHESS ENGINE (2-player) ======================
+const pieces = {
+  K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙",
+  k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟",
+};
+
+function initialBoardState() {
+  return [
+    ["r","n","b","q","k","b","n","r"],
+    ["p","p","p","p","p","p","p","p"],
+    ["","","","","","","",""],
+    ["","","","","","","",""],
+    ["","","","","","","",""],
+    ["","","","","","","",""],
+    ["P","P","P","P","P","P","P","P"],
+    ["R","N","B","Q","K","B","N","R"],
+  ];
+}
+
+let board = initialBoardState();
+let currentTurn = "white";
+let selectedSquare = null;
+let lastMove = null;
+let activeGameId = null;
+let activeGameData = null;
+let myColor = null; // "white" | "black"
+
+function isPlayerPiece(piece, player) {
+  if (!piece) return false;
+  return player === "white" ? piece === piece.toUpperCase() : piece === piece.toLowerCase();
+}
+
+function getPieceMoves(row, col, b) {
+  const piece = b[row][col].toLowerCase();
+  switch (piece) {
+    case "p": return getPawnMoves(row, col, b);
+    case "r": return getSlidingMoves(row, col, b, [[0,1],[0,-1],[1,0],[-1,0]]);
+    case "n": return getKnightMoves(row, col, b);
+    case "b": return getSlidingMoves(row, col, b, [[1,1],[1,-1],[-1,1],[-1,-1]]);
+    case "q": return getSlidingMoves(row, col, b, [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]);
+    case "k": return getKnightLikeMoves(row, col, b, [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]);
+    default: return [];
+  }
+}
+
+function getPawnMoves(row, col, b) {
+  const moves = [];
+  const piece = b[row][col];
+  const dir = piece === piece.toUpperCase() ? -1 : 1;
+  const startRow = piece === piece.toUpperCase() ? 6 : 1;
+  if (row + dir >= 0 && row + dir < 8 && !b[row + dir][col]) {
+    moves.push({ row: row + dir, col });
+    if (row === startRow && !b[row + 2 * dir][col]) moves.push({ row: row + 2 * dir, col });
+  }
+  [-1, 1].forEach((dc) => {
+    const nr = row + dir, nc = col + dc;
+    if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+      const target = b[nr][nc];
+      if (target && isPlayerPiece(piece, "white") !== isPlayerPiece(target, "white")) moves.push({ row: nr, col: nc });
+    }
+  });
+  return moves;
+}
+
+function getSlidingMoves(row, col, b, directions) {
+  const moves = [];
+  const piece = b[row][col];
+  directions.forEach(([dr, dc]) => {
+    let r = row + dr, c = col + dc;
+    while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+      const target = b[r][c];
+      if (!target) { moves.push({ row: r, col: c }); }
+      else { if (isPlayerPiece(piece, "white") !== isPlayerPiece(target, "white")) moves.push({ row: r, col: c }); break; }
+      r += dr; c += dc;
+    }
+  });
+  return moves;
+}
+
+function getKnightMoves(row, col, b) {
+  return getKnightLikeMoves(row, col, b, [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]);
+}
+
+function getKnightLikeMoves(row, col, b, offsets) {
+  const moves = [];
+  const piece = b[row][col];
+  offsets.forEach(([dr, dc]) => {
+    const r = row + dr, c = col + dc;
+    if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+      const target = b[r][c];
+      if (!target || isPlayerPiece(piece, "white") !== isPlayerPiece(target, "white")) moves.push({ row: r, col: c });
+    }
+  });
+  return moves;
+}
+
+function findKing(player, b) {
+  const king = player === "white" ? "K" : "k";
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (b[r][c] === king) return { row: r, col: c };
+  return null;
+}
+
+function isInCheck(player, b) {
+  const kingPos = findKing(player, b);
+  if (!kingPos) return false;
+  const opponent = player === "white" ? "black" : "white";
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = b[r][c];
+      if (piece && isPlayerPiece(piece, opponent)) {
+        if (getPieceMoves(r, c, b).some((m) => m.row === kingPos.row && m.col === kingPos.col)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function isValidMove(fromRow, fromCol, toRow, toCol, b, turn) {
+  const piece = b[fromRow][fromCol];
+  if (!piece || !isPlayerPiece(piece, turn)) return false;
+  const targetPiece = b[toRow][toCol];
+  if (targetPiece && isPlayerPiece(piece, turn) === isPlayerPiece(targetPiece, turn)) return false;
+  const moves = getPieceMoves(fromRow, fromCol, b);
+  if (!moves.some((m) => m.row === toRow && m.col === toCol)) return false;
+  const tempBoard = b.map((row) => [...row]);
+  tempBoard[toRow][toCol] = tempBoard[fromRow][fromCol];
+  tempBoard[fromRow][fromCol] = "";
+  return !isInCheck(turn, tempBoard);
+}
+
+function hasValidMoves(player, b) {
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = b[r][c];
+      if (piece && isPlayerPiece(piece, player)) {
+        for (const m of getPieceMoves(r, c, b)) {
+          if (isValidMove(r, c, m.row, m.col, b, player)) return true;
         }
-        
-        function updateBoard() {
-            const squares = document.querySelectorAll('.square');
-            squares.forEach(square => {
-                const row = parseInt(square.dataset.row);
-                const col = parseInt(square.dataset.col);
-                const piece = board[row][col];
-                square.textContent = pieces[piece] || '';
-                square.classList.remove('selected', 'valid-move', 'last-move', 'check');
-                
-                if ((row + col) % 2 === 0) {
-                    square.className = 'square light';
-                } else {
-                    square.className = 'square dark';
-                }
-                
-                if (lastMove && 
-                    ((lastMove.from.row === row && lastMove.from.col === col) ||
-                     (lastMove.to.row === row && lastMove.to.col === col))) {
-                    square.classList.add('last-move');
-                }
-            });
-            
-            const kingPos = findKing(currentPlayer);
-            if (kingPos && isInCheck(currentPlayer)) {
-                const kingSquare = document.querySelector(`[data-row="${kingPos.row}"][data-col="${kingPos.col}"]`);
-                kingSquare.classList.add('check');
-            }
-        }
-        
-        function handleSquareClick(row, col) {
-            if (gameMode === 'ai' && currentPlayer === aiColor) return;
-            
-            if (selectedSquare) {
-                if (selectedSquare.row === row && selectedSquare.col === col) {
-                    selectedSquare = null;
-                    updateBoard();
-                    return;
-                }
-                
-                if (isValidMove(selectedSquare.row, selectedSquare.col, row, col)) {
-                    makeMove(selectedSquare.row, selectedSquare.col, row, col);
-                    selectedSquare = null;
-                    
-                    if (gameMode === 'ai' && !isGameOver()) {
-                        setTimeout(makeAIMove, 400);
-                    }
-                } else {
-                    const piece = board[row][col];
-                    if (piece && isPlayerPiece(piece, currentPlayer)) {
-                        selectedSquare = {row, col};
-                        showValidMoves(row, col);
-                    }
-                }
-            } else {
-                const piece = board[row][col];
-                if (piece && isPlayerPiece(piece, currentPlayer)) {
-                    selectedSquare = {row, col};
-                    showValidMoves(row, col);
-                }
-            }
-        }
-        
-        function showValidMoves(row, col) {
-            updateBoard();
-            const square = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-            square.classList.add('selected');
-            
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    if (isValidMove(row, col, r, c)) {
-                        const targetSquare = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
-                        targetSquare.classList.add('valid-move');
-                    }
-                }
-            }
-        }
-        
-        function isPlayerPiece(piece, player) {
-            if (player === 'white') return piece === piece.toUpperCase();
-            return piece === piece.toLowerCase();
-        }
-        
-        function isValidMove(fromRow, fromCol, toRow, toCol) {
-            const piece = board[fromRow][fromCol];
-            if (!piece) return false;
-            
-            const targetPiece = board[toRow][toCol];
-            if (targetPiece && isPlayerPiece(piece, currentPlayer) === isPlayerPiece(targetPiece, currentPlayer)) {
-                return false;
-            }
-            
-            const moves = getPieceMoves(fromRow, fromCol);
-            const isValid = moves.some(move => move.row === toRow && move.col === toCol);
-            
-            if (!isValid) return false;
-            
-            const tempBoard = board.map(row => [...row]);
-            board[toRow][toCol] = board[fromRow][fromCol];
-            board[fromRow][fromCol] = '';
-            
-            const inCheck = isInCheck(currentPlayer);
-            
-            board = tempBoard;
-            
-            return !inCheck;
-        }
-        
-        function getPieceMoves(row, col) {
-            const piece = board[row][col].toLowerCase();
-            let moves = [];
-            
-            switch(piece) {
-                case 'p': moves = getPawnMoves(row, col); break;
-                case 'r': moves = getRookMoves(row, col); break;
-                case 'n': moves = getKnightMoves(row, col); break;
-                case 'b': moves = getBishopMoves(row, col); break;
-                case 'q': moves = getQueenMoves(row, col); break;
-                case 'k': moves = getKingMoves(row, col); break;
-            }
-            
-            return moves;
-        }
-        
-        function getPawnMoves(row, col) {
-            const moves = [];
-            const piece = board[row][col];
-            const direction = piece === piece.toUpperCase() ? -1 : 1;
-            const startRow = piece === piece.toUpperCase() ? 6 : 1;
-            
-            if (row + direction >= 0 && row + direction < 8 && !board[row + direction][col]) {
-                moves.push({row: row + direction, col});
-                
-                if (row === startRow && !board[row + 2 * direction][col]) {
-                    moves.push({row: row + 2 * direction, col});
-                }
-            }
-            
-            [-1, 1].forEach(dc => {
-                const newRow = row + direction;
-                const newCol = col + dc;
-                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                    const target = board[newRow][newCol];
-                    if (target && isPlayerPiece(piece, currentPlayer) !== isPlayerPiece(target, currentPlayer)) {
-                        moves.push({row: newRow, col: newCol});
-                    }
-                }
-            });
-            
-            return moves;
-        }
-        
-        function getRookMoves(row, col) {
-            return getSlidingMoves(row, col, [[0,1],[0,-1],[1,0],[-1,0]]);
-        }
-        
-        function getBishopMoves(row, col) {
-            return getSlidingMoves(row, col, [[1,1],[1,-1],[-1,1],[-1,-1]]);
-        }
-        
-        function getQueenMoves(row, col) {
-            return getSlidingMoves(row, col, [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]);
-        }
-        
-        function getSlidingMoves(row, col, directions) {
-            const moves = [];
-            const piece = board[row][col];
-            
-            directions.forEach(([dr, dc]) => {
-                let r = row + dr;
-                let c = col + dc;
-                
-                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
-                    const target = board[r][c];
-                    if (!target) {
-                        moves.push({row: r, col: c});
-                    } else {
-                        if (isPlayerPiece(piece, currentPlayer) !== isPlayerPiece(target, currentPlayer)) {
-                            moves.push({row: r, col: c});
-                        }
-                        break;
-                    }
-                    r += dr;
-                    c += dc;
-                }
-            });
-            
-            return moves;
-        }
-        
-        function getKnightMoves(row, col) {
-            const moves = [];
-            const offsets = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
-            const piece = board[row][col];
-            
-            offsets.forEach(([dr, dc]) => {
-                const r = row + dr;
-                const c = col + dc;
-                if (r >= 0 && r < 8 && c >= 0 && c < 8) {
-                    const target = board[r][c];
-                    if (!target || isPlayerPiece(piece, currentPlayer) !== isPlayerPiece(target, currentPlayer)) {
-                        moves.push({row: r, col: c});
-                    }
-                }
-            });
-            
-            return moves;
-        }
-        
-        function getKingMoves(row, col) {
-            const moves = [];
-            const offsets = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
-            const piece = board[row][col];
-            
-            offsets.forEach(([dr, dc]) => {
-                const r = row + dr;
-                const c = col + dc;
-                if (r >= 0 && r < 8 && c >= 0 && c < 8) {
-                    const target = board[r][c];
-                    if (!target || isPlayerPiece(piece, currentPlayer) !== isPlayerPiece(target, currentPlayer)) {
-                        moves.push({row: r, col: c});
-                    }
-                }
-            });
-            
-            return moves;
-        }
-        
-        function makeMove(fromRow, fromCol, toRow, toCol) {
-            moveHistory.push({
-                board: board.map(row => [...row]),
-                player: currentPlayer,
-                lastMove: lastMove
-            });
-            
-            lastMove = {
-                from: {row: fromRow, col: fromCol},
-                to: {row: toRow, col: toCol}
-            };
-            
-            board[toRow][toCol] = board[fromRow][fromCol];
-            board[fromRow][fromCol] = '';
-            
-            const piece = board[toRow][toCol].toLowerCase();
-            if (piece === 'p' && (toRow === 0 || toRow === 7)) {
-                board[toRow][toCol] = currentPlayer === 'white' ? 'Q' : 'q';
-            }
-            
-            currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
-            updateBoard();
-            updateStatus();
-            maybeShowAd();
-        }
-        
-        function findKing(player) {
-            const king = player === 'white' ? 'K' : 'k';
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    if (board[r][c] === king) {
-                        return {row: r, col: c};
-                    }
-                }
-            }
-            return null;
-        }
-        
-        function isInCheck(player) {
-            const kingPos = findKing(player);
-            if (!kingPos) return false;
-            
-            const opponent = player === 'white' ? 'black' : 'white';
-            
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const piece = board[r][c];
-                    if (piece && isPlayerPiece(piece, opponent)) {
-                        const moves = getPieceMoves(r, c);
-                        if (moves.some(move => move.row === kingPos.row && move.col === kingPos.col)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            
-            return false;
-        }
-        
-        function hasValidMoves(player) {
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const piece = board[r][c];
-                    if (piece && isPlayerPiece(piece, player)) {
-                        const moves = getPieceMoves(r, c);
-                        for (let move of moves) {
-                            if (isValidMove(r, c, move.row, move.col)) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-        
-        function isGameOver() {
-            if (!hasValidMoves(currentPlayer)) {
-                if (isInCheck(currentPlayer)) {
-                    const winner = currentPlayer === 'white' ? 'Black' : 'White';
-                    document.getElementById('status').textContent = `Checkmate! ${winner} wins!`;
-                } else {
-                    document.getElementById('status').textContent = 'Stalemate! Draw!';
-                }
-                return true;
-            }
-            return false;
-        }
-        
-        function updateStatus() {
-            if (isGameOver()) return;
-            
-            let status = currentPlayer === 'white' ? 'White' : 'Black';
-            status += ' to move';
-            
-            if (isInCheck(currentPlayer)) {
-                status += ' - Check!';
-            }
-            
-            document.getElementById('status').textContent = status;
-        }
-        
-        function getAllValidMoves(player) {
-            const moves = [];
-            const savedPlayer = currentPlayer;
-            currentPlayer = player;
-            
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const piece = board[r][c];
-                    if (piece && isPlayerPiece(piece, player)) {
-                        const pieceMoves = getPieceMoves(r, c);
-                        pieceMoves.forEach(move => {
-                            if (isValidMove(r, c, move.row, move.col)) {
-                                moves.push({
-                                    from: {row: r, col: c},
-                                    to: {row: move.row, col: move.col}
-                                });
-                            }
-                        });
-                    }
-                }
-            }
-            
-            currentPlayer = savedPlayer;
-            return moves;
-        }
-        
-        function orderMoves(moves) {
-            const pieceValues = {'p':10,'n':30,'b':30,'r':50,'q':90,'k':900};
-            return moves.map(m => {
-                const captured = board[m.to.row][m.to.col];
-                const victim = captured ? (pieceValues[captured.toLowerCase()] || 0) : 0;
-                const attacker = pieceValues[board[m.from.row][m.from.col].toLowerCase()] || 0;
-                return { move: m, score: victim * 10 - attacker };
-            }).sort((a, b) => b.score - a.score).map(x => x.move);
-        }
-        
-        async function makeAIMove() {
-            const difficulty = document.getElementById('difficulty').value;
-            document.getElementById('status').innerHTML = '<span class="thinking">AI is thinking...</span>';
-            
-            await new Promise(resolve => setTimeout(resolve, 200));
-            
-            const config = AI_CONFIG[difficulty];
-            currentRandomness = config.randomness;
-            
-            const move = await getBestMoveIterative(config);
-            
-            if (move) {
-                makeMove(move.from.row, move.from.col, move.to.row, move.to.col);
-            }
-        }
-        
-        async function getBestMoveIterative(config) {
-            const startTime = performance.now();
-            const rootMoves = orderMoves(getAllValidMoves(currentPlayer));
-            if (rootMoves.length === 0) return null;
-            
-            let bestMove = rootMoves[0];
-            let depth = 1;
-            
-            while (depth <= config.maxDepth) {
-                if (performance.now() - startTime > config.timeLimit) break;
-                
-                let bestScoreThisDepth = -Infinity;
-                let bestMoveThisDepth = null;
-                let timedOut = false;
-                
-                for (let move of rootMoves) {
-                    if (performance.now() - startTime > config.timeLimit) {
-                        timedOut = true;
-                        break;
-                    }
-                    
-                    const tempBoard = board.map(row => [...row]);
-                    const capturedPiece = board[move.to.row][move.to.col];
-                    
-                    board[move.to.row][move.to.col] = board[move.from.row][move.from.col];
-                    board[move.from.row][move.from.col] = '';
-                    
-                    let score = minimax(depth - 1, -Infinity, Infinity, false, startTime, config.timeLimit);
-                    
-                    if (capturedPiece) {
-                        const pieceValues = {'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90};
-                        score += (pieceValues[capturedPiece.toLowerCase()] || 0) * 0.1;
-                    }
-                    
-                    if (lastMove &&
-                        move.from.row === lastMove.to.row &&
-                        move.from.col === lastMove.to.col &&
-                        move.to.row === lastMove.from.row &&
-                        move.to.col === lastMove.from.col) {
-                        score -= 50;
-                    }
-                    
-                    board = tempBoard;
-                    
-                    if (score > bestScoreThisDepth) {
-                        bestScoreThisDepth = score;
-                        bestMoveThisDepth = move;
-                    }
-                }
-                
-                if (bestMoveThisDepth && !timedOut) {
-                    bestMove = bestMoveThisDepth;
-                }
-                if (timedOut) break;
-                
-                depth++;
-                await new Promise(resolve => setTimeout(resolve, 0));
-            }
-            
-            return bestMove;
-        }
-        
-        function minimax(depth, alpha, beta, isMaximizing, startTime, timeLimit) {
-            if (depth === 0 || (performance.now() - startTime > timeLimit)) {
-                return evaluateBoard();
-            }
-            
-            const player = isMaximizing ? aiColor : (aiColor === 'white' ? 'black' : 'white');
-            const moves = orderMoves(getAllValidMoves(player));
-            
-            if (moves.length === 0) {
-                const savedPlayer = currentPlayer;
-                currentPlayer = player;
-                const inCheck = isInCheck(player);
-                currentPlayer = savedPlayer;
-                
-                if (inCheck) {
-                    return isMaximizing ? -10000 : 10000;
-                }
-                return 0;
-            }
-            
-            if (isMaximizing) {
-                let maxScore = -Infinity;
-                for (let move of moves) {
-                    const tempBoard = board.map(row => [...row]);
-                    board[move.to.row][move.to.col] = board[move.from.row][move.from.col];
-                    board[move.from.row][move.from.col] = '';
-                    
-                    const score = minimax(depth - 1, alpha, beta, false, startTime, timeLimit);
-                    board = tempBoard;
-                    
-                    maxScore = Math.max(maxScore, score);
-                    alpha = Math.max(alpha, score);
-                    if (beta <= alpha) break;
-                }
-                return maxScore;
-            } else {
-                let minScore = Infinity;
-                for (let move of moves) {
-                    const tempBoard = board.map(row => [...row]);
-                    board[move.to.row][move.to.col] = board[move.from.row][move.from.col];
-                    board[move.from.row][move.from.col] = '';
-                    
-                    const score = minimax(depth - 1, alpha, beta, true, startTime, timeLimit);
-                    board = tempBoard;
-                    
-                    minScore = Math.min(minScore, score);
-                    beta = Math.min(beta, score);
-                    if (beta <= alpha) break;
-                }
-                return minScore;
-            }
-        }
-        
-        function evaluateBoard() {
-            const pieceValues = {
-                'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900
-            };
-            
-            const pawnTable = [
-                [0,  0,  0,  0,  0,  0,  0,  0],
-                [50, 50, 50, 50, 50, 50, 50, 50],
-                [10, 10, 20, 30, 30, 20, 10, 10],
-                [5,  5, 10, 25, 25, 10,  5,  5],
-                [0,  0,  0, 20, 20,  0,  0,  0],
-                [5, -5,-10,  0,  0,-10, -5,  5],
-                [5, 10, 10,-20,-20, 10, 10,  5],
-                [0,  0,  0,  0,  0,  0,  0,  0]
-            ];
-            
-            const knightTable = [
-                [-50,-40,-30,-30,-30,-30,-40,-50],
-                [-40,-20,  0,  0,  0,  0,-20,-40],
-                [-30,  0, 10, 15, 15, 10,  0,-30],
-                [-30,  5, 15, 20, 20, 15,  5,-30],
-                [-30,  0, 15, 20, 20, 15,  0,-30],
-                [-30,  5, 10, 15, 15, 10,  5,-30],
-                [-40,-20,  0,  5,  5,  0,-20,-40],
-                [-50,-40,-30,-30,-30,-30,-40,-50]
-            ];
-            
-            const bishopTable = [
-                [-20,-10,-10,-10,-10,-10,-10,-20],
-                [-10,  0,  0,  0,  0,  0,  0,-10],
-                [-10,  0,  5, 10, 10,  5,  0,-10],
-                [-10,  5,  5, 10, 10,  5,  5,-10],
-                [-10,  0, 10, 10, 10, 10,  0,-10],
-                [-10, 10, 10, 10, 10, 10, 10,-10],
-                [-10,  5,  0,  0,  0,  0,  5,-10],
-                [-20,-10,-10,-10,-10,-10,-10,-20]
-            ];
-            
-            const rookTable = [
-                [0,  0,  0,  0,  0,  0,  0,  0],
-                [5, 10, 10, 10, 10, 10, 10,  5],
-                [-5,  0,  0,  0,  0,  0,  0, -5],
-                [-5,  0,  0,  0,  0,  0,  0, -5],
-                [-5,  0,  0,  0,  0,  0,  0, -5],
-                [-5,  0,  0,  0,  0,  0,  0, -5],
-                [-5,  0,  0,  0,  0,  0,  0, -5],
-                [0,  0,  0,  5,  5,  0,  0,  0]
-            ];
-            
-            const queenTable = [
-                [-20,-10,-10, -5, -5,-10,-10,-20],
-                [-10,  0,  0,  0,  0,  0,  0,-10],
-                [-10,  0,  5,  5,  5,  5,  0,-10],
-                [-5,  0,  5,  5,  5,  5,  0, -5],
-                [0,  0,  5,  5,  5,  5,  0, -5],
-                [-10,  5,  5,  5,  5,  5,  0,-10],
-                [-10,  0,  5,  0,  0,  0,  0,-10],
-                [-20,-10,-10, -5, -5,-10,-10,-20]
-            ];
-            
-            const kingTable = [
-                [-30,-40,-40,-50,-50,-40,-40,-30],
-                [-30,-40,-40,-50,-50,-40,-40,-30],
-                [-30,-40,-40,-50,-50,-40,-40,-30],
-                [-30,-40,-40,-50,-50,-40,-40,-30],
-                [-20,-30,-30,-40,-40,-30,-30,-20],
-                [-10,-20,-20,-20,-20,-20,-20,-10],
-                [20, 20,  0,  0,  0,  0, 20, 20],
-                [20, 30, 10,  0,  0, 10, 30, 20]
-            ];
-            
-            const tables = {
-                p: pawnTable, n: knightTable, b: bishopTable,
-                r: rookTable, q: queenTable, k: kingTable
-            };
-            
-            let score = 0;
-            
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const piece = board[r][c];
-                    if (piece) {
-                        const type = piece.toLowerCase();
-                        const value = pieceValues[type];
-                        const table = tables[type];
-                        const positionBonus = piece === piece.toUpperCase() ?
-                            table[r][c] : table[7 - r][c];
-                        
-                        if (isPlayerPiece(piece, aiColor)) {
-                            score += value + positionBonus;
-                        } else {
-                            score -= value + positionBonus;
-                        }
-                    }
-                }
-            }
-            
-            if (currentRandomness > 0) {
-                score += (Math.random() * 2 - 1) * currentRandomness;
-            }
-            
-            return score;
-        }
-        
-        function undoMove() {
-            if (moveHistory.length === 0) return;
-            
-            const lastState = moveHistory.pop();
-            board = lastState.board;
-            currentPlayer = lastState.player;
-            lastMove = lastState.lastMove;
-            
-            selectedSquare = null;
-            updateBoard();
-            updateStatus();
-        }
-        
-        function resetGame() {
-            board = [
-                ['r','n','b','q','k','b','n','r'],
-                ['p','p','p','p','p','p','p','p'],
-                ['','','','','','','',''],
-                ['','','','','','','',''],
-                ['','','','','','','',''],
-                ['','','','','','','',''],
-                ['P','P','P','P','P','P','P','P'],
-                ['R','N','B','Q','K','B','N','R']
-            ];
-            
-            currentPlayer = 'white';
-            selectedSquare = null;
-            moveHistory = [];
-            lastMove = null;
-            adShown = false;
-            hideAd();
-            
-            gameMode = document.getElementById('gameMode').value;
-            const difficultySelector = document.getElementById('difficultySelector');
-            
-            if (gameMode === 'ai') {
-                difficultySelector.style.display = 'flex';
-                aiColor = 'black';
-            } else {
-                difficultySelector.style.display = 'none';
-            }
-            
-            updateBoard();
-            updateStatus();
-        }
-        
-        function maybeShowAd() {
-            if (adShown) return;
-            if (moveHistory.length === 10) {
-                adShown = true;
-                showAd();
-            }
-        }
-        
-        function showAd() {
-            const overlay = document.getElementById('adOverlay');
-            const countdown = document.getElementById('adCountdown');
-            overlay.style.display = 'flex';
-            overlay.classList.add('show');
-            
-            let seconds = 5;
-            countdown.textContent = `Closing in ${seconds}s...`;
-            const interval = setInterval(() => {
-                seconds--;
-                if (seconds > 0) {
-                    countdown.textContent = `Closing in ${seconds}s...`;
-                } else {
-                    clearInterval(interval);
-                    hideAd();
-                }
-            }, 1000);
-        }
-        
-        function hideAd() {
-            const overlay = document.getElementById('adOverlay');
-            overlay.classList.remove('show');
-            overlay.style.display = 'none';
-        }
-        
-        function downloadGame() {
-            try {
-                const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-                const blob = new Blob([html], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'bread-of-life-chess.html';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            } catch (err) {
-                alert('Download failed. You can also just save this page directly from your browser (Ctrl+S / Cmd+S).');
-            }
-        }
-        
-        initBoard();
-    </script>
+      }
+    }
+  }
+  return false;
+}
+
+// ============================= GAME TABLE ====================================
+function initBoardGrid() {
+  const boardEl = document.getElementById("board");
+  boardEl.innerHTML = "";
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const square = document.createElement("div");
+      square.className = `square ${(row + col) % 2 === 0 ? "light" : "dark"}`;
+      square.dataset.row = row;
+      square.dataset.col = col;
+      square.addEventListener("click", () => handleSquareClick(row, col));
+      boardEl.appendChild(square);
+    }
+  }
+}
+initBoardGrid();
+
+function renderBoard() {
+  document.querySelectorAll(".square").forEach((square) => {
+    const row = parseInt(square.dataset.row, 10);
+    const col = parseInt(square.dataset.col, 10);
+    const piece = board[row][col];
+    square.textContent = pieces[piece] || "";
+    square.className = `square ${(row + col) % 2 === 0 ? "light" : "dark"}`;
+    if (lastMove && ((lastMove.from.row === row && lastMove.from.col === col) || (lastMove.to.row === row && lastMove.to.col === col))) {
+      square.classList.add("last-move");
+    }
+  });
+  const kingPos = findKing(currentTurn, board);
+  if (kingPos && isInCheck(currentTurn, board)) {
+    document.querySelector(`[data-row="${kingPos.row}"][data-col="${kingPos.col}"]`)?.classList.add("check");
+  }
+}
+
+function handleSquareClick(row, col) {
+  if (!activeGameData || activeGameData.status !== "active") return;
+  if (currentTurn !== myColor) return; // not your turn
+
+  if (selectedSquare) {
+    if (selectedSquare.row === row && selectedSquare.col === col) {
+      selectedSquare = null;
+      renderBoard();
+      return;
+    }
+    if (isValidMove(selectedSquare.row, selectedSquare.col, row, col, board, currentTurn)) {
+      submitMove(selectedSquare.row, selectedSquare.col, row, col);
+      selectedSquare = null;
+    } else {
+      const piece = board[row][col];
+      if (piece && isPlayerPiece(piece, currentTurn)) { selectedSquare = { row, col }; showValidMoves(row, col); }
+    }
+  } else {
+    const piece = board[row][col];
+    if (piece && isPlayerPiece(piece, currentTurn)) { selectedSquare = { row, col }; showValidMoves(row, col); }
+  }
+}
+
+function showValidMoves(row, col) {
+  renderBoard();
+  document.querySelector(`[data-row="${row}"][data-col="${col}"]`)?.classList.add("selected");
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (isValidMove(row, col, r, c, board, currentTurn)) {
+        document.querySelector(`[data-row="${r}"][data-col="${c}"]`)?.classList.add("valid-move");
+      }
+    }
+  }
+}
+
+async function submitMove(fromRow, fromCol, toRow, toCol) {
+  const newBoard = board.map((r) => [...r]);
+  newBoard[toRow][toCol] = newBoard[fromRow][fromCol];
+  newBoard[fromRow][fromCol] = "";
+  const movedPiece = newBoard[toRow][toCol].toLowerCase();
+  if (movedPiece === "p" && (toRow === 0 || toRow === 7)) {
+    newBoard[toRow][toCol] = currentTurn === "white" ? "Q" : "q";
+  }
+  const nextTurn = currentTurn === "white" ? "black" : "white";
+
+  const update = {
+    board: newBoard,
+    turn: nextTurn,
+    lastMove: { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } },
+    updatedAt: serverTimestamp(),
+  };
+
+  if (!hasValidMoves(nextTurn, newBoard)) {
+    if (isInCheck(nextTurn, newBoard)) {
+      update.status = "finished";
+      update.winner = colorToUid(currentTurn);
+    } else {
+      update.status = "finished";
+      update.winner = "draw";
+    }
+  }
+
+  try {
+    await updateDoc(doc(db, "chessGames", activeGameId), update);
+  } catch (err) {
+    alert(`Couldn't submit move: ${err.message}`);
+  }
+}
+
+function colorToUid(color) {
+  if (!activeGameData) return null;
+  return color === "white" ? activeGameData.player1Uid : activeGameData.player2Uid;
+}
+
+document.getElementById("resign-btn").addEventListener("click", async () => {
+  if (!activeGameData || activeGameData.status !== "active") return;
+  if (!confirm("Resign this game?")) return;
+  const winnerUid = myColor === "white" ? activeGameData.player2Uid : activeGameData.player1Uid;
+  try {
+    await updateDoc(doc(db, "chessGames", activeGameId), {
+      status: "finished",
+      winner: winnerUid,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+function openGame(gameId) {
+  activeGameId = gameId;
+  showView("game");
+
+  if (unsubscribeGame) unsubscribeGame();
+  unsubscribeGame = onSnapshot(doc(db, "chessGames", gameId), (snap) => {
+    if (!snap.exists()) { showView("waiting"); return; }
+    activeGameData = snap.data();
+    board = activeGameData.board || initialBoardState();
+    currentTurn = activeGameData.turn || "white";
+    lastMove = activeGameData.lastMove || null;
+    myColor = activeGameData.player1Uid === currentUid ? "white" : "black";
+
+    document.getElementById("player-white-label").textContent = `White: ${activeGameData.player1Name || "—"}`;
+    document.getElementById("player-black-label").textContent = `Black: ${activeGameData.player2Name || "Waiting for opponent..."}`;
+
+    renderBoard();
+    updateGameStatus();
+    maybeRecordStats();
+    watchMiniChat(gameId);
+  }, (err) => console.error("Game watch failed:", err));
+}
+
+function updateGameStatus() {
+  const statusEl = document.getElementById("game-status");
+  if (!activeGameData) return;
+  if (activeGameData.status === "open") { statusEl.textContent = "Waiting for an opponent to join..."; return; }
+  if (activeGameData.status === "finished") {
+    if (activeGameData.winner === "draw") statusEl.textContent = "Game over — draw!";
+    else if (activeGameData.winner === currentUid) statusEl.textContent = "You won! 🎉";
+    else statusEl.textContent = "You lost this one.";
+    return;
+  }
+  let text = `${currentTurn === "white" ? "White" : "Black"} to move`;
+  if (currentTurn === myColor) text += " — your turn";
+  if (isInCheck(currentTurn, board)) text += " — Check!";
+  statusEl.textContent = text;
+}
+
+// Each player records their OWN stats once, guarded by their own flag on
+// the game doc, so a finished game only ever gets counted one time per
+// player even if this listener fires again later (e.g. on reload).
+async function maybeRecordStats() {
+  if (!activeGameData || activeGameData.status !== "finished") return;
+  const isP1 = activeGameData.player1Uid === currentUid;
+  const alreadyRecorded = isP1 ? activeGameData.p1StatsRecorded : activeGameData.p2StatsRecorded;
+  if (alreadyRecorded) return;
+
+  const won = activeGameData.winner === currentUid;
+  const draw = activeGameData.winner === "draw";
+  const pointsEarned = won ? 3 : draw ? 1 : 0;
+
+  try {
+    await updateDoc(doc(db, "chessGames", activeGameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      chessPoints: (data.chessPoints || 0) + pointsEarned,
+      chessWins: (data.chessWins || 0) + (won ? 1 : 0),
+      chessLosses: (data.chessLosses || 0) + (!won && !draw ? 1 : 0),
+      chessDraws: (data.chessDraws || 0) + (draw ? 1 : 0),
+    });
+  } catch (err) {
+    console.error("Couldn't record chess stats:", err);
+  }
+}
+
+// ============================= MINI CHAT (reuses Town Fuss messaging) =======
+const DAILY_MESSAGE_LIMIT = 3;
+const MESSAGE_WORD_LIMIT = 50;
+let currentMessageLimit = { day: 0, count: 0 };
+let unsubscribeChessLimit = null;
+
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+function countWords(text) { return text.trim().split(/\s+/).filter(Boolean).length; }
+function containsContactInfo(text) {
+  const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
+  const urlPattern = /\b((https?:\/\/)|(www\.))\S+/i;
+  const phonePattern = /(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/;
+  return emailPattern.test(text) || urlPattern.test(text) || phonePattern.test(text);
+}
+
+function watchChessMessageLimit(uid) {
+  if (unsubscribeChessLimit) unsubscribeChessLimit();
+  unsubscribeChessLimit = onSnapshot(doc(db, "messageLimits", uid), (snap) => {
+    currentMessageLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderChessMsgRemaining();
+  });
+}
+function remainingToday() {
+  if (currentMessageLimit.day !== todayNumber()) return DAILY_MESSAGE_LIMIT;
+  return Math.max(0, DAILY_MESSAGE_LIMIT - currentMessageLimit.count);
+}
+function renderChessMsgRemaining() {
+  const el = document.getElementById("chess-msg-remaining");
+  if (el) el.textContent = `${remainingToday()} / ${DAILY_MESSAGE_LIMIT} messages left today (shared with your Town Fuss private messages)`;
+}
+
+function conversationIdFor(otherUid) { return [currentUid, otherUid].sort().join("_"); }
+
+function watchMiniChat(gameId) {
+  if (!activeGameData || !activeGameData.player2Uid) return;
+  const otherUid = activeGameData.player1Uid === currentUid ? activeGameData.player2Uid : activeGameData.player1Uid;
+  const conversationId = conversationIdFor(otherUid);
+  const messagesEl = document.getElementById("mini-chat-messages");
+
+  if (unsubscribeMiniChat) unsubscribeMiniChat();
+  unsubscribeMiniChat = onSnapshot(
+    query(collection(db, "conversations", conversationId, "messages"), orderBy("sentAt", "asc")),
+    (snap) => {
+      messagesEl.innerHTML = "";
+      snap.forEach((docSnap) => {
+        const m = docSnap.data();
+        const bubble = document.createElement("div");
+        bubble.className = `mini-chat-msg ${m.senderId === currentUid ? "mine" : "theirs"}`;
+        bubble.textContent = m.text || "";
+        messagesEl.appendChild(bubble);
+      });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    },
+    (err) => console.error("Mini chat load failed:", err)
+  );
+
+  document.getElementById("mini-chat-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const input = document.getElementById("mini-chat-input");
+    const msg = document.getElementById("mini-chat-message");
+    const text = input.value.trim();
+    if (!text) return;
+    if (remainingToday() <= 0) { showMessage(msg, "You've used all 3 messages for today.", "error"); return; }
+    if (countWords(text) > MESSAGE_WORD_LIMIT) { showMessage(msg, `Messages are limited to ${MESSAGE_WORD_LIMIT} words.`, "error"); return; }
+    if (containsContactInfo(text)) { showMessage(msg, "Links, phone numbers, and emails aren't allowed in messages.", "error"); return; }
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const limitRef = doc(db, "messageLimits", currentUid);
+        const limitSnap = await tx.get(limitRef);
+        const data = limitSnap.exists() ? limitSnap.data() : { day: 0, count: 0 };
+        const today = todayNumber();
+        const sameDay = data.day === today;
+        const newCount = sameDay ? data.count + 1 : 1;
+        if (sameDay && data.count >= DAILY_MESSAGE_LIMIT) throw new Error("You've used all 3 messages for today.");
+
+        const convoRef = doc(db, "conversations", conversationId);
+        const msgRef = doc(collection(db, "conversations", conversationId, "messages"));
+        tx.set(limitRef, { day: today, count: newCount });
+        tx.set(convoRef, {
+          participants: [currentUid, otherUid].sort(),
+          [`participantNames.${currentUid}`]: currentUserName,
+          [`participantNames.${otherUid}`]: activeGameData.player1Uid === currentUid ? activeGameData.player2Name : activeGameData.player1Name,
+          lastMessageAt: serverTimestamp(),
+          lastMessageText: text,
+          lastMessageSenderId: currentUid,
+          [`readBy.${currentUid}`]: serverTimestamp(),
+        }, { merge: true });
+        tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
+      });
+      input.value = "";
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  };
+}
+</script>
 </body>
 </html>
