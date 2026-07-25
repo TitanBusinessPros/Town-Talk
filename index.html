@@ -145,7 +145,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .badge--rejected { background: rgba(163, 40, 47, 0.12); color: #a3282f; }
 .badge--draft { background: rgba(28, 30, 33, 0.06); color: var(--text-muted); }
 
-.image-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; }
+.image-slots { display: flex; justify-content: center; margin-top: 1rem; }
+.image-slots .image-slot { width: 200px; }
 .image-slot { aspect-ratio: 3 / 4; border: 1px dashed var(--line); border-radius: var(--radius-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; overflow: hidden; position: relative; background: var(--ink-900); }
 .image-slot img { width: 100%; height: 100%; object-fit: cover; }
 .image-slot .slot-label { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); }
@@ -294,8 +295,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 }
 
 @media (max-width: 560px) {
-  .image-slots { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
-  .site-header { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+  .site-header { flex-direction: column; gap: 0.75rem; align-items: center; text-align: center; }
+  .nav-links { justify-content: center; }
 }
 </style>
 </head>
@@ -379,6 +380,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <p class="field-hint" style="margin-top:0.5rem;">Heads up: accounts with no login for 30 days may be removed to keep the community active. Just logging in resets the clock — no other action needed.</p>
     </div>
 
+    <div id="verify-email-banner" class="message error" style="display:none; text-align:left;">
+      Please verify your email address — check your inbox for a link from us.
+      <button type="button" id="resend-verify-btn" class="secondary small" style="margin-left:0.75rem;">Resend email</button>
+    </div>
+
     <section class="card" style="margin-top:2rem">
       <h2>The basics</h2>
       <form id="profile-form">
@@ -403,7 +409,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <h2>Your post <span id="post-status-badge"></span></h2>
       <p>Up to 500 words. Once submitted, it goes to the admin for approval before it's visible on the public feed. No profanity or negative words. For everyone's safety, do not ask for money or include phone numbers, email addresses, or links — use Town Fuss messaging instead. Once your profile has been approved, any edit takes it off the public feed until the admin reviews it again, and you can only make one edit every 30 days.</p>
       <form id="post-form">
-        <textarea id="post-text" maxlength="6000" placeholder="What's going on in your corner of Pauls Valley?"></textarea>
+        <textarea id="post-text" maxlength="6000" placeholder="Tell your story..."></textarea>
         <div class="field-hint" id="word-count">0 / 500 words</div>
         <div class="form-row"><button type="submit">Submit for approval</button></div>
         <div id="post-message" class="message" style="display:none"></div>
@@ -412,7 +418,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
     <section class="card" style="margin-top:1.5rem">
       <h2>Your photos</h2>
-      <p>You get 3 photos total, and they're permanent once uploaded — choose carefully. Every photo needs admin approval before it appears publicly. No nudity or images showing sensitive body parts will be accepted!</p>
+      <p>You get 1 profile photo, and you can update it once a week. Every new photo needs admin approval before it appears publicly. No nudity or images showing sensitive body parts will be accepted!</p>
       <div class="image-slots" id="image-slots"></div>
       <input type="file" id="image-input" accept="image/*" style="display:none" />
       <div id="image-message" class="message" style="display:none"></div>
@@ -585,7 +591,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendPasswordResetEmail, onAuthStateChanged, signOut, deleteUser,
-  EmailAuthProvider, reauthenticateWithCredential,
+  EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
@@ -626,7 +632,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-const MAX_IMAGES = 3;
+const MAX_IMAGES = 1;
 const DAILY_MESSAGE_LIMIT = 3;
 let currentUid = null;
 let unsubscribeSnapshot = null;
@@ -685,6 +691,9 @@ onAuthStateChanged(auth, async (user) => {
     loadBlockedList();
     updateLastActive(user.uid);
 
+    const verifyBanner = document.getElementById("verify-email-banner");
+    if (verifyBanner) verifyBanner.style.display = user.emailVerified ? "none" : "block";
+
     // Check admin status by trying to read our own admins/{uid} doc — the
     // rules only allow reading your own, so this can't be used to snoop
     // on who else is an admin.
@@ -729,6 +738,22 @@ async function updateLastActive(uid) {
   }
 }
 
+document.getElementById("resend-verify-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("resend-verify-btn");
+  if (!auth.currentUser) return;
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+  try {
+    await sendEmailVerification(auth.currentUser);
+    btn.textContent = "Sent!";
+  } catch (err) {
+    btn.textContent = "Resend email";
+    alert(err.message);
+  } finally {
+    setTimeout(() => { btn.disabled = false; if (btn.textContent === "Sent!") btn.textContent = "Resend email"; }, 4000);
+  }
+});
+
 function showMessage(el, text, type) {
   el.textContent = text;
   el.className = `message ${type}`;
@@ -766,6 +791,7 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
   let cred;
   try {
     cred = await createUserWithEmailAndPassword(auth, email, password);
+    await sendEmailVerification(cred.user).catch((err) => console.error("Couldn't send verification email:", err));
     await setDoc(doc(db, "users", cred.user.uid), {
       createdAt: serverTimestamp(),
       profile: { name: "", neighborhood: "" },
@@ -843,6 +869,19 @@ function editLockInfo(data) {
     : 0;
   const daysSince = (Date.now() - editedMs) / (1000 * 60 * 60 * 24);
   const daysLeft = Math.ceil(30 - daysSince);
+  return daysLeft > 0 ? { locked: true, daysLeft } : { locked: false };
+}
+
+// The profile picture has its own, shorter 7-day lock, separate from the
+// 30-day lock on profile details/post text — so it's tracked with its own
+// timestamp field (lastImageEditedAt) instead of sharing lastEditedAt.
+function imageLockInfo(data) {
+  if (!data.everApproved) return { locked: false };
+  const editedMs = data.lastImageEditedAt
+    ? (data.lastImageEditedAt.seconds ? data.lastImageEditedAt.seconds * 1000 : data.lastImageEditedAt._seconds * 1000)
+    : 0;
+  const daysSince = (Date.now() - editedMs) / (1000 * 60 * 60 * 24);
+  const daysLeft = Math.ceil(7 - daysSince);
   return daysLeft > 0 ? { locked: true, daysLeft } : { locked: false };
 }
 
@@ -924,6 +963,11 @@ function containsContactInfo(text) {
   return emailPattern.test(text) || urlPattern.test(text) || phonePattern.test(text);
 }
 
+function countWords(text) {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+const MESSAGE_WORD_LIMIT = 50;
+
 document.getElementById("post-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const msg = document.getElementById("post-message");
@@ -963,45 +1007,42 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
 function renderImageSlots(images) {
   const container = document.getElementById("image-slots");
   container.innerHTML = "";
-  for (let i = 0; i < MAX_IMAGES; i++) {
-    const img = images[i];
-    const wrap = document.createElement("div");
-    const slot = document.createElement("div");
-    slot.className = "image-slot";
-    if (img) {
-      const imgId = `img-slot-${i}-${img.id}`;
-      slot.innerHTML = `<img id="${imgId}" src="${img.url}" alt="Uploaded photo ${i + 1}" />`;
-      // If the file itself is gone (deleted in Storage but the Firestore
-      // record wasn't cleaned up to match), don't leave the slot stuck —
-      // clear the stale record automatically so it becomes uploadable again.
-      const imgEl = slot.querySelector(`#${CSS.escape(imgId)}`);
-      imgEl.addEventListener("error", async () => {
-        slot.innerHTML = `<span class="slot-label">Photo missing — click to re-add</span>`;
-        slot.style.cursor = "pointer";
-        slot.addEventListener("click", async () => {
-          const update = {
-            images: currentImages.filter((entry) => entry.id !== img.id),
-            lastEditedAt: serverTimestamp(),
-          };
-          if (currentUserData.everApproved) update.approved = false;
-          await updateDoc(doc(db, "users", currentUid), update).catch(() => {});
-          startUpload();
-        }, { once: true });
-      });
-    } else {
-      slot.innerHTML = `<span class="slot-label">+ Add photo ${i + 1}</span>`;
-      slot.style.cursor = "pointer";
-      slot.addEventListener("click", () => startUpload());
-    }
-    wrap.appendChild(slot);
-    if (i === 0) {
-      const caption = document.createElement("div");
-      caption.className = "slot-caption";
-      caption.textContent = "Profile picture";
-      wrap.appendChild(caption);
-    }
-    container.appendChild(wrap);
+  const img = images[0];
+  const wrap = document.createElement("div");
+  const slot = document.createElement("div");
+  slot.className = "image-slot";
+
+  if (img) {
+    const imgId = `img-slot-0-${img.id}`;
+    slot.innerHTML = `<img id="${imgId}" src="${img.url}" alt="Profile picture" />`;
+    // If the file itself is gone (deleted in Storage but the Firestore
+    // record wasn't cleaned up to match), don't leave the slot stuck —
+    // clear the stale record automatically so it becomes uploadable again.
+    const imgEl = slot.querySelector(`#${CSS.escape(imgId)}`);
+    imgEl.addEventListener("error", () => {
+      slot.innerHTML = `<span class="slot-label">Photo missing — click to re-add</span>`;
+    });
+    slot.style.cursor = "pointer";
+    slot.addEventListener("click", () => {
+      const lock = imageLockInfo(currentUserData);
+      if (lock.locked) {
+        alert(`You can update your profile picture again in ${lock.daysLeft} day(s).`);
+        return;
+      }
+      startUpload();
+    });
+  } else {
+    slot.innerHTML = `<span class="slot-label">+ Add photo</span>`;
+    slot.style.cursor = "pointer";
+    slot.addEventListener("click", () => startUpload());
   }
+
+  wrap.appendChild(slot);
+  const caption = document.createElement("div");
+  caption.className = "slot-caption";
+  caption.textContent = "Profile picture";
+  wrap.appendChild(caption);
+  container.appendChild(wrap);
 }
 
 let currentImages = [];
@@ -1012,37 +1053,80 @@ function startUpload() {
   imageInput.click();
 }
 
+// Some phones (iPhones especially) upload photos in HEIC format, which
+// most non-Apple browsers can't display in an <img> tag — that's the most
+// likely cause of "images not loading" on mobile. Redrawing the photo onto
+// a canvas and re-exporting as JPEG fixes that (since the uploading
+// device already knows how to decode its own photo), and as a bonus
+// shrinks the file size, which keeps Storage bandwidth costs down too.
+function compressImageFile(file, maxDimension = 1600, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round(height * (maxDimension / width));
+          width = maxDimension;
+        } else {
+          width = Math.round(width * (maxDimension / height));
+          height = maxDimension;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          URL.revokeObjectURL(objectUrl);
+          if (blob) resolve(blob);
+          else reject(new Error("Couldn't process that image. Please try a different photo."));
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("That file couldn't be read as a photo. Try a JPEG or PNG image instead."));
+    };
+    img.src = objectUrl;
+  });
+}
+
 imageInput.addEventListener("change", async () => {
   const file = imageInput.files[0];
   if (!file) return;
   const msg = document.getElementById("image-message");
 
-  if (currentImages.length >= MAX_IMAGES) {
-    showMessage(msg, "You've already used all 3 photo slots.", "error");
+  const lock = imageLockInfo(currentUserData);
+  if (lock.locked) {
+    showMessage(msg, `You can update your profile picture again in ${lock.daysLeft} day(s).`, "error");
     return;
   }
 
-  const lock = editLockInfo(currentUserData);
-  if (lock.locked) {
-    showMessage(msg, `You can add photos again in ${lock.daysLeft} day(s).`, "error");
-    return;
-  }
+  showMessage(msg, "Processing photo...", "success");
 
   try {
+    const processedBlob = await compressImageFile(file);
     const imageId = crypto.randomUUID();
-    const path = `users/${currentUid}/images/${imageId}-${file.name}`;
+    const path = `users/${currentUid}/images/${imageId}.jpg`;
     const fileRef = ref(storage, path);
-    await uploadBytes(fileRef, file);
+    await uploadBytes(fileRef, processedBlob, { contentType: "image/jpeg" });
     const url = await getDownloadURL(fileRef);
 
-    const newImage = {
-      id: imageId,
-      storagePath: path,
-      url,
-      uploadedAt: Timestamp.now(),
-    };
+    // Replacing the single profile photo — remove the old file from
+    // Storage so we're not paying to store an orphaned image forever.
+    const oldImage = currentImages[0];
+    if (oldImage) {
+      await deleteObject(ref(storage, oldImage.storagePath)).catch(() => {});
+    }
 
-    const update = { images: [...currentImages, newImage], lastEditedAt: serverTimestamp() };
+    const newImage = { id: imageId, storagePath: path, url, uploadedAt: Timestamp.now() };
+    const update = { images: [newImage], lastImageEditedAt: serverTimestamp() };
     if (currentUserData.everApproved) update.approved = false;
 
     await updateDoc(doc(db, "users", currentUid), update);
@@ -1764,6 +1848,10 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
     showMessage(msg, "You've used all 3 messages for today — it resets tomorrow.", "error");
     return;
   }
+  if (countWords(text) > MESSAGE_WORD_LIMIT) {
+    showMessage(msg, `Messages are limited to ${MESSAGE_WORD_LIMIT} words — please trim it down.`, "error");
+    return;
+  }
   if (containsBannedWords(text)) {
     showMessage(msg, "That message contains language that isn't allowed here. Please rephrase.", "error");
     return;
@@ -2240,9 +2328,16 @@ function openChatRoom(room) {
         <div class="chat-msg-header">
           <span class="chat-msg-name">${escapeHtml(m.senderName || "Neighbor")}</span>
           <span class="chat-msg-time">${time}</span>
+          ${isAdminUser ? `<button type="button" class="secondary small" data-action="admin-delete" style="margin-left:auto;">Delete</button>` : ""}
         </div>
         <div class="chat-msg-text">${escapeHtml(m.text || "")}</div>
       `;
+      if (isAdminUser) {
+        row.querySelector('[data-action="admin-delete"]').addEventListener("click", async () => {
+          if (!confirm("Delete this message?")) return;
+          await deleteDoc(doc(db, "chatRooms", room.id, "messages", docSnap.id)).catch((err) => alert(err.message));
+        });
+      }
       messagesEl.appendChild(row);
     });
     messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -2260,6 +2355,10 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
 
   if (chatRemainingToday() <= 0) {
     showMessage(msg, "You've used all 3 chat room messages for today — it resets tomorrow.", "error");
+    return;
+  }
+  if (countWords(text) > MESSAGE_WORD_LIMIT) {
+    showMessage(msg, `Messages are limited to ${MESSAGE_WORD_LIMIT} words — please trim it down.`, "error");
     return;
   }
   if (containsBannedWords(text)) {
