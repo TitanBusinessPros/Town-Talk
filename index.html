@@ -310,8 +310,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 <header class="site-header">
   <button class="brand" id="brand-link">Town<span class="brand-mark">Fuss</span></button>
   <nav class="nav-links">
-    <a href="#" id="nav-feed">Feed</a>
-    <a href="#" id="nav-directory">Profiles</a>
+    <a href="#" id="nav-feed" style="display:none">Feed</a>
+    <a href="#" id="nav-directory" style="display:none">Profiles</a>
     <a href="#" id="nav-messages" style="display:none">Messages</a>
     <a href="#" id="nav-friends" style="display:none">Friends<span class="nav-badge-count" id="friends-badge" style="display:none"></span></a>
     <a href="#" id="nav-chatrooms" style="display:none">Chat Rooms</a>
@@ -380,11 +380,16 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <p class="field-hint" style="margin-top:0.5rem;">Heads up: accounts with no login for 30 days may be removed to keep the community active. Just logging in resets the clock — no other action needed.</p>
     </div>
 
-    <div id="verify-email-banner" class="message error" style="display:none; text-align:left;">
-      Please verify your email address — check your inbox for a link from us.
-      <button type="button" id="resend-verify-btn" class="secondary small" style="margin-left:0.75rem;">Resend email</button>
+    <div id="verify-email-gate" class="card" style="display:none; border-color:#a3282f; text-align:center;">
+      <h2>Verify your email to continue</h2>
+      <p>Please verify your email address before creating your profile — check your inbox for a link from us. This helps keep Town Fuss free of scammers and fake accounts.</p>
+      <div class="form-row" style="justify-content:center;">
+        <button type="button" id="resend-verify-btn">Resend verification email</button>
+      </div>
+      <div id="verify-resend-message" class="message" style="display:none"></div>
     </div>
 
+    <div id="dashboard-gated-content">
     <section class="card" style="margin-top:2rem">
       <h2>The basics</h2>
       <form id="profile-form">
@@ -430,6 +435,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <div id="blocked-users-list"></div>
       <div id="blocked-users-empty" class="empty-state" style="display:none; padding:1rem;">You haven't blocked anyone.</div>
     </section>
+    </div>
 
     <section class="card" style="margin-top:1.5rem; border-color:#a3282f;">
       <h2>Delete my account</h2>
@@ -643,7 +649,12 @@ let unsubscribeUnreadWatch = null;
 let unsubscribeChatRoom = null;
 
 // ============================= VIEW ROUTER ==============================
+const PROTECTED_VIEWS = ["feed", "directory", "profile", "dashboard", "messages", "friends", "chatrooms", "admin"];
+
 function showView(name) {
+  if (PROTECTED_VIEWS.includes(name) && !auth.currentUser) {
+    name = "landing";
+  }
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
   document.getElementById(`view-${name}`).classList.add("active");
   if (name === "feed") loadFeed();
@@ -675,6 +686,8 @@ let isAdminUser = false;
 
 onAuthStateChanged(auth, async (user) => {
   document.getElementById("nav-dashboard").style.display = user ? "inline" : "none";
+  document.getElementById("nav-feed").style.display = user ? "inline" : "none";
+  document.getElementById("nav-directory").style.display = user ? "inline" : "none";
   document.getElementById("nav-messages").style.display = user ? "inline" : "none";
   document.getElementById("nav-friends").style.display = user ? "inline" : "none";
   document.getElementById("nav-chatrooms").style.display = user ? "inline" : "none";
@@ -691,8 +704,12 @@ onAuthStateChanged(auth, async (user) => {
     loadBlockedList();
     updateLastActive(user.uid);
 
-    const verifyBanner = document.getElementById("verify-email-banner");
-    if (verifyBanner) verifyBanner.style.display = user.emailVerified ? "none" : "block";
+    const verifyGate = document.getElementById("verify-email-gate");
+    const gatedContent = document.getElementById("dashboard-gated-content");
+    if (verifyGate && gatedContent) {
+      verifyGate.style.display = user.emailVerified ? "none" : "block";
+      gatedContent.style.display = user.emailVerified ? "block" : "none";
+    }
 
     // Check admin status by trying to read our own admins/{uid} doc — the
     // rules only allow reading your own, so this can't be used to snoop
@@ -740,17 +757,19 @@ async function updateLastActive(uid) {
 
 document.getElementById("resend-verify-btn").addEventListener("click", async () => {
   const btn = document.getElementById("resend-verify-btn");
+  const msg = document.getElementById("verify-resend-message");
   if (!auth.currentUser) return;
   btn.disabled = true;
   btn.textContent = "Sending...";
   try {
     await sendEmailVerification(auth.currentUser);
-    btn.textContent = "Sent!";
+    showMessage(msg, "Verification email sent — check your inbox (and spam folder).", "success");
+    btn.textContent = "Resend verification email";
   } catch (err) {
-    btn.textContent = "Resend email";
-    alert(err.message);
+    showMessage(msg, err.message, "error");
+    btn.textContent = "Resend verification email";
   } finally {
-    setTimeout(() => { btn.disabled = false; if (btn.textContent === "Sent!") btn.textContent = "Resend email"; }, 4000);
+    setTimeout(() => { btn.disabled = false; }, 4000);
   }
 });
 
