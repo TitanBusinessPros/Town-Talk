@@ -150,6 +150,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .feed-hero .eyebrow { justify-content: center; display: flex; }
 .feed-hero p { max-width: 480px; margin-left: auto; margin-right: auto; }
 .feed-hero h1 { margin-bottom: 0.5rem; }
+
+.view-header { text-align: center; max-width: 620px; margin: 0 auto 2.5rem; }
+.view-header .eyebrow { justify-content: center; display: flex; }
+.view-header p { max-width: 480px; margin-left: auto; margin-right: auto; }
+.view-header h1 { margin-bottom: 0.5rem; }
 .feed-grid { display: flex; flex-direction: column; }
 .feed-grid--top { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
 @media (max-width: 900px) { .feed-grid--top { grid-template-columns: repeat(2, 1fr); } }
@@ -267,7 +272,12 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .thread-msg.theirs { align-self: flex-start; background: var(--ink-700); color: var(--paper-050); }
 .thread-msg .thread-msg-time { display: block; font-family: var(--font-mono); font-size: 0.65rem; opacity: 0.7; margin-top: 0.2rem; }
 
-.site-footer { text-align: center; padding: 2rem 1.5rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid var(--line); }
+.site-footer { text-align: center; padding: 2.5rem 1.5rem 2rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid var(--line); line-height: 1.9; }
+.site-footer .footer-brand { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--paper-050); margin-bottom: 0.3rem; }
+.site-footer a { color: var(--amber-500); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+.footer-social { display: inline-flex; align-items: center; gap: 0.4rem; }
+.footer-social svg { width: 16px; height: 16px; fill: var(--amber-500); vertical-align: -3px; }
 
 .view { display: none; }
 .view.active { display: block; }
@@ -310,9 +320,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <!-- ================= LANDING / AUTH VIEW ================= -->
   <section id="view-landing" class="view active">
     <div class="page--narrow" style="margin:0 auto">
-      <p class="eyebrow">Pauls Valley · Oklahoma</p>
-      <h1>Sign in to your account</h1>
-      <p>Create a free account with your email. Your profile stays private until our admin team reviews and approves it.</p>
+      <div class="view-header">
+        <p class="eyebrow">Pauls Valley · Oklahoma</p>
+        <h1>Sign in to your account</h1>
+        <p>Create a free account with your email. Your profile stays private until our admin team reviews and approves it.</p>
+      </div>
 
       <div class="tabs">
         <button class="tab active" data-tab="login">Log in</button>
@@ -354,10 +366,12 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
   <!-- ================= DASHBOARD VIEW ================= -->
   <section id="view-dashboard" class="view">
-    <p class="eyebrow">Your private dashboard</p>
-    <h1>Your page</h1>
-    <p>Fill this in whenever you're ready. Nothing here is visible to anyone else until the admin approves it.</p>
-    <p class="field-hint" style="margin-top:0.5rem;">Heads up: accounts with no login for 30 days may be removed to keep the community active. Just logging in resets the clock — no other action needed.</p>
+    <div class="view-header">
+      <p class="eyebrow">Your private dashboard</p>
+      <h1>Your page</h1>
+      <p>Fill this in whenever you're ready. Nothing here is visible to anyone else until the admin approves it.</p>
+      <p class="field-hint" style="margin-top:0.5rem;">Heads up: accounts with no login for 30 days may be removed to keep the community active. Just logging in resets the clock — no other action needed.</p>
+    </div>
 
     <section class="card" style="margin-top:2rem">
       <h2>The basics</h2>
@@ -421,9 +435,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
   <!-- ================= ADMIN REVIEW VIEW ================= -->
   <section id="view-admin" class="view">
-    <p class="eyebrow">Admin</p>
-    <h1>Review queue</h1>
-    <p>Everyone here has submitted something new or edited an already-live profile. Review each, then Approve or Reject.</p>
+    <div class="view-header">
+      <p class="eyebrow">Admin</p>
+      <h1>Review queue</h1>
+      <p>Everyone here has submitted something new or edited an already-live profile. Review each, then Approve or Reject.</p>
+    </div>
     <div id="admin-queue"></div>
     <div id="admin-empty" class="empty-state" style="display:none">Nothing waiting for review right now.</div>
 
@@ -477,8 +493,10 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
   <!-- ================= FRIENDS VIEW ================= -->
   <section id="view-friends" class="view">
-    <p class="eyebrow">Pauls Valley</p>
-    <h1>Friends</h1>
+    <div class="view-header">
+      <p class="eyebrow">Pauls Valley</p>
+      <h1>Friends</h1>
+    </div>
 
     <h2 style="font-size:1.1rem; margin-top:1.5rem;">Friend requests</h2>
     <div id="friend-requests-list"></div>
@@ -491,9 +509,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
   <!-- ================= CHAT ROOMS VIEW ================= -->
   <section id="view-chatrooms" class="view">
-    <p class="eyebrow">Pauls Valley area</p>
-    <h1>Chat Rooms</h1>
-    <p class="field-hint" id="chat-remaining">Loading your daily limit...</p>
+    <div class="view-header">
+      <p class="eyebrow">Pauls Valley area</p>
+      <h1>Chat Rooms</h1>
+      <p class="field-hint" id="chat-remaining">Loading your daily limit...</p>
+    </div>
 
     <div id="chatroom-list-wrap">
       <div id="chatroom-list" class="conversation-list"></div>
@@ -513,9 +533,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
   <!-- ================= MESSAGES VIEW ================= -->
   <section id="view-messages" class="view">
-    <p class="eyebrow">Messages</p>
-    <h1>Conversations</h1>
-    <p class="field-hint" id="messages-remaining">Loading your daily limit...</p>
+    <div class="view-header">
+      <p class="eyebrow">Messages</p>
+      <h1>Conversations</h1>
+      <p class="field-hint" id="messages-remaining">Loading your daily limit...</p>
+    </div>
 
     <div id="conversation-list-wrap">
       <div id="conversation-list" class="conversation-list"></div>
@@ -536,7 +558,21 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
 </main>
 
-<footer class="site-footer">Town Fuss · Pauls Valley, Oklahoma</footer>
+<footer class="site-footer">
+  <div class="footer-brand">Town<span style="color:var(--amber-500)">Fuss</span></div>
+  <div>Town Fuss was created by <strong>Titan Business Pros LLC</strong></div>
+  <div>Pauls Valley area, Oklahoma</div>
+  <div>
+    <a class="footer-social" href="https://www.facebook.com/TitanBusinessPros/" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.78-1.63 1.57v1.88h2.78l-.44 2.91h-2.34V22c4.78-.76 8.44-4.92 8.44-9.94z"/></svg>
+      Facebook
+    </a>
+  </div>
+  <div>405-998-7979 &nbsp;|&nbsp; <a href="mailto:titanbusinesspros@gmail.com">titanbusinesspros@gmail.com</a></div>
+  <div><a href="https://www.oklahoma.marketing" target="_blank" rel="noopener">www.oklahoma.marketing</a></div>
+  <div>Oklahoma City, OK</div>
+  <div style="margin-top:0.5rem;">&copy; 2026 Titan Business Pros LLC. All rights reserved.</div>
+</footer>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
