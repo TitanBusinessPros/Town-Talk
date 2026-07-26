@@ -125,6 +125,12 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
         <h2 style="text-align:left;">Open tables</h2>
         <p style="text-align:left;">Anyone can join one of these.</p>
         <button type="button" id="create-table-btn">+ Create a table</button>
+        <div id="my-open-table-wrap" style="display:none; margin-top:1rem;">
+          <div class="table-row">
+            <span>Your table — waiting for someone to join</span>
+            <button type="button" class="secondary small" id="cancel-my-table-btn">Cancel</button>
+          </div>
+        </div>
         <div id="open-tables-list" style="margin-top:1rem;"></div>
         <div id="open-tables-empty" class="empty-state" style="display:none;">No open tables right now — create one!</div>
       </div>
@@ -307,11 +313,16 @@ function watchWaitingRoom() {
   unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
     const list = document.getElementById("open-tables-list");
     const empty = document.getElementById("open-tables-empty");
+    const myTableWrap = document.getElementById("my-open-table-wrap");
     list.innerHTML = "";
     let shown = 0;
+    myOpenTableId = null;
     snap.forEach((docSnap) => {
       const g = docSnap.data();
-      if (g.player1Uid === currentUid) return; // don't show your own open table as joinable
+      if (g.player1Uid === currentUid) {
+        myOpenTableId = docSnap.id; // show separately with a Cancel option
+        return;
+      }
       shown++;
       const row = document.createElement("div");
       row.className = "table-row";
@@ -324,6 +335,7 @@ function watchWaitingRoom() {
       row.appendChild(btn);
       list.appendChild(row);
     });
+    myTableWrap.style.display = myOpenTableId ? "block" : "none";
     empty.style.display = shown === 0 ? "block" : "none";
   }, (err) => console.error("Open tables watch failed:", err));
 
@@ -395,6 +407,16 @@ async function loadFriendsToInvite() {
 }
 
 document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+
+let myOpenTableId = null;
+document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenTableId) return;
+  try {
+    await deleteDoc(doc(db, "chessGames", myOpenTableId));
+  } catch (err) {
+    alert(`Couldn't cancel table: ${err.message}`);
+  }
+});
 
 async function createTable(inviteToUid, inviteToName) {
   const msg = document.getElementById("waiting-message");
