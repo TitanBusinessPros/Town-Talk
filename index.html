@@ -327,7 +327,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <a href="#" id="nav-messages" style="display:none">Messages</a>
     <a href="#" id="nav-friends" style="display:none">Friends<span class="nav-badge-count" id="friends-badge" style="display:none"></span></a>
     <a href="#" id="nav-chatrooms" style="display:none">Chat Rooms</a>
-    <a href="chess.html" id="nav-games" style="display:none">Games</a>
+    <a href="gamezone.html" id="nav-games" style="display:none">Games</a>
     <a href="#" id="nav-dashboard" style="display:none">Your page</a>
     <a href="#" id="nav-admin" style="display:none">Admin</a>
     <a href="#" id="nav-auth">Sign in</a>
@@ -1536,70 +1536,44 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-let chessRankMap = new Map(); // uid -> rank (1-10), only for the current top 10
+// ---- Game leaderboard badges ----
+// TO ADD A NEW GAME'S LEADERBOARD BADGE LATER: just add one entry to this
+// list (the Firestore field it keeps points in, an emoji, and a label).
+// Nothing else on this page needs to change — refreshGameRanks() and
+// gameBadgesHtml() already loop over whatever's in this array.
+const GAME_LEADERBOARDS = [
+  { field: "chessPoints", emoji: "♟", label: "Chess" },
+  { field: "checkersPoints", emoji: "⛃", label: "Checkers" },
+  { field: "wynneWarsPoints", emoji: "🧙", label: "WynneWars" },
+];
 
-async function refreshChessRanks() {
+let gameRankMaps = {}; // { [field]: Map(uid -> rank 1-10) }
+
+async function refreshGameRanks() {
   try {
     const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
-    const players = [];
-    snap.forEach((docSnap) => {
-      const points = docSnap.data().chessPoints || 0;
-      if (points > 0) players.push({ uid: docSnap.id, points });
+    const allUsers = [];
+    snap.forEach((docSnap) => allUsers.push({ uid: docSnap.id, data: docSnap.data() }));
+
+    const newMaps = {};
+    GAME_LEADERBOARDS.forEach(({ field }) => {
+      const players = allUsers
+        .map((u) => ({ uid: u.uid, points: u.data[field] || 0 }))
+        .filter((p) => p.points > 0)
+        .sort((a, b) => b.points - a.points);
+      newMaps[field] = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
     });
-    players.sort((a, b) => b.points - a.points);
-    chessRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
+    gameRankMaps = newMaps;
   } catch (err) {
-    console.error("Couldn't load chess ranks:", err);
+    console.error("Couldn't load game ranks:", err);
   }
 }
 
-function chessBadgeHtml(uid) {
-  const rank = chessRankMap.get(uid);
-  return rank ? `<span class="chess-badge">♟ #${rank} Chess</span>` : "";
-}
-
-let checkersRankMap = new Map();
-
-async function refreshCheckersRanks() {
-  try {
-    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
-    const players = [];
-    snap.forEach((docSnap) => {
-      const points = docSnap.data().checkersPoints || 0;
-      if (points > 0) players.push({ uid: docSnap.id, points });
-    });
-    players.sort((a, b) => b.points - a.points);
-    checkersRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
-  } catch (err) {
-    console.error("Couldn't load checkers ranks:", err);
-  }
-}
-
-function checkersBadgeHtml(uid) {
-  const rank = checkersRankMap.get(uid);
-  return rank ? `<span class="chess-badge">⛃ #${rank} Checkers</span>` : "";
-}
-
-let wynneWarsRankMap = new Map();
-
-async function refreshWynneWarsRanks() {
-  try {
-    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
-    const players = [];
-    snap.forEach((docSnap) => {
-      const points = docSnap.data().wynneWarsPoints || 0;
-      if (points > 0) players.push({ uid: docSnap.id, points });
-    });
-    players.sort((a, b) => b.points - a.points);
-    wynneWarsRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
-  } catch (err) {
-    console.error("Couldn't load WynneWars ranks:", err);
-  }
-}
-
-function wynneWarsBadgeHtml(uid) {
-  const rank = wynneWarsRankMap.get(uid);
-  return rank ? `<span class="chess-badge">🧙 #${rank} WynneWars</span>` : "";
+function gameBadgesHtml(uid) {
+  return GAME_LEADERBOARDS.map(({ field, emoji, label }) => {
+    const rank = gameRankMaps[field]?.get(uid);
+    return rank ? `<span class="chess-badge">${emoji} #${rank} ${label}</span>` : "";
+  }).join("");
 }
 
 function renderCard(uid, data) {
@@ -1639,9 +1613,7 @@ function renderCard(uid, data) {
         <span>${escapeHtml(profile.name || "Neighbor")}</span>
         ${profile.neighborhood ? `<span>${escapeHtml(profile.neighborhood)}</span>` : ""}
         ${friendCountHtml}
-        ${chessBadgeHtml(uid)}
-        ${checkersBadgeHtml(uid)}
-        ${wynneWarsBadgeHtml(uid)}
+        ${gameBadgesHtml(uid)}
       </div>
       <p class="post-excerpt">${escapeHtml(postText).replace(/\n/g, "<br>")}</p>
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-top:0.4rem;">
@@ -1712,9 +1684,7 @@ function renderTopProfileCard(uid, data) {
       : `<div class="tp-fallback">${escapeHtml(initial)}</div>`}
     <span class="tp-name">${escapeHtml(profile.name || "Neighbor")}</span>
     <span class="tp-meta">${escapeHtml(profile.neighborhood || "")} · ${friendCount} friend${friendCount === 1 ? "" : "s"}</span>
-    ${chessRankMap.has(uid) ? `<span class="chess-badge">♟ #${chessRankMap.get(uid)} Chess</span>` : ""}
-    ${checkersRankMap.has(uid) ? `<span class="chess-badge">⛃ #${checkersRankMap.get(uid)} Checkers</span>` : ""}
-    ${wynneWarsRankMap.has(uid) ? `<span class="chess-badge">🧙 #${wynneWarsRankMap.get(uid)} WynneWars</span>` : ""}
+    ${gameBadgesHtml(uid)}
     <span class="tp-excerpt">${escapeHtml(data.postText || "")}</span>
   `;
   card.addEventListener("click", () => showProfile(uid, data));
@@ -1755,9 +1725,7 @@ function updateFeedLoadMoreButton() {
 
 async function loadFeed() {
   renderTownTabs();
-  await refreshChessRanks();
-  await refreshCheckersRanks();
-  await refreshWynneWarsRanks();
+  await refreshGameRanks();
   const grid = document.getElementById("feed-grid");
   const empty = document.getElementById("feed-empty");
   grid.innerHTML = "";
@@ -1816,9 +1784,7 @@ document.body.addEventListener("click", (e) => {
 let directoryUsers = [];
 
 async function loadDirectory() {
-  await refreshChessRanks();
-  await refreshCheckersRanks();
-  await refreshWynneWarsRanks();
+  await refreshGameRanks();
   const grid = document.getElementById("directory-grid");
   const empty = document.getElementById("directory-empty");
   grid.innerHTML = "";
