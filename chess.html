@@ -109,9 +109,52 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
       <div class="card" style="max-width:280px; margin:0 auto; text-align:center; cursor:pointer;" id="game-tile-chess">
         <div style="font-size:2.5rem;">♟</div>
         <h2 style="font-size:1.1rem; margin-top:0.5rem;">Chess</h2>
-        <p class="field-hint" style="text-align:center;">Waiting room, invites, and a leaderboard</p>
+        <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
       </div>
       <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+    </section>
+
+    <!-- ================= CHESS MODE SELECT ================= -->
+    <section id="view-mode-select" style="display:none;">
+      <button type="button" class="secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+      <span class="eyebrow">Chess</span>
+      <h1>How do you want to play?</h1>
+      <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-ai">
+        <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
+        <p class="field-hint" style="text-align:center;">Same device, choose a difficulty</p>
+      </div>
+      <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-2p">
+        <h2 style="font-size:1.05rem;">👥 Two Player</h2>
+        <p class="field-hint" style="text-align:center;">Take turns on this same device</p>
+      </div>
+      <div class="card" style="max-width:320px; margin:0 auto; text-align:center; cursor:pointer;" id="mode-tile-online">
+        <h2 style="font-size:1.05rem;">🌐 Play Online</h2>
+        <p class="field-hint" style="text-align:center;">Waiting room, invites, and the leaderboard</p>
+      </div>
+    </section>
+
+    <!-- ================= LOCAL GAME (AI or same-device 2P) ================= -->
+    <section id="view-local-game" style="display:none;">
+      <button type="button" class="secondary small" id="local-back-btn" style="margin-bottom:1rem;">&larr; Back</button>
+      <span class="eyebrow" id="local-mode-label">Chess</span>
+      <h1 id="local-mode-title">Play vs Computer</h1>
+      <div class="card">
+        <div class="mode-selector-row" id="local-difficulty-row" style="display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-bottom:1rem;">
+          <label for="local-difficulty" style="font-size:0.85rem;">Difficulty:</label>
+          <select id="local-difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+            <option value="extra">Extra Hard</option>
+          </select>
+        </div>
+        <div id="local-board"></div>
+        <div id="local-game-status" style="text-align:center; margin:1rem 0; font-weight:600;">White to move</div>
+        <div class="game-controls">
+          <button type="button" class="secondary small" id="local-new-game-btn">New Game</button>
+          <button type="button" class="secondary small" id="local-undo-btn">Undo Move</button>
+        </div>
+      </div>
     </section>
 
     <!-- ================= WAITING ROOM ================= -->
@@ -175,6 +218,7 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
         <div class="game-controls">
           <button type="button" class="secondary small" id="resign-btn">Resign</button>
         </div>
+        <p class="field-hint" style="text-align:center; margin-top:0.75rem;">Once a game is active (an opponent has joined), Resign is how you leave it — the "Cancel" option only works before anyone has joined your table.</p>
       </div>
 
       <div class="card mini-chat">
@@ -240,6 +284,8 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   watchChessMessageLimit(currentUid);
+  startPresenceHeartbeat();
+  await reconcileFinishedGames();
   const jumpedIntoGame = await checkForActiveGame();
   if (!jumpedIntoGame) showView("hub");
 });
@@ -250,6 +296,24 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Same best-effort "online" approximation used on the main Town Fuss site —
+// built on the existing lastActiveAt field, no new infrastructure needed.
+const ONLINE_THRESHOLD_MS = 3 * 60 * 1000;
+let presenceHeartbeatInterval = null;
+function startPresenceHeartbeat() {
+  if (presenceHeartbeatInterval) return;
+  presenceHeartbeatInterval = setInterval(() => {
+    if (document.visibilityState === "visible" && currentUid) {
+      updateDoc(doc(db, "users", currentUid), { lastActiveAt: serverTimestamp() }).catch(() => {});
+    }
+  }, 60 * 1000);
+}
+function isRecentlyActive(lastActiveAt) {
+  if (!lastActiveAt) return false;
+  const ms = lastActiveAt.seconds ? lastActiveAt.seconds * 1000 : 0;
+  return Date.now() - ms < ONLINE_THRESHOLD_MS;
+}
+
 // ============================= VIEW ROUTER =================================
 let unsubscribeOpenTables = null;
 let unsubscribeMyInvites = null;
@@ -258,6 +322,8 @@ let unsubscribeMiniChat = null;
 
 function showView(name) {
   document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-local-game").style.display = name === "local-game" ? "block" : "none";
   document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
   document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
   document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
@@ -265,9 +331,11 @@ function showView(name) {
   document.getElementById("nav-hub").classList.toggle("active", name === "hub");
   document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
   document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
-  const insideChess = name !== "hub";
-  document.getElementById("nav-waiting").style.display = insideChess ? "inline" : "none";
-  document.getElementById("nav-leaderboard").style.display = insideChess ? "inline" : "none";
+  // The Waiting Room / Leaderboard nav buttons only make sense inside the
+  // online-multiplayer context, not while picking a mode or playing locally.
+  const insideOnlineMultiplayer = name === "waiting" || name === "leaderboard" || name === "game";
+  document.getElementById("nav-waiting").style.display = insideOnlineMultiplayer ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = insideOnlineMultiplayer ? "inline" : "none";
 
   if (name === "waiting") { watchWaitingRoom(); }
   else { if (unsubscribeOpenTables) unsubscribeOpenTables(); if (unsubscribeMyInvites) unsubscribeMyInvites(); }
@@ -278,11 +346,19 @@ function showView(name) {
 }
 
 document.getElementById("nav-hub").addEventListener("click", () => showView("hub"));
-document.getElementById("game-tile-chess").addEventListener("click", () => showView("waiting"));
+document.getElementById("game-tile-chess").addEventListener("click", () => showView("mode-select"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
 document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
 document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
+
+document.getElementById("mode-tile-ai").addEventListener("click", () => startLocalGame("ai"));
+document.getElementById("mode-tile-2p").addEventListener("click", () => startLocalGame("2player"));
+document.getElementById("mode-tile-online").addEventListener("click", () => showView("waiting"));
+document.getElementById("local-back-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("local-new-game-btn").addEventListener("click", () => resetLocalGame());
+document.getElementById("local-undo-btn").addEventListener("click", () => undoLocalMove());
 
 // If you're already mid-game (e.g. you refreshed the page), jump straight
 // back into it instead of showing the Waiting Room.
@@ -383,15 +459,24 @@ async function loadFriendsToInvite() {
     const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
     const snap = await getDocs(q);
     let shown = 0;
-    snap.forEach((docSnap) => {
+    for (const docSnap of snap.docs) {
       const d = docSnap.data();
-      if (d.status !== "accepted") return;
+      if (d.status !== "accepted") continue;
       const otherUid = (d.participants || []).find((p) => p !== currentUid);
       const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
       shown++;
+
+      let online = false;
+      try {
+        const friendSnap = await getDoc(doc(db, "users", otherUid));
+        if (friendSnap.exists()) online = isRecentlyActive(friendSnap.data().lastActiveAt);
+      } catch {
+        // Can't read them — just show as offline rather than erroring.
+      }
+
       const row = document.createElement("div");
       row.className = "friend-row";
-      row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
+      row.innerHTML = `<span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${online ? "#2e8b1f" : "var(--line)"}; margin-right:0.4rem;" title="${online ? "Online" : "Offline"}"></span>${escapeHtml(otherName)}</span>`;
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "small";
@@ -399,7 +484,7 @@ async function loadFriendsToInvite() {
       btn.addEventListener("click", () => createTable(otherUid, otherName));
       row.appendChild(btn);
       list.appendChild(row);
-    });
+    }
     empty.style.display = shown === 0 ? "block" : "none";
   } catch (err) {
     console.error("Couldn't load friends list:", err);
@@ -669,6 +754,332 @@ function hasValidMoves(player, b) {
   return false;
 }
 
+// ============================= LOCAL PLAY (AI + same-device 2-player) ======
+// This never touches Firestore at all — it's pure in-browser state, same as
+// your original single-player file. It reuses the shared move-generation
+// functions above (isValidMove, getPieceMoves, isInCheck, etc.) rather than
+// duplicating chess logic a second time.
+let localBoard = initialBoardState();
+let localTurn = "white";
+let localSelected = null;
+let localLastMove = null;
+let localHistory = [];
+let localMode = "ai"; // "ai" | "2player"
+let localAiColor = "black";
+let localCurrentRandomness = 0;
+
+const AI_CONFIG = {
+  easy:   { maxDepth: 1, timeLimit: 300,  randomness: 25 },
+  medium: { maxDepth: 3, timeLimit: 700,  randomness: 8  },
+  hard:   { maxDepth: 4, timeLimit: 2000, randomness: 2  },
+  extra:  { maxDepth: 6, timeLimit: 4000, randomness: 0  },
+};
+
+function startLocalGame(mode) {
+  localMode = mode;
+  document.getElementById("local-mode-title").textContent = mode === "ai" ? "Play vs Computer" : "Two Player";
+  document.getElementById("local-difficulty-row").style.display = mode === "ai" ? "flex" : "none";
+  resetLocalGame();
+  initLocalBoardGrid();
+  showView("local-game");
+}
+
+function initLocalBoardGrid() {
+  const el = document.getElementById("local-board");
+  el.innerHTML = "";
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const square = document.createElement("div");
+      square.className = `square ${(row + col) % 2 === 0 ? "light" : "dark"}`;
+      square.dataset.row = row;
+      square.dataset.col = col;
+      square.addEventListener("click", () => handleLocalSquareClick(row, col));
+      el.appendChild(square);
+    }
+  }
+  renderLocalBoard();
+}
+
+function renderLocalBoard() {
+  document.querySelectorAll("#local-board .square").forEach((square) => {
+    const row = parseInt(square.dataset.row, 10);
+    const col = parseInt(square.dataset.col, 10);
+    const piece = localBoard[row][col];
+    square.textContent = pieces[piece] || "";
+    square.className = `square ${(row + col) % 2 === 0 ? "light" : "dark"}`;
+    if (localLastMove && ((localLastMove.from.row === row && localLastMove.from.col === col) || (localLastMove.to.row === row && localLastMove.to.col === col))) {
+      square.classList.add("last-move");
+    }
+  });
+  const kingPos = findKing(localTurn, localBoard);
+  if (kingPos && isInCheck(localTurn, localBoard)) {
+    document.querySelector(`#local-board [data-row="${kingPos.row}"][data-col="${kingPos.col}"]`)?.classList.add("check");
+  }
+}
+
+function handleLocalSquareClick(row, col) {
+  if (localMode === "ai" && localTurn === localAiColor) return;
+
+  if (localSelected) {
+    if (localSelected.row === row && localSelected.col === col) {
+      localSelected = null;
+      renderLocalBoard();
+      return;
+    }
+    if (isValidMove(localSelected.row, localSelected.col, row, col, localBoard, localTurn)) {
+      makeLocalMove(localSelected.row, localSelected.col, row, col);
+      localSelected = null;
+      if (localMode === "ai" && !isLocalGameOver()) setTimeout(makeLocalAIMove, 400);
+    } else {
+      const piece = localBoard[row][col];
+      if (piece && isPlayerPiece(piece, localTurn)) { localSelected = { row, col }; showLocalValidMoves(row, col); }
+    }
+  } else {
+    const piece = localBoard[row][col];
+    if (piece && isPlayerPiece(piece, localTurn)) { localSelected = { row, col }; showLocalValidMoves(row, col); }
+  }
+}
+
+function showLocalValidMoves(row, col) {
+  renderLocalBoard();
+  document.querySelector(`#local-board [data-row="${row}"][data-col="${col}"]`)?.classList.add("selected");
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (isValidMove(row, col, r, c, localBoard, localTurn)) {
+        document.querySelector(`#local-board [data-row="${r}"][data-col="${c}"]`)?.classList.add("valid-move");
+      }
+    }
+  }
+}
+
+function makeLocalMove(fromRow, fromCol, toRow, toCol) {
+  localHistory.push({ board: localBoard.map((r) => [...r]), turn: localTurn, lastMove: localLastMove });
+  const newBoard = localBoard.map((r) => [...r]);
+  newBoard[toRow][toCol] = newBoard[fromRow][fromCol];
+  newBoard[fromRow][fromCol] = "";
+  const movedPiece = newBoard[toRow][toCol].toLowerCase();
+  if (movedPiece === "p" && (toRow === 0 || toRow === 7)) {
+    newBoard[toRow][toCol] = localTurn === "white" ? "Q" : "q";
+  }
+  localBoard = newBoard;
+  localLastMove = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
+  localTurn = localTurn === "white" ? "black" : "white";
+  renderLocalBoard();
+  updateLocalStatus();
+}
+
+function isLocalGameOver() {
+  if (!hasValidMoves(localTurn, localBoard)) {
+    const statusEl = document.getElementById("local-game-status");
+    if (isInCheck(localTurn, localBoard)) {
+      statusEl.textContent = `Checkmate! ${localTurn === "white" ? "Black" : "White"} wins!`;
+    } else {
+      statusEl.textContent = "Stalemate! Draw!";
+    }
+    return true;
+  }
+  return false;
+}
+
+function updateLocalStatus() {
+  if (isLocalGameOver()) return;
+  let status = `${localTurn === "white" ? "White" : "Black"} to move`;
+  if (isInCheck(localTurn, localBoard)) status += " — Check!";
+  document.getElementById("local-game-status").textContent = status;
+}
+
+function undoLocalMove() {
+  if (localHistory.length === 0) return;
+  const last = localHistory.pop();
+  localBoard = last.board;
+  localTurn = last.turn;
+  localLastMove = last.lastMove;
+  localSelected = null;
+  renderLocalBoard();
+  updateLocalStatus();
+}
+
+function resetLocalGame() {
+  localBoard = initialBoardState();
+  localTurn = "white";
+  localSelected = null;
+  localHistory = [];
+  localLastMove = null;
+  renderLocalBoard();
+  updateLocalStatus();
+}
+
+// ---- AI opponent (minimax with alpha-beta pruning, adapted from your original engine) ----
+function getAllLocalValidMoves(player) {
+  const moves = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = localBoard[r][c];
+      if (piece && isPlayerPiece(piece, player)) {
+        getPieceMoves(r, c, localBoard).forEach((m) => {
+          if (isValidMove(r, c, m.row, m.col, localBoard, player)) {
+            moves.push({ from: { row: r, col: c }, to: { row: m.row, col: m.col } });
+          }
+        });
+      }
+    }
+  }
+  return moves;
+}
+
+function orderLocalMoves(moves) {
+  const pieceValues = { p: 10, n: 30, b: 30, r: 50, q: 90, k: 900 };
+  return moves.map((m) => {
+    const captured = localBoard[m.to.row][m.to.col];
+    const victim = captured ? (pieceValues[captured.toLowerCase()] || 0) : 0;
+    const attacker = pieceValues[localBoard[m.from.row][m.from.col].toLowerCase()] || 0;
+    return { move: m, score: victim * 10 - attacker };
+  }).sort((a, b) => b.score - a.score).map((x) => x.move);
+}
+
+async function makeLocalAIMove() {
+  const difficulty = document.getElementById("local-difficulty").value;
+  document.getElementById("local-game-status").innerHTML = '<span style="color:var(--amber-500);">AI is thinking...</span>';
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const config = AI_CONFIG[difficulty];
+  localCurrentRandomness = config.randomness;
+  const move = await getBestLocalMoveIterative(config);
+  if (move) makeLocalMove(move.from.row, move.from.col, move.to.row, move.to.col);
+}
+
+async function getBestLocalMoveIterative(config) {
+  const startTime = performance.now();
+  const rootMoves = orderLocalMoves(getAllLocalValidMoves(localTurn));
+  if (rootMoves.length === 0) return null;
+  let bestMove = rootMoves[0];
+  let depth = 1;
+
+  while (depth <= config.maxDepth) {
+    if (performance.now() - startTime > config.timeLimit) break;
+    let bestScoreThisDepth = -Infinity;
+    let bestMoveThisDepth = null;
+    let timedOut = false;
+
+    for (const move of rootMoves) {
+      if (performance.now() - startTime > config.timeLimit) { timedOut = true; break; }
+      const tempBoard = localBoard.map((r) => [...r]);
+      const capturedPiece = localBoard[move.to.row][move.to.col];
+      localBoard[move.to.row][move.to.col] = localBoard[move.from.row][move.from.col];
+      localBoard[move.from.row][move.from.col] = "";
+
+      let score = localMinimax(depth - 1, -Infinity, Infinity, false, startTime, config.timeLimit);
+      if (capturedPiece) {
+        const pieceValues = { p: 10, n: 30, b: 30, r: 50, q: 90 };
+        score += (pieceValues[capturedPiece.toLowerCase()] || 0) * 0.1;
+      }
+      localBoard = tempBoard;
+
+      if (score > bestScoreThisDepth) { bestScoreThisDepth = score; bestMoveThisDepth = move; }
+    }
+
+    if (bestMoveThisDepth && !timedOut) bestMove = bestMoveThisDepth;
+    if (timedOut) break;
+    depth++;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  return bestMove;
+}
+
+function localMinimax(depth, alpha, beta, isMaximizing, startTime, timeLimit) {
+  if (depth === 0 || (performance.now() - startTime > timeLimit)) return evaluateLocalBoard();
+  const player = isMaximizing ? localAiColor : (localAiColor === "white" ? "black" : "white");
+  const moves = orderLocalMoves(getAllLocalValidMoves(player));
+
+  if (moves.length === 0) {
+    if (isInCheck(player, localBoard)) return isMaximizing ? -10000 : 10000;
+    return 0;
+  }
+
+  if (isMaximizing) {
+    let maxScore = -Infinity;
+    for (const move of moves) {
+      const tempBoard = localBoard.map((r) => [...r]);
+      localBoard[move.to.row][move.to.col] = localBoard[move.from.row][move.from.col];
+      localBoard[move.from.row][move.from.col] = "";
+      const score = localMinimax(depth - 1, alpha, beta, false, startTime, timeLimit);
+      localBoard = tempBoard;
+      maxScore = Math.max(maxScore, score);
+      alpha = Math.max(alpha, score);
+      if (beta <= alpha) break;
+    }
+    return maxScore;
+  } else {
+    let minScore = Infinity;
+    for (const move of moves) {
+      const tempBoard = localBoard.map((r) => [...r]);
+      localBoard[move.to.row][move.to.col] = localBoard[move.from.row][move.from.col];
+      localBoard[move.from.row][move.from.col] = "";
+      const score = localMinimax(depth - 1, alpha, beta, true, startTime, timeLimit);
+      localBoard = tempBoard;
+      minScore = Math.min(minScore, score);
+      beta = Math.min(beta, score);
+      if (beta <= alpha) break;
+    }
+    return minScore;
+  }
+}
+
+function evaluateLocalBoard() {
+  const pieceValues = { p: 10, n: 30, b: 30, r: 50, q: 90, k: 900 };
+  const pawnTable = [
+    [0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],[10,10,20,30,30,20,10,10],
+    [5,5,10,25,25,10,5,5],[0,0,0,20,20,0,0,0],[5,-5,-10,0,0,-10,-5,5],
+    [5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0],
+  ];
+  const knightTable = [
+    [-50,-40,-30,-30,-30,-30,-40,-50],[-40,-20,0,0,0,0,-20,-40],
+    [-30,0,10,15,15,10,0,-30],[-30,5,15,20,20,15,5,-30],
+    [-30,0,15,20,20,15,0,-30],[-30,5,10,15,15,10,5,-30],
+    [-40,-20,0,5,5,0,-20,-40],[-50,-40,-30,-30,-30,-30,-40,-50],
+  ];
+  const bishopTable = [
+    [-20,-10,-10,-10,-10,-10,-10,-20],[-10,0,0,0,0,0,0,-10],
+    [-10,0,5,10,10,5,0,-10],[-10,5,5,10,10,5,5,-10],
+    [-10,0,10,10,10,10,0,-10],[-10,10,10,10,10,10,10,-10],
+    [-10,5,0,0,0,0,5,-10],[-20,-10,-10,-10,-10,-10,-10,-20],
+  ];
+  const rookTable = [
+    [0,0,0,0,0,0,0,0],[5,10,10,10,10,10,10,5],[-5,0,0,0,0,0,0,-5],
+    [-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],
+    [-5,0,0,0,0,0,0,-5],[0,0,0,5,5,0,0,0],
+  ];
+  const queenTable = [
+    [-20,-10,-10,-5,-5,-10,-10,-20],[-10,0,0,0,0,0,0,-10],
+    [-10,0,5,5,5,5,0,-10],[-5,0,5,5,5,5,0,-5],
+    [0,0,5,5,5,5,0,-5],[-10,5,5,5,5,5,0,-10],
+    [-10,0,5,0,0,0,0,-10],[-20,-10,-10,-5,-5,-10,-10,-20],
+  ];
+  const kingTable = [
+    [-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],
+    [-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],
+    [-20,-30,-30,-40,-40,-30,-30,-20],[-10,-20,-20,-20,-20,-20,-20,-10],
+    [20,20,0,0,0,0,20,20],[20,30,10,0,0,10,30,20],
+  ];
+  const tables = { p: pawnTable, n: knightTable, b: bishopTable, r: rookTable, q: queenTable, k: kingTable };
+
+  let score = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = localBoard[r][c];
+      if (piece) {
+        const type = piece.toLowerCase();
+        const value = pieceValues[type];
+        const table = tables[type];
+        const positionBonus = piece === piece.toUpperCase() ? table[r][c] : table[7 - r][c];
+        if (isPlayerPiece(piece, localAiColor)) score += value + positionBonus;
+        else score -= value + positionBonus;
+      }
+    }
+  }
+  if (localCurrentRandomness > 0) score += (Math.random() * 2 - 1) * localCurrentRandomness;
+  return score;
+}
+
 // ============================= GAME TABLE ====================================
 function initBoardGrid() {
   const boardEl = document.getElementById("board");
@@ -834,18 +1245,17 @@ function updateGameStatus() {
 // Each player records their OWN stats once, guarded by their own flag on
 // the game doc, so a finished game only ever gets counted one time per
 // player even if this listener fires again later (e.g. on reload).
-async function maybeRecordStats() {
-  if (!activeGameData || activeGameData.status !== "finished") return;
-  const isP1 = activeGameData.player1Uid === currentUid;
-  const alreadyRecorded = isP1 ? activeGameData.p1StatsRecorded : activeGameData.p2StatsRecorded;
+async function recordStatsForGame(gameId, gameData) {
+  const isP1 = gameData.player1Uid === currentUid;
+  const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
   if (alreadyRecorded) return;
 
-  const won = activeGameData.winner === currentUid;
-  const draw = activeGameData.winner === "draw";
+  const won = gameData.winner === currentUid;
+  const draw = gameData.winner === "draw";
   const pointsEarned = won ? 3 : draw ? 1 : 0;
 
   try {
-    await updateDoc(doc(db, "chessGames", activeGameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
+    await updateDoc(doc(db, "chessGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
     const userSnap = await getDoc(doc(db, "users", currentUid));
     const data = userSnap.exists() ? userSnap.data() : {};
     await updateDoc(doc(db, "users", currentUid), {
@@ -856,6 +1266,32 @@ async function maybeRecordStats() {
     });
   } catch (err) {
     console.error("Couldn't record chess stats:", err);
+  }
+}
+
+async function maybeRecordStats() {
+  if (!activeGameData || activeGameData.status !== "finished") return;
+  await recordStatsForGame(activeGameId, activeGameData);
+}
+
+// Catches up on any finished game where YOUR side of the result never got
+// saved — this happens if you weren't actively looking at that game the
+// moment it ended (e.g. your opponent resigned while you were elsewhere).
+// Running this on every login means it always gets caught eventually,
+// even without a live listener running at the exact moment of the finish.
+async function reconcileFinishedGames() {
+  try {
+    const q = query(collection(db, "chessGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status !== "finished") continue;
+      const isP1 = g.player1Uid === currentUid;
+      const alreadyRecorded = isP1 ? g.p1StatsRecorded : g.p2StatsRecorded;
+      if (!alreadyRecorded) await recordStatsForGame(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished games:", err);
   }
 }
 
@@ -925,6 +1361,16 @@ function watchMiniChat(gameId) {
     if (countWords(text) > MESSAGE_WORD_LIMIT) { showMessage(msg, `Messages are limited to ${MESSAGE_WORD_LIMIT} words.`, "error"); return; }
     if (containsContactInfo(text)) { showMessage(msg, "Links, phone numbers, and emails aren't allowed in messages.", "error"); return; }
 
+    const opponentName = activeGameData.player1Uid === currentUid ? activeGameData.player2Name : activeGameData.player1Name;
+
+    let existingReadBy = {};
+    try {
+      const convoSnapCheck = await getDoc(doc(db, "conversations", conversationId));
+      if (convoSnapCheck.exists()) existingReadBy = convoSnapCheck.data().readBy || {};
+    } catch {
+      // Doesn't exist yet — fine, start fresh.
+    }
+
     try {
       await runTransaction(db, async (tx) => {
         const limitRef = doc(db, "messageLimits", currentUid);
@@ -940,12 +1386,14 @@ function watchMiniChat(gameId) {
         tx.set(limitRef, { day: today, count: newCount });
         tx.set(convoRef, {
           participants: [currentUid, otherUid].sort(),
-          [`participantNames.${currentUid}`]: currentUserName,
-          [`participantNames.${otherUid}`]: activeGameData.player1Uid === currentUid ? activeGameData.player2Name : activeGameData.player1Name,
+          participantNames: {
+            [currentUid]: currentUserName,
+            [otherUid]: opponentName,
+          },
           lastMessageAt: serverTimestamp(),
           lastMessageText: text,
           lastMessageSenderId: currentUid,
-          [`readBy.${currentUid}`]: serverTimestamp(),
+          readBy: { ...existingReadBy, [currentUid]: serverTimestamp() },
         }, { merge: true });
         tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
       });
