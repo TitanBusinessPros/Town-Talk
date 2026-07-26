@@ -1558,6 +1558,28 @@ function chessBadgeHtml(uid) {
   return rank ? `<span class="chess-badge">♟ #${rank} Chess</span>` : "";
 }
 
+let checkersRankMap = new Map();
+
+async function refreshCheckersRanks() {
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const points = docSnap.data().checkersPoints || 0;
+      if (points > 0) players.push({ uid: docSnap.id, points });
+    });
+    players.sort((a, b) => b.points - a.points);
+    checkersRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
+  } catch (err) {
+    console.error("Couldn't load checkers ranks:", err);
+  }
+}
+
+function checkersBadgeHtml(uid) {
+  const rank = checkersRankMap.get(uid);
+  return rank ? `<span class="chess-badge">⛃ #${rank} Checkers</span>` : "";
+}
+
 function renderCard(uid, data) {
   const profile = data.profile || {};
   const images = data.images || [];
@@ -1596,6 +1618,7 @@ function renderCard(uid, data) {
         ${profile.neighborhood ? `<span>${escapeHtml(profile.neighborhood)}</span>` : ""}
         ${friendCountHtml}
         ${chessBadgeHtml(uid)}
+        ${checkersBadgeHtml(uid)}
       </div>
       <p class="post-excerpt">${escapeHtml(postText).replace(/\n/g, "<br>")}</p>
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-top:0.4rem;">
@@ -1667,6 +1690,7 @@ function renderTopProfileCard(uid, data) {
     <span class="tp-name">${escapeHtml(profile.name || "Neighbor")}</span>
     <span class="tp-meta">${escapeHtml(profile.neighborhood || "")} · ${friendCount} friend${friendCount === 1 ? "" : "s"}</span>
     ${chessRankMap.has(uid) ? `<span class="chess-badge">♟ #${chessRankMap.get(uid)} Chess</span>` : ""}
+    ${checkersRankMap.has(uid) ? `<span class="chess-badge">⛃ #${checkersRankMap.get(uid)} Checkers</span>` : ""}
     <span class="tp-excerpt">${escapeHtml(data.postText || "")}</span>
   `;
   card.addEventListener("click", () => showProfile(uid, data));
@@ -1708,6 +1732,7 @@ function updateFeedLoadMoreButton() {
 async function loadFeed() {
   renderTownTabs();
   await refreshChessRanks();
+  await refreshCheckersRanks();
   const grid = document.getElementById("feed-grid");
   const empty = document.getElementById("feed-empty");
   grid.innerHTML = "";
@@ -1767,6 +1792,7 @@ let directoryUsers = [];
 
 async function loadDirectory() {
   await refreshChessRanks();
+  await refreshCheckersRanks();
   const grid = document.getElementById("directory-grid");
   const empty = document.getElementById("directory-empty");
   grid.innerHTML = "";
