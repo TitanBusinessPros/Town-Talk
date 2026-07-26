@@ -85,7 +85,7 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 <header class="header-bar">
   <a class="brand" href="index.html">Town<span>Fuss</span> Games</a>
   <nav class="header-nav">
-    <button id="nav-hub" class="active">Games</button>
+    <button id="nav-hub">Games</button>
     <button id="nav-waiting" style="display:none;">Waiting Room</button>
     <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
   </nav>
@@ -101,33 +101,8 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 
   <div id="app-content" style="display:none;">
 
-    <!-- ================= GAMES HUB ================= -->
-    <section id="view-hub">
-      <span class="eyebrow">Town Fuss</span>
-      <h1>Games</h1>
-      <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
-      <div style="display:flex; gap:1rem; flex-wrap:wrap; justify-content:center;">
-        <div class="card" style="max-width:280px; text-align:center; cursor:pointer;" id="game-tile-chess">
-          <div style="font-size:2.5rem;">♟</div>
-          <h2 style="font-size:1.1rem; margin-top:0.5rem;">Chess</h2>
-          <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
-        </div>
-        <div class="card" style="max-width:280px; text-align:center; cursor:pointer;" id="game-tile-checkers">
-          <div style="font-size:2.5rem;">⛃</div>
-          <h2 style="font-size:1.1rem; margin-top:0.5rem;">Checkers</h2>
-          <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
-        </div>
-        <div class="card" style="max-width:280px; text-align:center; cursor:pointer;" id="game-tile-wynnewars">
-          <img src="https://github.com/TitanBusinessPros/Wynne-Wars/raw/main/Wizard.png" alt="WynneWars" style="height:2.5rem; width:auto; margin:0 auto;" />
-          <h2 style="font-size:1.1rem; margin-top:0.5rem;">WynneWars</h2>
-          <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
-        </div>
-      </div>
-      <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
-    </section>
-
     <!-- ================= CHESS MODE SELECT ================= -->
-    <section id="view-mode-select" style="display:none;">
+    <section id="view-mode-select">
       <button type="button" class="secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
       <span class="eyebrow">Chess</span>
       <h1>How do you want to play?</h1>
@@ -299,7 +274,7 @@ onAuthStateChanged(auth, async (user) => {
   startPresenceHeartbeat();
   await reconcileFinishedGames();
   const jumpedIntoGame = await checkForActiveGame();
-  if (!jumpedIntoGame) showView("hub");
+  if (!jumpedIntoGame) showView("mode-select");
 });
 
 function escapeHtml(str) {
@@ -333,14 +308,12 @@ let unsubscribeGame = null;
 let unsubscribeMiniChat = null;
 
 function showView(name) {
-  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
   document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
   document.getElementById("view-local-game").style.display = name === "local-game" ? "block" : "none";
   document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
   document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
   document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
 
-  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
   document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
   document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
   // The Waiting Room / Leaderboard nav buttons only make sense inside the
@@ -357,12 +330,9 @@ function showView(name) {
   if (name !== "game" && unsubscribeMiniChat) { unsubscribeMiniChat(); unsubscribeMiniChat = null; }
 }
 
-document.getElementById("nav-hub").addEventListener("click", () => showView("hub"));
-document.getElementById("game-tile-chess").addEventListener("click", () => showView("mode-select"));
-document.getElementById("game-tile-checkers").addEventListener("click", () => { location.href = "checkers.html"; });
-document.getElementById("game-tile-wynnewars").addEventListener("click", () => { location.href = "ww.html"; });
-document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
-document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("hub"));
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "gamezone.html"; });
+document.getElementById("mode-select-back-btn").addEventListener("click", () => { location.href = "gamezone.html"; });
+document.getElementById("back-to-hub-btn").addEventListener("click", () => { location.href = "gamezone.html"; });
 document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
 document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
 document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
