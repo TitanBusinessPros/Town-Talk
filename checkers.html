@@ -1,1231 +1,1292 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Checkers Game</title>
-    <link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/Checkers-Game/raw/main/Checkers%20Favicon.png">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        /* Splash Screen Styles - FIXED FOR ALL SCREENS */
-        #splash-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-        
-        .video-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-        }
-        
-        #splash-video {
-            width: auto;
-            height: auto;
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            background: #000;
-        }
-        
-        #skip-btn {
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            padding: 12px 24px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            border: 2px solid white;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.3s;
-            z-index: 10000;
-            backdrop-filter: blur(5px);
-        }
-        
-        #skip-btn.show {
-            opacity: 1;
-        }
-        
-        #skip-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        #skip-timer {
-            position: absolute;
-            bottom: 80px;
-            right: 30px;
-            color: white;
-            font-size: 14px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 10px;
-            border-radius: 15px;
-            backdrop-filter: blur(5px);
-        }
-        
-        #skip-timer.show {
-            opacity: 1;
-        }
-        
-        /* Responsive adjustments */
-        @media (orientation: portrait) {
-            #splash-video {
-                width: 100%;
-                height: auto;
-                max-height: 100%;
-            }
-        }
-        
-        @media (orientation: landscape) {
-            #splash-video {
-                width: auto;
-                height: 100%;
-                max-width: 100%;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            #skip-btn {
-                bottom: 20px;
-                right: 20px;
-                padding: 10px 20px;
-                font-size: 14px;
-            }
-            
-            #skip-timer {
-                bottom: 70px;
-                right: 20px;
-                font-size: 12px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            #skip-btn {
-                bottom: 15px;
-                right: 15px;
-                padding: 8px 16px;
-                font-size: 12px;
-            }
-            
-            #skip-timer {
-                bottom: 65px;
-                right: 15px;
-                font-size: 11px;
-            }
-        }
-        
-        /* Existing game styles - keep them all below */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 10px;
-            overflow-x: hidden;
-        }
-        
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 100%;
-            width: 100%;
-            box-sizing: border-box;
-            display: none;
-        }
-        
-        /* ... ALL THE REST OF YOUR ORIGINAL STYLES ... */
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 15px;
-            font-size: clamp(1.5rem, 5vw, 2rem);
-        }
-        
-        .controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .mode-select {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .mode-btn {
-            background: #e0e0e0;
-            color: #333;
-            padding: 8px 15px;
-            font-size: clamp(0.75rem, 2.5vw, 0.875rem);
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 600;
-        }
-        
-        .mode-btn.active {
-            background: #764ba2;
-            color: white;
-        }
-        
-        .mode-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .difficulty {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        button {
-            padding: 8px 15px;
-            font-size: clamp(0.75rem, 2.5vw, 0.875rem);
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 600;
-        }
-        
-        .diff-btn {
-            background: #e0e0e0;
-            color: #333;
-        }
-        
-        .diff-btn.active {
-            background: #667eea;
-            color: white;
-        }
-        
-        .diff-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .reset-btn {
-            background: #f44336;
-            color: white;
-        }
-        
-        .reset-btn:hover {
-            background: #da190b;
-        }
-        
-        .mute-btn {
-            background: #4CAF50;
-            color: white;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .mute-btn.muted {
-            background: #888;
-        }
-        
-        .status {
-            text-align: center;
-            font-size: clamp(1rem, 3vw, 1.125rem);
-            margin-bottom: 15px;
-            font-weight: 600;
-            color: #333;
-            min-height: 27px;
-        }
-        
-        .board {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(8, 1fr);
-            gap: 0;
-            border: 4px solid #333;
-            margin: 0 auto;
-            max-width: min(90vw, 560px);
-            aspect-ratio: 1;
-        }
-        
-        .square {
-            aspect-ratio: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            position: relative;
-        }
-        
-        .square.light {
-            background: #f0d9b5;
-        }
-        
-        .square.dark {
-            background: #b58863;
-        }
-        
-        .square.selected {
-            background: #7fc97f !important;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
-        }
-        
-        .square.valid-move {
-            background: #fdd835 !important;
-        }
-        
-        .square.valid-move::after {
-            content: '';
-            width: min(20px, 30%);
-            height: min(20px, 30%);
-            background: rgba(0,0,0,0.2);
-            border-radius: 50%;
-            position: absolute;
-        }
-        
-        .piece {
-            width: min(55px, 80%);
-            height: min(55px, 80%);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: clamp(1.5rem, 4vw, 1.875rem);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            transition: transform 0.2s;
-        }
-        
-        .piece:hover {
-            transform: scale(1.1);
-        }
-        
-        .piece.red {
-            background: radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a);
-            border: 3px solid #a61e1e;
-        }
-        
-        .piece.black {
-            background: radial-gradient(circle at 30% 30%, #495057, #212529);
-            border: 3px solid #000;
-        }
-        
-        .piece.king::before {
-            content: '♔';
-            color: gold;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-        
-        .score {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 15px;
-            font-size: clamp(0.875rem, 3vw, 1rem);
-            font-weight: 600;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .score div {
-            padding: 8px 15px;
-            border-radius: 8px;
-            background: #f5f5f5;
-        }
-        
-        @media (max-width: 600px) {
-            .container {
-                padding: 15px;
-            }
-            
-            h1 {
-                margin-bottom: 10px;
-            }
-            
-            .controls {
-                margin-bottom: 10px;
-            }
-            
-            .status {
-                margin-bottom: 10px;
-            }
-            
-            button {
-                padding: 6px 12px;
-            }
-        }
-        
-        @media (max-width: 400px) {
-            .container {
-                padding: 10px;
-            }
-            
-            .board {
-                border: 2px solid #333;
-            }
-        }
-        
-        .winner {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 40px 60px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            text-align: center;
-            z-index: 1000;
-            display: none;
-        }
-        
-        .winner.show {
-            display: block;
-            animation: popIn 0.5s;
-        }
-        
-        @keyframes popIn {
-            0% { transform: translate(-50%, -50%) scale(0); }
-            100% { transform: translate(-50%, -50%) scale(1); }
-        }
-        
-        .winner h2 {
-            font-size: 36px;
-            margin-bottom: 20px;
-            color: #667eea;
-        }
-        
-        .winner button {
-            margin-top: 20px;
-            padding: 15px 40px;
-            font-size: 18px;
-            background: #667eea;
-            color: white;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Checkers — Town Fuss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --sage-500: #74875a;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); }
+body { min-height: 100vh; }
+a { color: var(--amber-500); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; }
+p { color: var(--text-muted); line-height: 1.6; }
+.page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+.header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+.header-bar a.brand span { color: var(--amber-500); }
+.header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+.header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+.header-nav button.active { color: var(--amber-500); font-weight: 600; }
+
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+
+button { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+button:hover { background: var(--amber-600); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+.table-row, .invite-row, .friend-row, .leader-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+.table-row:last-child, .invite-row:last-child, .friend-row:last-child, .leader-row:last-child { border-bottom: none; }
+.leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+.chess-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.7rem; background: rgba(193,80,46,0.12); color: var(--amber-500); padding: 0.15rem 0.5rem; border-radius: 999px; }
+
+.empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+.message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+.message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+
+#board, #local-board { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); margin: 0 auto; border: 3px solid var(--paper-050); border-radius: 6px; overflow: hidden; width: min(92vw, 460px); aspect-ratio: 1/1; touch-action: none; }
+.checkers-piece { width: 78%; height: 78%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 3px 6px rgba(0,0,0,0.35); }
+.checkers-piece.red { background: radial-gradient(circle at 30% 30%, #e0654a, #a3282f); border: 2px solid #7a1f22; }
+.checkers-piece.black { background: radial-gradient(circle at 30% 30%, #5a5248, #2b2420); border: 2px solid #000; }
+.square { display: flex; justify-content: center; align-items: center; font-size: clamp(20px, 7.5vw, 38px); cursor: pointer; user-select: none; }
+.light { background-color: #f0d9b5; }
+.dark { background-color: #b58863; }
+.selected { background-color: #7fb3d5 !important; }
+.valid-move { position: relative; }
+.valid-move::after { content: ''; position: absolute; width: 22%; height: 22%; background-color: rgba(66,183,42,0.55); border-radius: 50%; }
+.last-move { background-color: #eadb8f !important; }
+.check { background-color: #d97757 !important; }
+
+#game-status { text-align: center; margin: 1rem 0; font-weight: 600; min-height: 1.4em; }
+.game-players { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.5rem; }
+.game-controls { display: flex; gap: 0.6rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+
+.mini-chat { margin-top: 1.5rem; }
+.mini-chat-messages { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem; }
+.mini-chat-msg { max-width: 80%; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.mini-chat-msg.mine { align-self: flex-end; background: var(--amber-500); color: #fff; }
+.mini-chat-msg.theirs { align-self: flex-start; background: var(--ink-700); }
+.mini-chat-form { display: flex; gap: 0.5rem; }
+.mini-chat-form input { flex: 1; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: var(--font-body); }
+.field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+</style>
 </head>
 <body>
-    <!-- Splash Screen -->
-    <div id="splash-screen">
-        <div class="video-container">
-            <video id="splash-video" preload="auto" muted playsinline>
-                <source src="https://github.com/TitanBusinessPros/Zombie-Outbreak-Honolulu/raw/main/Ad-1-Zombie.mp4" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
-            <div id="skip-timer">Skip in <span id="skip-counter">5</span>s</div>
-            <button id="skip-btn">Skip Ad</button>
+
+<header class="header-bar">
+  <a class="brand" href="index.html">Town<span>Fuss</span> Games</a>
+  <nav class="header-nav">
+    <button id="nav-hub" class="active">Games</button>
+    <button id="nav-waiting" style="display:none;">Waiting Room</button>
+    <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+  </nav>
+</header>
+
+<main class="page">
+
+  <div id="signed-out-notice" class="card" style="display:none; text-align:center;">
+    <h2>Sign in on Town Fuss first</h2>
+    <p>You need a Town Fuss account to play checkers with other members.</p>
+    <a href="index.html"><button type="button">Go to Town Fuss</button></a>
+  </div>
+
+  <div id="app-content" style="display:none;">
+
+    <!-- ================= GAMES HUB ================= -->
+    <section id="view-hub">
+      <span class="eyebrow">Town Fuss</span>
+      <h1>Games</h1>
+      <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+      <div class="card" style="max-width:280px; margin:0 auto; text-align:center; cursor:pointer;" id="game-tile-chess">
+        <div style="font-size:2.5rem;">♟</div>
+        <h2 style="font-size:1.1rem; margin-top:0.5rem;">Checkers</h2>
+        <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
+      </div>
+      <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+    </section>
+
+    <!-- ================= CHECKERS MODE SELECT ================= -->
+    <section id="view-mode-select" style="display:none;">
+      <button type="button" class="secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+      <span class="eyebrow">Checkers</span>
+      <h1>How do you want to play?</h1>
+      <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-ai">
+        <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
+        <p class="field-hint" style="text-align:center;">Same device, choose a difficulty</p>
+      </div>
+      <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-2p">
+        <h2 style="font-size:1.05rem;">👥 Two Player</h2>
+        <p class="field-hint" style="text-align:center;">Take turns on this same device</p>
+      </div>
+      <div class="card" style="max-width:320px; margin:0 auto; text-align:center; cursor:pointer;" id="mode-tile-online">
+        <h2 style="font-size:1.05rem;">🌐 Play Online</h2>
+        <p class="field-hint" style="text-align:center;">Waiting room, invites, and the leaderboard</p>
+      </div>
+    </section>
+
+    <!-- ================= LOCAL GAME (AI or same-device 2P) ================= -->
+    <section id="view-local-game" style="display:none;">
+      <button type="button" class="secondary small" id="local-back-btn" style="margin-bottom:1rem;">&larr; Back</button>
+      <span class="eyebrow" id="local-mode-label">Checkers</span>
+      <h1 id="local-mode-title">Play vs Computer</h1>
+      <div class="card">
+        <div class="mode-selector-row" id="local-difficulty-row" style="display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-bottom:1rem;">
+          <label for="local-difficulty" style="font-size:0.85rem;">Difficulty:</label>
+          <select id="local-difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+            <option value="extra">Extra Hard</option>
+          </select>
         </div>
-    </div>
-
-    <!-- Game Container (Initially hidden) -->
-    <div class="container">
-        <h1>🎯 Checkers Game 🎯</h1>
-        <div class="controls">
-            <div class="mode-select">
-                <button class="mode-btn active" data-mode="ai">vs AI</button>
-                <button class="mode-btn" data-mode="2player">2 Player</button>
-            </div>
-            <div class="difficulty" id="difficulty-controls">
-                <button class="diff-btn active" data-diff="easy">Easy</button>
-                <button class="diff-btn" data-diff="medium">Medium</button>
-                <button class="diff-btn" data-diff="hard">Hard</button>
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="mute-btn" id="mute-btn">🔊 Music</button>
-                <button class="reset-btn">New Game</button>
-            </div>
+        <div id="local-board"></div>
+        <div id="local-game-status" style="text-align:center; margin:1rem 0; font-weight:600;">White to move</div>
+        <div class="game-controls">
+          <button type="button" class="secondary small" id="local-new-game-btn">New Game</button>
+          <button type="button" class="secondary small" id="local-undo-btn">Undo Move</button>
         </div>
-        <div class="status">Your turn (Red)</div>
-        <div class="board"></div>
-        <div class="score">
-            <div>Red: <span id="red-score">12</span></div>
-            <div>Black: <span id="black-score">12</span></div>
+      </div>
+    </section>
+
+    <!-- ================= WAITING ROOM ================= -->
+    <section id="view-waiting" style="display:none;">
+      <button type="button" class="secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+      <span class="eyebrow">Checkers</span>
+      <h1>Waiting Room</h1>
+      <p style="text-align:center;">Join an open table, invite a friend, or wait for someone to challenge you.</p>
+
+      <div class="card">
+        <h2 style="text-align:left;">Open tables</h2>
+        <p style="text-align:left;">Anyone can join one of these.</p>
+        <button type="button" id="create-table-btn">+ Create a table</button>
+        <div id="my-open-table-wrap" style="display:none; margin-top:1rem;">
+          <div class="table-row">
+            <span>Your table — waiting for someone to join</span>
+            <button type="button" class="secondary small" id="cancel-my-table-btn">Cancel</button>
+          </div>
         </div>
-    </div>
-    
-    <div class="winner">
-        <h2></h2>
-        <button onclick="resetGame()">Play Again</button>
-    </div>
+        <div id="open-tables-list" style="margin-top:1rem;"></div>
+        <div id="open-tables-empty" class="empty-state" style="display:none;">No open tables right now — create one!</div>
+      </div>
 
-    <script>
-        // Splash Screen Logic - SIMPLIFIED
-        const splashScreen = document.getElementById('splash-screen');
-        const splashVideo = document.getElementById('splash-video');
-        const skipBtn = document.getElementById('skip-btn');
-        const skipTimer = document.getElementById('skip-timer');
-        const skipCounter = document.getElementById('skip-counter');
-        const gameContainer = document.querySelector('.container');
-        
-        let skipTimerInterval;
-        let secondsRemaining = 5;
-        let canSkip = false;
-        
-        // Show skip button and timer after 5 seconds
-        function showSkipButton() {
-            canSkip = true;
-            skipBtn.classList.add('show');
-            skipTimer.classList.add('show');
-            
-            skipTimerInterval = setInterval(() => {
-                secondsRemaining--;
-                skipCounter.textContent = secondsRemaining;
-                
-                if (secondsRemaining <= 0) {
-                    clearInterval(skipTimerInterval);
-                    skipTimer.textContent = 'Skip available';
-                }
-            }, 1000);
+      <div class="card">
+        <h2 style="text-align:left;">Invites waiting on you</h2>
+        <div id="my-invites-list"></div>
+        <div id="my-invites-empty" class="empty-state" style="display:none;">No pending invites.</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invite a friend</h2>
+        <p style="text-align:left;">Only shows people you're already friends with on Town Fuss.</p>
+        <div id="friends-invite-list"></div>
+        <div id="friends-invite-empty" class="empty-state" style="display:none;">Add some friends on Town Fuss first.</div>
+      </div>
+
+      <div id="waiting-message" class="message" style="display:none;"></div>
+    </section>
+
+    <!-- ================= LEADERBOARD ================= -->
+    <section id="view-leaderboard" style="display:none;">
+      <span class="eyebrow">Checkers</span>
+      <h1>Leaderboard</h1>
+      <p style="text-align:center;">Win = 3 points, draw = 1 point. Top 10 get a badge on their Town Fuss profile.</p>
+      <div class="card">
+        <div id="leaderboard-list"></div>
+        <div id="leaderboard-empty" class="empty-state" style="display:none;">No games played yet — be the first!</div>
+      </div>
+    </section>
+
+    <!-- ================= GAME TABLE ================= -->
+    <section id="view-game" style="display:none;">
+      <button type="button" class="secondary small" id="leave-table-btn" style="margin-bottom:1rem;">&larr; Back to Waiting Room</button>
+      <div class="card">
+        <div class="game-players">
+          <span id="player-white-label">White: —</span>
+          <span id="player-black-label">Black: —</span>
+        </div>
+        <div id="board"></div>
+        <div id="game-status">Waiting for opponent...</div>
+        <div class="game-controls">
+          <button type="button" class="secondary small" id="resign-btn">Resign</button>
+        </div>
+        <p class="field-hint" style="text-align:center; margin-top:0.75rem;">Once a game is active (an opponent has joined), Resign is how you leave it — the "Cancel" option only works before anyone has joined your table.</p>
+      </div>
+
+      <div class="card mini-chat">
+        <h2 style="text-align:left; font-size:1rem;">Message your opponent</h2>
+        <p class="field-hint" id="chess-msg-remaining">Loading your daily limit...</p>
+        <div id="mini-chat-messages" class="mini-chat-messages"></div>
+        <form id="mini-chat-form" class="mini-chat-form">
+          <input type="text" id="mini-chat-input" maxlength="500" placeholder="Say something..." />
+          <button type="submit">Send</button>
+        </form>
+        <div id="mini-chat-message" class="message" style="display:none;"></div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, runTransaction, addDoc, Timestamp,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  watchChessMessageLimit(currentUid);
+  startPresenceHeartbeat();
+  await reconcileFinishedGames();
+  const jumpedIntoGame = await checkForActiveGame();
+  if (!jumpedIntoGame) showView("mode-select");
+});
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Same best-effort "online" approximation used on the main Town Fuss site —
+// built on the existing lastActiveAt field, no new infrastructure needed.
+const ONLINE_THRESHOLD_MS = 3 * 60 * 1000;
+let presenceHeartbeatInterval = null;
+function startPresenceHeartbeat() {
+  if (presenceHeartbeatInterval) return;
+  presenceHeartbeatInterval = setInterval(() => {
+    if (document.visibilityState === "visible" && currentUid) {
+      updateDoc(doc(db, "users", currentUid), { lastActiveAt: serverTimestamp() }).catch(() => {});
+    }
+  }, 60 * 1000);
+}
+function isRecentlyActive(lastActiveAt) {
+  if (!lastActiveAt) return false;
+  const ms = lastActiveAt.seconds ? lastActiveAt.seconds * 1000 : 0;
+  return Date.now() - ms < ONLINE_THRESHOLD_MS;
+}
+
+// ============================= VIEW ROUTER =================================
+let unsubscribeOpenTables = null;
+let unsubscribeMyInvites = null;
+let unsubscribeGame = null;
+let unsubscribeMiniChat = null;
+
+function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-local-game").style.display = name === "local-game" ? "block" : "none";
+  document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+  document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
+  document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  // The Waiting Room / Leaderboard nav buttons only make sense inside the
+  // online-multiplayer context, not while picking a mode or playing locally.
+  const insideOnlineMultiplayer = name === "waiting" || name === "leaderboard" || name === "game";
+  document.getElementById("nav-waiting").style.display = insideOnlineMultiplayer ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = insideOnlineMultiplayer ? "inline" : "none";
+
+  if (name === "waiting") { watchWaitingRoom(); }
+  else { if (unsubscribeOpenTables) unsubscribeOpenTables(); if (unsubscribeMyInvites) unsubscribeMyInvites(); }
+
+  if (name === "leaderboard") loadLeaderboard();
+  if (name !== "game" && unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+  if (name !== "game" && unsubscribeMiniChat) { unsubscribeMiniChat(); unsubscribeMiniChat = null; }
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("game-tile-chess").addEventListener("click", () => showView("mode-select"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("back-to-hub-btn").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
+
+document.getElementById("mode-tile-ai").addEventListener("click", () => startLocalGame("ai"));
+document.getElementById("mode-tile-2p").addEventListener("click", () => startLocalGame("2player"));
+document.getElementById("mode-tile-online").addEventListener("click", () => showView("waiting"));
+document.getElementById("local-back-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("local-new-game-btn").addEventListener("click", () => resetLocalGame());
+document.getElementById("local-undo-btn").addEventListener("click", () => undoLocalMove());
+
+// If you're already mid-game (e.g. you refreshed the page), jump straight
+// back into it instead of showing the Waiting Room.
+async function checkForActiveGame() {
+  const q = query(
+    collection(db, "checkersGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "active")
+  );
+  const snap = await getDocs(q).catch(() => null);
+  if (snap && !snap.empty) {
+    openGame(snap.docs[0].id);
+    return true;
+  }
+  return false;
+}
+
+// ============================= WAITING ROOM =================================
+function watchWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+
+  const openQ = query(
+    collection(db, "checkersGames"),
+    where("status", "==", "open"),
+    where("inviteTo", "==", null)
+  );
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("open-tables-list");
+    const empty = document.getElementById("open-tables-empty");
+    const myTableWrap = document.getElementById("my-open-table-wrap");
+    list.innerHTML = "";
+    let shown = 0;
+    myOpenTableId = null;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.player1Uid === currentUid) {
+        myOpenTableId = docSnap.id; // show separately with a Cancel option
+        return;
+      }
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => joinTable(docSnap.id, g));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    myTableWrap.style.display = myOpenTableId ? "block" : "none";
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "checkersGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("my-invites-list");
+    const empty = document.getElementById("my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button";
+      acceptBtn.className = "small";
+      acceptBtn.textContent = "Accept";
+      acceptBtn.addEventListener("click", () => joinTable(docSnap.id, g));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button";
+      declineBtn.className = "secondary small";
+      declineBtn.textContent = "Decline";
+      declineBtn.style.marginLeft = "0.5rem";
+      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "checkersGames", docSnap.id)).catch(() => {}));
+      actions.appendChild(acceptBtn);
+      actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadFriendsToInvite();
+}
+
+async function loadFriendsToInvite() {
+  const list = document.getElementById("friends-invite-list");
+  const empty = document.getElementById("friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    for (const docSnap of snap.docs) {
+      const d = docSnap.data();
+      if (d.status !== "accepted") continue;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+
+      let online = false;
+      try {
+        const friendSnap = await getDoc(doc(db, "users", otherUid));
+        if (friendSnap.exists()) online = isRecentlyActive(friendSnap.data().lastActiveAt);
+      } catch {
+        // Can't read them — just show as offline rather than erroring.
+      }
+
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${online ? "#2e8b1f" : "var(--line)"}; margin-right:0.4rem;" title="${online ? "Online" : "Offline"}"></span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Invite to checkers";
+      btn.addEventListener("click", () => createTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+
+let myOpenTableId = null;
+document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenTableId) return;
+  try {
+    await deleteDoc(doc(db, "checkersGames", myOpenTableId));
+  } catch (err) {
+    alert(`Couldn't cancel table: ${err.message}`);
+  }
+});
+
+async function createTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    const gameRef = await addDoc(collection(db, "checkersGames"), {
+      player1Uid: currentUid,
+      player1Name: currentUserName,
+      player2Uid: null,
+      player2Name: null,
+      inviteTo: inviteToUid || null,
+      inviteToName: inviteToName || null,
+      participants: [currentUid],
+      status: "open",
+      board: boardToFlatString(initialBoardState()),
+      turn: "white",
+      winner: null,
+      p1StatsRecorded: false,
+      p2StatsRecorded: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      showMessage(msg, `Invite sent to ${inviteToName}.`, "success");
+    } else {
+      openGame(gameRef.id);
+    }
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+async function joinTable(gameId, gameData) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    await updateDoc(doc(db, "checkersGames", gameId), {
+      player2Uid: currentUid,
+      player2Name: currentUserName,
+      participants: [gameData.player1Uid, currentUid],
+      status: "active",
+      updatedAt: serverTimestamp(),
+    });
+    openGame(gameId);
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+function showMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      const points = d.checkersPoints || 0;
+      const wins = d.checkersWins || 0;
+      const losses = d.checkersLosses || 0;
+      const draws = d.checkersDraws || 0;
+      if (points > 0 || wins > 0 || losses > 0 || draws > 0) {
+        players.push({ name: d.profile?.name || "Neighbor", points, wins, losses, draws });
+      }
+    });
+    players.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (players.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    players.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `
+        <span class="leader-rank">#${i + 1}</span>
+        <span style="flex:1;">${escapeHtml(p.name)}</span>
+        <span class="field-hint">${p.wins}W-${p.losses}L-${p.draws}D</span>
+        <span style="font-weight:600;">${p.points} pts</span>
+      `;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+
+// ============================= CHECKERS ENGINE (shared, board explicit) =====
+// Board squares are single characters (avoids Firestore's "no nested
+// arrays" limit, same trick as chess): "." empty, "r"/"R" red man/king,
+// "b"/"B" black man/king. Functions take the board explicitly so the exact
+// same logic works for local play, online play, and the AI's lookahead.
+function squareType(ch) {
+  if (!ch || ch === ".") return null;
+  return (ch === "r" || ch === "R") ? "red" : "black";
+}
+function squareIsKing(ch) {
+  return ch === "R" || ch === "B";
+}
+function initialBoardState() {
+  const b = [];
+  for (let row = 0; row < 8; row++) {
+    b[row] = [];
+    for (let col = 0; col < 8; col++) {
+      if ((row + col) % 2 === 1) {
+        if (row < 3) b[row][col] = "b";
+        else if (row > 4) b[row][col] = "r";
+        else b[row][col] = ".";
+      } else {
+        b[row][col] = ".";
+      }
+    }
+  }
+  return b;
+}
+function boardToFlatString(b) {
+  return b.map((row) => row.join("")).join("");
+}
+function flatStringToBoard(str) {
+  const rows = [];
+  for (let r = 0; r < 8; r++) rows.push(str.slice(r * 8, r * 8 + 8).split(""));
+  return rows;
+}
+
+function getDirections(ch) {
+  if (squareIsKing(ch)) return [[-1,-1],[-1,1],[1,-1],[1,1]];
+  return squareType(ch) === "red" ? [[-1,-1],[-1,1]] : [[1,-1],[1,1]];
+}
+
+function findMultiJumps(b, row, col, ch, capturedSoFar) {
+  const directions = getDirections(ch);
+  const type = squareType(ch);
+  const additional = [];
+  for (const [dr, dc] of directions) {
+    const newRow = row + dr, newCol = col + dc;
+    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+      const targetType = squareType(b[newRow][newCol]);
+      if (targetType && targetType !== type && !capturedSoFar.some(([r, c]) => r === newRow && c === newCol)) {
+        const jumpRow = newRow + dr, jumpCol = newCol + dc;
+        if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && b[jumpRow][jumpCol] === ".") {
+          const newCaptured = [...capturedSoFar, [newRow, newCol]];
+          additional.push(...findMultiJumps(b, jumpRow, jumpCol, ch, newCaptured));
         }
-        
-        // Start the timer to show skip button
-        setTimeout(showSkipButton, 5000);
-        
-        // Skip button click handler
-        skipBtn.addEventListener('click', () => {
-            if (canSkip) {
-                hideSplashScreen();
+      }
+    }
+  }
+  if (additional.length === 0) return [{ row, col, captures: capturedSoFar }];
+  return additional;
+}
+
+function hasAvailableCaptures(b, playerType) {
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const ch = b[row][col];
+      if (squareType(ch) === playerType) {
+        for (const [dr, dc] of getDirections(ch)) {
+          const newRow = row + dr, newCol = col + dc;
+          if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+            const targetType = squareType(b[newRow][newCol]);
+            if (targetType && targetType !== playerType) {
+              const jumpRow = newRow + dr, jumpCol = newCol + dc;
+              if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && b[jumpRow][jumpCol] === ".") return true;
             }
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// Mandatory-capture rule: if ANY of your pieces can capture, you must
+// choose one of those captures — simple (non-capturing) moves aren't
+// offered at all in that case, matching standard checkers rules.
+function getValidMoves(b, row, col) {
+  const ch = b[row][col];
+  if (!ch || ch === ".") return [];
+  const type = squareType(ch);
+  const moves = [];
+  const captures = [];
+  for (const [dr, dc] of getDirections(ch)) {
+    const newRow = row + dr, newCol = col + dc;
+    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+      const targetCh = b[newRow][newCol];
+      if (targetCh === ".") {
+        moves.push({ row: newRow, col: newCol, captures: [] });
+      } else if (squareType(targetCh) !== type) {
+        const jumpRow = newRow + dr, jumpCol = newCol + dc;
+        if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && b[jumpRow][jumpCol] === ".") {
+          captures.push(...findMultiJumps(b, jumpRow, jumpCol, ch, [[newRow, newCol]]));
+        }
+      }
+    }
+  }
+  return hasAvailableCaptures(b, type) ? captures : moves;
+}
+
+function isValidMove(b, fromRow, fromCol, toRow, toCol, turn) {
+  if (squareType(b[fromRow][fromCol]) !== turn) return false;
+  return getValidMoves(b, fromRow, fromCol).some((m) => m.row === toRow && m.col === toCol);
+}
+
+function findMoveDetails(b, fromRow, fromCol, toRow, toCol) {
+  return getValidMoves(b, fromRow, fromCol).find((m) => m.row === toRow && m.col === toCol) || null;
+}
+
+function applyMoveToBoard(b, fromRow, fromCol, toRow, toCol, captures) {
+  b[toRow][toCol] = b[fromRow][fromCol];
+  b[fromRow][fromCol] = ".";
+  (captures || []).forEach(([r, c]) => { b[r][c] = "."; });
+  const type = squareType(b[toRow][toCol]);
+  if ((type === "red" && toRow === 0) || (type === "black" && toRow === 7)) {
+    b[toRow][toCol] = type === "red" ? "R" : "B";
+  }
+}
+
+function hasAnyValidMoves(b, playerType) {
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if (squareType(b[row][col]) === playerType && getValidMoves(b, row, col).length > 0) return true;
+    }
+  }
+  return false;
+}
+
+function countPieces(b, playerType) {
+  let n = 0;
+  for (let row = 0; row < 8; row++) for (let col = 0; col < 8; col++) if (squareType(b[row][col]) === playerType) n++;
+  return n;
+}
+
+function pieceHtml(ch) {
+  if (!ch || ch === ".") return "";
+  const colorClass = squareType(ch) === "red" ? "red" : "black";
+  const kingMark = squareIsKing(ch) ? '<span style="color:gold;">&#9812;</span>' : "";
+  return `<div class="checkers-piece ${colorClass}">${kingMark}</div>`;
+}
+
+// ============================= LOCAL PLAY (AI + same-device 2-player) ======
+// Pure in-browser state — no Firestore involved, so this costs nothing and
+// works instantly, same philosophy as chess's local modes.
+let localBoard = initialBoardState();
+let localTurn = "red";
+let localSelected = null;
+let localHistory = [];
+let localMode = "ai";
+let localAiColor = "black";
+
+function startLocalGame(mode) {
+  localMode = mode;
+  document.getElementById("local-mode-title").textContent = mode === "ai" ? "Play vs Computer" : "Two Player";
+  document.getElementById("local-difficulty-row").style.display = mode === "ai" ? "flex" : "none";
+  resetLocalGame();
+  initLocalBoardGrid();
+  showView("local-game");
+}
+
+function initLocalBoardGrid() {
+  const el = document.getElementById("local-board");
+  el.innerHTML = "";
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const square = document.createElement("div");
+      square.className = `square ${(row + col) % 2 === 0 ? "light" : "dark"}`;
+      square.dataset.row = row;
+      square.dataset.col = col;
+      square.addEventListener("click", () => handleLocalSquareClick(row, col));
+      el.appendChild(square);
+    }
+  }
+  renderLocalBoard();
+}
+
+function renderLocalBoard() {
+  document.querySelectorAll("#local-board .square").forEach((square) => {
+    const row = parseInt(square.dataset.row, 10);
+    const col = parseInt(square.dataset.col, 10);
+    square.className = `square ${(row + col) % 2 === 0 ? "light" : "dark"}`;
+    square.innerHTML = pieceHtml(localBoard[row][col]);
+  });
+}
+
+function handleLocalSquareClick(row, col) {
+  if (localMode === "ai" && localTurn === localAiColor) return;
+
+  if (localSelected) {
+    if (localSelected.row === row && localSelected.col === col) {
+      localSelected = null;
+      renderLocalBoard();
+      return;
+    }
+    const move = findMoveDetails(localBoard, localSelected.row, localSelected.col, row, col);
+    if (move) {
+      makeLocalMove(localSelected.row, localSelected.col, row, col, move.captures);
+      localSelected = null;
+      if (localMode === "ai" && !isLocalGameOver()) setTimeout(makeLocalAIMove, 400);
+    } else {
+      const ch = localBoard[row][col];
+      if (squareType(ch) === localTurn) { localSelected = { row, col }; showLocalValidMoves(row, col); }
+    }
+  } else {
+    const ch = localBoard[row][col];
+    if (squareType(ch) === localTurn) { localSelected = { row, col }; showLocalValidMoves(row, col); }
+  }
+}
+
+function showLocalValidMoves(row, col) {
+  renderLocalBoard();
+  document.querySelector(`#local-board [data-row="${row}"][data-col="${col}"]`)?.classList.add("selected");
+  getValidMoves(localBoard, row, col).forEach((m) => {
+    document.querySelector(`#local-board [data-row="${m.row}"][data-col="${m.col}"]`)?.classList.add("valid-move");
+  });
+}
+
+function makeLocalMove(fromRow, fromCol, toRow, toCol, captures) {
+  localHistory.push({ board: localBoard.map((r) => [...r]), turn: localTurn });
+  applyMoveToBoard(localBoard, fromRow, fromCol, toRow, toCol, captures);
+  localTurn = localTurn === "red" ? "black" : "red";
+  renderLocalBoard();
+  updateLocalStatus();
+}
+
+function isLocalGameOver() {
+  const statusEl = document.getElementById("local-game-status");
+  if (countPieces(localBoard, localTurn) === 0 || !hasAnyValidMoves(localBoard, localTurn)) {
+    const winner = localTurn === "red" ? "Black" : "Red";
+    statusEl.textContent = `${winner} wins! 🎉`;
+    return true;
+  }
+  return false;
+}
+
+function updateLocalStatus() {
+  if (isLocalGameOver()) return;
+  document.getElementById("local-game-status").textContent = `${localTurn === "red" ? "Red" : "Black"}'s turn`;
+}
+
+function undoLocalMove() {
+  if (localHistory.length === 0) return;
+  const last = localHistory.pop();
+  localBoard = last.board;
+  localTurn = last.turn;
+  localSelected = null;
+  renderLocalBoard();
+  updateLocalStatus();
+}
+
+function resetLocalGame() {
+  localBoard = initialBoardState();
+  localTurn = "red";
+  localSelected = null;
+  localHistory = [];
+  renderLocalBoard();
+  updateLocalStatus();
+}
+
+// ---- AI opponent (adapted from your original engine) ----
+function getAllLocalMoves(playerType) {
+  const all = [];
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if (squareType(localBoard[row][col]) === playerType) {
+        const moves = getValidMoves(localBoard, row, col);
+        if (moves.length > 0) all.push({ row, col, moves });
+      }
+    }
+  }
+  return all;
+}
+
+async function makeLocalAIMove() {
+  const difficulty = document.getElementById("local-difficulty").value;
+  document.getElementById("local-game-status").innerHTML = '<span style="color:var(--amber-500);">AI is thinking...</span>';
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  const options = getAllLocalMoves(localAiColor);
+  if (options.length === 0) { isLocalGameOver(); return; }
+
+  let chosen;
+  if (difficulty === "easy") {
+    const piece = options[Math.floor(Math.random() * options.length)];
+    chosen = { from: piece, to: piece.moves[Math.floor(Math.random() * piece.moves.length)] };
+  } else if (difficulty === "medium") {
+    if (Math.random() < 0.5) {
+      const piece = options[Math.floor(Math.random() * options.length)];
+      chosen = { from: piece, to: piece.moves[Math.floor(Math.random() * piece.moves.length)] };
+    } else {
+      let bestScore = -Infinity;
+      options.forEach((piece) => {
+        piece.moves.forEach((move) => {
+          let score = move.captures.length * 50 + Math.random() * 10;
+          if (!squareIsKing(localBoard[piece.row][piece.col]) && move.row === 7) score += 30;
+          if (score > bestScore) { bestScore = score; chosen = { from: piece, to: move }; }
         });
-        
-        // Video ended handler
-        splashVideo.addEventListener('ended', hideSplashScreen);
-        
-        // Error handling for video
-        splashVideo.addEventListener('error', () => {
-            console.log('Video failed to load, skipping splash screen');
-            hideSplashScreen();
-        });
-        
-        function hideSplashScreen() {
-            clearInterval(skipTimerInterval);
-            splashVideo.pause();
-            splashScreen.style.opacity = '0';
-            splashScreen.style.transition = 'opacity 0.5s';
-            
-            setTimeout(() => {
-                splashScreen.style.display = 'none';
-                gameContainer.style.display = 'block';
-                startGame();
-            }, 500);
-        }
-        
-        // Try to autoplay video with sound muted
-        function startSplashVideo() {
-            splashVideo.muted = true;
-            splashVideo.play().catch(e => {
-                console.log('Autoplay prevented, showing splash screen without autoplay');
-            });
-        }
-        
-        // Start video on page load
-        window.addEventListener('load', startSplashVideo);
-        
-        // If user clicks anywhere on splash screen, try to play video with sound
-        splashScreen.addEventListener('click', () => {
-            if (splashVideo.paused) {
-                splashVideo.play().catch(e => console.log('Video play failed'));
-            }
-        });
-        
-        // Game Logic (Moved into startGame function)
-        function startGame() {
-            const board = [];
-            let selectedPiece = null;
-            let currentPlayer = 'red';
-            let difficulty = 'easy';
-            let gameMode = 'ai';
-            
-            // Audio setup
-            const bgMusic = new Audio('https://github.com/TitanBusinessPros/Checkers-Game/raw/main/Checkers%20Song.mp3');
-            bgMusic.loop = true;
-            bgMusic.volume = 0.3;
-            let isMuted = false;
+      });
+    }
+  } else {
+    chosen = minimaxDecisionLocal(5);
+  }
 
-            // Start music on first user interaction
-            let musicStarted = false;
-            function startMusic() {
-                if (!musicStarted && !isMuted) {
-                    bgMusic.play().catch(e => console.log('Audio play failed:', e));
-                    musicStarted = true;
-                }
-            }
+  if (chosen) makeLocalMove(chosen.from.row, chosen.from.col, chosen.to.row, chosen.to.col, chosen.to.captures);
+}
 
-            // Mute button handler
-            document.getElementById('mute-btn').addEventListener('click', function() {
-                isMuted = !isMuted;
-                if (isMuted) {
-                    bgMusic.pause();
-                    this.textContent = '🔇 Music';
-                    this.classList.add('muted');
-                } else {
-                    bgMusic.play().catch(e => console.log('Audio play failed:', e));
-                    this.textContent = '🔊 Music';
-                    this.classList.remove('muted');
-                    musicStarted = true;
-                }
-            });
+function minimaxDecisionLocal(depth) {
+  let bestScore = -Infinity;
+  let bestMove = null;
+  const allMoves = getAllLocalMoves(localAiColor);
+  for (const piece of allMoves) {
+    for (const move of piece.moves) {
+      const tempBoard = localBoard.map((r) => [...r]);
+      applyMoveToBoard(tempBoard, piece.row, piece.col, move.row, move.col, move.captures);
+      const score = minimaxLocal(tempBoard, depth - 1, -Infinity, Infinity, false);
+      if (score > bestScore) { bestScore = score; bestMove = { from: piece, to: move }; }
+    }
+  }
+  return bestMove;
+}
 
-            function initBoard() {
-                board.length = 0;
-                for (let row = 0; row < 8; row++) {
-                    board[row] = [];
-                    for (let col = 0; col < 8; col++) {
-                        if ((row + col) % 2 === 1) {
-                            if (row < 3) board[row][col] = { type: 'black', king: false };
-                            else if (row > 4) board[row][col] = { type: 'red', king: false };
-                            else board[row][col] = null;
-                        } else {
-                            board[row][col] = null;
-                        }
-                    }
-                }
-                currentPlayer = 'red';
-                selectedPiece = null;
-                renderBoard();
-                updateStatus();
-                updateScore();
-            }
+function minimaxLocal(tempBoard, depth, alpha, beta, isMaximizing) {
+  if (depth === 0) return evaluateCheckersBoard(tempBoard, localAiColor);
+  const playerType = isMaximizing ? localAiColor : (localAiColor === "red" ? "black" : "red");
+  const allMoves = [];
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if (squareType(tempBoard[row][col]) === playerType) {
+        const moves = getValidMoves(tempBoard, row, col);
+        if (moves.length > 0) allMoves.push({ row, col, moves });
+      }
+    }
+  }
+  if (allMoves.length === 0) return isMaximizing ? -10000 : 10000;
 
-            function renderBoard() {
-                const boardEl = document.querySelector('.board');
-                boardEl.innerHTML = '';
-                for (let row = 0; row < 8; row++) {
-                    for (let col = 0; col < 8; col++) {
-                        const square = document.createElement('div');
-                        square.className = 'square ' + ((row + col) % 2 === 0 ? 'light' : 'dark');
-                        square.dataset.row = row;
-                        square.dataset.col = col;
-                        
-                        if (board[row][col]) {
-                            const piece = document.createElement('div');
-                            piece.className = `piece ${board[row][col].type}`;
-                            if (board[row][col].king) piece.classList.add('king');
-                            square.appendChild(piece);
-                        }
-                        
-                        square.addEventListener('click', handleSquareClick);
-                        boardEl.appendChild(square);
-                    }
-                }
-            }
+  if (isMaximizing) {
+    let maxScore = -Infinity;
+    for (const piece of allMoves) {
+      for (const move of piece.moves) {
+        const newBoard = tempBoard.map((r) => [...r]);
+        applyMoveToBoard(newBoard, piece.row, piece.col, move.row, move.col, move.captures);
+        const score = minimaxLocal(newBoard, depth - 1, alpha, beta, false);
+        maxScore = Math.max(maxScore, score);
+        alpha = Math.max(alpha, score);
+        if (beta <= alpha) break;
+      }
+      if (beta <= alpha) break;
+    }
+    return maxScore;
+  } else {
+    let minScore = Infinity;
+    for (const piece of allMoves) {
+      for (const move of piece.moves) {
+        const newBoard = tempBoard.map((r) => [...r]);
+        applyMoveToBoard(newBoard, piece.row, piece.col, move.row, move.col, move.captures);
+        const score = minimaxLocal(newBoard, depth - 1, alpha, beta, true);
+        minScore = Math.min(minScore, score);
+        beta = Math.min(beta, score);
+        if (beta <= alpha) break;
+      }
+      if (beta <= alpha) break;
+    }
+    return minScore;
+  }
+}
 
-            function handleSquareClick(e) {
-                startMusic();
-                
-                const row = parseInt(e.currentTarget.dataset.row);
-                const col = parseInt(e.currentTarget.dataset.col);
-                const piece = board[row][col];
-                
-                if (gameMode === '2player') {
-                    if (selectedPiece) {
-                        const validMoves = getValidMoves(selectedPiece.row, selectedPiece.col);
-                        const move = validMoves.find(m => m.row === row && m.col === col);
-                        
-                        if (move) {
-                            makeMove(selectedPiece.row, selectedPiece.col, row, col, move.captures);
-                            selectedPiece = null;
-                            
-                            if (!checkForWinner()) {
-                                currentPlayer = currentPlayer === 'red' ? 'black' : 'red';
-                                updateStatus();
-                            }
-                        } else if (piece && piece.type === currentPlayer) {
-                            selectedPiece = { row, col };
-                            highlightMoves();
-                        } else {
-                            selectedPiece = null;
-                            renderBoard();
-                        }
-                    } else if (piece && piece.type === currentPlayer) {
-                        selectedPiece = { row, col };
-                        highlightMoves();
-                    }
-                } else {
-                    if (currentPlayer !== 'red') return;
-                    
-                    if (selectedPiece) {
-                        const validMoves = getValidMoves(selectedPiece.row, selectedPiece.col);
-                        const move = validMoves.find(m => m.row === row && m.col === col);
-                        
-                        if (move) {
-                            makeMove(selectedPiece.row, selectedPiece.col, row, col, move.captures);
-                            selectedPiece = null;
-                            
-                            if (!checkForWinner()) {
-                                setTimeout(() => {
-                                    currentPlayer = 'black';
-                                    updateStatus();
-                                    aiMove();
-                                }, 300);
-                            }
-                        } else if (piece && piece.type === 'red') {
-                            selectedPiece = { row, col };
-                            highlightMoves();
-                        } else {
-                            selectedPiece = null;
-                            renderBoard();
-                        }
-                    } else if (piece && piece.type === 'red') {
-                        selectedPiece = { row, col };
-                        highlightMoves();
-                    }
-                }
-            }
+function evaluateCheckersBoard(b, aiColor) {
+  let aiPieces = 0, oppPieces = 0, aiKings = 0, oppKings = 0;
+  const oppColor = aiColor === "red" ? "black" : "red";
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const ch = b[row][col];
+      const type = squareType(ch);
+      if (type === aiColor) { aiPieces++; if (squareIsKing(ch)) aiKings++; }
+      else if (type === oppColor) { oppPieces++; if (squareIsKing(ch)) oppKings++; }
+    }
+  }
+  return (aiPieces - oppPieces) * 100 + (aiKings - oppKings) * 150;
+}
 
-            function highlightMoves() {
-                renderBoard();
-                if (!selectedPiece) return;
-                
-                const validMoves = getValidMoves(selectedPiece.row, selectedPiece.col);
-                document.querySelector(`[data-row="${selectedPiece.row}"][data-col="${selectedPiece.col}"]`).classList.add('selected');
-                
-                validMoves.forEach(move => {
-                    document.querySelector(`[data-row="${move.row}"][data-col="${move.col}"]`).classList.add('valid-move');
-                });
-            }
+// ============================= GAME TABLE (online multiplayer) =============
+let board = initialBoardState();
+let currentTurn = "red";
+let selectedSquare = null;
+let activeGameId = null;
+let activeGameData = null;
+let myColor = null; // "red" | "black"
 
-            function getValidMoves(row, col) {
-                const piece = board[row][col];
-                if (!piece) return [];
-                
-                const moves = [];
-                const captures = [];
-                const directions = piece.king ? 
-                    [[-1,-1], [-1,1], [1,-1], [1,1]] : 
-                    piece.type === 'red' ? [[-1,-1], [-1,1]] : [[1,-1], [1,1]];
-                
-                for (const [dr, dc] of directions) {
-                    const newRow = row + dr;
-                    const newCol = col + dc;
-                    
-                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                        if (!board[newRow][newCol]) {
-                            moves.push({ row: newRow, col: newCol, captures: [] });
-                        } else if (board[newRow][newCol].type !== piece.type) {
-                            const jumpRow = newRow + dr;
-                            const jumpCol = newCol + dc;
-                            if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && !board[jumpRow][jumpCol]) {
-                                const multiJumps = findMultiJumps(jumpRow, jumpCol, piece, [[newRow, newCol]]);
-                                captures.push(...multiJumps);
-                            }
-                        }
-                    }
-                }
-                
-                const hasAnyCaptures = hasAvailableCaptures(piece.type);
-                if (hasAnyCaptures) {
-                    return captures;
-                }
-                
-                return moves;
-            }
+function initBoardGrid() {
+  const boardEl = document.getElementById("board");
+  boardEl.innerHTML = "";
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const square = document.createElement("div");
+      square.className = `square ${(row + col) % 2 === 0 ? "light" : "dark"}`;
+      square.dataset.row = row;
+      square.dataset.col = col;
+      square.addEventListener("click", () => handleSquareClick(row, col));
+      boardEl.appendChild(square);
+    }
+  }
+}
+initBoardGrid();
 
-            function findMultiJumps(row, col, piece, capturedSoFar) {
-                const directions = piece.king ? 
-                    [[-1,-1], [-1,1], [1,-1], [1,1]] : 
-                    piece.type === 'red' ? [[-1,-1], [-1,1]] : [[1,-1], [1,1]];
-                
-                const additionalJumps = [];
-                
-                for (const [dr, dc] of directions) {
-                    const newRow = row + dr;
-                    const newCol = col + dc;
-                    
-                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                        if (board[newRow][newCol] && 
-                            board[newRow][newCol].type !== piece.type &&
-                            !capturedSoFar.some(([r, c]) => r === newRow && c === newCol)) {
-                            
-                            const jumpRow = newRow + dr;
-                            const jumpCol = newCol + dc;
-                            
-                            if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && 
-                                !board[jumpRow][jumpCol]) {
-                                
-                                const newCaptured = [...capturedSoFar, [newRow, newCol]];
-                                const furtherJumps = findMultiJumps(jumpRow, jumpCol, piece, newCaptured);
-                                additionalJumps.push(...furtherJumps);
-                            }
-                        }
-                    }
-                }
-                
-                if (additionalJumps.length === 0) {
-                    return [{ row, col, captures: capturedSoFar }];
-                }
-                
-                return additionalJumps;
-            }
+function renderBoard() {
+  document.querySelectorAll("#board .square").forEach((square) => {
+    const row = parseInt(square.dataset.row, 10);
+    const col = parseInt(square.dataset.col, 10);
+    square.className = `square ${(row + col) % 2 === 0 ? "light" : "dark"}`;
+    square.innerHTML = pieceHtml(board[row][col]);
+  });
+}
 
-            function hasAvailableCaptures(playerType) {
-                for (let row = 0; row < 8; row++) {
-                    for (let col = 0; col < 8; col++) {
-                        if (board[row][col] && board[row][col].type === playerType) {
-                            const piece = board[row][col];
-                            const directions = piece.king ? 
-                                [[-1,-1], [-1,1], [1,-1], [1,1]] : 
-                                piece.type === 'red' ? [[-1,-1], [-1,1]] : [[1,-1], [1,1]];
-                            
-                            for (const [dr, dc] of directions) {
-                                const newRow = row + dr;
-                                const newCol = col + dc;
-                                
-                                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                                    if (board[newRow][newCol] && board[newRow][newCol].type !== piece.type) {
-                                        const jumpRow = newRow + dr;
-                                        const jumpCol = newCol + dc;
-                                        if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && !board[jumpRow][jumpCol]) {
-                                            return true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                return false;
-            }
+function handleSquareClick(row, col) {
+  if (!activeGameData || activeGameData.status !== "active") return;
+  if (currentTurn !== myColor) return; // not your turn
 
-            function makeMove(fromRow, fromCol, toRow, toCol, captures) {
-                board[toRow][toCol] = board[fromRow][fromCol];
-                board[fromRow][fromCol] = null;
-                
-                captures.forEach(([r, c]) => {
-                    board[r][c] = null;
-                });
-                
-                if ((board[toRow][toCol].type === 'red' && toRow === 0) || 
-                    (board[toRow][toCol].type === 'black' && toRow === 7)) {
-                    board[toRow][toCol].king = true;
-                }
-                
-                renderBoard();
-                updateScore();
-            }
+  if (selectedSquare) {
+    if (selectedSquare.row === row && selectedSquare.col === col) {
+      selectedSquare = null;
+      renderBoard();
+      return;
+    }
+    const move = findMoveDetails(board, selectedSquare.row, selectedSquare.col, row, col);
+    if (move) {
+      submitMove(selectedSquare.row, selectedSquare.col, row, col, move.captures);
+      selectedSquare = null;
+    } else {
+      if (squareType(board[row][col]) === currentTurn) { selectedSquare = { row, col }; showValidMoves(row, col); }
+    }
+  } else {
+    if (squareType(board[row][col]) === currentTurn) { selectedSquare = { row, col }; showValidMoves(row, col); }
+  }
+}
 
-            function aiMove() {
-                const allMoves = [];
-                
-                for (let row = 0; row < 8; row++) {
-                    for (let col = 0; col < 8; col++) {
-                        if (board[row][col] && board[row][col].type === 'black') {
-                            const moves = getValidMoves(row, col);
-                            if (moves.length > 0) {
-                                allMoves.push({ row, col, moves });
-                            }
-                        }
-                    }
-                }
-                
-                if (allMoves.length === 0) {
-                    showWinner('Red');
-                    return;
-                }
-                
-                const move = selectAIMove(allMoves);
-                
-                if (move) {
-                    makeMove(move.from.row, move.from.col, move.to.row, move.to.col, move.to.captures);
-                    
-                    if (!checkForWinner()) {
-                        currentPlayer = 'red';
-                        updateStatus();
-                    }
-                }
-            }
+function showValidMoves(row, col) {
+  renderBoard();
+  document.querySelector(`#board [data-row="${row}"][data-col="${col}"]`)?.classList.add("selected");
+  getValidMoves(board, row, col).forEach((m) => {
+    document.querySelector(`#board [data-row="${m.row}"][data-col="${m.col}"]`)?.classList.add("valid-move");
+  });
+}
 
-            function selectAIMove(options) {
-                if (difficulty === 'easy') {
-                    const randomPiece = options[Math.floor(Math.random() * options.length)];
-                    const randomMove = randomPiece.moves[Math.floor(Math.random() * randomPiece.moves.length)];
-                    return { from: randomPiece, to: randomMove };
-                } else if (difficulty === 'medium') {
-                    if (Math.random() < 0.5) {
-                        const randomPiece = options[Math.floor(Math.random() * options.length)];
-                        const randomMove = randomPiece.moves[Math.floor(Math.random() * randomPiece.moves.length)];
-                        return { from: randomPiece, to: randomMove };
-                    }
-                    let bestScore = -Infinity;
-                    let bestMove = null;
-                    
-                    options.forEach(piece => {
-                        piece.moves.forEach(move => {
-                            let score = 0;
-                            score += move.captures.length * 50;
-                            if (!board[piece.row][piece.col].king && move.row === 7) score += 30;
-                            score += Math.random() * 10;
-                            
-                            if (score > bestScore) {
-                                bestScore = score;
-                                bestMove = { from: piece, to: move };
-                            }
-                        });
-                    });
-                    
-                    return bestMove;
-                }
-                
-                return minimaxDecision(5);
-            }
+async function submitMove(fromRow, fromCol, toRow, toCol, captures) {
+  const newBoard = board.map((r) => [...r]);
+  applyMoveToBoard(newBoard, fromRow, fromCol, toRow, toCol, captures);
+  const nextTurn = currentTurn === "red" ? "black" : "red";
 
-            function minimaxDecision(depth) {
-                let bestScore = -Infinity;
-                let bestMove = null;
-                
-                const allMoves = [];
-                for (let row = 0; row < 8; row++) {
-                    for (let col = 0; col < 8; col++) {
-                        if (board[row][col] && board[row][col].type === 'black') {
-                            const moves = getValidMoves(row, col);
-                            if (moves.length > 0) {
-                                allMoves.push({ row, col, moves });
-                            }
-                        }
-                    }
-                }
-                
-                for (const piece of allMoves) {
-                    for (const move of piece.moves) {
-                        const tempBoard = JSON.parse(JSON.stringify(board));
-                        applyMoveToBoard(tempBoard, piece.row, piece.col, move.row, move.col, move.captures);
-                        
-                        const score = minimax(tempBoard, depth - 1, -Infinity, Infinity, false);
-                        
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestMove = { from: piece, to: move };
-                        }
-                    }
-                }
-                
-                return bestMove;
-            }
+  const update = {
+    board: boardToFlatString(newBoard),
+    turn: nextTurn,
+    updatedAt: serverTimestamp(),
+  };
 
-            function minimax(tempBoard, depth, alpha, beta, isMaximizing) {
-                if (depth === 0) {
-                    return evaluatePosition(tempBoard);
-                }
-                
-                const playerType = isMaximizing ? 'black' : 'red';
-                const allMoves = getAllMovesForBoard(tempBoard, playerType);
-                
-                if (allMoves.length === 0) {
-                    return isMaximizing ? -10000 : 10000;
-                }
-                
-                if (isMaximizing) {
-                    let maxScore = -Infinity;
-                    for (const piece of allMoves) {
-                        for (const move of piece.moves) {
-                            const newBoard = JSON.parse(JSON.stringify(tempBoard));
-                            applyMoveToBoard(newBoard, piece.row, piece.col, move.row, move.col, move.captures);
-                            
-                            const score = minimax(newBoard, depth - 1, alpha, beta, false);
-                            maxScore = Math.max(maxScore, score);
-                            alpha = Math.max(alpha, score);
-                            
-                            if (beta <= alpha) break;
-                        }
-                        if (beta <= alpha) break;
-                    }
-                    return maxScore;
-                } else {
-                    let minScore = Infinity;
-                    for (const piece of allMoves) {
-                        for (const move of piece.moves) {
-                            const newBoard = JSON.parse(JSON.stringify(tempBoard));
-                            applyMoveToBoard(newBoard, piece.row, piece.col, move.row, move.col, move.captures);
-                            
-                            const score = minimax(newBoard, depth - 1, alpha, beta, true);
-                            minScore = Math.min(minScore, score);
-                            beta = Math.min(beta, score);
-                            
-                            if (beta <= alpha) break;
-                        }
-                        if (beta <= alpha) break;
-                    }
-                    return minScore;
-                }
-            }
+  if (countPieces(newBoard, nextTurn) === 0 || !hasAnyValidMoves(newBoard, nextTurn)) {
+    update.status = "finished";
+    update.winner = colorToUid(currentTurn);
+  }
 
-            function getAllMovesForBoard(tempBoard, playerType) {
-                const allMoves = [];
-                for (let row = 0; row < 8; row++) {
-                    for (let col = 0; col < 8; col++) {
-                        if (tempBoard[row][col] && tempBoard[row][col].type === playerType) {
-                            const moves = getValidMovesForBoard(tempBoard, row, col);
-                            if (moves.length > 0) {
-                                allMoves.push({ row, col, moves });
-                            }
-                        }
-                    }
-                }
-                return allMoves;
-            }
+  try {
+    await updateDoc(doc(db, "checkersGames", activeGameId), update);
+  } catch (err) {
+    alert(`Couldn't submit move: ${err.message}`);
+  }
+}
 
-            function getValidMovesForBoard(tempBoard, row, col) {
-                const piece = tempBoard[row][col];
-                if (!piece) return [];
-                
-                const moves = [];
-                const captures = [];
-                const directions = piece.king ? 
-                    [[-1,-1], [-1,1], [1,-1], [1,1]] : 
-                    piece.type === 'red' ? [[-1,-1], [-1,1]] : [[1,-1], [1,1]];
-                
-                for (const [dr, dc] of directions) {
-                    const newRow = row + dr;
-                    const newCol = col + dc;
-                    
-                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                        if (!tempBoard[newRow][newCol]) {
-                            moves.push({ row: newRow, col: newCol, captures: [] });
-                        } else if (tempBoard[newRow][newCol].type !== piece.type) {
-                            const jumpRow = newRow + dr;
-                            const jumpCol = newCol + dc;
-                            if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && !tempBoard[jumpRow][jumpCol]) {
-                                const multiJumps = findMultiJumpsForBoard(tempBoard, jumpRow, jumpCol, piece, [[newRow, newCol]]);
-                                captures.push(...multiJumps);
-                            }
-                        }
-                    }
-                }
-                
-                const hasAnyCaptures = hasAvailableCapturesForBoard(tempBoard, piece.type);
-                if (hasAnyCaptures) {
-                    return captures;
-                }
-                
-                return moves;
-            }
+function colorToUid(color) {
+  if (!activeGameData) return null;
+  return color === "red" ? activeGameData.player1Uid : activeGameData.player2Uid;
+}
 
-            function findMultiJumpsForBoard(tempBoard, row, col, piece, capturedSoFar) {
-                const directions = piece.king ? 
-                    [[-1,-1], [-1,1], [1,-1], [1,1]] : 
-                    piece.type === 'red' ? [[-1,-1], [-1,1]] : [[1,-1], [1,1]];
-                
-                const additionalJumps = [];
-                
-                for (const [dr, dc] of directions) {
-                    const newRow = row + dr;
-                    const newCol = col + dc;
-                    
-                    if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                        if (tempBoard[newRow][newCol] && 
-                            tempBoard[newRow][newCol].type !== piece.type &&
-                            !capturedSoFar.some(([r, c]) => r === newRow && c === newCol)) {
-                            
-                            const jumpRow = newRow + dr;
-                            const jumpCol = newCol + dc;
-                            
-                            if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && 
-                                !tempBoard[jumpRow][jumpCol]) {
-                                
-                                const newCaptured = [...capturedSoFar, [newRow, newCol]];
-                                const furtherJumps = findMultiJumpsForBoard(tempBoard, jumpRow, jumpCol, piece, newCaptured);
-                                additionalJumps.push(...furtherJumps);
-                            }
-                        }
-                    }
-                }
-                
-                if (additionalJumps.length === 0) {
-                    return [{ row, col, captures: capturedSoFar }];
-                }
-                
-                return additionalJumps;
-            }
+document.getElementById("resign-btn").addEventListener("click", async () => {
+  if (!activeGameData || activeGameData.status !== "active") return;
+  if (!confirm("Resign this game?")) return;
+  const winnerUid = myColor === "red" ? activeGameData.player2Uid : activeGameData.player1Uid;
+  try {
+    await updateDoc(doc(db, "checkersGames", activeGameId), {
+      status: "finished",
+      winner: winnerUid,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
 
-            function hasAvailableCapturesForBoard(tempBoard, playerType) {
-                for (let row = 0; row < 8; row++) {
-                    for (let col = 0; col < 8; col++) {
-                        if (tempBoard[row][col] && tempBoard[row][col].type === playerType) {
-                            const piece = tempBoard[row][col];
-                            const directions = piece.king ? 
-                                [[-1,-1], [-1,1], [1,-1], [1,1]] : 
-                                piece.type === 'red' ? [[-1,-1], [-1,1]] : [[1,-1], [1,1]];
-                            
-                            for (const [dr, dc] of directions) {
-                                const newRow = row + dr;
-                                const newCol = col + dc;
-                                
-                                if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-                                    if (tempBoard[newRow][newCol] && tempBoard[newRow][newCol].type !== piece.type) {
-                                        const jumpRow = newRow + dr;
-                                        const jumpCol = newCol + dc;
-                                        if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8 && !tempBoard[jumpRow][jumpCol]) {
-                                            return true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                return false;
-            }
+function openGame(gameId) {
+  activeGameId = gameId;
+  showView("game");
 
-            function applyMoveToBoard(tempBoard, fromRow, fromCol, toRow, toCol, captures) {
-                tempBoard[toRow][toCol] = tempBoard[fromRow][fromCol];
-                tempBoard[fromRow][fromCol] = null;
-                
-                captures.forEach(([r, c]) => {
-                    tempBoard[r][c] = null;
-                });
-                
-                if ((tempBoard[toRow][toCol].type === 'red' && toRow === 0) || 
-                    (tempBoard[toRow][toCol].type === 'black' && toRow === 7)) {
-                    tempBoard[toRow][toCol].king = true;
-                }
-            }
+  if (unsubscribeGame) unsubscribeGame();
+  unsubscribeGame = onSnapshot(doc(db, "checkersGames", gameId), (snap) => {
+    if (!snap.exists()) { showView("waiting"); return; }
+    activeGameData = snap.data();
+    board = activeGameData.board ? flatStringToBoard(activeGameData.board) : initialBoardState();
+    currentTurn = activeGameData.turn || "red";
+    myColor = activeGameData.player1Uid === currentUid ? "red" : "black";
 
-            function evaluatePosition(tempBoard) {
-                let score = 0;
-                
-                let blackPieces = 0, redPieces = 0;
-                let blackKings = 0, redKings = 0;
-                
-                for (let row = 0; row < 8; row++) {
-                    for (let col = 0; col < 8; col++) {
-                        if (tempBoard[row][col]) {
-                            if (tempBoard[row][col].type === 'black') {
-                                blackPieces++;
-                                if (tempBoard[row][col].king) blackKings++;
-                            } else {
-                                redPieces++;
-                                if (tempBoard[row][col].king) redKings++;
-                            }
-                        }
-                    }
-                }
-                
-                score += (blackPieces - redPieces) * 100;
-                score += (blackKings - redKings) * 150;
-                
-                return score;
-            }
+    document.getElementById("player-white-label").textContent = `Red: ${activeGameData.player1Name || "—"}`;
+    document.getElementById("player-black-label").textContent = `Black: ${activeGameData.player2Name || "Waiting for opponent..."}`;
 
-            function checkForWinner() {
-                let redCount = 0, blackCount = 0;
-                let redHasMoves = false, blackHasMoves = false;
-                
-                for (let row = 0; row < 8; row++) {
-                    for (let col = 0; col < 8; col++) {
-                        if (board[row][col]) {
-                            if (board[row][col].type === 'red') {
-                                redCount++;
-                                if (getValidMoves(row, col).length > 0) redHasMoves = true;
-                            } else {
-                                blackCount++;
-                                if (getValidMoves(row, col).length > 0) blackHasMoves = true;
-                            }
-                        }
-                    }
-                }
-                
-                if (redCount === 0 || !redHasMoves) {
-                    showWinner('Black');
-                    return true;
-                }
-                if (blackCount === 0 || !blackHasMoves) {
-                    showWinner('Red');
-                    return true;
-                }
-                
-                return false;
-            }
+    renderBoard();
+    updateGameStatus();
+    maybeRecordStats();
+    watchMiniChat(gameId);
+  }, (err) => console.error("Game watch failed:", err));
+}
 
-            function showWinner(winner) {
-                const winnerEl = document.querySelector('.winner');
-                winnerEl.querySelector('h2').textContent = `${winner} Wins! 🎉`;
-                winnerEl.classList.add('show');
-            }
+function updateGameStatus() {
+  const statusEl = document.getElementById("game-status");
+  if (!activeGameData) return;
+  if (activeGameData.status === "open") { statusEl.textContent = "Waiting for an opponent to join..."; return; }
+  if (activeGameData.status === "finished") {
+    if (activeGameData.winner === currentUid) statusEl.textContent = "You won! 🎉";
+    else statusEl.textContent = "You lost this one.";
+    return;
+  }
+  let text = `${currentTurn === "red" ? "Red" : "Black"}'s turn`;
+  if (currentTurn === myColor) text += " — your turn";
+  statusEl.textContent = text;
+}
 
-            function updateStatus() {
-                const status = document.querySelector('.status');
-                if (gameMode === '2player') {
-                    status.textContent = currentPlayer === 'red' ? 'Red\'s turn' : 'Black\'s turn';
-                } else {
-                    status.textContent = currentPlayer === 'red' ? 'Your turn (Red)' : 'AI thinking... (Black)';
-                }
-            }
+async function recordStatsForGame(gameId, gameData) {
+  const isP1 = gameData.player1Uid === currentUid;
+  const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
+  if (alreadyRecorded) return;
 
-            function updateScore() {
-                let redCount = 0, blackCount = 0;
-                for (let row = 0; row < 8; row++) {
-                    for (let col = 0; col < 8; col++) {
-                        if (board[row][col]) {
-                            if (board[row][col].type === 'red') redCount++;
-                            else blackCount++;
-                        }
-                    }
-                }
-                document.getElementById('red-score').textContent = redCount;
-                document.getElementById('black-score').textContent = blackCount;
-            }
+  const won = gameData.winner === currentUid;
+  const draw = gameData.winner === "draw";
+  const pointsEarned = won ? 3 : draw ? 1 : 0;
 
-            function resetGame() {
-                document.querySelector('.winner').classList.remove('show');
-                initBoard();
-            }
+  try {
+    await updateDoc(doc(db, "checkersGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      checkersPoints: (data.checkersPoints || 0) + pointsEarned,
+      checkersWins: (data.checkersWins || 0) + (won ? 1 : 0),
+      checkersLosses: (data.checkersLosses || 0) + (!won && !draw ? 1 : 0),
+      checkersDraws: (data.checkersDraws || 0) + (draw ? 1 : 0),
+    });
+  } catch (err) {
+    console.error("Couldn't record checkers stats:", err);
+  }
+}
 
-            document.querySelectorAll('.diff-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    difficulty = e.target.dataset.diff;
-                    resetGame();
-                });
-            });
+async function maybeRecordStats() {
+  if (!activeGameData || activeGameData.status !== "finished") return;
+  await recordStatsForGame(activeGameId, activeGameData);
+}
 
-            document.querySelectorAll('.mode-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    gameMode = e.target.dataset.mode;
-                    
-                    const diffControls = document.getElementById('difficulty-controls');
-                    if (gameMode === '2player') {
-                        diffControls.style.display = 'none';
-                    } else {
-                        diffControls.style.display = 'flex';
-                    }
-                    
-                    resetGame();
-                });
-            });
+// Catches up on any finished game where YOUR side of the result never got
+// saved — this happens if you weren't actively looking at that game the
+// moment it ended (e.g. your opponent resigned while you were elsewhere).
+// Running this on every login means it always gets caught eventually,
+// even without a live listener running at the exact moment of the finish.
+async function reconcileFinishedGames() {
+  try {
+    const q = query(collection(db, "checkersGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status !== "finished") continue;
+      const isP1 = g.player1Uid === currentUid;
+      const alreadyRecorded = isP1 ? g.p1StatsRecorded : g.p2StatsRecorded;
+      if (!alreadyRecorded) await recordStatsForGame(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished games:", err);
+  }
+}
 
-            document.querySelector('.reset-btn').addEventListener('click', resetGame);
+// ============================= MINI CHAT (reuses Town Fuss messaging) =======
+const DAILY_MESSAGE_LIMIT = 3;
+const MESSAGE_WORD_LIMIT = 50;
+let currentMessageLimit = { day: 0, count: 0 };
+let unsubscribeChessLimit = null;
 
-            // Initialize the game board
-            initBoard();
-        }
-    </script>
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+function countWords(text) { return text.trim().split(/\s+/).filter(Boolean).length; }
+function containsContactInfo(text) {
+  const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
+  const urlPattern = /\b((https?:\/\/)|(www\.))\S+/i;
+  const phonePattern = /(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/;
+  return emailPattern.test(text) || urlPattern.test(text) || phonePattern.test(text);
+}
+
+function watchChessMessageLimit(uid) {
+  if (unsubscribeChessLimit) unsubscribeChessLimit();
+  unsubscribeChessLimit = onSnapshot(doc(db, "messageLimits", uid), (snap) => {
+    currentMessageLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderChessMsgRemaining();
+  });
+}
+function remainingToday() {
+  if (currentMessageLimit.day !== todayNumber()) return DAILY_MESSAGE_LIMIT;
+  return Math.max(0, DAILY_MESSAGE_LIMIT - currentMessageLimit.count);
+}
+function renderChessMsgRemaining() {
+  const el = document.getElementById("chess-msg-remaining");
+  if (el) el.textContent = `${remainingToday()} / ${DAILY_MESSAGE_LIMIT} messages left today (shared with your Town Fuss private messages)`;
+}
+
+function conversationIdFor(otherUid) { return [currentUid, otherUid].sort().join("_"); }
+
+function watchMiniChat(gameId) {
+  if (!activeGameData || !activeGameData.player2Uid) return;
+  const otherUid = activeGameData.player1Uid === currentUid ? activeGameData.player2Uid : activeGameData.player1Uid;
+  const conversationId = conversationIdFor(otherUid);
+  const messagesEl = document.getElementById("mini-chat-messages");
+
+  if (unsubscribeMiniChat) unsubscribeMiniChat();
+  unsubscribeMiniChat = onSnapshot(
+    query(collection(db, "conversations", conversationId, "messages"), orderBy("sentAt", "asc")),
+    (snap) => {
+      messagesEl.innerHTML = "";
+      snap.forEach((docSnap) => {
+        const m = docSnap.data();
+        const bubble = document.createElement("div");
+        bubble.className = `mini-chat-msg ${m.senderId === currentUid ? "mine" : "theirs"}`;
+        bubble.textContent = m.text || "";
+        messagesEl.appendChild(bubble);
+      });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    },
+    (err) => console.error("Mini chat load failed:", err)
+  );
+
+  document.getElementById("mini-chat-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const input = document.getElementById("mini-chat-input");
+    const msg = document.getElementById("mini-chat-message");
+    const text = input.value.trim();
+    if (!text) return;
+    if (remainingToday() <= 0) { showMessage(msg, "You've used all 3 messages for today.", "error"); return; }
+    if (countWords(text) > MESSAGE_WORD_LIMIT) { showMessage(msg, `Messages are limited to ${MESSAGE_WORD_LIMIT} words.`, "error"); return; }
+    if (containsContactInfo(text)) { showMessage(msg, "Links, phone numbers, and emails aren't allowed in messages.", "error"); return; }
+
+    const opponentName = activeGameData.player1Uid === currentUid ? activeGameData.player2Name : activeGameData.player1Name;
+
+    let existingReadBy = {};
+    try {
+      const convoSnapCheck = await getDoc(doc(db, "conversations", conversationId));
+      if (convoSnapCheck.exists()) existingReadBy = convoSnapCheck.data().readBy || {};
+    } catch {
+      // Doesn't exist yet — fine, start fresh.
+    }
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const limitRef = doc(db, "messageLimits", currentUid);
+        const limitSnap = await tx.get(limitRef);
+        const data = limitSnap.exists() ? limitSnap.data() : { day: 0, count: 0 };
+        const today = todayNumber();
+        const sameDay = data.day === today;
+        const newCount = sameDay ? data.count + 1 : 1;
+        if (sameDay && data.count >= DAILY_MESSAGE_LIMIT) throw new Error("You've used all 3 messages for today.");
+
+        const convoRef = doc(db, "conversations", conversationId);
+        const msgRef = doc(collection(db, "conversations", conversationId, "messages"));
+        tx.set(limitRef, { day: today, count: newCount });
+        tx.set(convoRef, {
+          participants: [currentUid, otherUid].sort(),
+          participantNames: {
+            [currentUid]: currentUserName,
+            [otherUid]: opponentName,
+          },
+          lastMessageAt: serverTimestamp(),
+          lastMessageText: text,
+          lastMessageSenderId: currentUid,
+          readBy: { ...existingReadBy, [currentUid]: serverTimestamp() },
+        }, { merge: true });
+        tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
+      });
+      input.value = "";
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  };
+}
+</script>
 </body>
 </html>
