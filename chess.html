@@ -83,10 +83,11 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 <body>
 
 <header class="header-bar">
-  <a class="brand" href="index.html">Town<span>Fuss</span> Chess</a>
+  <a class="brand" href="index.html">Town<span>Fuss</span> Games</a>
   <nav class="header-nav">
-    <button id="nav-waiting" class="active">Waiting Room</button>
-    <button id="nav-leaderboard">Leaderboard</button>
+    <button id="nav-hub" class="active">Games</button>
+    <button id="nav-waiting" style="display:none;">Waiting Room</button>
+    <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
   </nav>
 </header>
 
@@ -100,8 +101,22 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 
   <div id="app-content" style="display:none;">
 
+    <!-- ================= GAMES HUB ================= -->
+    <section id="view-hub">
+      <span class="eyebrow">Town Fuss</span>
+      <h1>Games</h1>
+      <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+      <div class="card" style="max-width:280px; margin:0 auto; text-align:center; cursor:pointer;" id="game-tile-chess">
+        <div style="font-size:2.5rem;">♟</div>
+        <h2 style="font-size:1.1rem; margin-top:0.5rem;">Chess</h2>
+        <p class="field-hint" style="text-align:center;">Waiting room, invites, and a leaderboard</p>
+      </div>
+      <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+    </section>
+
     <!-- ================= WAITING ROOM ================= -->
-    <section id="view-waiting">
+    <section id="view-waiting" style="display:none;">
+      <button type="button" class="secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
       <span class="eyebrow">Chess</span>
       <h1>Waiting Room</h1>
       <p style="text-align:center;">Join an open table, invite a friend, or wait for someone to challenge you.</p>
@@ -219,8 +234,8 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   watchChessMessageLimit(currentUid);
-  await checkForActiveGame();
-  showView("waiting");
+  const jumpedIntoGame = await checkForActiveGame();
+  if (!jumpedIntoGame) showView("hub");
 });
 
 function escapeHtml(str) {
@@ -236,11 +251,17 @@ let unsubscribeGame = null;
 let unsubscribeMiniChat = null;
 
 function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
   document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
   document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
   document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
   document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
   document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  const insideChess = name !== "hub";
+  document.getElementById("nav-waiting").style.display = insideChess ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = insideChess ? "inline" : "none";
 
   if (name === "waiting") { watchWaitingRoom(); }
   else { if (unsubscribeOpenTables) unsubscribeOpenTables(); if (unsubscribeMyInvites) unsubscribeMyInvites(); }
@@ -250,6 +271,9 @@ function showView(name) {
   if (name !== "game" && unsubscribeMiniChat) { unsubscribeMiniChat(); unsubscribeMiniChat = null; }
 }
 
+document.getElementById("nav-hub").addEventListener("click", () => showView("hub"));
+document.getElementById("game-tile-chess").addEventListener("click", () => showView("waiting"));
+document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
 document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
 document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
@@ -265,7 +289,9 @@ async function checkForActiveGame() {
   const snap = await getDocs(q).catch(() => null);
   if (snap && !snap.empty) {
     openGame(snap.docs[0].id);
+    return true;
   }
+  return false;
 }
 
 // ============================= WAITING ROOM =================================
@@ -382,7 +408,7 @@ async function createTable(inviteToUid, inviteToName) {
       inviteToName: inviteToName || null,
       participants: [currentUid],
       status: "open",
-      board: initialBoardState(),
+      board: boardToFlatString(initialBoardState()),
       turn: "white",
       winner: null,
       p1StatsRecorded: false,
@@ -478,6 +504,22 @@ function initialBoardState() {
     ["P","P","P","P","P","P","P","P"],
     ["R","N","B","Q","K","B","N","R"],
   ];
+}
+
+// Firestore doesn't allow an array-of-arrays ("nested arrays"), so the 8x8
+// board can't be saved directly. Instead we flatten it to a single
+// 64-character string (empty squares as ".") for storage, and rebuild it
+// into a normal 8x8 grid every time we read it back.
+function boardToFlatString(b) {
+  return b.map((row) => row.map((sq) => (sq === "" ? "." : sq)).join("")).join("");
+}
+function flatStringToBoard(str) {
+  const rows = [];
+  for (let r = 0; r < 8; r++) {
+    const rowStr = str.slice(r * 8, r * 8 + 8);
+    rows.push(rowStr.split("").map((ch) => (ch === "." ? "" : ch)));
+  }
+  return rows;
 }
 
 let board = initialBoardState();
@@ -685,7 +727,7 @@ async function submitMove(fromRow, fromCol, toRow, toCol) {
   const nextTurn = currentTurn === "white" ? "black" : "white";
 
   const update = {
-    board: newBoard,
+    board: boardToFlatString(newBoard),
     turn: nextTurn,
     lastMove: { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } },
     updatedAt: serverTimestamp(),
@@ -736,7 +778,7 @@ function openGame(gameId) {
   unsubscribeGame = onSnapshot(doc(db, "chessGames", gameId), (snap) => {
     if (!snap.exists()) { showView("waiting"); return; }
     activeGameData = snap.data();
-    board = activeGameData.board || initialBoardState();
+    board = activeGameData.board ? flatStringToBoard(activeGameData.board) : initialBoardState();
     currentTurn = activeGameData.turn || "white";
     lastMove = activeGameData.lastMove || null;
     myColor = activeGameData.player1Uid === currentUid ? "white" : "black";
