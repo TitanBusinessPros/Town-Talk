@@ -1,1 +1,1756 @@
-1
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>WynneWars — Town Fuss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); }
+a { color: var(--amber-500); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; }
+p { color: var(--text-muted); line-height: 1.6; }
+.page { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+.header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+.header-bar a.brand span { color: var(--amber-500); }
+.header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+.header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+.header-nav button.active { color: var(--amber-500); font-weight: 600; }
+
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+
+button { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+button:hover { background: var(--amber-600); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+.table-row, .invite-row, .friend-row, .leader-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+.table-row:last-child, .invite-row:last-child, .friend-row:last-child, .leader-row:last-child { border-bottom: none; }
+.leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+
+.empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+.message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+.message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+.field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+.mini-chat { margin-top: 1.5rem; }
+.mini-chat-messages { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem; }
+.mini-chat-msg { max-width: 80%; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.mini-chat-msg.mine { align-self: flex-end; background: var(--amber-500); color: #fff; }
+.mini-chat-msg.theirs { align-self: flex-start; background: var(--ink-700); }
+.mini-chat-form { display: flex; gap: 0.5rem; }
+.mini-chat-form input { flex: 1; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: var(--font-body); }
+
+/* ---- Original WynneWars game styling (kept largely as-is) ---- */
+.ww-container { background: rgba(255,255,255,0.95); border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); max-width: 1200px; width: 100%; color: #333; margin: 0 auto; }
+.ww-logo { text-align: center; margin-bottom: 20px; }
+.ww-logo img { max-width: 100%; width: 320px; height: auto; }
+.campaign-selector { background: #334155; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+.campaign-selector h3 { color: white; margin-top: 0; font-size: clamp(16px, 4vw, 20px); }
+.stage-display { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; margin-bottom: 15px; font-size: clamp(16px, 4vw, 20px); }
+.ww-board { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin: 20px auto; justify-content: center; position: relative; max-width: 100%; aspect-ratio: 8 / 6; }
+.ww-cell { width: 100%; aspect-ratio: 1; border: 3px solid #ddd; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; background: white; position: relative; min-width: 30px; }
+.ww-cell:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.ww-cell.player1 { border-color: #5568d3; }
+.ww-cell.player2 { border-color: #f5576c; }
+.ww-cell.selected { border: 3px solid #ffd700; box-shadow: 0 0 15px rgba(255,215,0,0.6); }
+.ww-cell.valid-move { border-color: #4ade80; box-shadow: 0 0 10px rgba(74,222,128,0.4); }
+.ww-cell.valid-expansion { border-color: #60a5fa; box-shadow: 0 0 10px rgba(96,165,250,0.4); }
+.ww-cell.valid-fortify { border-color: #a78bfa; box-shadow: 0 0 10px rgba(167,139,250,0.4); }
+.army-count { font-size: clamp(16px, 3vw, 24px); font-weight: bold; color: white; }
+.ww-status { text-align: center; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 10px; border-left: 5px solid #667eea; font-weight: 500; font-size: clamp(12px, 3vw, 16px); }
+.player-info { display: flex; justify-content: space-around; margin: 20px 0; gap: 10px; flex-wrap: wrap; }
+.player-card { flex: 1; min-width: 150px; padding: 15px; border-radius: 10px; text-align: center; font-size: clamp(12px, 2.5vw, 16px); }
+.player-card.player1 { background: linear-gradient(135deg, #667eea, #5568d3); color: white; }
+.player-card.player2 { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; }
+.player-card.active { box-shadow: 0 0 20px rgba(255,215,0,0.5); border: 3px solid #ffd700; }
+.ww-actions { display: flex; justify-content: center; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
+.ww-actions button { background: #10b981; }
+.ww-actions button:hover:not(:disabled) { background: #059669; }
+.ww-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
+.ww-modal.show { display: flex; }
+.ww-modal-content { background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 400px; width: 100%; color: #333; }
+.ww-modal-content h2 { color: #667eea; margin-top: 0; }
+.army-slider-container { margin: 20px 0; }
+.army-slider { width: 100%; margin: 10px 0; }
+.slider-value { font-size: clamp(20px, 5vw, 24px); font-weight: bold; color: #667eea; margin: 10px 0; }
+.ww-modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+.ww-modal-buttons .confirm { background: #10b981; }
+.ww-modal-buttons .cancel { background: #ef4444; }
+.phase-indicator { background: #e0e7ff; padding: 10px; border-radius: 8px; text-align: center; margin: 10px 0; font-weight: bold; color: #4338ca; }
+.instructions-panel { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px; font-size: 14px; line-height: 1.6; color: #333; text-align: left; }
+.instructions-panel h3 { color: #667eea; text-align: left; }
+@media (max-width: 480px) { .ww-logo img { width: 220px; } }
+</style>
+</head>
+<body>
+
+<header class="header-bar">
+  <a class="brand" href="index.html">Town<span>Fuss</span> Games</a>
+  <nav class="header-nav">
+    <button id="nav-hub" class="active">Games</button>
+    <button id="nav-ww-waiting" style="display:none;">Waiting Room</button>
+    <button id="nav-ww-leaderboard" style="display:none;">Leaderboard</button>
+  </nav>
+</header>
+
+<main class="page">
+
+  <div id="signed-out-notice" class="card" style="display:none; text-align:center;">
+    <h2>Sign in on Town Fuss first</h2>
+    <p>You need a Town Fuss account to play WynneWars with other members.</p>
+    <a href="index.html"><button type="button">Go to Town Fuss</button></a>
+  </div>
+
+  <div id="app-content" style="display:none;">
+
+    <!-- ================= MODE SELECT ================= -->
+    <section id="view-mode-select">
+      <button type="button" class="secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+      <div class="ww-logo">
+        <img src="https://github.com/TitanBusinessPros/Wynne-Wars/raw/main/WynneWars-Logo.png" alt="WynneWars" />
+      </div>
+      <span class="eyebrow">WynneWars</span>
+      <h1>How do you want to play?</h1>
+      <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-campaign">
+        <h2 style="font-size:1.05rem;">⚔️ 20 Stage Campaign</h2>
+        <p class="field-hint" style="text-align:center;">Same device, versus the computer</p>
+      </div>
+      <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-2p">
+        <h2 style="font-size:1.05rem;">👥 Two Player</h2>
+        <p class="field-hint" style="text-align:center;">Take turns on this same device</p>
+      </div>
+      <div class="card" style="max-width:320px; margin:0 auto; text-align:center; cursor:pointer;" id="mode-tile-online">
+        <h2 style="font-size:1.05rem;">🌐 Play Online</h2>
+        <p class="field-hint" style="text-align:center;">Waiting room, invites, and the leaderboard</p>
+      </div>
+    </section>
+
+    <!-- ================= ONLINE WAITING ROOM ================= -->
+    <section id="view-ww-waiting" style="display:none;">
+      <button type="button" class="secondary small" id="ww-back-to-mode-btn" style="margin-bottom:1rem;">&larr; Back</button>
+      <span class="eyebrow">WynneWars</span>
+      <h1>Waiting Room</h1>
+      <p style="text-align:center;">Whole turns sync at once — when you click "End Turn," your opponent sees the finished result, not a live move-by-move replay.</p>
+
+      <div class="card">
+        <h2 style="text-align:left;">Open tables</h2>
+        <button type="button" id="ww-create-table-btn">+ Create a table</button>
+        <div id="ww-my-open-table-wrap" style="display:none; margin-top:1rem;">
+          <div class="table-row">
+            <span>Your table — waiting for someone to join</span>
+            <button type="button" class="secondary small" id="ww-cancel-my-table-btn">Cancel</button>
+          </div>
+        </div>
+        <div id="ww-open-tables-list" style="margin-top:1rem;"></div>
+        <div id="ww-open-tables-empty" class="empty-state" style="display:none;">No open tables right now — create one!</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invites waiting on you</h2>
+        <div id="ww-my-invites-list"></div>
+        <div id="ww-my-invites-empty" class="empty-state" style="display:none;">No pending invites.</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invite a friend</h2>
+        <div id="ww-friends-invite-list"></div>
+        <div id="ww-friends-invite-empty" class="empty-state" style="display:none;">Add some friends on Town Fuss first.</div>
+      </div>
+
+      <div id="ww-waiting-message" class="message" style="display:none;"></div>
+    </section>
+
+    <!-- ================= LEADERBOARD ================= -->
+    <section id="view-ww-leaderboard" style="display:none;">
+      <span class="eyebrow">WynneWars</span>
+      <h1>Leaderboard</h1>
+      <p style="text-align:center;">Online wins only — 3 points per win, no draws in this game. Local games (vs computer or same-device) never count.</p>
+      <div class="card">
+        <div id="ww-leaderboard-list"></div>
+        <div id="ww-leaderboard-empty" class="empty-state" style="display:none;">No online games played yet — be the first!</div>
+      </div>
+    </section>
+
+    <!-- ================= GAME BOARD (local + online share this view) ================= -->
+    <section id="view-game-board" style="display:none;">
+      <button type="button" class="secondary small" id="ww-leave-game-btn" style="margin-bottom:1rem;">&larr; Back</button>
+
+      <div class="ww-container">
+        <div class="ww-logo">
+          <img src="https://github.com/TitanBusinessPros/Wynne-Wars/raw/main/WynneWars-Logo.png" alt="WynneWars" />
+        </div>
+
+        <div id="stage-info" class="stage-display" style="display: none;">
+          STAGE <span id="current-stage">1</span> / 20
+          <div id="stage-features" style="font-size: 14px; margin-top: 5px;"></div>
+        </div>
+
+        <div id="ww-online-banner" class="card" style="display:none; text-align:center;">
+          <div class="player-info" style="margin:0 0 0.5rem;">
+            <span id="ww-online-me"></span>
+            <span id="ww-online-opponent"></span>
+          </div>
+          <button type="button" class="secondary small" id="ww-resign-btn">Resign</button>
+        </div>
+
+        <div class="game-setup" style="text-align:center;">
+          <button id="reset-btn">New Game</button>
+          <button id="save-btn" style="background:#3b82f6;">💾 Save Game</button>
+          <button id="load-btn" style="background:#8b5cf6;">📂 Load Game</button>
+        </div>
+        <div id="save-status" style="text-align:center; margin-top:10px; font-size:12px; color: var(--text-muted);"></div>
+
+        <div class="player-info">
+          <div class="player-card player1" id="p1-card">
+            <div style="font-size: 20px; font-weight: bold;">Player 1</div>
+            <div>Territories: <span id="p1-territories">0</span></div>
+            <div>Total Armies: <span id="p1-armies">0</span></div>
+          </div>
+          <div class="player-card player2" id="p2-card">
+            <div style="font-size: 20px; font-weight: bold;"><span id="p2-label">Player 2</span></div>
+            <div>Territories: <span id="p2-territories">0</span></div>
+            <div>Total Armies: <span id="p2-armies">0</span></div>
+          </div>
+        </div>
+
+        <div class="ww-status" id="status">Select game mode to start</div>
+        <div class="phase-indicator" id="phase-indicator">Current Phase: --</div>
+
+        <div class="ww-actions">
+          <button id="end-btn">Next Phase</button>
+        </div>
+
+        <div class="ww-board" id="board"></div>
+
+        <div style="text-align: center; margin-top: 20px;">
+          <button onclick="toggleInstructions()" style="background: #667eea;">
+            📜 GAMEPLAY INSTRUCTIONS
+          </button>
+        </div>
+
+        <div id="instructions-panel" class="instructions-panel" style="display: none;">
+          <h3>📜 How to Play</h3>
+          <ul style="padding-left: 20px;">
+            <li><strong>Goal:</strong> Capture all territories or eliminate all enemy armies!</li>
+            <li><strong>Setup:</strong> Each player starts with 2 swordsmen groups and 1 wizard. <strong>3 hidden bonus squares hold 5 armies each!</strong></li>
+            <li><strong>Units:</strong>
+              <ul>
+                <li><strong>Swordsmen:</strong> Attack adjacent enemies. Higher number wins! (7 vs 5 = 2 remaining)</li>
+                <li><strong>Wizard 🔮:</strong> Always 1 unit. Moves 2 squares per turn. Can attack up to 2 squares away in straight lines. <strong>Kills 2 units per attack!</strong></li>
+                <li><strong>Archer 🏹 (Stage 5+):</strong> Always 1 unit. Attacks up to 3 squares away in straight lines. <strong>Kills 1 unit per attack!</strong></li>
+              </ul>
+            </li>
+            <li><strong>Your Turn (5 Phases):</strong>
+              <ul>
+                <li><strong>🔮 Wizard Movement:</strong> Move your wizard up to 2 squares (one square at a time to adjacent empty spaces)</li>
+                <li><strong>1️⃣ Deploy Phase:</strong> Place armies on swordsmen OR expand to adjacent empty squares. <strong>Cannot stack armies on wizards or archers!</strong></li>
+                <li><strong>2️⃣ Expand Phase:</strong> Claim adjacent empty squares with swordsmen</li>
+                <li><strong>3️⃣ Attack Phase:</strong> Attack enemies! Wizards shoot magic balls! 🔮⚡ Archers shoot arrows! 🏹</li>
+                <li><strong>4️⃣ Fortify Phase:</strong> Move swordsmen between adjacent territories</li>
+                <li><strong>Bonus Discovery:</strong> Find hidden bonus squares - you'll get fireworks and +5 armies! 🎆</li>
+                <li><strong>Trap Doors 🕳️:</strong> In some campaign stages, hidden trap doors will destroy units that step on them!</li>
+                <li>Click "Next Phase" to skip optional phases, "End Turn" to finish</li>
+              </ul>
+            </li>
+            <li><strong>Strategy:</strong>
+              <ul>
+                <li>Move your wizard to strategic positions! Use it to snipe enemies from 2 squares away. Protect it - it's fragile!</li>
+                <li>Wizards and archers stay at 1 army - you cannot deploy to them!</li>
+                <li>Use archers for long-range support from safe positions</li>
+                <li>Build defensive formations to protect your special units</li>
+              </ul>
+            </li>
+            <li><strong>Campaign Mode:</strong> 20 progressively harder stages. Stage 5+ adds archers. Stage 20 is the final boss with multiple wizards and archers!</li>
+            <li><strong>2 Player Mode / Online:</strong> Take turns. No AI — pure strategy! Online play syncs a full turn at a time.</li>
+          </ul>
+        </div>
+
+        <div class="card mini-chat" id="ww-mini-chat-card" style="display:none;">
+          <h2 style="text-align:left; font-size:1rem;">Message your opponent</h2>
+          <p class="field-hint" id="ww-msg-remaining">Loading your daily limit...</p>
+          <div id="ww-mini-chat-messages" class="mini-chat-messages"></div>
+          <form id="ww-mini-chat-form" class="mini-chat-form">
+            <input type="text" id="ww-mini-chat-input" maxlength="500" placeholder="Say something..." />
+            <button type="submit">Send</button>
+          </form>
+          <div id="ww-mini-chat-message" class="message" style="display:none;"></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<div id="move-modal" class="ww-modal">
+  <div class="ww-modal-content">
+    <h2>Move Armies</h2>
+    <p id="move-description">How many armies to move?</p>
+    <div class="army-slider-container">
+      <div class="slider-value" id="slider-value">1</div>
+      <input type="range" id="army-slider" class="army-slider" min="1" max="10" value="1">
+      <div style="font-size: 12px; color: #666; margin-top: 10px;">
+        <span>Leaving: <strong id="leaving-armies">0</strong></span> |
+        <span>Moving: <strong id="moving-armies">1</strong></span>
+      </div>
+    </div>
+    <div class="ww-modal-buttons">
+      <button class="confirm" id="confirm-move">Move</button>
+      <button class="cancel" id="cancel-move">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, runTransaction, addDoc,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  watchWynneMessageLimit(currentUid);
+  await reconcileFinishedWynneGames();
+  const jumped = await checkForActiveWynneGame();
+  if (!jumped) showView("mode-select");
+});
+
+// ============================= VIEW ROUTER =================================
+let unsubscribeOpenTables = null;
+let unsubscribeMyInvites = null;
+let unsubscribeGame = null;
+let unsubscribeMiniChat = null;
+
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-ww-waiting").style.display = name === "ww-waiting" ? "block" : "none";
+  document.getElementById("view-ww-leaderboard").style.display = name === "ww-leaderboard" ? "block" : "none";
+  document.getElementById("view-game-board").style.display = name === "game-board" ? "block" : "none";
+
+  document.getElementById("nav-ww-waiting").classList.toggle("active", name === "ww-waiting");
+  document.getElementById("nav-ww-leaderboard").classList.toggle("active", name === "ww-leaderboard");
+  const insideOnline = name === "ww-waiting" || name === "ww-leaderboard" || (name === "game-board" && game.isOnline);
+  document.getElementById("nav-ww-waiting").style.display = insideOnline ? "inline" : "none";
+  document.getElementById("nav-ww-leaderboard").style.display = insideOnline ? "inline" : "none";
+
+  if (name === "ww-waiting") watchWynneWaitingRoom();
+  else { if (unsubscribeOpenTables) unsubscribeOpenTables(); if (unsubscribeMyInvites) unsubscribeMyInvites(); }
+
+  if (name === "ww-leaderboard") loadWynneLeaderboard();
+  if (name !== "game-board" && unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+  if (name !== "game-board" && unsubscribeMiniChat) { unsubscribeMiniChat(); unsubscribeMiniChat = null; }
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("mode-select-back-btn").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-ww-waiting").addEventListener("click", () => showView("ww-waiting"));
+document.getElementById("nav-ww-leaderboard").addEventListener("click", () => showView("ww-leaderboard"));
+document.getElementById("ww-back-to-mode-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("ww-leave-game-btn").addEventListener("click", () => {
+  if (game.isOnline) showView("ww-waiting");
+  else showView("mode-select");
+});
+
+document.getElementById("mode-tile-campaign").addEventListener("click", () => {
+  document.getElementById("ww-online-banner").style.display = "none";
+  document.getElementById("ww-mini-chat-card").style.display = "none";
+  startCampaign();
+  showView("game-board");
+});
+document.getElementById("mode-tile-2p").addEventListener("click", () => {
+  document.getElementById("ww-online-banner").style.display = "none";
+  document.getElementById("ww-mini-chat-card").style.display = "none";
+  start2Player();
+  showView("game-board");
+});
+document.getElementById("mode-tile-online").addEventListener("click", () => showView("ww-waiting"));
+
+// ============================= ONLINE WAITING ROOM ==========================
+let myOpenWynneTableId = null;
+
+async function checkForActiveWynneGame() {
+  const q = query(collection(db, "wynneGames"), where("participants", "array-contains", currentUid), where("status", "==", "active"));
+  const snap = await getDocs(q).catch(() => null);
+  if (snap && !snap.empty) { openWynneGame(snap.docs[0].id); return true; }
+  return false;
+}
+
+function watchWynneWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+
+  const openQ = query(collection(db, "wynneGames"), where("status", "==", "open"), where("inviteTo", "==", null));
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("ww-open-tables-list");
+    const empty = document.getElementById("ww-open-tables-empty");
+    const myWrap = document.getElementById("ww-my-open-table-wrap");
+    list.innerHTML = "";
+    let shown = 0;
+    myOpenWynneTableId = null;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.player1Uid === currentUid) { myOpenWynneTableId = docSnap.id; return; }
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "small"; btn.textContent = "Join";
+      btn.addEventListener("click", () => joinWynneTable(docSnap.id, g));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    myWrap.style.display = myOpenWynneTableId ? "block" : "none";
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "wynneGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("ww-my-invites-list");
+    const empty = document.getElementById("ww-my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button"; acceptBtn.className = "small"; acceptBtn.textContent = "Accept";
+      acceptBtn.addEventListener("click", () => joinWynneTable(docSnap.id, g));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button"; declineBtn.className = "secondary small"; declineBtn.textContent = "Decline";
+      declineBtn.style.marginLeft = "0.5rem";
+      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "wynneGames", docSnap.id)).catch(() => {}));
+      actions.appendChild(acceptBtn); actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadWynneFriendsToInvite();
+}
+
+async function loadWynneFriendsToInvite() {
+  const list = document.getElementById("ww-friends-invite-list");
+  const empty = document.getElementById("ww-friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      if (d.status !== "accepted") return;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "small"; btn.textContent = "Invite to play";
+      btn.addEventListener("click", () => createWynneTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+function buildInitialWynneBoard() {
+  const size = 48;
+  const board = Array(size).fill(null).map(() => ({ owner: 0, armies: 0, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false }));
+  board[5] = { owner: 1, armies: 3, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false };
+  board[14] = { owner: 1, armies: 3, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false };
+  board[2] = { owner: 1, armies: 1, isBonus: false, isWizard: true, isArcher: false, isTrapDoor: false };
+  board[42] = { owner: 2, armies: 3, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false };
+  board[33] = { owner: 2, armies: 3, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false };
+  board[45] = { owner: 2, armies: 1, isBonus: false, isWizard: true, isArcher: false, isTrapDoor: false };
+  [10, 23, 38].forEach((pos) => { board[pos] = { owner: 0, armies: 5, isBonus: true, isWizard: false, isArcher: false, isTrapDoor: false }; });
+  return board;
+}
+
+document.getElementById("ww-create-table-btn").addEventListener("click", () => createWynneTable(null, null));
+
+async function createWynneTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("ww-waiting-message");
+  try {
+    const gameRef = await addDoc(collection(db, "wynneGames"), {
+      player1Uid: currentUid, player1Name: currentUserName,
+      player2Uid: null, player2Name: null,
+      inviteTo: inviteToUid || null, inviteToName: inviteToName || null,
+      participants: [currentUid],
+      status: "open",
+      board: buildInitialWynneBoard(),
+      currentPlayerNum: 1,
+      winner: null,
+      p1StatsRecorded: false, p2StatsRecorded: false,
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      showWwMessage(msg, `Invite sent to ${inviteToName}.`, "success");
+    } else {
+      openWynneGame(gameRef.id);
+    }
+  } catch (err) {
+    showWwMessage(msg, err.message, "error");
+  }
+}
+
+async function joinWynneTable(gameId, gameData) {
+  const msg = document.getElementById("ww-waiting-message");
+  try {
+    await updateDoc(doc(db, "wynneGames", gameId), {
+      player2Uid: currentUid, player2Name: currentUserName,
+      participants: [gameData.player1Uid, currentUid],
+      status: "active", updatedAt: serverTimestamp(),
+    });
+    openWynneGame(gameId);
+  } catch (err) {
+    showWwMessage(msg, err.message, "error");
+  }
+}
+
+document.getElementById("ww-cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenWynneTableId) return;
+  try { await deleteDoc(doc(db, "wynneGames", myOpenWynneTableId)); } catch (err) { alert(`Couldn't cancel: ${err.message}`); }
+});
+
+function showWwMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= LEADERBOARD ==================================
+async function loadWynneLeaderboard() {
+  const list = document.getElementById("ww-leaderboard-list");
+  const empty = document.getElementById("ww-leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const points = docSnap.data().wynneWarsPoints || 0;
+      if (points > 0) players.push({
+        name: docSnap.data().profile?.name || "Neighbor",
+        points,
+        wins: docSnap.data().wynneWarsWins || 0,
+        losses: docSnap.data().wynneWarsLosses || 0,
+      });
+    });
+    players.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (players.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    players.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `
+        <span class="leader-rank">#${i + 1}</span>
+        <span style="flex:1;">${escapeHtml(p.name)}</span>
+        <span class="field-hint">${p.wins}W-${p.losses}L</span>
+        <span style="font-weight:600;">${p.points} pts</span>
+      `;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+
+// Each player records their OWN stats once, guarded by their own flag —
+// same pattern as chess/checkers. No draw exists in this game, so points
+// are simply 3 for a win, 0 for a loss.
+async function recordWynneStatsForGame(gameId, gameData) {
+  const isP1 = gameData.player1Uid === currentUid;
+  const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
+  if (alreadyRecorded) return;
+  const won = gameData.winner === currentUid;
+  try {
+    await updateDoc(doc(db, "wynneGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      wynneWarsPoints: (data.wynneWarsPoints || 0) + (won ? 3 : 0),
+      wynneWarsWins: (data.wynneWarsWins || 0) + (won ? 1 : 0),
+      wynneWarsLosses: (data.wynneWarsLosses || 0) + (won ? 0 : 1),
+    });
+  } catch (err) {
+    console.error("Couldn't record WynneWars stats:", err);
+  }
+}
+
+async function reconcileFinishedWynneGames() {
+  try {
+    const q = query(collection(db, "wynneGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status !== "finished") continue;
+      const isP1 = g.player1Uid === currentUid;
+      const alreadyRecorded = isP1 ? g.p1StatsRecorded : g.p2StatsRecorded;
+      if (!alreadyRecorded) await recordWynneStatsForGame(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished WynneWars games:", err);
+  }
+}
+
+// ============================= MINI CHAT (reuses Town Fuss messaging) =======
+const DAILY_MESSAGE_LIMIT = 3;
+const MESSAGE_WORD_LIMIT = 50;
+let currentWwMessageLimit = { day: 0, count: 0 };
+let unsubscribeWwLimit = null;
+
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+function countWords(text) { return text.trim().split(/\s+/).filter(Boolean).length; }
+function containsContactInfo(text) {
+  const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
+  const urlPattern = /\b((https?:\/\/)|(www\.))\S+/i;
+  const phonePattern = /(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/;
+  return emailPattern.test(text) || urlPattern.test(text) || phonePattern.test(text);
+}
+function watchWynneMessageLimit(uid) {
+  if (unsubscribeWwLimit) unsubscribeWwLimit();
+  unsubscribeWwLimit = onSnapshot(doc(db, "messageLimits", uid), (snap) => {
+    currentWwMessageLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    const el = document.getElementById("ww-msg-remaining");
+    if (el) {
+      const left = currentWwMessageLimit.day !== todayNumber() ? DAILY_MESSAGE_LIMIT : Math.max(0, DAILY_MESSAGE_LIMIT - currentWwMessageLimit.count);
+      el.textContent = `${left} / ${DAILY_MESSAGE_LIMIT} messages left today (shared with your Town Fuss private messages)`;
+    }
+  });
+}
+function wwRemainingToday() {
+  if (currentWwMessageLimit.day !== todayNumber()) return DAILY_MESSAGE_LIMIT;
+  return Math.max(0, DAILY_MESSAGE_LIMIT - currentWwMessageLimit.count);
+}
+function conversationIdFor(otherUid) { return [currentUid, otherUid].sort().join("_"); }
+
+function watchWynneMiniChat(gameId) {
+  if (!activeGameData || !activeGameData.player2Uid) return;
+  const otherUid = activeGameData.player1Uid === currentUid ? activeGameData.player2Uid : activeGameData.player1Uid;
+  const conversationId = conversationIdFor(otherUid);
+  const messagesEl = document.getElementById("ww-mini-chat-messages");
+
+  if (unsubscribeMiniChat) unsubscribeMiniChat();
+  unsubscribeMiniChat = onSnapshot(
+    query(collection(db, "conversations", conversationId, "messages"), orderBy("sentAt", "asc")),
+    (snap) => {
+      messagesEl.innerHTML = "";
+      snap.forEach((docSnap) => {
+        const m = docSnap.data();
+        const bubble = document.createElement("div");
+        bubble.className = `mini-chat-msg ${m.senderId === currentUid ? "mine" : "theirs"}`;
+        bubble.textContent = m.text || "";
+        messagesEl.appendChild(bubble);
+      });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    },
+    (err) => console.error("Mini chat load failed:", err)
+  );
+
+  document.getElementById("ww-mini-chat-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const input = document.getElementById("ww-mini-chat-input");
+    const msg = document.getElementById("ww-mini-chat-message");
+    const text = input.value.trim();
+    if (!text) return;
+    if (wwRemainingToday() <= 0) { showWwMessage(msg, "You've used all 3 messages for today.", "error"); return; }
+    if (countWords(text) > MESSAGE_WORD_LIMIT) { showWwMessage(msg, `Messages are limited to ${MESSAGE_WORD_LIMIT} words.`, "error"); return; }
+    if (containsContactInfo(text)) { showWwMessage(msg, "Links, phone numbers, and emails aren't allowed in messages.", "error"); return; }
+
+    const opponentName = activeGameData.player1Uid === currentUid ? activeGameData.player2Name : activeGameData.player1Name;
+    let existingReadBy = {};
+    try {
+      const convoSnapCheck = await getDoc(doc(db, "conversations", conversationId));
+      if (convoSnapCheck.exists()) existingReadBy = convoSnapCheck.data().readBy || {};
+    } catch { /* doesn't exist yet */ }
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const limitRef = doc(db, "messageLimits", currentUid);
+        const limitSnap = await tx.get(limitRef);
+        const data = limitSnap.exists() ? limitSnap.data() : { day: 0, count: 0 };
+        const today = todayNumber();
+        const sameDay = data.day === today;
+        const newCount = sameDay ? data.count + 1 : 1;
+        if (sameDay && data.count >= DAILY_MESSAGE_LIMIT) throw new Error("You've used all 3 messages for today.");
+
+        const convoRef = doc(db, "conversations", conversationId);
+        const msgRef = doc(collection(db, "conversations", conversationId, "messages"));
+        tx.set(limitRef, { day: today, count: newCount });
+        tx.set(convoRef, {
+          participants: [currentUid, otherUid].sort(),
+          participantNames: { [currentUid]: currentUserName, [otherUid]: opponentName },
+          lastMessageAt: serverTimestamp(),
+          lastMessageText: text,
+          lastMessageSenderId: currentUid,
+          readBy: { ...existingReadBy, [currentUid]: serverTimestamp() },
+        }, { merge: true });
+        tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
+      });
+      input.value = "";
+    } catch (err) {
+      showWwMessage(msg, err.message, "error");
+    }
+  };
+}
+
+document.getElementById("ww-resign-btn").addEventListener("click", async () => {
+  if (!activeGameData || activeGameData.status !== "active") return;
+  if (!confirm("Resign this game?")) return;
+  const winnerUid = game.myPlayerNumber === 1 ? activeGameData.player2Uid : activeGameData.player1Uid;
+  try {
+    await updateDoc(doc(db, "wynneGames", activeGameId), { status: "finished", winner: winnerUid, updatedAt: serverTimestamp() });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+let activeGameId = null;
+let activeGameData = null;
+
+function openWynneGame(gameId) {
+  activeGameId = gameId;
+  showView("game-board");
+  document.getElementById("ww-online-banner").style.display = "block";
+  document.getElementById("ww-mini-chat-card").style.display = "block";
+  document.getElementById("stage-info").style.display = "none";
+  document.querySelector(".game-setup").style.display = "none"; // no save/load in online mode
+
+  if (unsubscribeGame) unsubscribeGame();
+  unsubscribeGame = onSnapshot(doc(db, "wynneGames", gameId), (snap) => {
+    if (!snap.exists()) { showView("ww-waiting"); return; }
+    activeGameData = snap.data();
+    game.isOnline = true;
+    game.isCampaign = false;
+    game.is2Player = false;
+    game.myPlayerNumber = activeGameData.player1Uid === currentUid ? 1 : 2;
+
+    document.getElementById("ww-online-me").textContent = `You: Player ${game.myPlayerNumber}`;
+    document.getElementById("ww-online-opponent").textContent = activeGameData.player2Uid
+      ? `Opponent: ${game.myPlayerNumber === 1 ? activeGameData.player2Name : activeGameData.player1Name}`
+      : "Waiting for opponent to join...";
+    document.getElementById("p2-label").textContent = "Player 2";
+
+    if (activeGameData.status === "finished") {
+      game.board = activeGameData.board;
+      game.gameOver = true;
+      renderBoard();
+      updateUI();
+      showStatus(activeGameData.winner === currentUid ? "You won! 🎉" : "You lost this one.");
+      recordWynneStatsForGame(activeGameId, activeGameData);
+      return;
+    }
+
+    game.board = activeGameData.board;
+    game.currentPlayer = activeGameData.currentPlayerNum;
+    game.gameOver = false;
+    game.selectedCell = null;
+
+    if (game.currentPlayer === game.myPlayerNumber) {
+      game.phase = "wizard_move";
+      game.wizardMovesRemaining = 2;
+      game.armiesToDeploy = getReinforcementCount(game.currentPlayer);
+      game.wizardAttacksUsed = { player1: false, player2: false };
+      showStatus("Your turn! Move your wizard.");
+    } else {
+      showStatus("Waiting for your opponent's turn...");
+    }
+    renderBoard();
+    updateUI();
+    watchWynneMiniChat(gameId);
+  }, (err) => console.error("Game watch failed:", err));
+}
+
+async function submitOnlineTurn() {
+  const nextPlayerNum = game.currentPlayer === 1 ? 2 : 1;
+  const update = { board: game.board, currentPlayerNum: nextPlayerNum, updatedAt: serverTimestamp() };
+  try {
+    await updateDoc(doc(db, "wynneGames", activeGameId), update);
+  } catch (err) {
+    alert(`Couldn't sync turn: ${err.message}`);
+  }
+}
+
+async function submitWynneGameOver(winnerNum) {
+  const winnerUid = winnerNum === 1 ? activeGameData.player1Uid : activeGameData.player2Uid;
+  try {
+    await updateDoc(doc(db, "wynneGames", activeGameId), { board: game.board, status: "finished", winner: winnerUid, updatedAt: serverTimestamp() });
+  } catch (err) {
+    alert(`Couldn't submit result: ${err.message}`);
+  }
+}
+
+function toggleInstructions() {
+  const panel = document.getElementById("instructions-panel");
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+window.toggleInstructions = toggleInstructions;
+
+// ============================= ORIGINAL WYNNEWARS ENGINE ====================
+// This is your original game's logic, kept intact for local play (Campaign
+// vs computer, Two Player same device). Two small hooks were added for
+// online play: handleCellClick ignores clicks when it's not your turn, and
+// endTurn/checkWinCondition sync the finished result to Firestore instead
+// of flipping turns locally when a game is an online match.
+const BOARD_SIZE = 48;
+const game = {
+  board: [], currentPlayer: 1, selectedCell: null, phase: 'setup', armiesToDeploy: 0,
+  gameOver: false, pendingMove: null, wizardMovesRemaining: 0, currentStage: 1,
+  isCampaign: false, is2Player: false, isOnline: false, myPlayerNumber: null,
+  campaignConfig: null, archerShots: { player1: 0, player2: 0 },
+  wizardAttacksUsed: { player1: false, player2: false }
+};
+
+function generateCampaignConfig() {
+  const config = { dungeonStages: [], bonusPositions: [] };
+  const allStages = Array.from({ length: 20 }, (_, i) => i + 1);
+  for (let i = 0; i < 5; i++) {
+    const randomIndex = Math.floor(Math.random() * allStages.length);
+    config.dungeonStages.push(allStages[randomIndex]);
+    allStages.splice(randomIndex, 1);
+  }
+  for (let stage = 1; stage <= 20; stage++) {
+    const positions = [];
+    while (positions.length < 3) {
+      const pos = Math.floor(Math.random() * BOARD_SIZE);
+      if (pos !== 5 && pos !== 14 && pos !== 2 && pos !== 33 && pos !== 42 && pos !== 21 && pos !== 30 && pos !== 45 && !positions.includes(pos)) {
+        positions.push(pos);
+      }
+    }
+    config.bonusPositions[stage] = positions;
+  }
+  return config;
+}
+
+function startCampaign() {
+  game.isCampaign = true; game.is2Player = false; game.isOnline = false;
+  game.currentStage = 1;
+  game.campaignConfig = generateCampaignConfig();
+  document.querySelector(".game-setup").style.display = "flex";
+  initStage();
+  document.getElementById('stage-info').style.display = 'block';
+  updateStageDisplay();
+}
+
+function start2Player() {
+  game.isCampaign = false; game.is2Player = true; game.isOnline = false;
+  game.currentStage = 1;
+  game.campaignConfig = null;
+  document.querySelector(".game-setup").style.display = "flex";
+  initStage();
+  document.getElementById('stage-info').style.display = 'none';
+  showStatus('2 Player Mode - Player 1\'s turn!');
+}
+
+function saveGame() {
+  try {
+    const saveData = {
+      board: game.board, currentPlayer: game.currentPlayer, phase: game.phase,
+      armiesToDeploy: game.armiesToDeploy, gameOver: game.gameOver,
+      wizardMovesRemaining: game.wizardMovesRemaining, currentStage: game.currentStage,
+      isCampaign: game.isCampaign, is2Player: game.is2Player, campaignConfig: game.campaignConfig,
+      saveDate: new Date().toISOString()
+    };
+    localStorage.setItem('wynneWarsGameSave', JSON.stringify(saveData));
+    const s = document.getElementById('save-status');
+    s.textContent = '✅ Game saved successfully!'; s.style.color = '#10b981';
+    setTimeout(() => { s.textContent = ''; }, 3000);
+  } catch (error) {
+    const s = document.getElementById('save-status');
+    s.textContent = '❌ Failed to save game'; s.style.color = '#ef4444';
+  }
+}
+
+function loadGame() {
+  try {
+    const savedData = localStorage.getItem('wynneWarsGameSave');
+    if (!savedData) {
+      const s = document.getElementById('save-status');
+      s.textContent = '⚠️ No saved game found'; s.style.color = '#f59e0b';
+      setTimeout(() => { s.textContent = ''; }, 3000);
+      return;
+    }
+    const saveData = JSON.parse(savedData);
+    game.board = saveData.board; game.currentPlayer = saveData.currentPlayer; game.phase = saveData.phase;
+    game.armiesToDeploy = saveData.armiesToDeploy; game.gameOver = saveData.gameOver;
+    game.wizardMovesRemaining = saveData.wizardMovesRemaining; game.currentStage = saveData.currentStage;
+    game.isCampaign = saveData.isCampaign; game.is2Player = saveData.is2Player || false;
+    game.isOnline = false; game.campaignConfig = saveData.campaignConfig;
+    game.selectedCell = null; game.pendingMove = null;
+
+    if (game.isCampaign) { document.getElementById('stage-info').style.display = 'block'; updateStageDisplay(); }
+    else { document.getElementById('stage-info').style.display = 'none'; }
+
+    renderBoard(); updateUI();
+    const saveDate = new Date(saveData.saveDate).toLocaleString();
+    const s = document.getElementById('save-status');
+    s.textContent = `✅ Game loaded! (Saved: ${saveDate})`; s.style.color = '#10b981';
+    setTimeout(() => { s.textContent = ''; }, 5000);
+  } catch (error) {
+    const s = document.getElementById('save-status');
+    s.textContent = '❌ Failed to load game'; s.style.color = '#ef4444';
+  }
+}
+document.getElementById("save-btn").addEventListener("click", saveGame);
+document.getElementById("load-btn").addEventListener("click", loadGame);
+
+function updateStageDisplay() {
+  if (!game.isCampaign) return;
+  document.getElementById('current-stage').textContent = game.currentStage;
+  const features = [];
+  if (game.campaignConfig.dungeonStages.includes(game.currentStage)) features.push('🕳️ TRAP DOOR ACTIVE');
+  if (game.currentStage >= 5) features.push('🏹 ARCHERS DEPLOYED');
+  if (game.currentStage === 20) features.push('⚠️ FINAL BOSS STAGE');
+  document.getElementById('stage-features').innerHTML = features.join(' | ');
+}
+
+function initStage() {
+  game.board = Array(BOARD_SIZE).fill(null).map(() => ({ owner: 0, armies: 0, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false }));
+  game.board[5] = { owner: 1, armies: 3, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false };
+  game.board[14] = { owner: 1, armies: 3, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false };
+  game.board[2] = { owner: 1, armies: 1, isBonus: false, isWizard: true, isArcher: false, isTrapDoor: false };
+  game.board[42] = { owner: 2, armies: 3, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false };
+  game.board[33] = { owner: 2, armies: 3, isBonus: false, isWizard: false, isArcher: false, isTrapDoor: false };
+  game.board[45] = { owner: 2, armies: 1, isBonus: false, isWizard: true, isArcher: false, isTrapDoor: false };
+
+  if (game.isCampaign && game.currentStage >= 5) {
+    game.board[8] = { owner: 1, armies: 1, isBonus: false, isWizard: false, isArcher: true, isTrapDoor: false };
+    game.board[11] = { owner: 1, armies: 1, isBonus: false, isWizard: false, isArcher: true, isTrapDoor: false };
+    game.board[17] = { owner: 1, armies: 1, isBonus: false, isWizard: false, isArcher: true, isTrapDoor: false };
+    game.board[36] = { owner: 2, armies: 1, isBonus: false, isWizard: false, isArcher: true, isTrapDoor: false };
+    game.board[39] = { owner: 2, armies: 1, isBonus: false, isWizard: false, isArcher: true, isTrapDoor: false };
+    game.board[30] = { owner: 2, armies: 1, isBonus: false, isWizard: false, isArcher: true, isTrapDoor: false };
+  }
+  if (game.isCampaign && game.currentStage === 20) {
+    game.board[41] = { owner: 2, armies: 1, isBonus: false, isWizard: true, isArcher: false, isTrapDoor: false };
+    game.board[34] = { owner: 2, armies: 1, isBonus: false, isWizard: true, isArcher: false, isTrapDoor: false };
+    game.board[28] = { owner: 2, armies: 1, isBonus: false, isWizard: false, isArcher: true, isTrapDoor: false };
+    game.board[31] = { owner: 2, armies: 1, isBonus: false, isWizard: false, isArcher: true, isTrapDoor: false };
+    game.board[37] = { owner: 2, armies: 1, isBonus: false, isWizard: false, isArcher: true, isTrapDoor: false };
+  }
+
+  let bonusPositions;
+  if (game.isCampaign && game.campaignConfig) bonusPositions = game.campaignConfig.bonusPositions[game.currentStage];
+  else bonusPositions = [10, 23, 38];
+  bonusPositions.forEach((pos) => {
+    if (game.board[pos].owner === 0) game.board[pos] = { owner: 0, armies: 5, isBonus: true, isWizard: false, isArcher: false, isTrapDoor: false };
+  });
+
+  if (game.isCampaign && game.campaignConfig && game.campaignConfig.dungeonStages.includes(game.currentStage)) {
+    const trapPos = 18 + Math.floor(Math.random() * 12);
+    if (game.board[trapPos].owner === 0) game.board[trapPos].isTrapDoor = true;
+  }
+
+  game.currentPlayer = 1; game.phase = 'wizard_move'; game.wizardMovesRemaining = 2;
+  game.selectedCell = null; game.gameOver = false; game.pendingMove = null;
+  game.armiesToDeploy = getReinforcementCount(1);
+  game.archerShots = { player1: 0, player2: 0 };
+  game.wizardAttacksUsed = { player1: false, player2: false };
+
+  document.getElementById('p2-label').textContent = game.is2Player ? 'Player 2' : 'AI Opponent';
+
+  renderBoard(); updateUI();
+  document.getElementById('end-btn').onclick = endTurn;
+  document.getElementById('reset-btn').onclick = resetGame;
+  document.getElementById('army-slider').oninput = updateSliderDisplay;
+  document.getElementById('confirm-move').onclick = confirmMove;
+  document.getElementById('cancel-move').onclick = cancelMove;
+}
+
+function resetGame() {
+  if (game.isCampaign) { game.currentStage = 1; game.campaignConfig = generateCampaignConfig(); updateStageDisplay(); }
+  initStage();
+  document.getElementById('status').textContent = 'Game reset! Your turn.';
+}
+
+function nextStage() {
+  if (!game.isCampaign) return;
+  if (game.currentStage < 20) {
+    game.currentStage++; updateStageDisplay(); initStage();
+    showStatus(`🎉 Stage ${game.currentStage} begins!`);
+  } else {
+    showStatus('🏆 CAMPAIGN COMPLETE! YOU ARE THE CHAMPION! 🏆');
+    game.gameOver = true;
+  }
+}
+
+function renderBoard() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  game.board.forEach((cell, i) => {
+    const cellEl = document.createElement('div');
+    cellEl.className = 'ww-cell';
+    if (cell.owner === 1) cellEl.classList.add('player1');
+    if (cell.owner === 2) cellEl.classList.add('player2');
+    if (game.selectedCell === i) cellEl.classList.add('selected');
+
+    if (cell.owner > 0) {
+      const playerColor = cell.owner === 1 ? 'rgba(102, 126, 234, 0.6)' : 'rgba(240, 147, 251, 0.6)';
+      let characterImage;
+      if (cell.isWizard) characterImage = 'https://github.com/TitanBusinessPros/Wynne-Wars/raw/main/Wizard.png';
+      else if (cell.isArcher) characterImage = 'https://github.com/TitanBusinessPros/Wynne-Wars/raw/main/Archer.png';
+      else characterImage = 'https://github.com/TitanBusinessPros/Wynne-Wars/raw/main/Swordsmen.png';
+      cellEl.innerHTML = `
+        <div style="position: relative; width: 100%; height: 100%;">
+          <img src="${characterImage}" style="width: 100%; height: 100%; object-fit: contain; position: absolute; top: 0; left: 0;">
+          <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: ${playerColor}; mix-blend-mode: multiply;"></div>
+          <div class="army-count" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; text-shadow: 2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(255,255,255,0.5);">${cell.armies}</div>
+        </div>
+      `;
+    }
+    cellEl.onclick = () => handleCellClick(i);
+    boardEl.appendChild(cellEl);
+  });
+
+  if (game.selectedCell !== null) {
+    if (game.phase === 'wizard_move') highlightWizardMovement(game.selectedCell);
+    else if (game.phase === 'expand') highlightValidExpansion(game.selectedCell);
+    else if (game.phase === 'attack') {
+      const cell = game.board[game.selectedCell];
+      if (cell.isWizard) highlightWizardTargets(game.selectedCell);
+      else if (cell.isArcher) highlightArcherTargets(game.selectedCell);
+      else highlightValidTargets(game.selectedCell);
+    } else if (game.phase === 'fortify') highlightValidFortify(game.selectedCell);
+  }
+}
+
+function handleCellClick(i) {
+  if (game.gameOver) return;
+  if (game.isCampaign && game.currentPlayer === 2) return;
+  if (game.isOnline && game.currentPlayer !== game.myPlayerNumber) return;
+
+  const cell = game.board[i];
+
+  if (game.phase === 'wizard_move') {
+    if (game.selectedCell === null) {
+      if (cell.owner === game.currentPlayer && cell.isWizard) {
+        game.selectedCell = i; renderBoard();
+        showStatus(`Player ${game.currentPlayer}: Move wizard (${game.wizardMovesRemaining} moves left)`);
+      }
+    } else {
+      if (i === game.selectedCell) { game.selectedCell = null; renderBoard(); updateUI(); }
+      else if (isAdjacent(game.selectedCell, i) && cell.owner === 0) moveWizard(game.selectedCell, i);
+    }
+  } else if (game.phase === 'deploy') {
+    if (game.armiesToDeploy > 0) {
+      if (cell.owner === game.currentPlayer && !cell.isWizard && !cell.isArcher) {
+        game.board[i].armies++; game.armiesToDeploy--;
+        if (game.armiesToDeploy === 0) game.phase = 'expand';
+        renderBoard(); updateUI();
+      } else if (cell.owner === game.currentPlayer && (cell.isWizard || cell.isArcher)) {
+        showStatus(`Can't deploy to wizards or archers! They stay at 1 army.`);
+      } else if (cell.owner === 0 && isAdjacentToPlayer(i, game.currentPlayer)) {
+        deployToEmpty(i);
+      }
+    }
+  } else if (game.phase === 'expand') handleExpand(i);
+  else if (game.phase === 'attack') handleAttack(i);
+  else if (game.phase === 'fortify') handleFortify(i);
+}
+
+function moveWizard(from, to) {
+  game.board[to].owner = game.currentPlayer; game.board[to].armies = 1; game.board[to].isWizard = true;
+  game.board[from].owner = 0; game.board[from].armies = 0; game.board[from].isWizard = false;
+  game.wizardMovesRemaining--; game.selectedCell = null;
+
+  if (game.board[to].isTrapDoor) {
+    setTimeout(() => {
+      playTrapDoorSound();
+      showStatus(`💀 TRAP DOOR! Player ${game.currentPlayer}'s wizard is lost!`);
+      game.board[to].owner = 0; game.board[to].armies = 0; game.board[to].isWizard = false;
+      renderBoard();
+    }, 100);
+  }
+  if (game.wizardMovesRemaining === 0) game.phase = 'deploy';
+  renderBoard(); updateUI();
+}
+
+function deployToEmpty(i) {
+  const bonusArmies = game.board[i].isBonus ? game.board[i].armies : 0;
+  game.board[i].owner = game.currentPlayer; game.board[i].armies = 1 + bonusArmies; game.board[i].isBonus = false;
+  game.armiesToDeploy--;
+
+  if (game.board[i].isTrapDoor) {
+    setTimeout(() => {
+      playTrapDoorSound();
+      showStatus(`💀 TRAP DOOR! Player ${game.currentPlayer} lost!`);
+      game.board[i].owner = 0; game.board[i].armies = 0;
+      renderBoard();
+    }, 100);
+  } else if (bonusArmies > 0) {
+    showStatus(`Player ${game.currentPlayer} BONUS! +${bonusArmies} armies! ⭐`);
+    celebrateBonus();
+  }
+  if (game.armiesToDeploy === 0) game.phase = 'expand';
+  renderBoard(); updateUI();
+}
+
+function handleExpand(i) {
+  if (game.selectedCell === null) {
+    if (game.board[i].owner === game.currentPlayer && game.board[i].armies > 1 && !game.board[i].isWizard && !game.board[i].isArcher) {
+      game.selectedCell = i; renderBoard();
+      showStatus(`Player ${game.currentPlayer}: Click adjacent empty square to expand`);
+    }
+  } else {
+    if (i === game.selectedCell) { game.selectedCell = null; renderBoard(); }
+    else if (isAdjacent(game.selectedCell, i) && game.board[i].owner === 0) showMoveModal(game.selectedCell, i, 'expand');
+  }
+}
+
+function handleAttack(i) {
+  const opponent = game.currentPlayer === 1 ? 2 : 1;
+  if (game.selectedCell === null) {
+    if (game.board[i].owner === game.currentPlayer && game.board[i].armies > 0) {
+      if (game.board[i].isWizard) {
+        const wizardKey = game.currentPlayer === 1 ? 'player1' : 'player2';
+        if (game.wizardAttacksUsed[wizardKey]) { showStatus(`Player ${game.currentPlayer}: Wizard has already attacked this turn!`); return; }
+      }
+      game.selectedCell = i; renderBoard();
+      showStatus(`Player ${game.currentPlayer}: Select enemy to attack`);
+    }
+  } else {
+    if (i === game.selectedCell) { game.selectedCell = null; renderBoard(); }
+    else {
+      const sourceCell = game.board[game.selectedCell];
+      if (game.board[i].owner === opponent) {
+        if (sourceCell.isWizard && isWithinWizardRange(game.selectedCell, i)) performWizardAttack(game.selectedCell, i);
+        else if (sourceCell.isArcher && isWithinArcherRange(game.selectedCell, i)) performArcherAttack(game.selectedCell, i);
+        else if (!sourceCell.isWizard && !sourceCell.isArcher && isAdjacent(game.selectedCell, i)) performAttack(game.selectedCell, i);
+        game.selectedCell = null;
+        renderBoard(); updateUI(); checkWinCondition();
+      }
+    }
+  }
+}
+
+function handleFortify(i) {
+  if (game.selectedCell === null) {
+    if (game.board[i].owner === game.currentPlayer && game.board[i].armies > 1 && !game.board[i].isWizard && !game.board[i].isArcher) {
+      game.selectedCell = i; renderBoard();
+      showStatus(`Player ${game.currentPlayer}: Select friendly territory to move armies to`);
+    }
+  } else {
+    if (i === game.selectedCell) { game.selectedCell = null; renderBoard(); }
+    else if (isAdjacent(game.selectedCell, i) && game.board[i].owner === game.currentPlayer) showMoveModal(game.selectedCell, i, 'fortify');
+  }
+}
+
+function performAttack(from, to) {
+  const attacker = game.board[from]; const defender = game.board[to];
+  if (attacker.armies > defender.armies) {
+    const remaining = attacker.armies - defender.armies;
+    game.board[to].owner = attacker.owner; game.board[to].armies = remaining;
+    game.board[to].isWizard = false; game.board[to].isArcher = false;
+    game.board[from].armies = 0; game.board[from].owner = 0;
+    const playerName = attacker.owner === 1 ? 'Player' : (game.is2Player || game.isOnline ? 'Player 2' : 'AI');
+    showStatus(`${playerName} conquered! ${attacker.armies} vs ${defender.armies} = ${remaining} remaining 🎯`);
+  } else if (attacker.armies === defender.armies) {
+    game.board[from].armies = 0; game.board[from].owner = 0;
+    game.board[to].armies = 0; game.board[to].owner = 0;
+    game.board[to].isWizard = false; game.board[to].isArcher = false;
+    showStatus(`Mutual destruction! ${attacker.armies} vs ${defender.armies} 💥`);
+  } else {
+    game.board[from].armies = 0; game.board[from].owner = 0;
+    const playerName = defender.owner === 1 ? 'Player' : (game.is2Player || game.isOnline ? 'Player 2' : 'AI');
+    showStatus(`${playerName} defended! ${attacker.armies} vs ${defender.armies} - Attacker eliminated! 🛡️`);
+  }
+}
+
+function performWizardAttack(from, to) {
+  playWizardSound();
+  const ballColor = game.board[from].owner === 1 ? 'blue' : 'red';
+  const wizardKey = game.board[from].owner === 1 ? 'player1' : 'player2';
+  game.wizardAttacksUsed[wizardKey] = true;
+
+  animateMagicBall(from, to, ballColor, () => {
+    const remaining = game.board[to].armies - 2;
+    const playerName = game.board[from].owner === 1 ? 'Player 1' : 'Player 2';
+    if (remaining <= 0) {
+      game.board[to].owner = 0; game.board[to].armies = 0; game.board[to].isWizard = false; game.board[to].isArcher = false;
+      showStatus(`${playerName} Wizard destroyed target! 🔮⚡`);
+    } else {
+      game.board[to].armies = remaining;
+      showStatus(`${playerName} Wizard hit! ${remaining} remain 🔮⚡`);
+    }
+    renderBoard(); updateUI(); checkWinCondition();
+  });
+}
+
+function performArcherAttack(from, to) {
+  playArcherSound();
+  animateArrow(from, to, () => {
+    const remaining = game.board[to].armies - 1;
+    const playerName = game.board[from].owner === 1 ? 'Player 1' : 'Player 2';
+    if (remaining <= 0) {
+      game.board[to].owner = 0; game.board[to].armies = 0; game.board[to].isWizard = false; game.board[to].isArcher = false;
+      showStatus(`${playerName} Archer eliminated target! 🏹`);
+    } else {
+      game.board[to].armies = remaining;
+      showStatus(`${playerName} Archer hit! ${remaining} remain 🏹`);
+    }
+    renderBoard(); updateUI(); checkWinCondition();
+  });
+}
+
+function isWithinArcherRange(from, to) {
+  const rowFrom = Math.floor(from / 8), colFrom = from % 8, rowTo = Math.floor(to / 8), colTo = to % 8;
+  if (rowFrom !== rowTo && colFrom !== colTo) return false;
+  const distance = Math.abs(rowFrom - rowTo) + Math.abs(colFrom - colTo);
+  return distance >= 1 && distance <= 3;
+}
+function isWithinWizardRange(from, to) {
+  const rowFrom = Math.floor(from / 8), colFrom = from % 8, rowTo = Math.floor(to / 8), colTo = to % 8;
+  if (rowFrom !== rowTo && colFrom !== colTo) return false;
+  const distance = Math.abs(rowFrom - rowTo) + Math.abs(colFrom - colTo);
+  return distance >= 1 && distance <= 2;
+}
+function highlightArcherTargets(i) {
+  const cells = document.querySelectorAll('.ww-cell');
+  const opponent = game.board[i].owner === 1 ? 2 : 1;
+  cells.forEach((cellEl, j) => { if (isWithinArcherRange(i, j) && game.board[j].owner === opponent) cellEl.classList.add('valid-move'); });
+}
+function highlightWizardTargets(i) {
+  const cells = document.querySelectorAll('.ww-cell');
+  const opponent = game.board[i].owner === 1 ? 2 : 1;
+  cells.forEach((cellEl, j) => { if (isWithinWizardRange(i, j) && game.board[j].owner === opponent) cellEl.classList.add('valid-move'); });
+}
+function highlightValidTargets(i) {
+  const cells = document.querySelectorAll('.ww-cell');
+  const opponent = game.board[i].owner === 1 ? 2 : 1;
+  cells.forEach((cellEl, j) => { if (isAdjacent(i, j) && game.board[j].owner === opponent) cellEl.classList.add('valid-move'); });
+}
+function highlightWizardMovement(i) {
+  document.querySelectorAll('.ww-cell').forEach((cellEl, j) => { if (isAdjacent(i, j) && game.board[j].owner === 0) cellEl.classList.add('valid-expansion'); });
+}
+function highlightValidExpansion(i) {
+  document.querySelectorAll('.ww-cell').forEach((cellEl, j) => { if (isAdjacent(i, j) && game.board[j].owner === 0) cellEl.classList.add('valid-expansion'); });
+}
+function highlightValidFortify(i) {
+  const currentPlayer = game.board[i].owner;
+  document.querySelectorAll('.ww-cell').forEach((cellEl, j) => { if (isAdjacent(i, j) && game.board[j].owner === currentPlayer) cellEl.classList.add('valid-fortify'); });
+}
+
+function endTurn() {
+  if (game.gameOver) return;
+
+  if (game.phase === 'fortify') {
+    if (game.isOnline) { submitOnlineTurn(); return; }
+
+    game.currentPlayer = game.currentPlayer === 1 ? 2 : 1;
+    game.phase = 'wizard_move'; game.wizardMovesRemaining = 2; game.selectedCell = null;
+    game.armiesToDeploy = getReinforcementCount(game.currentPlayer);
+    game.wizardAttacksUsed = { player1: false, player2: false };
+    updateUI(); renderBoard();
+
+    if (game.isCampaign && game.currentPlayer === 2) {
+      setTimeout(() => { if (!game.gameOver) aiTurn(); }, 1000);
+    } else if (game.is2Player) {
+      showStatus(`Player ${game.currentPlayer}'s turn! Move your wizard.`);
+    }
+  } else {
+    if (game.phase === 'wizard_move') { game.phase = 'deploy'; game.wizardMovesRemaining = 0; }
+    else if (game.phase === 'deploy') game.phase = 'expand';
+    else if (game.phase === 'expand') game.phase = 'attack';
+    else if (game.phase === 'attack') game.phase = 'fortify';
+    game.selectedCell = null;
+    updateUI(); renderBoard();
+  }
+}
+
+function aiTurn() {
+  showStatus('AI is thinking...');
+  game.phase = 'wizard_move'; updateUI(); renderBoard();
+  setTimeout(() => {
+    aiWizardMove();
+    setTimeout(() => {
+      game.phase = 'deploy'; updateUI(); renderBoard();
+      setTimeout(() => {
+        aiDeploy();
+        setTimeout(() => {
+          game.phase = 'expand'; updateUI(); renderBoard();
+          setTimeout(() => {
+            aiExpand();
+            setTimeout(() => {
+              game.phase = 'attack'; updateUI(); renderBoard();
+              setTimeout(() => {
+                aiAttack();
+                setTimeout(() => {
+                  aiArcherPhase();
+                  setTimeout(() => {
+                    game.phase = 'fortify'; updateUI(); renderBoard();
+                    setTimeout(() => {
+                      aiFortify();
+                      setTimeout(() => {
+                        if (!game.gameOver) {
+                          game.currentPlayer = 1; game.phase = 'wizard_move'; game.wizardMovesRemaining = 2;
+                          game.armiesToDeploy = getReinforcementCount(1);
+                          updateUI(); renderBoard();
+                          showStatus('Your turn! Move your wizard.');
+                        }
+                      }, 600);
+                    }, 600);
+                  }, 600);
+                }, 600);
+              }, 600);
+            }, 600);
+          }, 600);
+        }, 600);
+      }, 600);
+    }, 600);
+  }, 800);
+}
+
+function aiWizardMove() {
+  const wizards = game.board.map((c, i) => c.owner === 2 && c.isWizard ? i : -1).filter((i) => i !== -1);
+  wizards.forEach((wizardIdx) => {
+    for (let move = 0; move < 2; move++) {
+      const currentWiz = game.board.findIndex((c, i) => i >= wizardIdx && c.owner === 2 && c.isWizard);
+      if (currentWiz === -1) break;
+      const adjacent = getAdjacentCells(currentWiz).filter((adj) => game.board[adj].owner === 0);
+      if (adjacent.length > 0) {
+        const moveEvaluations = adjacent.map((adj) => {
+          const adjacentToMove = getAdjacentCells(adj);
+          const playerThreats = adjacentToMove.filter((cell) => game.board[cell].owner === 1 && game.board[cell].armies > 0);
+          const friendlyProtection = adjacentToMove.filter((cell) => game.board[cell].owner === 2 && !game.board[cell].isWizard && game.board[cell].armies >= 3);
+          const dangerScore = playerThreats.length * 10 - friendlyProtection.length * 5;
+          const row = Math.floor(adj / 8);
+          const retreatBonus = row * 2;
+          return { position: adj, score: dangerScore - retreatBonus };
+        });
+        moveEvaluations.sort((a, b) => a.score - b.score);
+        const target = moveEvaluations[0].position;
+        game.board[target].owner = 2; game.board[target].armies = 1; game.board[target].isWizard = true;
+        game.board[currentWiz].owner = 0; game.board[currentWiz].armies = 0; game.board[currentWiz].isWizard = false;
+        renderBoard();
+      }
+    }
+  });
+}
+
+function aiDeploy() {
+  game.armiesToDeploy = getReinforcementCount(2);
+  while (game.armiesToDeploy > 0) {
+    const aiTerritories = game.board.map((c, i) => ({ i, c })).filter((x) => x.c.owner === 2 && !x.c.isWizard && !x.c.isArcher);
+    const wizardPositions = game.board.map((c, i) => c.owner === 2 && c.isWizard ? i : -1).filter((i) => i !== -1);
+    const wizardGuards = [];
+    wizardPositions.forEach((wiz) => { getAdjacentCells(wiz).forEach((adj) => { if (game.board[adj].owner === 2 && !game.board[adj].isWizard && !game.board[adj].isArcher) wizardGuards.push(adj); }); });
+    const threatenedTerritories = aiTerritories.filter((t) => getAdjacentCells(t.i).some((adj) => game.board[adj].owner === 1 && game.board[adj].armies > t.c.armies));
+    const borderTerritories = aiTerritories.filter((t) => getAdjacentCells(t.i).some((adj) => game.board[adj].owner === 1));
+    const expandOptions = [];
+    aiTerritories.forEach((t) => { getAdjacentCells(t.i).forEach((adj) => { if (game.board[adj].owner === 0 && !expandOptions.includes(adj)) expandOptions.push(adj); }); });
+    const bonusExpand = expandOptions.filter((i) => game.board[i].isBonus);
+
+    if (wizardGuards.length > 0 && Math.random() > 0.3) {
+      const target = wizardGuards[Math.floor(Math.random() * wizardGuards.length)];
+      game.board[target].armies++; game.armiesToDeploy--;
+    } else if (threatenedTerritories.length > 0) {
+      const target = threatenedTerritories[0];
+      game.board[target.i].armies++; game.armiesToDeploy--;
+    } else if (bonusExpand.length > 0 && Math.random() > 0.5) {
+      const target = bonusExpand[0];
+      const bonusArmies = game.board[target].armies;
+      game.board[target].owner = 2; game.board[target].armies = 1 + bonusArmies; game.board[target].isBonus = false;
+      game.armiesToDeploy--;
+    } else if (borderTerritories.length > 0) {
+      const target = borderTerritories[Math.floor(Math.random() * borderTerritories.length)];
+      game.board[target.i].armies++; game.armiesToDeploy--;
+    } else if (aiTerritories.length > 0) {
+      const target = aiTerritories[Math.floor(Math.random() * aiTerritories.length)];
+      game.board[target.i].armies++; game.armiesToDeploy--;
+    } else break;
+  }
+  renderBoard(); updateUI();
+}
+
+function aiExpand() {
+  const aiTerritories = game.board.map((c, i) => ({ i, c })).filter((x) => x.c.owner === 2 && x.c.armies > 1 && !x.c.isWizard && !x.c.isArcher);
+  let expansionsMade = 0;
+  const maxExpansions = 3;
+  for (const territory of aiTerritories) {
+    if (expansionsMade >= maxExpansions) break;
+    const adjacentEmpty = getAdjacentCells(territory.i).filter((adj) => game.board[adj].owner === 0).map((adj) => ({ i: adj, isBonus: game.board[adj].isBonus }));
+    if (adjacentEmpty.length > 0) {
+      const bonusSquares = adjacentEmpty.filter((e) => e.isBonus);
+      const target = bonusSquares.length > 0 ? bonusSquares[0] : adjacentEmpty[0];
+      const armiesToMove = Math.floor(game.board[territory.i].armies / 2);
+      if (armiesToMove >= 1) { performExpansion(territory.i, target.i, armiesToMove); expansionsMade++; renderBoard(); updateUI(); }
+    }
+  }
+}
+
+function aiAttack() {
+  const aiTerritories = game.board.map((c, i) => ({ i, c })).filter((x) => x.c.owner === 2 && x.c.armies >= 2 && !x.c.isWizard && !x.c.isArcher);
+  let attacksMade = 0;
+  const maxAttacks = 5;
+  const attackOptions = [];
+  for (const territory of aiTerritories) {
+    const targets = getAdjacentCells(territory.i).filter((adj) => game.board[adj].owner === 1).map((adj) => ({
+      from: territory.i, to: adj, attackerArmies: game.board[territory.i].armies, defenderArmies: game.board[adj].armies,
+      advantage: game.board[territory.i].armies - game.board[adj].armies, isWizard: game.board[adj].isWizard, isArcher: game.board[adj].isArcher
+    }));
+    attackOptions.push(...targets);
+  }
+  attackOptions.sort((a, b) => {
+    if (a.isWizard && !b.isWizard) return -1; if (!a.isWizard && b.isWizard) return 1;
+    if (a.isArcher && !b.isArcher) return -1; if (!a.isArcher && b.isArcher) return 1;
+    return b.advantage - a.advantage;
+  });
+  const goodAttacks = attackOptions.filter((opt) => opt.advantage >= 1 || opt.isWizard || opt.isArcher);
+  for (const attack of goodAttacks) {
+    if (attacksMade >= maxAttacks || game.gameOver) break;
+    performAttack(attack.from, attack.to); attacksMade++;
+    renderBoard(); updateUI(); checkWinCondition();
+  }
+  const wizards = game.board.map((c, i) => c.owner === 2 && c.isWizard ? i : -1).filter((i) => i !== -1);
+  if (wizards.length > 0 && !game.gameOver) {
+    const wiz = wizards[0];
+    const targets = [];
+    for (let j = 0; j < BOARD_SIZE; j++) {
+      if (game.board[j].owner === 1 && isWithinWizardRange(wiz, j)) {
+        targets.push({ i: j, armies: game.board[j].armies, isWizard: game.board[j].isWizard, isArcher: game.board[j].isArcher, priority: game.board[j].isWizard ? 1000 : game.board[j].isArcher ? 500 : game.board[j].armies });
+      }
+    }
+    if (targets.length > 0) { targets.sort((a, b) => b.priority - a.priority); performWizardAttack(wiz, targets[0].i); }
+  }
+}
+
+function aiArcherPhase() {
+  const archers = game.board.map((c, i) => c.owner === 2 && c.isArcher ? i : -1).filter((i) => i !== -1);
+  archers.forEach((archer) => {
+    for (let j = 0; j < BOARD_SIZE; j++) {
+      if (game.board[j].owner === 1 && isWithinArcherRange(archer, j)) { performArcherAttack(archer, j); break; }
+    }
+  });
+}
+
+function aiFortify() {
+  const wizardPositions = game.board.map((c, i) => c.owner === 2 && c.isWizard ? i : -1).filter((i) => i !== -1);
+  for (const wiz of wizardPositions) {
+    const adjacentFriendly = getAdjacentCells(wiz).filter((adj) => game.board[adj].owner === 2 && !game.board[adj].isWizard && !game.board[adj].isArcher);
+    const weakGuards = adjacentFriendly.filter((adj) => game.board[adj].armies < 4);
+    if (weakGuards.length > 0) {
+      const interiorTerritories = game.board.map((c, i) => ({ i, c })).filter((x) => x.c.owner === 2 && x.c.armies > 3 && !x.c.isWizard && !x.c.isArcher).filter((t) => !getAdjacentCells(t.i).some((a) => game.board[a].owner === 1));
+      for (const interior of interiorTerritories) {
+        const adjacentToInterior = getAdjacentCells(interior.i);
+        const wizardGuards = adjacentToInterior.filter((adj) => weakGuards.includes(adj));
+        if (wizardGuards.length > 0) {
+          const move = Math.floor(game.board[interior.i].armies / 2);
+          if (move >= 2) { performFortify(interior.i, wizardGuards[0], move); renderBoard(); return; }
+        }
+      }
+    }
+  }
+  const aiTerritories = game.board.map((c, i) => ({ i, c })).filter((x) => x.c.owner === 2 && x.c.armies > 2 && !x.c.isWizard && !x.c.isArcher);
+  for (const territory of aiTerritories) {
+    const hasEnemyNear = getAdjacentCells(territory.i).some((adj) => game.board[adj].owner === 1);
+    if (!hasEnemyNear) {
+      const borders = getAdjacentCells(territory.i).filter((adj) => game.board[adj].owner === 2 && getAdjacentCells(adj).some((n) => game.board[n].owner === 1));
+      if (borders.length > 0) {
+        const move = Math.floor(game.board[territory.i].armies * 0.6);
+        if (move >= 2) { performFortify(territory.i, borders[0], move); renderBoard(); break; }
+      }
+    }
+  }
+}
+
+function checkWinCondition() {
+  const p1Armies = game.board.filter((c) => c.owner === 1).reduce((sum, c) => sum + c.armies, 0);
+  const p2Armies = game.board.filter((c) => c.owner === 2).reduce((sum, c) => sum + c.armies, 0);
+
+  if (p1Armies === 0 || p2Armies === 0) {
+    if (game.isOnline) {
+      game.gameOver = true;
+      submitWynneGameOver(p1Armies === 0 ? 2 : 1);
+      updateUI();
+      return;
+    }
+    const player2Name = game.is2Player ? 'Player 2' : 'AI';
+    if (p1Armies === 0) {
+      if (game.isCampaign) showStatus('💀 Defeat! AI wins!');
+      else showStatus(`🎉 ${player2Name} WINS! Player 1 eliminated! 🎉`);
+      game.gameOver = true;
+    } else if (p2Armies === 0) {
+      if (game.isCampaign && game.currentStage < 20) { showStatus(`🎉 Stage ${game.currentStage} complete!`); game.gameOver = true; setTimeout(() => nextStage(), 2000); }
+      else if (game.isCampaign && game.currentStage === 20) { showStatus('🏆 CAMPAIGN COMPLETE! YOU WIN! 🏆'); game.gameOver = true; }
+      else { showStatus(`🎉 Player 1 WINS! ${player2Name} eliminated! 🎉`); game.gameOver = true; }
+    }
+  }
+  updateUI();
+}
+
+function performExpansion(from, to, armies) {
+  const bonus = game.board[to].isBonus ? game.board[to].armies : 0;
+  game.board[from].armies -= armies;
+  game.board[to].owner = game.currentPlayer; game.board[to].armies = armies + bonus; game.board[to].isBonus = false;
+  if (bonus > 0) celebrateBonus();
+}
+function performFortify(from, to, armies) { game.board[from].armies -= armies; game.board[to].armies += armies; }
+
+function showMoveModal(from, to, action) {
+  const max = game.board[from].armies - 1;
+  game.pendingMove = { from, to, action };
+  const slider = document.getElementById('army-slider');
+  slider.max = max; slider.value = Math.min(max, slider.value);
+  document.getElementById('move-description').textContent = action === 'expand' ? 'Expanding territory' : 'Moving armies';
+  updateSliderDisplay();
+  document.getElementById('move-modal').classList.add('show');
+}
+function hideModal() { document.getElementById('move-modal').classList.remove('show'); game.pendingMove = null; }
+function updateSliderDisplay() {
+  const slider = document.getElementById('army-slider');
+  const moving = parseInt(slider.value, 10);
+  const leaving = game.board[game.pendingMove.from].armies - moving;
+  document.getElementById('slider-value').textContent = moving;
+  document.getElementById('moving-armies').textContent = moving;
+  document.getElementById('leaving-armies').textContent = leaving;
+}
+function confirmMove() {
+  if (!game.pendingMove) return;
+  const { from, to, action } = game.pendingMove;
+  const armies = parseInt(document.getElementById('army-slider').value, 10);
+  if (action === 'expand') performExpansion(from, to, armies); else performFortify(from, to, armies);
+  hideModal(); game.selectedCell = null; renderBoard(); updateUI(); checkWinCondition();
+}
+function cancelMove() { hideModal(); }
+
+function getReinforcementCount(player) {
+  const territories = game.board.filter((c) => c.owner === player).length;
+  return Math.max(3, Math.floor(territories / 3));
+}
+function isAdjacent(i, j) {
+  const row1 = Math.floor(i / 8), col1 = i % 8, row2 = Math.floor(j / 8), col2 = j % 8;
+  return (Math.abs(row1 - row2) === 1 && col1 === col2) || (Math.abs(col1 - col2) === 1 && row1 === row2);
+}
+function isAdjacentToPlayer(i, player) { return getAdjacentCells(i).some((adj) => game.board[adj].owner === player); }
+function getAdjacentCells(i) {
+  const adjacent = []; const row = Math.floor(i / 8), col = i % 8;
+  if (row > 0) adjacent.push(i - 8);
+  if (row < 5) adjacent.push(i + 8);
+  if (col > 0) adjacent.push(i - 1);
+  if (col < 7) adjacent.push(i + 1);
+  return adjacent;
+}
+
+function updateUI() {
+  const p1T = game.board.filter((c) => c.owner === 1).length;
+  const p2T = game.board.filter((c) => c.owner === 2).length;
+  const p1A = game.board.filter((c) => c.owner === 1).reduce((sum, c) => sum + c.armies, 0);
+  const p2A = game.board.filter((c) => c.owner === 2).reduce((sum, c) => sum + c.armies, 0);
+  document.getElementById('p1-territories').textContent = p1T;
+  document.getElementById('p2-territories').textContent = p2T;
+  document.getElementById('p1-armies').textContent = p1A;
+  document.getElementById('p2-armies').textContent = p2A;
+  document.getElementById('p1-card').classList.toggle('active', game.currentPlayer === 1);
+  document.getElementById('p2-card').classList.toggle('active', game.currentPlayer === 2);
+
+  const endBtn = document.getElementById('end-btn');
+  const myTurnOnline = !game.isOnline || game.currentPlayer === game.myPlayerNumber;
+  endBtn.disabled = game.gameOver || (game.phase === 'deploy' && game.armiesToDeploy > 0) || !myTurnOnline;
+  endBtn.textContent = game.phase === 'fortify' ? (game.isOnline ? 'End Turn (sync to opponent)' : 'End Turn') : 'Next Phase';
+
+  if (!game.gameOver) {
+    const phaseNames = { wizard_move: '🔮 WIZARD MOVEMENT', deploy: '1️⃣ DEPLOY', expand: '2️⃣ EXPAND', attack: '3️⃣ ATTACK', fortify: '4️⃣ FORTIFY' };
+    document.getElementById('phase-indicator').textContent = phaseNames[game.phase] || game.phase;
+  }
+}
+
+function showStatus(msg) { document.getElementById('status').textContent = msg; }
+
+function celebrateBonus() { playBonusSound(); createFireworks(); }
+function playBonusSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+    setTimeout(() => {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
+    }, i * 100);
+  });
+}
+function playWizardSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator(); const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.setValueAtTime(800, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.5);
+  gain.gain.setValueAtTime(0.3, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
+}
+function playArcherSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator(); const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.setValueAtTime(600, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.2);
+  gain.gain.setValueAtTime(0.3, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
+}
+function playTrapDoorSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator(); const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.setValueAtTime(600, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.8);
+  osc.type = 'sawtooth';
+  gain.gain.setValueAtTime(0.4, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.8);
+}
+function createFireworks() {
+  const container = document.querySelector('.ww-container');
+  const colors = ['#FFD700', '#FF6B6B', '#4ECDC4'];
+  for (let burst = 0; burst < 2; burst++) {
+    setTimeout(() => {
+      for (let i = 0; i < 20; i++) {
+        const particle = document.createElement('div');
+        particle.style.position = 'absolute'; particle.style.width = '6px'; particle.style.height = '6px';
+        particle.style.borderRadius = '50%'; particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        particle.style.left = '50%'; particle.style.top = '100px'; particle.style.pointerEvents = 'none'; particle.style.zIndex = '1000';
+        container.style.position = 'relative'; container.appendChild(particle);
+        const angle = (Math.PI * 2 * i) / 20; const velocity = 50 + Math.random() * 50;
+        let x = 0, y = 0, life = 1;
+        function animate() {
+          x += Math.cos(angle) * velocity * 0.016; y += Math.sin(angle) * velocity * 0.016; life -= 0.02;
+          particle.style.transform = `translate(${x}px, ${y}px)`; particle.style.opacity = life;
+          if (life > 0) requestAnimationFrame(animate); else particle.remove();
+        }
+        animate();
+      }
+    }, burst * 300);
+  }
+}
+function animateMagicBall(from, to, color, onComplete) {
+  const boardEl = document.getElementById('board');
+  const cells = boardEl.querySelectorAll('.ww-cell');
+  const fromRect = cells[from].getBoundingClientRect();
+  const toRect = cells[to].getBoundingClientRect();
+  const ball = document.createElement('div');
+  ball.style.position = 'fixed'; ball.style.width = '40px'; ball.style.height = '40px'; ball.style.borderRadius = '50%';
+  ball.style.background = color === 'blue' ? 'radial-gradient(circle, #60a5fa, #3b82f6)' : 'radial-gradient(circle, #f87171, #ef4444)';
+  ball.style.boxShadow = `0 0 30px ${color === 'blue' ? '#60a5fa' : '#f87171'}`;
+  ball.style.left = (fromRect.left + fromRect.width / 2 - 20) + 'px';
+  ball.style.top = (fromRect.top + fromRect.height / 2 - 20) + 'px';
+  ball.style.zIndex = '99999'; ball.style.pointerEvents = 'none';
+  document.body.appendChild(ball);
+  const startX = fromRect.left + fromRect.width / 2 - 20, startY = fromRect.top + fromRect.height / 2 - 20;
+  const endX = toRect.left + toRect.width / 2 - 20, endY = toRect.top + toRect.height / 2 - 20;
+  let progress = 0;
+  function animate() {
+    progress += 0.05;
+    ball.style.left = (startX + (endX - startX) * progress) + 'px';
+    ball.style.top = (startY + (endY - startY) * progress) + 'px';
+    if (progress < 1) requestAnimationFrame(animate);
+    else { ball.style.transform = 'scale(2)'; ball.style.opacity = '0'; setTimeout(() => { ball.remove(); onComplete(); }, 200); }
+  }
+  animate();
+}
+function animateArrow(from, to, onComplete) {
+  const boardEl = document.getElementById('board');
+  const cells = boardEl.querySelectorAll('.ww-cell');
+  const fromRect = cells[from].getBoundingClientRect();
+  const toRect = cells[to].getBoundingClientRect();
+  const arrow = document.createElement('div');
+  arrow.style.position = 'fixed'; arrow.style.width = '30px'; arrow.style.height = '4px'; arrow.style.background = '#8B4513';
+  arrow.style.left = (fromRect.left + fromRect.width / 2) + 'px'; arrow.style.top = (fromRect.top + fromRect.height / 2) + 'px';
+  arrow.style.zIndex = '99999'; arrow.style.pointerEvents = 'none';
+  arrow.innerHTML = '<div style="position: absolute; right: -8px; top: -6px; width: 0; height: 0; border-left: 8px solid #8B4513; border-top: 7px solid transparent; border-bottom: 7px solid transparent;"></div>';
+  document.body.appendChild(arrow);
+  const startX = fromRect.left + fromRect.width / 2, startY = fromRect.top + fromRect.height / 2;
+  const endX = toRect.left + toRect.width / 2, endY = toRect.top + toRect.height / 2;
+  const angle = Math.atan2(endY - startY, endX - startX);
+  arrow.style.transform = `rotate(${angle}rad)`;
+  let progress = 0;
+  function animate() {
+    progress += 0.08;
+    arrow.style.left = (startX + (endX - startX) * progress) + 'px';
+    arrow.style.top = (startY + (endY - startY) * progress) + 'px';
+    if (progress < 1) requestAnimationFrame(animate);
+    else { arrow.style.opacity = '0'; setTimeout(() => { arrow.remove(); onComplete(); }, 100); }
+  }
+  animate();
+}
+</script>
+</body>
+</html>
