@@ -117,6 +117,11 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
           <h2 style="font-size:1.1rem; margin-top:0.5rem;">Checkers</h2>
           <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
         </div>
+        <div class="card" style="max-width:280px; text-align:center; cursor:pointer;" id="game-tile-wynnewars">
+          <img src="https://github.com/TitanBusinessPros/Wynne-Wars/raw/main/Wizard.png" alt="WynneWars" style="height:2.5rem; width:auto; margin:0 auto;" />
+          <h2 style="font-size:1.1rem; margin-top:0.5rem;">WynneWars</h2>
+          <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
+        </div>
       </div>
       <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
     </section>
@@ -355,6 +360,7 @@ function showView(name) {
 document.getElementById("nav-hub").addEventListener("click", () => showView("hub"));
 document.getElementById("game-tile-chess").addEventListener("click", () => showView("mode-select"));
 document.getElementById("game-tile-checkers").addEventListener("click", () => { location.href = "checkers.html"; });
+document.getElementById("game-tile-wynnewars").addEventListener("click", () => { location.href = "ww.html"; });
 document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
