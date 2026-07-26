@@ -327,7 +327,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <a href="#" id="nav-messages" style="display:none">Messages</a>
     <a href="#" id="nav-friends" style="display:none">Friends<span class="nav-badge-count" id="friends-badge" style="display:none"></span></a>
     <a href="#" id="nav-chatrooms" style="display:none">Chat Rooms</a>
-    <a href="chess.html" id="nav-chess" style="display:none">Chess</a>
+    <a href="chess.html" id="nav-games" style="display:none">Games</a>
     <a href="#" id="nav-dashboard" style="display:none">Your page</a>
     <a href="#" id="nav-admin" style="display:none">Admin</a>
     <a href="#" id="nav-auth">Sign in</a>
@@ -876,7 +876,7 @@ function updateProtectedNavVisibility(user) {
   document.getElementById("nav-messages").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-friends").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-chatrooms").style.display = canSeeFullNav ? "inline" : "none";
-  document.getElementById("nav-chess").style.display = canSeeFullNav ? "inline" : "none";
+  document.getElementById("nav-games").style.display = canSeeFullNav ? "inline" : "none";
 }
 
 onAuthStateChanged(auth, async (user) => {
