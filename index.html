@@ -894,6 +894,7 @@ onAuthStateChanged(auth, async (user) => {
     watchChatMessageLimit(user.uid);
     loadBlockedList();
     updateLastActive(user.uid);
+    startPresenceHeartbeat();
     updateDashboardGates();
 
     // Check admin status by trying to read our own admins/{uid} doc — the
@@ -919,6 +920,7 @@ onAuthStateChanged(auth, async (user) => {
     if (unsubscribeUnreadWatch) { unsubscribeUnreadWatch(); unsubscribeUnreadWatch = null; }
     if (unsubscribeFriendBadge) { unsubscribeFriendBadge(); unsubscribeFriendBadge = null; }
     if (unsubscribeChatLimit) { unsubscribeChatLimit(); unsubscribeChatLimit = null; }
+    stopPresenceHeartbeat();
     myBlockedUids = new Set();
     const friendsBadge = document.getElementById("friends-badge");
     if (friendsBadge) friendsBadge.style.display = "none";
@@ -928,6 +930,31 @@ onAuthStateChanged(auth, async (user) => {
     showView("landing");
   }
 });
+
+// A friend counts as "online" if their lastActiveAt is within this window.
+// This is a best-effort approximation (not true real-time presence like a
+// dedicated presence service would give you), built on the same
+// lastActiveAt field already used for the 30-day inactivity check — no
+// new infrastructure needed.
+const ONLINE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
+let presenceHeartbeatInterval = null;
+
+function startPresenceHeartbeat() {
+  if (presenceHeartbeatInterval) return;
+  presenceHeartbeatInterval = setInterval(() => {
+    // Skip the write if the tab isn't even visible — no point paying for
+    // a Firestore write to say "online" when nobody's actually looking.
+    if (document.visibilityState === "visible" && currentUid) updateLastActive(currentUid);
+  }, 60 * 1000);
+}
+function stopPresenceHeartbeat() {
+  if (presenceHeartbeatInterval) { clearInterval(presenceHeartbeatInterval); presenceHeartbeatInterval = null; }
+}
+function isRecentlyActive(lastActiveAt) {
+  if (!lastActiveAt) return false;
+  const ms = lastActiveAt.seconds ? lastActiveAt.seconds * 1000 : 0;
+  return Date.now() - ms < ONLINE_THRESHOLD_MS;
+}
 
 // Ping our own "last active" timestamp on every login — this is what the
 // 30-day inactivity check (in the Admin panel) reads from. Uses the
@@ -2134,7 +2161,7 @@ function watchConversations() {
     snap.forEach((docSnap) => {
       const data = docSnap.data();
       const otherUid = (data.participants || []).find((p) => p !== currentUid);
-      const otherName = (data.participantNames && data.participantNames[otherUid]) || "Neighbor";
+      let otherName = (data.participantNames && data.participantNames[otherUid]) || "Neighbor";
       const item = document.createElement("button");
       item.type = "button";
       item.className = "conversation-item";
@@ -2142,6 +2169,22 @@ function watchConversations() {
       item.innerHTML = `<span class="conv-name${unread ? " unread" : ""}">${unread ? '<span class="unread-dot"></span>' : ""}${escapeHtml(otherName)}</span><span class="conv-preview">${escapeHtml(data.lastMessageText || "")}</span>`;
       item.addEventListener("click", () => openThread(otherUid, otherName));
       list.appendChild(item);
+
+      // Self-heal: if this conversation only ever saved the generic
+      // fallback name, fetch the real one and patch it in place — this
+      // fixes old conversations without needing to send a new message.
+      if (otherName === "Neighbor") {
+        getDoc(doc(db, "users", otherUid)).then((userSnap) => {
+          if (userSnap.exists()) {
+            const freshName = userSnap.data().profile?.name;
+            if (freshName) {
+              otherName = freshName;
+              const nameSpan = item.querySelector(".conv-name");
+              if (nameSpan) nameSpan.innerHTML = `${unread ? '<span class="unread-dot"></span>' : ""}${escapeHtml(freshName)}`;
+            }
+          }
+        }).catch(() => {});
+      }
     });
   }, (err) => {
     empty.textContent = `Couldn't load conversations: ${err.message}`;
@@ -2156,12 +2199,26 @@ function closeThread() {
 }
 
 let activeOtherUid = null;
+let activeOtherName = "Neighbor";
 
 function openThread(otherUid, otherName) {
   activeOtherUid = otherUid;
+  activeOtherName = otherName || "Neighbor";
   document.getElementById("thread-view").style.display = "block";
   document.getElementById("conversation-list-wrap").style.display = "none";
-  document.getElementById("thread-with-name").textContent = otherName;
+  document.getElementById("thread-with-name").textContent = activeOtherName; // placeholder while the real name loads
+
+  // Always fetch the person's actual current name rather than trusting
+  // whatever was passed in — if this conversation's saved name was ever
+  // wrong (e.g. generic "Neighbor"), this corrects the display immediately
+  // and feeds the correct name into any message sent from here, instead of
+  // re-saving the same stale value forever.
+  getDoc(doc(db, "users", otherUid)).then((snap) => {
+    if (snap.exists()) {
+      activeOtherName = snap.data().profile?.name || activeOtherName;
+      document.getElementById("thread-with-name").textContent = activeOtherName;
+    }
+  }).catch(() => {});
 
   const conversationId = conversationIdFor(otherUid);
   const messagesEl = document.getElementById("thread-messages");
@@ -2226,7 +2283,21 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
   }
 
   const conversationId = conversationIdFor(activeOtherUid);
-  const otherName = document.getElementById("thread-with-name").textContent;
+  const otherName = activeOtherName;
+
+  // Read any existing readBy map first (outside the transaction, tolerating
+  // a conversation that doesn't exist yet) so our write below can include
+  // the FULL map rather than just my own entry — writing a real nested
+  // object with merge:true replaces the whole "readBy" field, so if we
+  // didn't do this, sending a message would silently wipe out the other
+  // person's read receipt every time.
+  let existingReadBy = {};
+  try {
+    const convoSnapCheck = await getDoc(doc(db, "conversations", conversationId));
+    if (convoSnapCheck.exists()) existingReadBy = convoSnapCheck.data().readBy || {};
+  } catch {
+    // Doesn't exist yet, or can't be read before it exists — fine, start fresh.
+  }
 
   try {
     await runTransaction(db, async (tx) => {
@@ -2246,12 +2317,14 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
       tx.set(limitRef, { day: today, count: newCount });
       tx.set(convoRef, {
         participants: [currentUid, activeOtherUid].sort(),
-        [`participantNames.${currentUid}`]: currentUserData.profile?.name || "Neighbor",
-        [`participantNames.${activeOtherUid}`]: otherName,
+        participantNames: {
+          [currentUid]: currentUserData.profile?.name || "Neighbor",
+          [activeOtherUid]: otherName,
+        },
         lastMessageAt: serverTimestamp(),
         lastMessageText: text,
         lastMessageSenderId: currentUid,
-        [`readBy.${currentUid}`]: serverTimestamp(),
+        readBy: { ...existingReadBy, [currentUid]: serverTimestamp() },
       }, { merge: true });
       tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
     });
@@ -2443,7 +2516,7 @@ async function loadFriendsView() {
   let hasIncoming = false;
   let hasFriends = false;
 
-  snap.forEach((docSnap) => {
+  for (const docSnap of snap.docs) {
     const d = docSnap.data();
     const otherUid = (d.participants || []).find((p) => p !== currentUid);
     const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
@@ -2470,12 +2543,27 @@ async function loadFriendsView() {
       reqList.appendChild(item);
     } else if (d.status === "accepted") {
       hasFriends = true;
+
+      // One extra read per friend to check their online status — a small,
+      // bounded cost since friend lists are naturally small.
+      let online = false;
+      try {
+        const friendSnap = await getDoc(doc(db, "users", otherUid));
+        if (friendSnap.exists()) online = isRecentlyActive(friendSnap.data().lastActiveAt);
+      } catch {
+        // Can't read them (rare) — just show as offline, not worth erroring over.
+      }
+
       const item = document.createElement("div");
       item.className = "friend-list-item";
       item.innerHTML = `
-        <span class="friend-name-row">${escapeHtml(otherName)}</span>
+        <span class="friend-name-row">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${online ? "#2e8b1f" : "var(--line)"};" title="${online ? "Online" : "Offline"}"></span>
+          ${escapeHtml(otherName)}
+        </span>
         <span class="friend-actions">
           <button type="button" class="secondary small" data-action="message">Message</button>
+          <a href="chess.html"><button type="button" class="secondary small" type="button">Play Chess</button></a>
           <button type="button" class="secondary small" data-action="remove">Remove</button>
         </span>
       `;
@@ -2492,7 +2580,7 @@ async function loadFriendsView() {
     }
     // Requests I sent that are still pending show up in neither list here —
     // they're visible as "Request sent" on that person's profile instead.
-  });
+  }
 
   reqEmpty.style.display = hasIncoming ? "none" : "block";
   friendsEmpty.style.display = hasFriends ? "none" : "block";
