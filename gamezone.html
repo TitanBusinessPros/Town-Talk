@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Games — Town Fuss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); }
+h1, h2 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; }
+p { color: var(--text-muted); line-height: 1.6; }
+.page { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+.header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+.header-bar a.brand span { color: var(--amber-500); }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; cursor: pointer; text-align: center; max-width: 280px; }
+.card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+.field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); }
+.signed-out-notice { max-width: 400px; margin: 3rem auto; text-align: center; }
+button { border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+button:hover { background: var(--amber-600); }
+</style>
+</head>
+<body>
+
+<header class="header-bar">
+  <a class="brand" href="index.html">Town<span>Fuss</span> Games</a>
+</header>
+
+<main class="page">
+  <div id="signed-out-notice" class="card signed-out-notice" style="display:none;">
+    <h2>Sign in on Town Fuss first</h2>
+    <p>You need a Town Fuss account to play games with other members.</p>
+    <a href="index.html"><button type="button">Go to Town Fuss</button></a>
+  </div>
+
+  <div id="games-hub" style="display:none;">
+    <span class="eyebrow">Town Fuss</span>
+    <h1>Games</h1>
+    <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+
+    <!-- ============================================================
+         TO ADD A NEW GAME LATER: just copy one of these <div class="card">
+         tiles, update the emoji/image, title, description, and the
+         href it links to. Nothing else on this page needs to change. -->
+    <div style="display:flex; gap:1rem; flex-wrap:wrap; justify-content:center;">
+      <a href="chess.html" style="text-decoration:none; color:inherit;">
+        <div class="card">
+          <div style="font-size:2.5rem;">♟</div>
+          <h2 style="font-size:1.1rem; margin-top:0.5rem;">Chess</h2>
+          <p class="field-hint">Play the computer, a friend on this device, or someone online</p>
+        </div>
+      </a>
+      <a href="checkers.html" style="text-decoration:none; color:inherit;">
+        <div class="card">
+          <div style="font-size:2.5rem;">⛃</div>
+          <h2 style="font-size:1.1rem; margin-top:0.5rem;">Checkers</h2>
+          <p class="field-hint">Play the computer, a friend on this device, or someone online</p>
+        </div>
+      </a>
+      <a href="ww.html" style="text-decoration:none; color:inherit;">
+        <div class="card">
+          <img src="https://github.com/TitanBusinessPros/Wynne-Wars/raw/main/Wizard.png" alt="WynneWars" style="height:2.5rem; width:auto; margin:0 auto;" />
+          <h2 style="font-size:1.1rem; margin-top:0.5rem;">WynneWars</h2>
+          <p class="field-hint">Play the computer, a friend on this device, or someone online</p>
+        </div>
+      </a>
+    </div>
+    <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+  </div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+
+onAuthStateChanged(auth, (user) => {
+  document.getElementById("signed-out-notice").style.display = user ? "none" : "block";
+  document.getElementById("games-hub").style.display = user ? "block" : "none";
+});
+</script>
+</body>
+</html>
