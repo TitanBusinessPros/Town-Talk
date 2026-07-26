@@ -348,10 +348,10 @@ function showView(name) {
   if (name !== "game" && unsubscribeMiniChat) { unsubscribeMiniChat(); unsubscribeMiniChat = null; }
 }
 
-document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "gamezone.html"; });
 document.getElementById("game-tile-chess").addEventListener("click", () => showView("mode-select"));
-document.getElementById("mode-select-back-btn").addEventListener("click", () => { location.href = "chess.html"; });
-document.getElementById("back-to-hub-btn").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("mode-select-back-btn").addEventListener("click", () => { location.href = "gamezone.html"; });
+document.getElementById("back-to-hub-btn").addEventListener("click", () => { location.href = "gamezone.html"; });
 document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
 document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
 document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
