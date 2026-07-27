@@ -1725,20 +1725,39 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// -----------------------------------------------------------------------
+// Game leaderboard badges — READ FROM CACHE, not a live scan.
+//
+// This used to run THREE separate full scans of the entire "users"
+// collection (one each for chess/checkers/WynneWars) every single time
+// anyone opened the Feed or Profiles page. That cost scales with
+// (users) × (visits) × (database size) — the exact thing that turns into
+// thousands of dollars a month once a town gets to real size.
+//
+// Now it's a single cheap read of one small cached document
+// (leaderboardCache/gameRanks), refreshed twice a day by a scheduled
+// Cloud Function (see functions/index.js, refreshLeaderboardCache) —
+// completely decoupled from how many people use the app or how often.
+// -----------------------------------------------------------------------
 let chessRankMap = new Map(); // uid -> rank (1-10), only for the current top 10
+let checkersRankMap = new Map();
+let wynneWarsRankMap = new Map();
 
-async function refreshChessRanks() {
+async function refreshGameRankCache() {
   try {
-    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
-    const players = [];
-    snap.forEach((docSnap) => {
-      const points = docSnap.data().chessPoints || 0;
-      if (points > 0) players.push({ uid: docSnap.id, points });
-    });
-    players.sort((a, b) => b.points - a.points);
-    chessRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
+    const snap = await getDoc(doc(db, "leaderboardCache", "gameRanks"));
+    if (!snap.exists()) {
+      chessRankMap = new Map();
+      checkersRankMap = new Map();
+      wynneWarsRankMap = new Map();
+      return;
+    }
+    const data = snap.data();
+    chessRankMap = new Map((data.chessPoints || []).map((uid, i) => [uid, i + 1]));
+    checkersRankMap = new Map((data.checkersPoints || []).map((uid, i) => [uid, i + 1]));
+    wynneWarsRankMap = new Map((data.wynneWarsPoints || []).map((uid, i) => [uid, i + 1]));
   } catch (err) {
-    console.error("Couldn't load chess ranks:", err);
+    console.error("Couldn't load cached game ranks:", err);
   }
 }
 
@@ -1747,43 +1766,9 @@ function chessBadgeHtml(uid) {
   return rank ? `<span class="chess-badge">♟ #${rank} Chess</span>` : "";
 }
 
-let checkersRankMap = new Map();
-
-async function refreshCheckersRanks() {
-  try {
-    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
-    const players = [];
-    snap.forEach((docSnap) => {
-      const points = docSnap.data().checkersPoints || 0;
-      if (points > 0) players.push({ uid: docSnap.id, points });
-    });
-    players.sort((a, b) => b.points - a.points);
-    checkersRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
-  } catch (err) {
-    console.error("Couldn't load checkers ranks:", err);
-  }
-}
-
 function checkersBadgeHtml(uid) {
   const rank = checkersRankMap.get(uid);
   return rank ? `<span class="chess-badge">⛃ #${rank} Checkers</span>` : "";
-}
-
-let wynneWarsRankMap = new Map();
-
-async function refreshWynneWarsRanks() {
-  try {
-    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
-    const players = [];
-    snap.forEach((docSnap) => {
-      const points = docSnap.data().wynneWarsPoints || 0;
-      if (points > 0) players.push({ uid: docSnap.id, points });
-    });
-    players.sort((a, b) => b.points - a.points);
-    wynneWarsRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
-  } catch (err) {
-    console.error("Couldn't load WynneWars ranks:", err);
-  }
 }
 
 function wynneWarsBadgeHtml(uid) {
@@ -1944,9 +1929,7 @@ function updateFeedLoadMoreButton() {
 
 async function loadFeed() {
   renderTownTabs();
-  await refreshChessRanks();
-  await refreshCheckersRanks();
-  await refreshWynneWarsRanks();
+  await refreshGameRankCache();
   const grid = document.getElementById("feed-grid");
   const empty = document.getElementById("feed-empty");
   grid.innerHTML = "";
@@ -2005,9 +1988,7 @@ document.body.addEventListener("click", (e) => {
 let directoryUsers = [];
 
 async function loadDirectory() {
-  await refreshChessRanks();
-  await refreshCheckersRanks();
-  await refreshWynneWarsRanks();
+  await refreshGameRankCache();
   const grid = document.getElementById("directory-grid");
   const empty = document.getElementById("directory-empty");
   grid.innerHTML = "";
