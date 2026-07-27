@@ -1,15 +1,18 @@
 /**
- * Town Fuss — push notification Cloud Functions.
+ * Town Fuss — Cloud Functions.
  *
- * Two triggers, matching exactly what was asked for:
- *   1. A friend invites you to a game (chess, checkers, or WynneWars)
- *   2. Someone messages you for the FIRST time (not every message —
- *      just the first one in a given conversation)
+ * 1. Push notifications (Firebase Cloud Messaging, free — no SMS):
+ *      - A friend invites you to a game (chess, checkers, or WynneWars)
+ *      - Someone messages you for the FIRST time (not every message —
+ *        just the first one in a given conversation)
  *
- * Both are "free" pushes — Firebase Cloud Messaging (FCM), not SMS.
- * There is no per-message cost here at all; Cloud Functions billing is
- * per invocation/compute time, and at the volume a single-town app will
- * see, this comfortably sits inside the free tier.
+ * 2. Scheduled leaderboard cache (refreshLeaderboardCache):
+ *      Twice a day (7am and 7pm America/Chicago), scans the "users"
+ *      collection ONCE and writes the top-10 rankings per game into
+ *      leaderboardCache/gameRanks. The website reads that one small
+ *      cached document instead of scanning every approved profile on
+ *      every single Feed/Profiles page visit — the fix for a cost that
+ *      would otherwise scale with (users) × (visits) × (database size).
  *
  * DEPLOYING THIS (one-time setup, run from a terminal — not pasted into
  * the Firebase Console browser UI like your rules/html files):
@@ -32,9 +35,19 @@
  *
  * You're already on the Blaze (pay-as-you-go) plan, so no billing change
  * is needed to deploy Cloud Functions.
+ *
+ * NOTE: this is the very first SCHEDULED function in this project (the
+ * others are event triggers). The very first scheduled function ever
+ * deployed to a project sometimes requires an App Engine app to exist
+ * for Cloud Scheduler's default region. If deploy fails with a message
+ * about "App Engine" or a location constraint, run:
+ *     gcloud app create --region=us-central
+ * (pick any us-central-adjacent region if prompted) and then re-run the
+ * deploy command. This is a one-time thing, not something you'll hit again.
  */
 
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 
@@ -151,6 +164,45 @@ exports.onFirstMessageNotify = onDocumentCreated(
       title: "Town Fuss — New Message",
       body: `${senderName} sent you a message for the first time.`,
       clickAction: "/index.html",
+    });
+  }
+);
+
+// -----------------------------------------------------------------------
+// 3. Scheduled leaderboard cache — the cost fix.
+//
+// Runs twice a day, period — completely decoupled from how many users
+// you have or how often they check the app. Reads the "users" collection
+// ONCE per run, computes the top 10 for each game, and writes the result
+// into a single small cached document. The website reads that document
+// (one cheap read) instead of scanning the whole collection on every
+// single Feed/Profiles page visit.
+//
+// Cost math: this is (2 runs/day) × (size of your database) — flat,
+// regardless of growth in users or visits. That's the fix for a cost
+// that otherwise scales with (users) × (visits) × (database size).
+// -----------------------------------------------------------------------
+const GAME_POINT_FIELDS = ["chessPoints", "checkersPoints", "wynneWarsPoints"];
+
+exports.refreshLeaderboardCache = onSchedule(
+  { schedule: "0 7,19 * * *", timeZone: "America/Chicago" },
+  async () => {
+    const snap = await db.collection("users").where("approved", "==", true).get();
+
+    const cache = {};
+    for (const field of GAME_POINT_FIELDS) {
+      const players = [];
+      snap.forEach((docSnap) => {
+        const points = docSnap.data()[field] || 0;
+        if (points > 0) players.push({ uid: docSnap.id, points });
+      });
+      players.sort((a, b) => b.points - a.points);
+      cache[field] = players.slice(0, 10).map((p) => p.uid);
+    }
+
+    await db.collection("leaderboardCache").doc("gameRanks").set({
+      ...cache,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   }
 );
