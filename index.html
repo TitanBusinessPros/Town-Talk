@@ -528,6 +528,12 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div id="admin-reports-queue"></div>
     <div id="admin-reports-empty" class="empty-state" style="display:none">No open reports.</div>
 
+    <h2 style="margin-top:2.5rem;">Stuck submissions</h2>
+    <p>We found and fixed a bug where some people who filled in their profile never actually made it into your review queue above — their save appeared to work, but the queue entry silently failed. Run this once to pull in anyone that happened to. New submissions going forward won't need this.</p>
+    <button type="button" class="secondary" id="scan-stuck-btn">Scan for stuck submissions</button>
+    <div id="admin-stuck-queue" style="margin-top:1rem;"></div>
+    <div id="admin-stuck-empty" class="empty-state" style="display:none">None found.</div>
+
     <h2 style="margin-top:2.5rem;">Inactive accounts</h2>
     <p>Accounts that haven't logged in for 30+ days. Removing one deletes their profile, post, and photos — the login itself may still exist unless you also remove it from Authentication in the Firebase console.</p>
     <button type="button" class="secondary" id="scan-inactive-btn">Scan for inactive accounts</button>
@@ -841,7 +847,7 @@ const storage = getStorage(app);
 // key pair (if one doesn't already exist). This key is safe to expose
 // publicly, same as firebaseConfig above.
 // -----------------------------------------------------------------------
-const FCM_VAPID_KEY = "BBFN-1SZuxWlfm4cAQf_NHecI1eILnv7cYVDT3Q7gQDI0kFFFt3RReAEyvunlyj_GX9759dNCUPGoNbqQHTmPgI";
+const FCM_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
 let messaging = null;
 let swRegistration = null;
 
@@ -1118,6 +1124,17 @@ async function refreshVerificationStatus(showFeedback) {
   if (!auth.currentUser) return;
   try {
     await auth.currentUser.reload();
+    // CRITICAL: reload() only refreshes what the PAGE sees
+    // (auth.currentUser.emailVerified) — it does NOT refresh the actual
+    // security token that Firestore checks on writes
+    // (request.auth.token.email_verified in firestore.rules). Without
+    // forcing that refresh here, someone who just verified their email
+    // could save their profile fine, but the follow-up write that adds
+    // them to reviewQueue would silently fail on a stale token — which
+    // is exactly why new users weren't showing up for admin approval.
+    if (auth.currentUser.emailVerified) {
+      await auth.currentUser.getIdToken(true);
+    }
   } catch (err) {
     console.error("Couldn't refresh verification status:", err);
     return;
@@ -1343,9 +1360,19 @@ function imageLockInfo(data) {
 }
 
 async function flagForReview() {
-  await setDoc(doc(db, "reviewQueue", currentUid), {
-    requestedAt: serverTimestamp(),
-  }).catch(() => {});
+  try {
+    await setDoc(doc(db, "reviewQueue", currentUid), {
+      requestedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (err) {
+    // This used to fail silently, which is exactly how new users stopped
+    // showing up in the Admin review queue without anyone noticing — log
+    // it loudly now, and let callers warn the person their submission may
+    // not have reached the queue.
+    console.error("Couldn't add to reviewQueue:", err);
+    return false;
+  }
 }
 
 function renderDashboard(data) {
@@ -1426,10 +1453,14 @@ document.getElementById("profile-form").addEventListener("submit", async (e) => 
 
   try {
     await updateDoc(doc(db, "users", currentUid), update);
-    await flagForReview();
-    showMessage(msg, currentUserData.everApproved
-      ? "Saved — this will need admin review again before it's live."
-      : "Saved.", "success");
+    const queued = await flagForReview();
+    if (!queued) {
+      showMessage(msg, "Saved, but we couldn't add you to the admin review queue — try logging out and back in, then save again.", "error");
+    } else {
+      showMessage(msg, currentUserData.everApproved
+        ? "Saved — this will need admin review again before it's live."
+        : "Saved.", "success");
+    }
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
@@ -1500,8 +1531,12 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
 
   try {
     await updateDoc(doc(db, "users", currentUid), update);
-    await flagForReview();
-    showMessage(msg, "Saved — the admin will review your whole profile before it goes live.", "success");
+    const queued = await flagForReview();
+    if (!queued) {
+      showMessage(msg, "Saved, but we couldn't add you to the admin review queue — try logging out and back in, then save again.", "error");
+    } else {
+      showMessage(msg, "Saved — the admin will review your whole profile before it goes live.", "success");
+    }
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
@@ -1633,8 +1668,12 @@ imageInput.addEventListener("change", async () => {
     if (currentUserData.everApproved) update.approved = false;
 
     await updateDoc(doc(db, "users", currentUid), update);
-    await flagForReview();
-    showMessage(msg, "Uploaded — waiting on admin approval.", "success");
+    const queued = await flagForReview();
+    if (!queued) {
+      showMessage(msg, "Uploaded, but we couldn't add you to the admin review queue — try logging out and back in, then save again.", "error");
+    } else {
+      showMessage(msg, "Uploaded — waiting on admin approval.", "success");
+    }
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
@@ -2197,6 +2236,70 @@ async function loadAdminReports() {
     container.appendChild(card);
   }
 }
+
+// ---- Admin: Stuck submissions recovery ----
+// Finds anyone who is approved==false (i.e. not currently live) but has
+// NO matching reviewQueue entry — the signature of the token-refresh bug
+// where their save succeeded but the follow-up queue write silently
+// failed. Lets the admin manually re-add them, using the admin's own
+// write permission on reviewQueue (isAdmin() in firestore.rules), which
+// doesn't depend on the affected user's token at all.
+document.getElementById("scan-stuck-btn").addEventListener("click", async () => {
+  const container = document.getElementById("admin-stuck-queue");
+  const empty = document.getElementById("admin-stuck-empty");
+  container.innerHTML = `<p class="field-hint">Scanning...</p>`;
+  empty.style.display = "none";
+
+  try {
+    const [usersSnap, queueSnap] = await Promise.all([
+      getDocs(collection(db, "users")),
+      getDocs(collection(db, "reviewQueue")),
+    ]);
+    const queuedUids = new Set(queueSnap.docs.map((d) => d.id));
+
+    container.innerHTML = "";
+    let found = 0;
+
+    usersSnap.forEach((docSnap) => {
+      const uid = docSnap.id;
+      const data = docSnap.data();
+      if (data.approved) return; // already live, nothing to review
+      if (queuedUids.has(uid)) return; // already properly queued
+      // Skip brand-new accounts that haven't filled anything in yet —
+      // nothing for the admin to review either way.
+      const hasContent = (data.profile && data.profile.name) || data.postText || (data.images && data.images.length);
+      if (!hasContent) return;
+
+      found++;
+      const name = data.profile?.name || "Unnamed profile";
+      const card = document.createElement("div");
+      card.className = "admin-card";
+      card.innerHTML = `
+        <div class="admin-meta">${escapeHtml(name)} &nbsp;·&nbsp; ${escapeHtml(data.profile?.neighborhood || "—")}</div>
+        <p class="admin-post">${escapeHtml(data.postText || "(no post written yet)")}</p>
+        <div class="admin-actions">
+          <button type="button" data-action="add-to-queue">Add to review queue</button>
+        </div>
+        <div class="message" style="display:none"></div>
+      `;
+      const msg = card.querySelector(".message");
+      card.querySelector('[data-action="add-to-queue"]').addEventListener("click", async () => {
+        try {
+          await setDoc(doc(db, "reviewQueue", uid), { requestedAt: serverTimestamp() });
+          card.remove();
+          loadAdminQueue(); // refresh the main queue so it shows up there now
+        } catch (err) {
+          showMessage(msg, err.message, "error");
+        }
+      });
+      container.appendChild(card);
+    });
+
+    if (found === 0) empty.style.display = "block";
+  } catch (err) {
+    container.innerHTML = `<div class="message error">Couldn't scan: ${err.message}</div>`;
+  }
+});
 
 // ---- Admin: Inactive accounts scan ----
 const INACTIVE_DAYS_THRESHOLD = 30;
