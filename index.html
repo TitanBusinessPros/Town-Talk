@@ -100,6 +100,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .chat-msg-avatar-fallback { width: 22px; height: 22px; border-radius: 50%; background: var(--ink-700); color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 0.68rem; font-weight: 600; }
 .chat-msg-header .chat-msg-time { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); }
 .chat-msg-text { font-size: 0.9rem; color: var(--paper-050); margin-top: 0.15rem; line-height: 1.4; text-align: left; }
+.chat-reaction-row { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+.chat-reaction-btn { background: none; border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.75rem; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); }
+.chat-reaction-btn:hover { background: var(--ink-700); }
+.chat-reaction-btn.active-like { background: rgba(66, 183, 42, 0.15); color: #2e8b1f; border-color: #2e8b1f; }
+.chat-reaction-btn.active-dislike { background: rgba(163, 40, 47, 0.12); color: #a3282f; border-color: #a3282f; }
 
 .chatroom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 1.5rem; }
 .chatroom-tile { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 0.75rem; font-size: 0.85rem; font-weight: 600; color: var(--paper-050); cursor: pointer; text-align: center; }
@@ -170,6 +175,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .badge--rejected { background: rgba(163, 40, 47, 0.12); color: #a3282f; }
 .badge--draft { background: rgba(28, 30, 33, 0.06); color: var(--text-muted); }
 .chess-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.7rem; background: rgba(193, 80, 46, 0.12); color: var(--amber-500); padding: 0.15rem 0.5rem; border-radius: 999px; }
+.spotlight-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600; background: linear-gradient(135deg, #f5c94b, #c1502e); color: #fff; padding: 0.2rem 0.6rem; border-radius: 999px; }
 
 .image-slots { display: flex; justify-content: center; margin-top: 1rem; }
 .image-slots .image-slot { width: 200px; }
@@ -183,6 +189,13 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .feed-hero .eyebrow { justify-content: center; display: flex; }
 .feed-hero p { max-width: 480px; margin-left: auto; margin-right: auto; }
 .feed-hero h1 { margin-bottom: 0.5rem; }
+
+.spotlight-banner { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; max-width: 700px; margin: 0 auto 2.5rem; }
+.spotlight-banner-card { flex: 1 1 260px; background: linear-gradient(135deg, #fff7e6, #ffe9d6); border: 1px solid #f0c98a; border-radius: var(--radius); padding: 1.25rem; text-align: center; cursor: pointer; }
+.spotlight-banner-card:hover { box-shadow: 0 4px 14px rgba(193, 80, 46, 0.15); }
+.spotlight-banner-card .sb-label { font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--amber-600); }
+.spotlight-banner-card .sb-name { font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; color: var(--paper-050); margin: 0.3rem 0; }
+.spotlight-banner-card .sb-detail { font-size: 0.8rem; color: var(--text-muted); }
 
 .view-header { text-align: center; max-width: 620px; margin: 0 auto 2.5rem; }
 .view-header .eyebrow { justify-content: center; display: flex; }
@@ -551,6 +564,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <p style="font-size:0.8rem; margin-top:0.5rem; color:#7a1f22;">One profile per person, please — creating multiple accounts (including to appear in more than one town) may result in your IP address being banned from Town Fuss.</p>
     </div>
 
+    <div id="spotlight-banner" style="display:none;"></div>
+
     <div id="town-tabs" class="town-tabs"></div>
 
     <div id="feed-grid" class="feed-grid feed-grid--top"></div>
@@ -802,7 +817,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
-  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, addDoc, limitToLast,
+  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, addDoc, limitToLast, limit,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
@@ -1776,6 +1791,16 @@ function wynneWarsBadgeHtml(uid) {
   return rank ? `<span class="chess-badge">🧙 #${rank} WynneWars</span>` : "";
 }
 
+// "Neighbor of the Week" badges — stamped directly onto the user's own
+// doc by the weekly computeNeighborOfTheWeek Cloud Function, so this is
+// just a plain field read, no extra query needed here.
+function spotlightBadgesHtml(data) {
+  let html = "";
+  if (data.isNeighborOfWeekFriends) html += `<span class="spotlight-badge">🏆 Neighbor of the Week — Most Friends</span>`;
+  if (data.isNeighborOfWeekLikes) html += `<span class="spotlight-badge">❤️ Neighbor of the Week — Most Liked</span>`;
+  return html;
+}
+
 function renderCard(uid, data) {
   const profile = data.profile || {};
   const images = data.images || [];
@@ -1816,6 +1841,7 @@ function renderCard(uid, data) {
         ${chessBadgeHtml(uid)}
         ${checkersBadgeHtml(uid)}
         ${wynneWarsBadgeHtml(uid)}
+        ${spotlightBadgesHtml(data)}
       </div>
       <p class="post-excerpt">${escapeHtml(postText).replace(/\n/g, "<br>")}</p>
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-top:0.4rem;">
@@ -1889,6 +1915,7 @@ function renderTopProfileCard(uid, data) {
     ${chessRankMap.has(uid) ? `<span class="chess-badge">♟ #${chessRankMap.get(uid)} Chess</span>` : ""}
     ${checkersRankMap.has(uid) ? `<span class="chess-badge">⛃ #${checkersRankMap.get(uid)} Checkers</span>` : ""}
     ${wynneWarsRankMap.has(uid) ? `<span class="chess-badge">🧙 #${wynneWarsRankMap.get(uid)} WynneWars</span>` : ""}
+    ${spotlightBadgesHtml(data)}
     <span class="tp-excerpt">${escapeHtml(data.postText || "")}</span>
   `;
   card.addEventListener("click", () => showProfile(uid, data));
@@ -1927,9 +1954,58 @@ function updateFeedLoadMoreButton() {
   }
 }
 
+// Two narrow equality queries — Firestore only returns matching docs
+// (usually just one each), not a scan of the whole collection, so this
+// is cheap to run on every Feed visit unlike the old per-visit rank scans.
+async function loadSpotlightBanner() {
+  const banner = document.getElementById("spotlight-banner");
+  try {
+    const [friendsSnap, likesSnap] = await Promise.all([
+      getDocs(query(collection(db, "users"), where("isNeighborOfWeekFriends", "==", true), limit(1))),
+      getDocs(query(collection(db, "users"), where("isNeighborOfWeekLikes", "==", true), limit(1))),
+    ]);
+
+    const cards = [];
+    if (!friendsSnap.empty) {
+      const docSnap = friendsSnap.docs[0];
+      const data = docSnap.data();
+      cards.push({ uid: docSnap.id, data, label: "🏆 Neighbor of the Week", detail: "Most friends made this week" });
+    }
+    if (!likesSnap.empty) {
+      const docSnap = likesSnap.docs[0];
+      const data = docSnap.data();
+      cards.push({ uid: docSnap.id, data, label: "❤️ Most Liked in Chat", detail: "Most-liked chat posts this week" });
+    }
+
+    if (cards.length === 0) {
+      banner.style.display = "none";
+      return;
+    }
+
+    banner.className = "spotlight-banner";
+    banner.style.display = "flex";
+    banner.innerHTML = cards.map(({ uid, data, label, detail }) => `
+      <button type="button" class="spotlight-banner-card" data-uid="${uid}">
+        <div class="sb-label">${label}</div>
+        <div class="sb-name">${escapeHtml(data.profile?.name || "Neighbor")}</div>
+        <div class="sb-detail">${detail}</div>
+      </button>
+    `).join("");
+
+    banner.querySelectorAll(".spotlight-banner-card").forEach((btn) => {
+      const match = cards.find((c) => c.uid === btn.dataset.uid);
+      btn.addEventListener("click", () => showProfile(match.uid, match.data));
+    });
+  } catch (err) {
+    console.error("Couldn't load spotlight banner:", err);
+    banner.style.display = "none";
+  }
+}
+
 async function loadFeed() {
   renderTownTabs();
   await refreshGameRankCache();
+  loadSpotlightBanner();
   const grid = document.getElementById("feed-grid");
   const empty = document.getElementById("feed-empty");
   grid.innerHTML = "";
@@ -3125,6 +3201,35 @@ function closeChatRoomThread() {
   activeChatRoom = null;
 }
 
+// Toggles a like or dislike on a chat message. Always writes ONE array
+// field at a time (never both in the same call) — this matches exactly
+// what firestore.rules allows, so switching from a dislike straight to a
+// like takes two quick sequential writes instead of one combined write.
+async function toggleChatReaction(roomId, messageId, type, likes, dislikes) {
+  const msgRef = doc(db, "chatRooms", roomId, "messages", messageId);
+  const hasLiked = likes.includes(currentUid);
+  const hasDisliked = dislikes.includes(currentUid);
+  try {
+    if (type === "like") {
+      if (hasLiked) {
+        await updateDoc(msgRef, { likes: likes.filter((u) => u !== currentUid) });
+      } else {
+        if (hasDisliked) await updateDoc(msgRef, { dislikes: dislikes.filter((u) => u !== currentUid) });
+        await updateDoc(msgRef, { likes: [...likes, currentUid] });
+      }
+    } else {
+      if (hasDisliked) {
+        await updateDoc(msgRef, { dislikes: dislikes.filter((u) => u !== currentUid) });
+      } else {
+        if (hasLiked) await updateDoc(msgRef, { likes: likes.filter((u) => u !== currentUid) });
+        await updateDoc(msgRef, { dislikes: [...dislikes, currentUid] });
+      }
+    }
+  } catch (err) {
+    console.error("Couldn't update reaction:", err);
+  }
+}
+
 function openChatRoom(room) {
   activeChatRoom = room;
   document.getElementById("chatroom-thread-view").style.display = "block";
@@ -3158,6 +3263,10 @@ function openChatRoom(room) {
       const avatarHtml = m.senderAvatarUrl
         ? `<img class="chat-msg-avatar" src="${m.senderAvatarUrl}" alt="${escapeHtml(m.senderName || "Neighbor")}" />`
         : `<div class="chat-msg-avatar-fallback">${escapeHtml(initial)}</div>`;
+      const likes = Array.isArray(m.likes) ? m.likes : [];
+      const dislikes = Array.isArray(m.dislikes) ? m.dislikes : [];
+      const iLiked = likes.includes(currentUid);
+      const iDisliked = dislikes.includes(currentUid);
       row.innerHTML = `
         <div class="chat-msg-header">
           ${avatarHtml}
@@ -3166,7 +3275,17 @@ function openChatRoom(room) {
           ${isAdminUser ? `<button type="button" class="secondary small" data-action="admin-delete" style="margin-left:auto;">Delete</button>` : ""}
         </div>
         <div class="chat-msg-text">${escapeHtml(m.text || "")}</div>
+        <div class="chat-reaction-row">
+          <button type="button" class="chat-reaction-btn${iLiked ? " active-like" : ""}" data-action="like">👍 ${likes.length}</button>
+          <button type="button" class="chat-reaction-btn${iDisliked ? " active-dislike" : ""}" data-action="dislike">👎 ${dislikes.length}</button>
+        </div>
       `;
+      row.querySelector('[data-action="like"]').addEventListener("click", () => {
+        toggleChatReaction(room.id, docSnap.id, "like", likes, dislikes);
+      });
+      row.querySelector('[data-action="dislike"]').addEventListener("click", () => {
+        toggleChatReaction(room.id, docSnap.id, "dislike", likes, dislikes);
+      });
       if (isAdminUser) {
         row.querySelector('[data-action="admin-delete"]').addEventListener("click", async () => {
           if (!confirm("Delete this message?")) return;
