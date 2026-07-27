@@ -44,7 +44,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
 button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 
-.table-row, .invite-row, .friend-row, .leader-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+.table-row, .invite-row, .friend-row, .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+.table-row > span:first-child, .invite-row > span:first-child, .friend-row > span:first-child, .leader-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+.table-row > span:last-child, .invite-row > span:last-child, .friend-row > span:last-child, .leader-row > span:last-child { flex: 0 0 auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .table-row:last-child, .invite-row:last-child, .friend-row:last-child, .leader-row:last-child { border-bottom: none; }
 .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
 
@@ -406,8 +408,8 @@ function showView(name) {
   if (name !== "game-board" && unsubscribeMiniChat) { unsubscribeMiniChat(); unsubscribeMiniChat = null; }
 }
 
-document.getElementById("nav-hub").addEventListener("click", () => { location.href = "gamezone.html"; });
-document.getElementById("mode-select-back-btn").addEventListener("click", () => { location.href = "gamezone.html"; });
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("mode-select-back-btn").addEventListener("click", () => { location.href = "chess.html"; });
 document.getElementById("nav-ww-waiting").addEventListener("click", () => showView("ww-waiting"));
 document.getElementById("nav-ww-leaderboard").addEventListener("click", () => showView("ww-leaderboard"));
 document.getElementById("ww-back-to-mode-btn").addEventListener("click", () => showView("mode-select"));
