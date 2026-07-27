@@ -176,6 +176,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .badge--draft { background: rgba(28, 30, 33, 0.06); color: var(--text-muted); }
 .chess-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.7rem; background: rgba(193, 80, 46, 0.12); color: var(--amber-500); padding: 0.15rem 0.5rem; border-radius: 999px; }
 .spotlight-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600; background: linear-gradient(135deg, #f5c94b, #c1502e); color: #fff; padding: 0.2rem 0.6rem; border-radius: 999px; }
+.business-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600; background: var(--sage-500); color: #fff; padding: 0.15rem 0.55rem; border-radius: 999px; }
 
 .image-slots { display: flex; justify-content: center; margin-top: 1rem; }
 .image-slots .image-slot { width: 200px; }
@@ -452,9 +453,29 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
     <div id="dashboard-gated-content">
     <section class="card" style="margin-top:2rem">
-      <h2>The basics</h2>
+      <h2>Business Listing</h2>
+      <p>List your business on Town Fuss for $12/year — same posting limits and profanity filters as everyone else, plus a special business badge on your profile wherever it appears.</p>
+      <div style="display:flex; align-items:center; justify-content:center; gap:0.75rem; margin-top:1rem;">
+        <label class="notif-toggle-switch" for="business-toggle-checkbox">
+          <input type="checkbox" id="business-toggle-checkbox" />
+          <span class="notif-toggle-slider"></span>
+        </label>
+        <span id="business-toggle-label" style="font-weight:600;">Individual account</span>
+      </div>
+      <div id="business-payment-status" style="display:none; margin-top:1rem; text-align:center;">
+        <p class="field-hint" id="business-payment-text"></p>
+        <div class="form-row" style="justify-content:center;">
+          <a id="business-pay-link" href="#" target="_blank" rel="noopener"><button type="button">Pay $12/year on Stripe</button></a>
+        </div>
+        <p class="field-hint">After paying, an admin will confirm the payment and approve your listing — usually within a day or two.</p>
+      </div>
+      <div id="business-message" class="message" style="display:none"></div>
+    </section>
+
+    <section class="card" style="margin-top:1.5rem">
+      <h2 id="basics-title">The basics</h2>
       <form id="profile-form">
-        <label for="display-name">Display name</label>
+        <label for="display-name" id="display-name-label">Display name</label>
         <input id="display-name" type="text" maxlength="40" placeholder="What should neighbors call you?" />
         <label for="neighborhood">What town are you from?</label>
         <select id="neighborhood">
@@ -466,6 +487,10 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
           <option value="Sulphur">Sulphur</option>
           <option value="Paoli">Paoli</option>
         </select>
+        <div id="business-phone-row" style="display:none;">
+          <label for="business-phone">Business phone number</label>
+          <input id="business-phone" type="tel" maxlength="20" placeholder="(405) 555-1234" />
+        </div>
         <div class="form-row"><button type="submit">Save details</button></div>
         <div id="profile-message" class="message" style="display:none"></div>
       </form>
@@ -486,8 +511,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     </section>
 
     <section class="card" style="margin-top:1.5rem">
-      <h2>Your post <span id="post-status-badge"></span></h2>
-      <p>Up to 500 words. Once submitted, it goes to the admin for approval before it's visible on the public feed. No profanity or negative words. For everyone's safety, do not ask for money or include phone numbers, email addresses, or links — use Town Fuss messaging instead. Once your profile has been approved, any edit takes it off the public feed until the admin reviews it again, and you can only make one edit every 30 days.</p>
+      <h2 id="post-title">Your post <span id="post-status-badge"></span></h2>
+      <p id="post-description">Up to 500 words. Once submitted, it goes to the admin for approval before it's visible on the public feed. No profanity or negative words. For everyone's safety, do not ask for money or include phone numbers, email addresses, or links — use Town Fuss messaging instead. Once your profile has been approved, any edit takes it off the public feed until the admin reviews it again, and you can only make one edit every 30 days.</p>
       <form id="post-form">
         <textarea id="post-text" maxlength="6000" placeholder="Tell your story..."></textarea>
         <div class="field-hint" id="word-count">0 / 500 words</div>
@@ -540,6 +565,16 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <p>Reports submitted by users — minors, harassment, spam, or anything else flagged for review.</p>
     <div id="admin-reports-queue"></div>
     <div id="admin-reports-empty" class="empty-state" style="display:none">No open reports.</div>
+
+    <h2 style="margin-top:2.5rem;">Free business promo</h2>
+    <p>Grant a free first year to a business email as a promo. If they haven't signed up yet, it's applied automatically the moment they create an account with that exact email. If they already have an account, add them here, then use "Mark paid" on their submission in the Review queue above.</p>
+    <form id="promo-whitelist-form" class="form-row">
+      <input type="email" id="promo-whitelist-email" placeholder="owner@example.com" style="flex:1" required />
+      <button type="submit">Add to promo list</button>
+    </form>
+    <div id="promo-whitelist-message" class="message" style="display:none"></div>
+    <div id="promo-whitelist-list" style="margin-top:1rem;"></div>
+    <div id="promo-whitelist-empty" class="empty-state" style="display:none">No pending promo emails.</div>
 
     <h2 style="margin-top:2.5rem;">Stuck submissions</h2>
     <p>We found and fixed a bug where some people who filled in their profile never actually made it into your review queue above — their save appeared to work, but the queue entry silently failed. Run this once to pull in anyone that happened to. New submissions going forward won't need this.</p>
@@ -1007,7 +1042,7 @@ function showView(name) {
   if (name === "friends") loadFriendsView();
   if (name === "chatrooms") { closeChatRoomThread(); renderChatRoomList(); }
   else if (unsubscribeChatRoom) { unsubscribeChatRoom(); unsubscribeChatRoom = null; }
-  if (name === "admin") { loadAdminQueue(); loadAdminReports(); }
+  if (name === "admin") { loadAdminQueue(); loadAdminReports(); loadPromoWhitelist(); }
   if (name === "messages") { closeThread(); watchConversations(); }
   else if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
 }
@@ -1279,8 +1314,33 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
     // sendEmailVerification() call but as a direct user-initiated click —
     // that path has been the reliable one, so we lean on it instead of a
     // background call the person can't see or retry themselves.
+
+    // Check the admin's promo whitelist for this email — a signed-in
+    // user is only ever allowed to read the ONE entry matching their own
+    // email (see firestore.rules), so this can't be used to browse who
+    // else is on the list. If found, they get a free business year
+    // right at signup, and the entry is removed so it can't be reused.
+    const emailLower = email.toLowerCase();
+    let promoFields = {};
+    try {
+      const promoSnap = await getDoc(doc(db, "businessPromoWhitelist", emailLower));
+      if (promoSnap.exists()) {
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+        promoFields = {
+          accountType: "business",
+          businessPromoGranted: true,
+          businessPaidUntil: Timestamp.fromDate(oneYearFromNow),
+        };
+        await deleteDoc(doc(db, "businessPromoWhitelist", emailLower)).catch(() => {});
+      }
+    } catch {
+      // No matching promo entry (or couldn't check) — just proceed as a normal signup.
+    }
+
     await setDoc(doc(db, "users", cred.user.uid), {
       createdAt: serverTimestamp(),
+      email: emailLower,
       profile: { name: "", neighborhood: "" },
       postText: "",
       postWordCount: 0,
@@ -1290,6 +1350,8 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
       images: [],
       agreedToTerms: true,
       agreedToTermsAt: serverTimestamp(),
+      accountType: "individual",
+      ...promoFields,
     });
   } catch (err) {
     // If the Firestore write got rejected for some reason, don't leave an
@@ -1395,6 +1457,16 @@ function renderDashboard(data) {
   const profile = data.profile || {};
   document.getElementById("display-name").value = profile.name ?? "";
   document.getElementById("neighborhood").value = profile.neighborhood ?? "";
+  document.getElementById("business-phone").value = data.businessPhone ?? "";
+
+  const isBusiness = data.accountType === "business";
+  document.getElementById("basics-title").textContent = isBusiness ? "Your business" : "The basics";
+  document.getElementById("display-name-label").textContent = isBusiness ? "Business name" : "Display name";
+  document.getElementById("business-phone-row").style.display = isBusiness ? "block" : "none";
+  document.getElementById("post-title").innerHTML = (isBusiness ? "Your services description " : "Your post ") + `<span id="post-status-badge"></span>`;
+  document.getElementById("post-description").textContent = isBusiness
+    ? "Up to 500 words describing what your business offers. Same rules as every other post here: no profanity, no negative words, and no phone numbers/emails/links in the text itself — your phone number has its own field above. Once approved, editing takes it off the feed until re-reviewed, and you can only edit once every 30 days."
+    : "Up to 500 words. Once submitted, it goes to the admin for approval before it's visible on the public feed. No profanity or negative words. For everyone's safety, do not ask for money or include phone numbers, email addresses, or links — use Town Fuss messaging instead. Once your profile has been approved, any edit takes it off the public feed until the admin reviews it again, and you can only make one edit every 30 days.";
 
   const badge = document.getElementById("post-status-badge");
   const lock = editLockInfo(data);
@@ -1417,8 +1489,76 @@ function renderDashboard(data) {
   renderImageSlots(data.images || []);
   currentImages = data.images || [];
   renderNotifToggle(data);
+  renderBusinessSection(data);
   updateDashboardGates();
 }
+
+// -----------------------------------------------------------------------
+// Business Listing section — toggle + payment status.
+// -----------------------------------------------------------------------
+const STRIPE_BUSINESS_LISTING_URL = "https://buy.stripe.com/fZu8wQaRH4kg5XIb3x7AI0T";
+
+function renderBusinessSection(data) {
+  const checkbox = document.getElementById("business-toggle-checkbox");
+  const label = document.getElementById("business-toggle-label");
+  const paymentStatus = document.getElementById("business-payment-status");
+  const paymentText = document.getElementById("business-payment-text");
+  const payLink = document.getElementById("business-pay-link");
+  if (!checkbox) return;
+
+  const isBusiness = data.accountType === "business";
+  checkbox.checked = isBusiness;
+  label.textContent = isBusiness ? "Business account" : "Individual account";
+
+  if (!isBusiness) {
+    paymentStatus.style.display = "none";
+    return;
+  }
+
+  paymentStatus.style.display = "block";
+  const paidUntilMs = data.businessPaidUntil
+    ? (data.businessPaidUntil.seconds ? data.businessPaidUntil.seconds * 1000 : 0)
+    : 0;
+  const isPaid = paidUntilMs > Date.now();
+
+  if (isPaid) {
+    const paidUntilStr = new Date(paidUntilMs).toLocaleDateString();
+    paymentText.textContent = data.businessPromoGranted
+      ? `You have a free promotional listing through ${paidUntilStr} — thank you for being an early business partner!`
+      : `Paid through ${paidUntilStr}.`;
+    payLink.style.display = paidUntilMs - Date.now() < 30 * 24 * 60 * 60 * 1000 ? "inline-block" : "none";
+    if (payLink.style.display !== "none") paymentText.textContent += " Renewing soon? You can pay early below.";
+  } else {
+    paymentText.textContent = "Not paid yet — your business listing won't appear on the public feed until payment is confirmed by an admin.";
+    payLink.style.display = "inline-block";
+  }
+
+  const params = new URLSearchParams();
+  params.set("client_reference_id", currentUid);
+  if (auth.currentUser?.email) params.set("prefilled_email", auth.currentUser.email);
+  payLink.href = `${STRIPE_BUSINESS_LISTING_URL}?${params.toString()}`;
+}
+
+document.getElementById("business-toggle-checkbox").addEventListener("change", async (e) => {
+  const checkbox = e.target;
+  const msg = document.getElementById("business-message");
+  checkbox.disabled = true;
+  try {
+    await updateDoc(doc(db, "users", currentUid), {
+      accountType: checkbox.checked ? "business" : "individual",
+      approved: false, // switching account type is a material change — re-review, same as any profile edit
+    });
+    await flagForReview();
+    showMessage(msg, checkbox.checked
+      ? "Switched to a business account — fill in your business details below, then pay (or wait on your promo, if you have one) to go live."
+      : "Switched back to an individual account.", "success");
+  } catch (err) {
+    checkbox.checked = !checkbox.checked;
+    showMessage(msg, err.message, "error");
+  } finally {
+    checkbox.disabled = false;
+  }
+});
 
 // Decides which of the three dashboard states to show: agree-to-terms
 // gate, verify-email gate, or the actual profile-creation content. Checked
@@ -1465,6 +1605,9 @@ document.getElementById("profile-form").addEventListener("submit", async (e) => 
   };
   const update = { profile, lastEditedAt: serverTimestamp() };
   if (currentUserData.everApproved) update.approved = false;
+  if (currentUserData.accountType === "business") {
+    update.businessPhone = document.getElementById("business-phone").value.trim();
+  }
 
   try {
     await updateDoc(doc(db, "users", currentUid), update);
@@ -1801,6 +1944,11 @@ function spotlightBadgesHtml(data) {
   return html;
 }
 
+// Business account marker — shown wherever a business's name appears.
+function businessBadgeHtml(data) {
+  return data.accountType === "business" ? `<span class="business-badge">🏢 Business</span>` : "";
+}
+
 function renderCard(uid, data) {
   const profile = data.profile || {};
   const images = data.images || [];
@@ -1836,6 +1984,7 @@ function renderCard(uid, data) {
       <div class="post-meta name-with-avatar">
         ${avatarHtml}
         <span>${escapeHtml(profile.name || "Neighbor")}</span>
+        ${businessBadgeHtml(data)}
         ${profile.neighborhood ? `<span>${escapeHtml(profile.neighborhood)}</span>` : ""}
         ${friendCountHtml}
         ${chessBadgeHtml(uid)}
@@ -1844,6 +1993,7 @@ function renderCard(uid, data) {
         ${spotlightBadgesHtml(data)}
       </div>
       <p class="post-excerpt">${escapeHtml(postText).replace(/\n/g, "<br>")}</p>
+      ${data.accountType === "business" && data.businessPhone ? `<p class="field-hint" style="font-weight:600;">📞 ${escapeHtml(data.businessPhone)}</p>` : ""}
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-top:0.4rem;">
         <button type="button" class="btn msg-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Message ${escapeHtml(profile.name || "this neighbor")}</button>
         <div class="friend-action" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}"></div>
@@ -1911,6 +2061,7 @@ function renderTopProfileCard(uid, data) {
       ? `<img class="tp-avatar" src="${avatarUrl}" alt="${escapeHtml(profile.name || "Neighbor")}" />`
       : `<div class="tp-fallback">${escapeHtml(initial)}</div>`}
     <span class="tp-name">${escapeHtml(profile.name || "Neighbor")}</span>
+    ${businessBadgeHtml(data)}
     <span class="tp-meta">${escapeHtml(profile.neighborhood || "")} · ${friendCount} friend${friendCount === 1 ? "" : "s"}</span>
     ${chessRankMap.has(uid) ? `<span class="chess-badge">♟ #${chessRankMap.get(uid)} Chess</span>` : ""}
     ${checkersRankMap.has(uid) ? `<span class="chess-badge">⛃ #${checkersRankMap.get(uid)} Checkers</span>` : ""}
@@ -2175,17 +2326,31 @@ function renderAdminCard(uid, data) {
     ? `<div class="admin-images">${images.map((img) => `<img src="${img.url}" alt="Photo" />`).join("")}</div>`
     : `<p class="field-hint">No photos uploaded yet.</p>`;
 
+  const isBusiness = data.accountType === "business";
+  const paidUntilMs = data.businessPaidUntil
+    ? (data.businessPaidUntil.seconds ? data.businessPaidUntil.seconds * 1000 : 0)
+    : 0;
+  const isPaid = paidUntilMs > Date.now();
+  const businessMetaHtml = isBusiness
+    ? `<div class="admin-meta" style="color:${isPaid ? "#2e8b1f" : "#a3282f"};">
+         🏢 Business &nbsp;·&nbsp; ${escapeHtml(data.businessPhone || "no phone on file")}
+         &nbsp;·&nbsp; ${isPaid ? `Paid through ${new Date(paidUntilMs).toLocaleDateString()}` : "PAYMENT NOT CONFIRMED — check Stripe before approving"}
+       </div>`
+    : "";
+
   card.innerHTML = `
     <div class="admin-meta">
       ${data.everApproved ? "Re-review after edit" : "First-time submission"}
       &nbsp;·&nbsp; ${escapeHtml(profile.name || "—")}
       &nbsp;·&nbsp; ${escapeHtml(profile.neighborhood || "—")}
     </div>
+    ${businessMetaHtml}
     ${imagesHtml}
     <p class="admin-post">${escapeHtml(data.postText || "(no post written yet)")}</p>
     <div class="admin-actions">
       <button type="button" data-action="approve">Approve</button>
       <button type="button" class="secondary" data-action="reject">Reject</button>
+      ${isBusiness ? `<button type="button" class="secondary" data-action="mark-paid">Mark paid (1 year)</button>` : ""}
     </div>
     <div class="message" style="display:none"></div>
   `;
@@ -2201,6 +2366,20 @@ function renderAdminCard(uid, data) {
       showMessage(msg, err.message, "error");
     }
   });
+
+  const markPaidBtn = card.querySelector('[data-action="mark-paid"]');
+  if (markPaidBtn) {
+    markPaidBtn.addEventListener("click", async () => {
+      try {
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+        await updateDoc(doc(db, "users", uid), { businessPaidUntil: Timestamp.fromDate(oneYearFromNow) });
+        showMessage(msg, "Marked paid through " + oneYearFromNow.toLocaleDateString() + ". Approve below when the content looks good.", "success");
+      } catch (err) {
+        showMessage(msg, err.message, "error");
+      }
+    });
+  }
 
   card.querySelector('[data-action="reject"]').addEventListener("click", async () => {
     try {
@@ -2292,6 +2471,60 @@ async function loadAdminReports() {
 
     container.appendChild(card);
   }
+}
+
+// ---- Admin: Free business promo whitelist ----
+document.getElementById("promo-whitelist-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("promo-whitelist-email");
+  const msg = document.getElementById("promo-whitelist-message");
+  const emailLower = input.value.trim().toLowerCase();
+  if (!emailLower) return;
+
+  try {
+    await setDoc(doc(db, "businessPromoWhitelist", emailLower), {
+      email: emailLower,
+      grantedAt: serverTimestamp(),
+      grantedBy: currentUid,
+    });
+    input.value = "";
+    showMessage(msg, `${emailLower} will get a free business year the moment they sign up with that email.`, "success");
+    loadPromoWhitelist();
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
+
+async function loadPromoWhitelist() {
+  const list = document.getElementById("promo-whitelist-list");
+  const empty = document.getElementById("promo-whitelist-empty");
+  list.innerHTML = "";
+
+  const snap = await getDocs(collection(db, "businessPromoWhitelist")).catch((err) => {
+    list.innerHTML = `<div class="message error">Couldn't load the promo list: ${err.message}</div>`;
+    return null;
+  });
+  if (!snap) return;
+
+  if (snap.empty) {
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  snap.forEach((docSnap) => {
+    const item = document.createElement("div");
+    item.className = "friend-list-item";
+    item.innerHTML = `
+      <span class="friend-name-row">${escapeHtml(docSnap.data().email || docSnap.id)}</span>
+      <button type="button" class="secondary small" data-action="remove">Remove</button>
+    `;
+    item.querySelector('[data-action="remove"]').addEventListener("click", async () => {
+      await deleteDoc(doc(db, "businessPromoWhitelist", docSnap.id)).catch((err) => alert(err.message));
+      loadPromoWhitelist();
+    });
+    list.appendChild(item);
+  });
 }
 
 // ---- Admin: Stuck submissions recovery ----
@@ -3271,6 +3504,7 @@ function openChatRoom(room) {
         <div class="chat-msg-header">
           ${avatarHtml}
           <span class="chat-msg-name">${escapeHtml(m.senderName || "Neighbor")}</span>
+          ${m.senderIsBusiness ? `<span class="business-badge">🏢</span>` : ""}
           <span class="chat-msg-time">${time}</span>
           ${isAdminUser ? `<button type="button" class="secondary small" data-action="admin-delete" style="margin-left:auto;">Delete</button>` : ""}
         </div>
@@ -3353,6 +3587,7 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
         senderId: currentUid,
         senderName: currentUserData.profile?.name || "Neighbor",
         senderAvatarUrl: senderImages.length ? senderImages[0].url : null,
+        senderIsBusiness: currentUserData.accountType === "business",
         text,
         sentAt: serverTimestamp(),
       });
