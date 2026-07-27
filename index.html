@@ -133,6 +133,20 @@ textarea { resize: vertical; min-height: 160px; }
 .field-hint { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; }
 .field-hint.over-limit { color: #a3282f; }
 
+/* -------- Notification toggle switch -------- */
+.notif-toggle-switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; cursor: pointer; }
+.notif-toggle-switch input { opacity: 0; width: 0; height: 0; }
+.notif-toggle-slider { position: absolute; inset: 0; background: var(--ink-700); border: 1px solid var(--line); border-radius: 999px; transition: background 0.15s ease; }
+.notif-toggle-slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.15s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.notif-toggle-switch input:checked + .notif-toggle-slider { background: var(--amber-500); border-color: var(--amber-500); }
+.notif-toggle-switch input:checked + .notif-toggle-slider::before { transform: translateX(20px); }
+.notif-toggle-switch input:disabled + .notif-toggle-slider { opacity: 0.5; cursor: not-allowed; }
+
+/* -------- In-app toast for foreground push notifications -------- */
+.notif-toast { position: fixed; bottom: 1.25rem; right: 1.25rem; max-width: 320px; background: var(--paper-050); color: var(--ink-900); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; box-shadow: 0 6px 20px rgba(0,0,0,0.25); z-index: 2000; font-size: 0.88rem; line-height: 1.4; cursor: pointer; animation: notif-toast-in 0.2s ease; }
+.notif-toast strong { display: block; margin-bottom: 0.2rem; color: var(--amber-500); }
+@keyframes notif-toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
 button, .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: none; border-radius: var(--radius-sm); padding: 0.7rem 1.2rem; font-family: var(--font-body); font-size: 0.95rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: var(--ink-900); }
 button:hover { background: var(--amber-600); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -327,7 +341,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <a href="#" id="nav-messages" style="display:none">Messages</a>
     <a href="#" id="nav-friends" style="display:none">Friends<span class="nav-badge-count" id="friends-badge" style="display:none"></span></a>
     <a href="#" id="nav-chatrooms" style="display:none">Chat Rooms</a>
-    <a href="gamezone.html" id="nav-games" style="display:none">Games</a>
+    <a href="chess.html" id="nav-games" style="display:none">Games</a>
     <a href="#" id="nav-dashboard" style="display:none">Your page</a>
     <a href="#" id="nav-admin" style="display:none">Admin</a>
     <a href="#" id="nav-auth">Sign in</a>
@@ -441,6 +455,20 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <div class="form-row"><button type="submit">Save details</button></div>
         <div id="profile-message" class="message" style="display:none"></div>
       </form>
+    </section>
+
+    <section class="card" style="margin-top:1.5rem">
+      <h2>Notifications</h2>
+      <p>Get a free alert on this device when a friend invites you to a game, or when someone messages you for the first time. This never costs you anything and we never send text messages — turn it off anytime.</p>
+      <div style="display:flex; align-items:center; justify-content:center; gap:0.75rem; margin-top:1rem;">
+        <label class="notif-toggle-switch" for="notif-toggle-checkbox">
+          <input type="checkbox" id="notif-toggle-checkbox" />
+          <span class="notif-toggle-slider"></span>
+        </label>
+        <span id="notif-toggle-label" style="font-weight:600;">Notifications off</span>
+      </div>
+      <p class="field-hint" id="notif-toggle-hint" style="text-align:center; margin-top:0.75rem;"></p>
+      <div id="notif-message" class="message" style="display:none"></div>
     </section>
 
     <section class="card" style="margin-top:1.5rem">
@@ -771,6 +799,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getMessaging, getToken, onMessage, isSupported as isMessagingSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 // -----------------------------------------------------------------------
 // Town Fuss — Pauls Valley Firebase project config.
@@ -803,6 +832,118 @@ initializeAppCheck(app, {
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// -----------------------------------------------------------------------
+// Push notifications (Firebase Cloud Messaging) — free, no SMS involved.
+// TODO: replace with your own VAPID key from Firebase Console →
+// Project Settings → Cloud Messaging → Web Push certificates → generate
+// key pair (if one doesn't already exist). This key is safe to expose
+// publicly, same as firebaseConfig above.
+// -----------------------------------------------------------------------
+const FCM_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
+let messaging = null;
+let swRegistration = null;
+
+async function initMessaging() {
+  try {
+    const supported = await isMessagingSupported();
+    if (!supported) return; // e.g. iPhone Safari before "Add to Home Screen"
+    swRegistration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    messaging = getMessaging(app);
+    // Foreground messages don't show a native OS notification by
+    // themselves (the browser only does that automatically when the tab
+    // ISN'T focused) — so we show our own lightweight in-page toast here
+    // for the case where the person is already looking at Town Fuss.
+    onMessage(messaging, (payload) => {
+      showNotifToast(payload.notification?.title || "Town Fuss", payload.notification?.body || "");
+    });
+  } catch (err) {
+    console.error("Couldn't set up push notifications:", err);
+  }
+}
+initMessaging();
+
+function showNotifToast(title, body) {
+  const toast = document.createElement("div");
+  toast.className = "notif-toast";
+  toast.innerHTML = `<strong>${escapeHtml(title)}</strong>${escapeHtml(body)}`;
+  toast.addEventListener("click", () => toast.remove());
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 6000);
+}
+
+// Turning notifications ON: ask the browser for permission, grab this
+// device's FCM token, and save it to the profile. A person can have the
+// toggle on across multiple devices — fcmTokens is an array so every
+// device that opted in gets a copy of every notification.
+async function enableNotifications() {
+  const msg = document.getElementById("notif-message");
+  if (!messaging) {
+    showMessage(msg, "Push notifications aren't supported in this browser. On iPhone, add Town Fuss to your Home Screen first (Safari share menu → Add to Home Screen), then try again from there.", "error");
+    return false;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      showMessage(msg, "Notifications are blocked for this site in your browser settings — you'll need to allow them there first.", "error");
+      return false;
+    }
+    const token = await getToken(messaging, {
+      vapidKey: FCM_VAPID_KEY,
+      serviceWorkerRegistration: swRegistration,
+    });
+    if (!token) {
+      showMessage(msg, "Couldn't get a notification token — please try again.", "error");
+      return false;
+    }
+    const existingTokens = currentUserData.fcmTokens || [];
+    const newTokens = existingTokens.includes(token) ? existingTokens : [...existingTokens, token];
+    await updateDoc(doc(db, "users", currentUid), {
+      notificationsEnabled: true,
+      fcmTokens: newTokens,
+    });
+    showMessage(msg, "Notifications turned on for this device.", "success");
+    return true;
+  } catch (err) {
+    showMessage(msg, `Couldn't turn on notifications: ${err.message}`, "error");
+    return false;
+  }
+}
+
+async function disableNotifications() {
+  const msg = document.getElementById("notif-message");
+  try {
+    await updateDoc(doc(db, "users", currentUid), { notificationsEnabled: false });
+    showMessage(msg, "Notifications turned off.", "success");
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+function renderNotifToggle(data) {
+  const checkbox = document.getElementById("notif-toggle-checkbox");
+  const label = document.getElementById("notif-toggle-label");
+  const hint = document.getElementById("notif-toggle-hint");
+  if (!checkbox) return;
+  const enabled = !!(data && data.notificationsEnabled);
+  checkbox.checked = enabled;
+  label.textContent = enabled ? "Notifications on" : "Notifications off";
+  hint.textContent = enabled
+    ? "You'll get an alert for a first message and for game invites from friends."
+    : "";
+}
+
+document.getElementById("notif-toggle-checkbox").addEventListener("change", async (e) => {
+  const checkbox = e.target;
+  checkbox.disabled = true;
+  if (checkbox.checked) {
+    const ok = await enableNotifications();
+    if (!ok) checkbox.checked = false;
+  } else {
+    await disableNotifications();
+  }
+  checkbox.disabled = false;
+});
 
 const MAX_IMAGES = 1;
 const DAILY_MESSAGE_LIMIT = 3;
@@ -1225,6 +1366,7 @@ function renderDashboard(data) {
 
   renderImageSlots(data.images || []);
   currentImages = data.images || [];
+  renderNotifToggle(data);
   updateDashboardGates();
 }
 
@@ -1536,44 +1678,70 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-// ---- Game leaderboard badges ----
-// TO ADD A NEW GAME'S LEADERBOARD BADGE LATER: just add one entry to this
-// list (the Firestore field it keeps points in, an emoji, and a label).
-// Nothing else on this page needs to change — refreshGameRanks() and
-// gameBadgesHtml() already loop over whatever's in this array.
-const GAME_LEADERBOARDS = [
-  { field: "chessPoints", emoji: "♟", label: "Chess" },
-  { field: "checkersPoints", emoji: "⛃", label: "Checkers" },
-  { field: "wynneWarsPoints", emoji: "🧙", label: "WynneWars" },
-];
+let chessRankMap = new Map(); // uid -> rank (1-10), only for the current top 10
 
-let gameRankMaps = {}; // { [field]: Map(uid -> rank 1-10) }
-
-async function refreshGameRanks() {
+async function refreshChessRanks() {
   try {
     const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
-    const allUsers = [];
-    snap.forEach((docSnap) => allUsers.push({ uid: docSnap.id, data: docSnap.data() }));
-
-    const newMaps = {};
-    GAME_LEADERBOARDS.forEach(({ field }) => {
-      const players = allUsers
-        .map((u) => ({ uid: u.uid, points: u.data[field] || 0 }))
-        .filter((p) => p.points > 0)
-        .sort((a, b) => b.points - a.points);
-      newMaps[field] = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const points = docSnap.data().chessPoints || 0;
+      if (points > 0) players.push({ uid: docSnap.id, points });
     });
-    gameRankMaps = newMaps;
+    players.sort((a, b) => b.points - a.points);
+    chessRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
   } catch (err) {
-    console.error("Couldn't load game ranks:", err);
+    console.error("Couldn't load chess ranks:", err);
   }
 }
 
-function gameBadgesHtml(uid) {
-  return GAME_LEADERBOARDS.map(({ field, emoji, label }) => {
-    const rank = gameRankMaps[field]?.get(uid);
-    return rank ? `<span class="chess-badge">${emoji} #${rank} ${label}</span>` : "";
-  }).join("");
+function chessBadgeHtml(uid) {
+  const rank = chessRankMap.get(uid);
+  return rank ? `<span class="chess-badge">♟ #${rank} Chess</span>` : "";
+}
+
+let checkersRankMap = new Map();
+
+async function refreshCheckersRanks() {
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const points = docSnap.data().checkersPoints || 0;
+      if (points > 0) players.push({ uid: docSnap.id, points });
+    });
+    players.sort((a, b) => b.points - a.points);
+    checkersRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
+  } catch (err) {
+    console.error("Couldn't load checkers ranks:", err);
+  }
+}
+
+function checkersBadgeHtml(uid) {
+  const rank = checkersRankMap.get(uid);
+  return rank ? `<span class="chess-badge">⛃ #${rank} Checkers</span>` : "";
+}
+
+let wynneWarsRankMap = new Map();
+
+async function refreshWynneWarsRanks() {
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const points = docSnap.data().wynneWarsPoints || 0;
+      if (points > 0) players.push({ uid: docSnap.id, points });
+    });
+    players.sort((a, b) => b.points - a.points);
+    wynneWarsRankMap = new Map(players.slice(0, 10).map((p, i) => [p.uid, i + 1]));
+  } catch (err) {
+    console.error("Couldn't load WynneWars ranks:", err);
+  }
+}
+
+function wynneWarsBadgeHtml(uid) {
+  const rank = wynneWarsRankMap.get(uid);
+  return rank ? `<span class="chess-badge">🧙 #${rank} WynneWars</span>` : "";
 }
 
 function renderCard(uid, data) {
@@ -1613,7 +1781,9 @@ function renderCard(uid, data) {
         <span>${escapeHtml(profile.name || "Neighbor")}</span>
         ${profile.neighborhood ? `<span>${escapeHtml(profile.neighborhood)}</span>` : ""}
         ${friendCountHtml}
-        ${gameBadgesHtml(uid)}
+        ${chessBadgeHtml(uid)}
+        ${checkersBadgeHtml(uid)}
+        ${wynneWarsBadgeHtml(uid)}
       </div>
       <p class="post-excerpt">${escapeHtml(postText).replace(/\n/g, "<br>")}</p>
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-top:0.4rem;">
@@ -1684,7 +1854,9 @@ function renderTopProfileCard(uid, data) {
       : `<div class="tp-fallback">${escapeHtml(initial)}</div>`}
     <span class="tp-name">${escapeHtml(profile.name || "Neighbor")}</span>
     <span class="tp-meta">${escapeHtml(profile.neighborhood || "")} · ${friendCount} friend${friendCount === 1 ? "" : "s"}</span>
-    ${gameBadgesHtml(uid)}
+    ${chessRankMap.has(uid) ? `<span class="chess-badge">♟ #${chessRankMap.get(uid)} Chess</span>` : ""}
+    ${checkersRankMap.has(uid) ? `<span class="chess-badge">⛃ #${checkersRankMap.get(uid)} Checkers</span>` : ""}
+    ${wynneWarsRankMap.has(uid) ? `<span class="chess-badge">🧙 #${wynneWarsRankMap.get(uid)} WynneWars</span>` : ""}
     <span class="tp-excerpt">${escapeHtml(data.postText || "")}</span>
   `;
   card.addEventListener("click", () => showProfile(uid, data));
@@ -1725,7 +1897,9 @@ function updateFeedLoadMoreButton() {
 
 async function loadFeed() {
   renderTownTabs();
-  await refreshGameRanks();
+  await refreshChessRanks();
+  await refreshCheckersRanks();
+  await refreshWynneWarsRanks();
   const grid = document.getElementById("feed-grid");
   const empty = document.getElementById("feed-empty");
   grid.innerHTML = "";
@@ -1784,7 +1958,9 @@ document.body.addEventListener("click", (e) => {
 let directoryUsers = [];
 
 async function loadDirectory() {
-  await refreshGameRanks();
+  await refreshChessRanks();
+  await refreshCheckersRanks();
+  await refreshWynneWarsRanks();
   const grid = document.getElementById("directory-grid");
   const empty = document.getElementById("directory-empty");
   grid.innerHTML = "";
