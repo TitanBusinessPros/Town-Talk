@@ -427,11 +427,12 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
     <div id="verify-email-gate" class="card" style="display:none; border-color:#a3282f; text-align:center;">
       <h2>Verify your email to continue</h2>
-      <p>Please verify your email address before creating your profile — check your inbox for a link from us. This helps keep Town Fuss free of scammers and fake accounts.</p>
-      <p class="field-hint">After clicking the link in your email, come back to this tab — it checks automatically, or click the button below.</p>
+      <p>Please verify your email address before creating your profile — this helps keep Town Fuss free of scammers and fake accounts. Press the button below to have us send you a verification link.</p>
+      <p class="field-hint" style="color:#a3282f;">Heads up: these emails often land in Spam/Junk, especially the first one — please check there if it doesn't show up in a minute or two.</p>
+      <p class="field-hint">After clicking the link in your email, come back to this tab — it checks automatically, or click "I've verified" below.</p>
       <div class="form-row" style="justify-content:center;">
-        <button type="button" id="check-verified-btn">I've verified — check now</button>
-        <button type="button" class="secondary" id="resend-verify-btn">Resend verification email</button>
+        <button type="button" id="resend-verify-btn">Send verification email</button>
+        <button type="button" class="secondary" id="check-verified-btn">I've verified — check now</button>
       </div>
       <div id="verify-resend-message" class="message" style="display:none"></div>
     </div>
@@ -840,7 +841,7 @@ const storage = getStorage(app);
 // key pair (if one doesn't already exist). This key is safe to expose
 // publicly, same as firebaseConfig above.
 // -----------------------------------------------------------------------
-const FCM_VAPID_KEY = "BBFN-1SZuxWlfm4cAQf_NHecI1eILnv7cYVDT3Q7gQDI0kFFFt3RReAEyvunlyj_GX9759dNCUPGoNbqQHTmPgI";
+const FCM_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
 let messaging = null;
 let swRegistration = null;
 
@@ -1238,7 +1239,14 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
   let cred;
   try {
     cred = await createUserWithEmailAndPassword(auth, email, password);
-    await sendEmailVerification(cred.user).catch((err) => console.error("Couldn't send verification email:", err));
+    // NOTE: we intentionally do NOT auto-send the verification email here.
+    // Firebase's automatic send-on-creation has proven unreliable in
+    // practice (emails silently failing to arrive the first time). The
+    // verify-email-gate screen the person lands on next has its own
+    // "Send verification email" button, which uses the exact same
+    // sendEmailVerification() call but as a direct user-initiated click —
+    // that path has been the reliable one, so we lean on it instead of a
+    // background call the person can't see or retry themselves.
     await setDoc(doc(db, "users", cred.user.uid), {
       createdAt: serverTimestamp(),
       profile: { name: "", neighborhood: "" },
