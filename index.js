@@ -14,6 +14,17 @@
  *      every single Feed/Profiles page visit — the fix for a cost that
  *      would otherwise scale with (users) × (visits) × (database size).
  *
+ * 3. Neighbor of the Week (computeNeighborOfTheWeek):
+ *      Every Monday at 12:10am America/Chicago, looks at the PAST week
+ *      and crowns two winners:
+ *        - Most friends GAINED that week (based on accepted friend
+ *          requests, not total friend count — keeps the badge rotating
+ *          instead of always going to whoever's been here longest)
+ *        - Most likes received on chat-room messages posted that week
+ *      Clears the badge from last week's winners and stamps it onto this
+ *      week's winners directly on their users/{uid} doc, so the website
+ *      can show the badge with zero extra reads.
+ *
  * DEPLOYING THIS (one-time setup, run from a terminal — not pasted into
  * the Firebase Console browser UI like your rules/html files):
  *
@@ -36,14 +47,14 @@
  * You're already on the Blaze (pay-as-you-go) plan, so no billing change
  * is needed to deploy Cloud Functions.
  *
- * NOTE: this is the very first SCHEDULED function in this project (the
- * others are event triggers). The very first scheduled function ever
- * deployed to a project sometimes requires an App Engine app to exist
- * for Cloud Scheduler's default region. If deploy fails with a message
- * about "App Engine" or a location constraint, run:
+ * NOTE: scheduled functions (refreshLeaderboardCache, computeNeighborOfTheWeek)
+ * sometimes require an App Engine app to exist for Cloud Scheduler's default
+ * region, the FIRST time you ever deploy any scheduled function to a project.
+ * If deploy fails with a message about "App Engine" or a location constraint,
+ * run:
  *     gcloud app create --region=us-central
- * (pick any us-central-adjacent region if prompted) and then re-run the
- * deploy command. This is a one-time thing, not something you'll hit again.
+ * (pick any us-central-adjacent region if prompted) and re-run the deploy.
+ * This is a one-time thing.
  */
 
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
@@ -203,6 +214,130 @@ exports.refreshLeaderboardCache = onSchedule(
     await db.collection("leaderboardCache").doc("gameRanks").set({
       ...cache,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+);
+
+// -----------------------------------------------------------------------
+// 4. Neighbor of the Week — most friends gained, and most-liked chat poster.
+//
+// Runs once a week, not per-visit — same cost philosophy as the
+// leaderboard cache above. Two winners are picked for the PAST week and
+// stamped directly onto their users/{uid} doc as booleans, so the
+// website can render the badge with a plain field read, no extra query.
+// -----------------------------------------------------------------------
+const CHAT_ROOM_IDS = [
+  "wynnewood-chat", "elmore-city-chat", "pauls-valley-chat",
+  "davis-chat", "paoli-chat", "sulphur-chat", "singles-chat",
+  "music-chat", "events-chat", "rants-raves-chat",
+  "local-jobs-chat", "helping-hands-chat",
+];
+
+function isoDate(d) {
+  return d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
+async function mostFriendsGained(weekStart, weekEnd) {
+  const snap = await db
+    .collection("friendRequests")
+    .where("respondedAt", ">=", weekStart)
+    .where("respondedAt", "<", weekEnd)
+    .get();
+
+  const tally = new Map(); // uid -> count
+  snap.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (data.status !== "accepted") return;
+    (data.participants || []).forEach((uid) => {
+      tally.set(uid, (tally.get(uid) || 0) + 1);
+    });
+  });
+
+  let winnerUid = null;
+  let winnerCount = 0;
+  for (const [uid, count] of tally.entries()) {
+    if (count > winnerCount) {
+      winnerUid = uid;
+      winnerCount = count;
+    }
+  }
+  return winnerUid ? { uid: winnerUid, count: winnerCount } : null;
+}
+
+async function mostLikedChatPoster(weekStart, weekEnd) {
+  const tally = new Map(); // senderId -> total likes
+
+  for (const roomId of CHAT_ROOM_IDS) {
+    const snap = await db
+      .collection("chatRooms")
+      .doc(roomId)
+      .collection("messages")
+      .where("sentAt", ">=", weekStart)
+      .where("sentAt", "<", weekEnd)
+      .get();
+
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const likeCount = Array.isArray(data.likes) ? data.likes.length : 0;
+      if (likeCount === 0 || !data.senderId) return;
+      tally.set(data.senderId, (tally.get(data.senderId) || 0) + likeCount);
+    });
+  }
+
+  let winnerUid = null;
+  let winnerCount = 0;
+  for (const [uid, count] of tally.entries()) {
+    if (count > winnerCount) {
+      winnerUid = uid;
+      winnerCount = count;
+    }
+  }
+  return winnerUid ? { uid: winnerUid, count: winnerCount } : null;
+}
+
+exports.computeNeighborOfTheWeek = onSchedule(
+  { schedule: "10 0 * * 1", timeZone: "America/Chicago" },
+  async () => {
+    const now = new Date();
+    // "now" is just after midnight Monday when this runs — the week being
+    // scored is the 7 days ending at this Monday's midnight.
+    const weekEnd = new Date(now);
+    weekEnd.setUTCHours(0, 0, 0, 0);
+    const weekStart = new Date(weekEnd);
+    weekStart.setUTCDate(weekStart.getUTCDate() - 7);
+
+    const weekStartTs = admin.firestore.Timestamp.fromDate(weekStart);
+    const weekEndTs = admin.firestore.Timestamp.fromDate(weekEnd);
+
+    const [friendsWinner, likesWinner] = await Promise.all([
+      mostFriendsGained(weekStartTs, weekEndTs),
+      mostLikedChatPoster(weekStartTs, weekEndTs),
+    ]);
+
+    // Clear the badge from whoever held it last week before assigning it
+    // to this week's winner — otherwise old winners keep the badge forever.
+    const [prevFriendsHolders, prevLikesHolders] = await Promise.all([
+      db.collection("users").where("isNeighborOfWeekFriends", "==", true).get(),
+      db.collection("users").where("isNeighborOfWeekLikes", "==", true).get(),
+    ]);
+
+    const batch = db.batch();
+    prevFriendsHolders.forEach((docSnap) => batch.update(docSnap.ref, { isNeighborOfWeekFriends: false }));
+    prevLikesHolders.forEach((docSnap) => batch.update(docSnap.ref, { isNeighborOfWeekLikes: false }));
+    if (friendsWinner) {
+      batch.update(db.collection("users").doc(friendsWinner.uid), { isNeighborOfWeekFriends: true });
+    }
+    if (likesWinner) {
+      batch.update(db.collection("users").doc(likesWinner.uid), { isNeighborOfWeekLikes: true });
+    }
+    await batch.commit();
+
+    await db.collection("spotlights").doc(isoDate(weekStart)).set({
+      weekStart: weekStartTs,
+      weekEnd: weekEndTs,
+      mostFriends: friendsWinner || null,
+      mostLikes: likesWinner || null,
+      computedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   }
 );
