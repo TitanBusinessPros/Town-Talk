@@ -63,12 +63,12 @@
  * (pick any us-central-adjacent region if prompted) and re-run the deploy.
  * This is a one-time thing.
  *
- * NOTE 2: expireBusinessListings runs a query with three filters at once
- * (accountType, approved, businessPaidUntil). The very first time it
- * actually runs, Firestore may reject it with an error containing a link
- * that says "create it here" — that's normal for a brand-new query shape,
- * not a bug. Click that link once (it pre-fills everything), wait a
- * minute or two for the index to build, and it'll work from then on.
+ * NOTE 2: expireBusinessListings queries on both "approved" and
+ * "businessPaidUntil" at once. The very first time it actually runs,
+ * Firestore may reject it with an error containing a link that says
+ * "create it here" — that's normal for a brand-new query shape, not a
+ * bug. Click that link once (it pre-fills everything), wait a minute or
+ * two for the index to build, and it'll work from then on.
  */
 
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
@@ -90,7 +90,29 @@ setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 // of them, and prune any tokens that have gone stale (uninstalled app,
 // revoked permission, etc.) so the array doesn't grow forever.
 // -----------------------------------------------------------------------
-async function sendPushToUser(uid, { title, body, clickAction }) {
+// Always logs an in-app notification for the bell icon in the nav bar —
+// this happens regardless of whether the person has push notifications
+// turned on, so the bell works for everyone. The actual OS-level push
+// (sendPushToUser below) stays gated behind their notificationsEnabled
+// toggle, same as before.
+async function logInAppNotification(uid, { type, title, body, clickAction }) {
+  try {
+    await db.collection("users").doc(uid).collection("notifications").add({
+      type,
+      title,
+      body,
+      clickAction: clickAction || "/",
+      read: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (err) {
+    console.error(`Couldn't log in-app notification for ${uid}:`, err);
+  }
+}
+
+async function sendPushToUser(uid, { type, title, body, clickAction }) {
+  await logInAppNotification(uid, { type, title, body, clickAction });
+
   const userSnap = await db.collection("users").doc(uid).get();
   if (!userSnap.exists) return;
   const userData = userSnap.data();
@@ -147,6 +169,7 @@ function makeGameInviteTrigger(collectionName) {
     if (!game || !game.inviteTo) return; // open table, not a direct invite — nothing to notify
 
     await sendPushToUser(game.inviteTo, {
+      type: "invite",
       title: "Town Fuss — Game Invite",
       body: `${game.player1Name || "A neighbor"} invited you to play ${label}!`,
       clickAction: page,
@@ -186,6 +209,7 @@ exports.onFirstMessageNotify = onDocumentCreated(
     const senderName = (convo.participantNames && convo.participantNames[message.senderId]) || "A neighbor";
 
     await sendPushToUser(recipientUid, {
+      type: "message",
       title: "Town Fuss — New Message",
       body: `${senderName} sent you a message for the first time.`,
       clickAction: "/index.html",
@@ -233,6 +257,7 @@ exports.onChatReaction = onDocumentUpdated(
     }
 
     await sendPushToUser(after.senderId, {
+      type: "reaction",
       title: "Town Fuss — Chat Reaction",
       body: `${reactorName} ${verb} your message in chat.`,
       clickAction: "/index.html",
@@ -417,8 +442,7 @@ exports.expireBusinessListings = onSchedule(
   async () => {
     const now = admin.firestore.Timestamp.now();
     const snap = await db
-      .collection("users")
-      .where("accountType", "==", "business")
+      .collection("businesses")
       .where("approved", "==", true)
       .where("businessPaidUntil", "<", now)
       .get();
