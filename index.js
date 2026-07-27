@@ -5,6 +5,7 @@
  *      - A friend invites you to a game (chess, checkers, or WynneWars)
  *      - Someone messages you for the FIRST time (not every message —
  *        just the first one in a given conversation)
+ *      - Someone likes or dislikes your chat message (onChatReaction)
  *
  * 2. Scheduled leaderboard cache (refreshLeaderboardCache):
  *      Twice a day (7am and 7pm America/Chicago), scans the "users"
@@ -24,6 +25,12 @@
  *      Clears the badge from last week's winners and stamps it onto this
  *      week's winners directly on their users/{uid} doc, so the website
  *      can show the badge with zero extra reads.
+ *
+ * 4. Business listing expiration (expireBusinessListings):
+ *      Runs daily at 3am America/Chicago. Any business account whose
+ *      paid year has passed gets taken off the public feed automatically
+ *      (approved: false) — their profile data is untouched, so paying
+ *      again brings them straight back with nothing to re-enter.
  *
  * DEPLOYING THIS (one-time setup, run from a terminal — not pasted into
  * the Firebase Console browser UI like your rules/html files):
@@ -47,17 +54,24 @@
  * You're already on the Blaze (pay-as-you-go) plan, so no billing change
  * is needed to deploy Cloud Functions.
  *
- * NOTE: scheduled functions (refreshLeaderboardCache, computeNeighborOfTheWeek)
- * sometimes require an App Engine app to exist for Cloud Scheduler's default
- * region, the FIRST time you ever deploy any scheduled function to a project.
- * If deploy fails with a message about "App Engine" or a location constraint,
- * run:
+ * NOTE 1: scheduled functions (refreshLeaderboardCache, computeNeighborOfTheWeek,
+ * expireBusinessListings) sometimes require an App Engine app to exist for
+ * Cloud Scheduler's default region, the FIRST time you ever deploy any
+ * scheduled function to a project. If deploy fails with a message about
+ * "App Engine" or a location constraint, run:
  *     gcloud app create --region=us-central
  * (pick any us-central-adjacent region if prompted) and re-run the deploy.
  * This is a one-time thing.
+ *
+ * NOTE 2: expireBusinessListings runs a query with three filters at once
+ * (accountType, approved, businessPaidUntil). The very first time it
+ * actually runs, Firestore may reject it with an error containing a link
+ * that says "create it here" — that's normal for a brand-new query shape,
+ * not a bug. Click that link once (it pre-fills everything), wait a
+ * minute or two for the index to build, and it'll work from then on.
  */
 
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
@@ -180,7 +194,54 @@ exports.onFirstMessageNotify = onDocumentCreated(
 );
 
 // -----------------------------------------------------------------------
-// 3. Scheduled leaderboard cache — the cost fix.
+// 3. Like/dislike notification on chat messages.
+//
+// Fires on every update to a chat message, but only actually sends a
+// push when the likes or dislikes array just grew by one NEW uid — so
+// removing a like, or someone else's earlier like, doesn't re-notify.
+// Skips notifying yourself if you react to your own message.
+// -----------------------------------------------------------------------
+exports.onChatReaction = onDocumentUpdated(
+  "chatRooms/{roomId}/messages/{messageId}",
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after || !after.senderId) return;
+
+    const beforeLikes = Array.isArray(before.likes) ? before.likes : [];
+    const afterLikes = Array.isArray(after.likes) ? after.likes : [];
+    const beforeDislikes = Array.isArray(before.dislikes) ? before.dislikes : [];
+    const afterDislikes = Array.isArray(after.dislikes) ? after.dislikes : [];
+
+    let reactorUid = null;
+    let verb = null;
+    if (afterLikes.length > beforeLikes.length) {
+      reactorUid = afterLikes.find((uid) => !beforeLikes.includes(uid));
+      verb = "liked";
+    } else if (afterDislikes.length > beforeDislikes.length) {
+      reactorUid = afterDislikes.find((uid) => !beforeDislikes.includes(uid));
+      verb = "reacted to";
+    }
+    if (!reactorUid || reactorUid === after.senderId) return; // no new reactor, or reacting to your own message
+
+    let reactorName = "A neighbor";
+    try {
+      const reactorSnap = await db.collection("users").doc(reactorUid).get();
+      if (reactorSnap.exists) reactorName = reactorSnap.data().profile?.name || reactorName;
+    } catch {
+      // Fall back to the generic name rather than failing the notification.
+    }
+
+    await sendPushToUser(after.senderId, {
+      title: "Town Fuss — Chat Reaction",
+      body: `${reactorName} ${verb} your message in chat.`,
+      clickAction: "/index.html",
+    });
+  }
+);
+
+// -----------------------------------------------------------------------
+// 4. Scheduled leaderboard cache — the cost fix.
 //
 // Runs twice a day, period — completely decoupled from how many users
 // you have or how often they check the app. Reads the "users" collection
@@ -219,7 +280,7 @@ exports.refreshLeaderboardCache = onSchedule(
 );
 
 // -----------------------------------------------------------------------
-// 4. Neighbor of the Week — most friends gained, and most-liked chat poster.
+// 5. Neighbor of the Week — most friends gained, and most-liked chat poster.
 //
 // Runs once a week, not per-visit — same cost philosophy as the
 // leaderboard cache above. Two winners are picked for the PAST week and
@@ -339,5 +400,32 @@ exports.computeNeighborOfTheWeek = onSchedule(
       mostLikes: likesWinner || null,
       computedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+  }
+);
+
+// -----------------------------------------------------------------------
+// 6. Business listing expiration.
+//
+// Runs once a day. Any business account whose paid year (businessPaidUntil)
+// has passed gets taken off the public feed (approved: false) — their
+// data isn't deleted, so paying again and getting re-approved brings them
+// straight back with nothing to re-enter. Doesn't touch non-business
+// accounts at all.
+// -----------------------------------------------------------------------
+exports.expireBusinessListings = onSchedule(
+  { schedule: "0 3 * * *", timeZone: "America/Chicago" },
+  async () => {
+    const now = admin.firestore.Timestamp.now();
+    const snap = await db
+      .collection("users")
+      .where("accountType", "==", "business")
+      .where("approved", "==", true)
+      .where("businessPaidUntil", "<", now)
+      .get();
+
+    if (snap.empty) return;
+    const batch = db.batch();
+    snap.forEach((docSnap) => batch.update(docSnap.ref, { approved: false }));
+    await batch.commit();
   }
 );
