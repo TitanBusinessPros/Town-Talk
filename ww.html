@@ -795,6 +795,15 @@ function openWynneGame(gameId) {
   document.getElementById("stage-info").style.display = "none";
   document.querySelector(".game-setup").style.display = "none"; // no save/load in online mode
 
+  // initStage() normally wires these up, but online play never calls
+  // initStage() — without this, "end-btn"/"confirm-move"/"cancel-move"
+  // are dead clicks and the game silently freezes the first time a phase
+  // (e.g. "expand") requires one of them instead of a board click.
+  document.getElementById('end-btn').onclick = endTurn;
+  document.getElementById('army-slider').oninput = updateSliderDisplay;
+  document.getElementById('confirm-move').onclick = confirmMove;
+  document.getElementById('cancel-move').onclick = cancelMove;
+
   if (unsubscribeGame) unsubscribeGame();
   unsubscribeGame = onSnapshot(doc(db, "wynneGames", gameId), (snap) => {
     if (!snap.exists()) { showView("ww-waiting"); return; }

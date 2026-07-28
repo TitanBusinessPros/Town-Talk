@@ -1524,6 +1524,8 @@ function renderDashboard(data) {
     badge.innerHTML = lock.locked
       ? `<span class="badge badge--approved">Live · editable again in ${lock.daysLeft}d</span>`
       : `<span class="badge badge--approved">Live on public feed</span>`;
+  } else if (data.rejected) {
+    badge.innerHTML = `<span class="badge badge--rejected">Rejected — edit and save to request another review</span>`;
   } else if (lock.locked) {
     badge.innerHTML = `<span class="badge badge--pending">Pending review · editable again in ${lock.daysLeft}d</span>`;
   } else {
@@ -1587,6 +1589,7 @@ document.getElementById("profile-form").addEventListener("submit", async (e) => 
   };
   const update = { profile, lastEditedAt: serverTimestamp() };
   if (currentUserData.everApproved) update.approved = false;
+  if (currentUserData.rejected) update.rejected = false;
 
   try {
     await updateDoc(doc(db, "users", currentUid), update);
@@ -1665,6 +1668,7 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
   }
   const update = { postText: text, postWordCount: words, lastEditedAt: serverTimestamp() };
   if (currentUserData.everApproved) update.approved = false;
+  if (currentUserData.rejected) update.rejected = false;
 
   try {
     await updateDoc(doc(db, "users", currentUid), update);
@@ -1803,6 +1807,7 @@ imageInput.addEventListener("change", async () => {
     const newImage = { id: imageId, storagePath: path, url, uploadedAt: Timestamp.now() };
     const update = { images: [newImage], lastImageEditedAt: serverTimestamp() };
     if (currentUserData.everApproved) update.approved = false;
+    if (currentUserData.rejected) update.rejected = false;
 
     await updateDoc(doc(db, "users", currentUid), update);
     const queued = await flagForReview();
@@ -2317,7 +2322,7 @@ function renderAdminCard(uid, data) {
 
   card.querySelector('[data-action="approve"]').addEventListener("click", async () => {
     try {
-      await updateDoc(doc(db, "users", uid), { approved: true, everApproved: true });
+      await updateDoc(doc(db, "users", uid), { approved: true, everApproved: true, rejected: false });
       await deleteDoc(doc(db, "reviewQueue", uid));
       card.remove();
     } catch (err) {
@@ -2327,6 +2332,7 @@ function renderAdminCard(uid, data) {
 
   card.querySelector('[data-action="reject"]').addEventListener("click", async () => {
     try {
+      await updateDoc(doc(db, "users", uid), { rejected: true });
       await deleteDoc(doc(db, "reviewQueue", uid));
       card.remove();
     } catch (err) {
@@ -2498,6 +2504,7 @@ document.getElementById("scan-stuck-btn").addEventListener("click", async () => 
       const uid = docSnap.id;
       const data = docSnap.data();
       if (data.approved) return; // already live, nothing to review
+      if (data.rejected) return; // deliberately rejected, not a stuck submission
       if (queuedUids.has(uid)) return; // already properly queued
       // Skip brand-new accounts that haven't filled anything in yet —
       // nothing for the admin to review either way.
@@ -3595,6 +3602,8 @@ function renderMyBusiness(data) {
   emptyHint.style.display = "none";
   if (data.approved) {
     statusBadge.innerHTML = `<span class="badge badge--approved">Live in directory</span>`;
+  } else if (data.rejected) {
+    statusBadge.innerHTML = `<span class="badge badge--rejected">Rejected — edit and save to request another review</span>`;
   } else {
     statusBadge.innerHTML = `<span class="badge badge--pending">Pending review</span>`;
   }
@@ -3704,6 +3713,7 @@ document.getElementById("business-form").addEventListener("submit", async (e) =>
     } else {
       const update = { name, phone, town, description, lastEditedAt: serverTimestamp() };
       if (currentMyBusinessData.everApproved) update.approved = false;
+      if (currentMyBusinessData.rejected) update.rejected = false;
       await updateDoc(doc(db, "businesses", currentUid), update);
     }
     const queued = await flagBusinessForReview();
@@ -3755,6 +3765,7 @@ document.getElementById("business-image-input").addEventListener("change", async
     } else {
       const update = { image: newImage, lastEditedAt: serverTimestamp() };
       if (currentMyBusinessData.everApproved) update.approved = false;
+      if (currentMyBusinessData.rejected) update.rejected = false;
       await updateDoc(doc(db, "businesses", currentUid), update);
     }
     await flagBusinessForReview();
@@ -3905,7 +3916,7 @@ function renderBusinessAdminCard(uid, data) {
 
   card.querySelector('[data-action="approve"]').addEventListener("click", async () => {
     try {
-      await updateDoc(doc(db, "businesses", uid), { approved: true, everApproved: true });
+      await updateDoc(doc(db, "businesses", uid), { approved: true, everApproved: true, rejected: false });
       await deleteDoc(doc(db, "businessReviewQueue", uid));
       card.remove();
     } catch (err) {
@@ -3914,6 +3925,7 @@ function renderBusinessAdminCard(uid, data) {
   });
   card.querySelector('[data-action="reject"]').addEventListener("click", async () => {
     try {
+      await updateDoc(doc(db, "businesses", uid), { rejected: true });
       await deleteDoc(doc(db, "businessReviewQueue", uid));
       card.remove();
     } catch (err) {
