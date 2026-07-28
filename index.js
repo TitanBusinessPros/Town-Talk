@@ -174,7 +174,56 @@ function makeGameInviteTrigger(collectionName) {
       body: `${game.player1Name || "A neighbor"} invited you to play ${label}!`,
       clickAction: page,
     });
+
+    // Also drop it into their Messages inbox — the in-game invite list
+    // (and the notification bell) are easy to miss since they only show up
+    // if the person happens to open that specific game page. A message
+    // shows up wherever they already look for messages.
+    await postGameInviteMessage({
+      fromUid: game.player1Uid,
+      fromName: game.player1Name || "A neighbor",
+      toUid: game.inviteTo,
+      toName: game.inviteToName || "Neighbor",
+      label,
+      page,
+    });
   });
+}
+
+async function postGameInviteMessage({ fromUid, fromName, toUid, toName, label, page }) {
+  const conversationId = [fromUid, toUid].sort().join("_");
+  const convoRef = db.collection("conversations").doc(conversationId);
+  const msgRef = convoRef.collection("messages").doc();
+  const text = `${fromName} invited you to play ${label}!`;
+
+  try {
+    const convoSnap = await convoRef.get();
+    const existingReadBy = convoSnap.exists ? convoSnap.data().readBy || {} : {};
+
+    await db.runTransaction(async (tx) => {
+      tx.set(
+        convoRef,
+        {
+          participants: [fromUid, toUid].sort(),
+          participantNames: { [fromUid]: fromName, [toUid]: toName },
+          lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastMessageText: `🎮 ${text}`,
+          lastMessageSenderId: fromUid,
+          readBy: existingReadBy,
+        },
+        { merge: true }
+      );
+      tx.set(msgRef, {
+        senderId: fromUid,
+        text,
+        type: "game_invite",
+        game: page,
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+  } catch (err) {
+    console.error(`Couldn't post game invite message from ${fromUid} to ${toUid}:`, err);
+  }
 }
 
 exports.onChessInvite = makeGameInviteTrigger("chessGames");

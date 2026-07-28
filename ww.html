@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 <title>WynneWars — Town Fuss</title>
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
@@ -330,7 +331,7 @@ import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
-  collection, getDocs, query, where, orderBy, runTransaction, addDoc,
+  collection, getDocs, query, where, orderBy, runTransaction, addDoc, writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -546,10 +547,29 @@ function buildInitialWynneBoard() {
 
 document.getElementById("ww-create-table-btn").addEventListener("click", () => createWynneTable(null, null));
 
+const INVITE_COOLDOWN_MS = 60 * 60 * 1000;
+
+async function checkInviteCooldown(gameCollectionName, inviteToUid, inviteToName, msg) {
+  const limitRef = doc(db, "gameInviteLimits", `${currentUid}_${gameCollectionName}_${inviteToUid}`);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  if (!limitSnap || !limitSnap.exists()) return true;
+  const last = limitSnap.data().lastInvitedAt;
+  const lastMs = last?.seconds ? last.seconds * 1000 : 0;
+  const elapsedMs = Date.now() - lastMs;
+  if (elapsedMs >= INVITE_COOLDOWN_MS) return true;
+  const minsLeft = Math.max(1, Math.ceil((INVITE_COOLDOWN_MS - elapsedMs) / 60000));
+  showWwMessage(msg, `You can invite ${inviteToName} again in about ${minsLeft} minute(s).`, "error");
+  return false;
+}
+
 async function createWynneTable(inviteToUid, inviteToName) {
   const msg = document.getElementById("ww-waiting-message");
   try {
-    const gameRef = await addDoc(collection(db, "wynneGames"), {
+    if (inviteToUid && !(await checkInviteCooldown("wynneGames", inviteToUid, inviteToName, msg))) return;
+
+    const gameRef = doc(collection(db, "wynneGames"));
+    const batch = writeBatch(db);
+    batch.set(gameRef, {
       player1Uid: currentUid, player1Name: currentUserName,
       player2Uid: null, player2Name: null,
       inviteTo: inviteToUid || null, inviteToName: inviteToName || null,
@@ -561,6 +581,16 @@ async function createWynneTable(inviteToUid, inviteToName) {
       p1StatsRecorded: false, p2StatsRecorded: false,
       createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
     });
+    if (inviteToUid) {
+      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_wynneGames_${inviteToUid}`);
+      batch.set(limitRef, {
+        inviterUid: currentUid,
+        game: "wynneGames",
+        inviteeUid: inviteToUid,
+        lastInvitedAt: serverTimestamp(),
+      });
+    }
+    await batch.commit();
     if (inviteToUid) {
       showWwMessage(msg, `Invite sent to ${inviteToName}.`, "success");
     } else {

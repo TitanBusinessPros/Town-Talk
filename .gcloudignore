@@ -1,0 +1,10 @@
+.git
+.gitignore
+.claude
+node_modules
+*.html
+*.png
+CNAME
+README.md
+firestore.rules
+firebase.json

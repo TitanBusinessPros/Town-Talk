@@ -18,8 +18,7 @@
 <meta name="twitter:title" content="Town Fuss — Pauls Valley" />
 <meta name="twitter:description" content="A community platform for Pauls Valley, Oklahoma. Create a profile, share a post, and message your neighbors." />
 
-<!-- TODO: replace with your own favicon -->
-<!-- <link rel="icon" type="image/png" href="https://yourdomain.com/favicon.png" /> -->
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
@@ -309,8 +308,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .empty-state { text-align: center; padding: 4rem 1rem; color: var(--text-muted); }
 
 .directory-search-wrap { max-width: 480px; margin: 0 auto 2rem; }
-.directory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
-.directory-card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem; cursor: pointer; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; font-family: var(--font-body); }
+.directory-grid { display: flex; gap: 1rem; margin-top: 1rem; overflow-x: auto; overflow-y: hidden; padding-bottom: 0.75rem; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.directory-card { flex: 0 0 220px; scroll-snap-align: start; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem; cursor: pointer; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; font-family: var(--font-body); }
 .directory-card:hover { background: var(--ink-700); }
 .directory-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); background: var(--ink-700); }
 .directory-card .dir-name { font-weight: 600; color: var(--paper-050); font-size: 0.95rem; }
@@ -687,52 +686,62 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <p>Local businesses can list here for $12/year. This is completely separate from your personal profile — you can have one, both, or neither.</p>
     </div>
 
-    <div class="card" style="max-width:620px; margin:0 auto 3rem;">
-      <h2>Your Business Listing <span id="business-status-badge"></span></h2>
-      <p id="business-empty-hint" style="display:none;">You don't have a business listing yet — fill this in to create one.</p>
-
-      <div style="display:flex; justify-content:center; margin:1rem 0;">
-        <div class="image-slot" id="business-image-slot" style="width:160px;">
-          <span class="slot-label">+ Add logo/photo</span>
-        </div>
-      </div>
-      <input type="file" id="business-image-input" accept="image/*" style="display:none" />
-      <div id="business-image-message" class="message" style="display:none"></div>
-
-      <form id="business-form" style="margin-top:1rem;">
-        <label for="biz-name">Business name</label>
-        <input id="biz-name" type="text" maxlength="60" placeholder="e.g. Main Street Diner" />
-        <label for="biz-phone">Phone number</label>
-        <input id="biz-phone" type="tel" maxlength="20" placeholder="(405) 555-1234" />
-        <label for="biz-town">Location</label>
-        <select id="biz-town">
-          <option value="">Select a town...</option>
-          <option value="Wynnewood">Wynnewood</option>
-          <option value="Pauls Valley">Pauls Valley</option>
-          <option value="Elmore City">Elmore City</option>
-          <option value="Davis">Davis</option>
-          <option value="Sulphur">Sulphur</option>
-          <option value="Paoli">Paoli</option>
-        </select>
-        <label for="biz-description">Tell people about your business</label>
-        <textarea id="biz-description" maxlength="6000" placeholder="What do you offer? Hours, specialties, anything neighbors should know."></textarea>
-        <div class="field-hint" id="biz-word-count">0 / 500 words</div>
-        <div class="form-row"><button type="submit">Save listing</button></div>
-        <div id="business-form-message" class="message" style="display:none"></div>
-      </form>
-
-      <div id="business-payment-status" style="display:none; margin-top:1.5rem; text-align:center; border-top:1px solid var(--line); padding-top:1.5rem;">
-        <p class="field-hint" id="business-payment-text"></p>
-        <div class="form-row" style="justify-content:center;">
-          <a id="business-pay-link" href="#" target="_blank" rel="noopener"><button type="button">Pay $12/year on Stripe</button></a>
-        </div>
-        <p class="field-hint">After paying, an admin will confirm the payment and approve your listing — usually within a day or two.</p>
-      </div>
+    <div class="form-row" style="justify-content:center; margin-bottom:1.5rem;">
+      <button type="button" id="business-tab-directory" class="btn small">Local Businesses</button>
+      <button type="button" id="business-tab-mylisting" class="secondary small">Manage My Listing</button>
     </div>
 
-    <h2 style="margin-top:1rem;">Local Businesses</h2>
-    <div id="business-directory-grid" class="directory-grid"></div>
-    <div id="business-directory-empty" class="empty-state" style="display:none">No businesses listed yet — be the first!</div>
+    <div id="business-directory-section">
+      <div id="business-directory-grid" class="directory-grid"></div>
+      <div id="business-directory-empty" class="empty-state" style="display:none">No businesses listed yet — be the first!</div>
+    </div>
+
+    <div id="business-mylisting-section" style="display:none;">
+      <div class="card" style="max-width:620px; margin:0 auto 3rem;">
+        <h2>Your Business Listing <span id="business-status-badge"></span></h2>
+        <p id="business-empty-hint" style="display:none;">You don't have a business listing yet — fill this in to create one.</p>
+
+        <div style="display:flex; justify-content:center; margin:1rem 0;">
+          <div class="image-slot" id="business-image-slot" style="width:160px;">
+            <span class="slot-label">+ Add logo/photo</span>
+          </div>
+        </div>
+        <input type="file" id="business-image-input" accept="image/*" style="display:none" />
+        <p class="field-hint">You can update your photo as often as you like — each new photo is re-reviewed by an admin before it goes live, which can take up to 24 hours.</p>
+        <div id="business-image-message" class="message" style="display:none"></div>
+
+        <form id="business-form" style="margin-top:1rem;">
+          <label for="biz-name">Business name</label>
+          <input id="biz-name" type="text" maxlength="60" placeholder="e.g. Main Street Diner" />
+          <label for="biz-phone">Phone number</label>
+          <input id="biz-phone" type="tel" maxlength="20" placeholder="(405) 555-1234" />
+          <label for="biz-town">Location</label>
+          <select id="biz-town">
+            <option value="">Select a town...</option>
+            <option value="Wynnewood">Wynnewood</option>
+            <option value="Pauls Valley">Pauls Valley</option>
+            <option value="Elmore City">Elmore City</option>
+            <option value="Davis">Davis</option>
+            <option value="Sulphur">Sulphur</option>
+            <option value="Paoli">Paoli</option>
+          </select>
+          <label for="biz-description">Tell people about your business</label>
+          <textarea id="biz-description" maxlength="6000" placeholder="What do you offer? Hours, specialties, anything neighbors should know."></textarea>
+          <div class="field-hint" id="biz-word-count">0 / 500 words</div>
+          <p class="field-hint">Saving sends your listing to an admin for review — this can take up to 24 hours.</p>
+          <div class="form-row"><button type="submit">Save listing</button></div>
+          <div id="business-form-message" class="message" style="display:none"></div>
+        </form>
+
+        <div id="business-payment-status" style="display:none; margin-top:1.5rem; text-align:center; border-top:1px solid var(--line); padding-top:1.5rem;">
+          <p class="field-hint" id="business-payment-text"></p>
+          <div class="form-row" style="justify-content:center;">
+            <a id="business-pay-link" href="#" target="_blank" rel="noopener"><button type="button">Pay $12/year on Stripe</button></a>
+          </div>
+          <p class="field-hint">After paying, an admin will confirm the payment and approve your listing — usually within a day or two.</p>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ================= MESSAGES VIEW ================= -->
@@ -961,7 +970,7 @@ const storage = getStorage(app);
 // key pair (if one doesn't already exist). This key is safe to expose
 // publicly, same as firebaseConfig above.
 // -----------------------------------------------------------------------
-const FCM_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
+const FCM_VAPID_KEY = "BBFN-1SZuxWlfm4cAQf_NHecI1eILnv7cYVDT3Q7gQDI0kFFFt3RReAEyvunlyj_GX9759dNCUPGoNbqQHTmPgI";
 let messaging = null;
 let swRegistration = null;
 
@@ -2784,7 +2793,11 @@ function openThread(otherUid, otherName) {
       const time = m.sentAt ? new Date(m.sentAt.seconds * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
       const bubble = document.createElement("div");
       bubble.className = `thread-msg ${mine ? "mine" : "theirs"}`;
-      bubble.innerHTML = `${escapeHtml(m.text || "")}<span class="thread-msg-time">${time}</span>`;
+      if (m.type === "game_invite" && m.game) {
+        bubble.innerHTML = `🎮 ${escapeHtml(m.text || "")}<br/><a href="${escapeHtml(m.game)}"><button type="button" class="small" style="margin-top:0.4rem;">Open Game</button></a><span class="thread-msg-time">${time}</span>`;
+      } else {
+        bubble.innerHTML = `${escapeHtml(m.text || "")}<span class="thread-msg-time">${time}</span>`;
+      }
       if (!mine) {
         const reportBtn = document.createElement("button");
         reportBtn.type = "button";
@@ -3069,10 +3082,20 @@ async function loadFriendsView() {
 
     if (d.status === "pending" && d.requestedBy !== currentUid) {
       hasIncoming = true;
+
+      let reqAvatarHtml = `<div class="profile-avatar-fallback">${escapeHtml(otherName.trim().charAt(0).toUpperCase() || "N")}</div>`;
+      try {
+        const reqSnap = await getDoc(doc(db, "users", otherUid));
+        const reqAvatarUrl = reqSnap.exists() ? reqSnap.data().images?.[0]?.url : null;
+        if (reqAvatarUrl) reqAvatarHtml = `<img class="profile-avatar" src="${reqAvatarUrl}" alt="${escapeHtml(otherName)}" />`;
+      } catch {
+        // Can't read them (rare) — just fall back to the initial avatar.
+      }
+
       const item = document.createElement("div");
       item.className = "friend-list-item";
       item.innerHTML = `
-        <span class="friend-name-row">${escapeHtml(otherName)}</span>
+        <span class="friend-name-row">${reqAvatarHtml}${escapeHtml(otherName)}</span>
         <span class="friend-actions">
           <button type="button" class="btn small" data-action="accept">Accept</button>
           <button type="button" class="secondary small" data-action="decline">Decline</button>
@@ -3090,12 +3113,18 @@ async function loadFriendsView() {
     } else if (d.status === "accepted") {
       hasFriends = true;
 
-      // One extra read per friend to check their online status — a small,
-      // bounded cost since friend lists are naturally small.
+      // One extra read per friend to check their online status (and grab
+      // their avatar) — a small, bounded cost since friend lists are
+      // naturally small.
       let online = false;
+      let friendAvatarHtml = `<div class="profile-avatar-fallback">${escapeHtml(otherName.trim().charAt(0).toUpperCase() || "N")}</div>`;
       try {
         const friendSnap = await getDoc(doc(db, "users", otherUid));
-        if (friendSnap.exists()) online = isRecentlyActive(friendSnap.data().lastActiveAt);
+        if (friendSnap.exists()) {
+          online = isRecentlyActive(friendSnap.data().lastActiveAt);
+          const friendAvatarUrl = friendSnap.data().images?.[0]?.url;
+          if (friendAvatarUrl) friendAvatarHtml = `<img class="profile-avatar" src="${friendAvatarUrl}" alt="${escapeHtml(otherName)}" />`;
+        }
       } catch {
         // Can't read them (rare) — just show as offline, not worth erroring over.
       }
@@ -3104,6 +3133,7 @@ async function loadFriendsView() {
       item.className = "friend-list-item";
       item.innerHTML = `
         <span class="friend-name-row">
+          ${friendAvatarHtml}
           <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${online ? "#2e8b1f" : "var(--line)"};" title="${online ? "Online" : "Offline"}"></span>
           ${escapeHtml(otherName)}
         </span>
@@ -3769,10 +3799,23 @@ document.getElementById("business-image-input").addEventListener("change", async
       await updateDoc(doc(db, "businesses", currentUid), update);
     }
     await flagBusinessForReview();
-    showMessage(msg, "Uploaded — waiting on admin approval.", "success");
+    showMessage(msg, "Uploaded — an admin will review it before it goes live, usually within 24 hours.", "success");
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
+});
+
+document.getElementById("business-tab-directory").addEventListener("click", () => {
+  document.getElementById("business-directory-section").style.display = "block";
+  document.getElementById("business-mylisting-section").style.display = "none";
+  document.getElementById("business-tab-directory").className = "btn small";
+  document.getElementById("business-tab-mylisting").className = "secondary small";
+});
+document.getElementById("business-tab-mylisting").addEventListener("click", () => {
+  document.getElementById("business-directory-section").style.display = "none";
+  document.getElementById("business-mylisting-section").style.display = "block";
+  document.getElementById("business-tab-directory").className = "secondary small";
+  document.getElementById("business-tab-mylisting").className = "btn small";
 });
 
 async function loadBusinessDirectory() {

@@ -1,0 +1,356 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function today() {
+      return int(request.time.toMillis() / 86400000);
+    }
+
+    match /admins/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    match /leaderboardCache/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false; // only the scheduled Cloud Function writes this, via Admin SDK
+    }
+
+    match /spotlights/{weekId} {
+      allow read: if isSignedIn();
+      allow write: if false; // only the scheduled Cloud Function writes this, via Admin SDK
+    }
+
+    // Doc ID is the lowercased email address the admin wants to comp a
+    // free business year to. A signed-in user may only ever read the doc
+    // matching their OWN email (used at signup to check "am I on the
+    // list?") — they can never browse who else is on it. Only admins
+    // can add or remove entries.
+    match /businessPromoWhitelist/{emailId} {
+      allow read: if isAdmin()
+                  || (isSignedIn() && request.auth.token.email != null
+                      && request.auth.token.email.lower() == emailId);
+      allow write: if isAdmin();
+    }
+
+    // A business listing is its own thing, completely separate from a
+    // personal profile — doc ID is the OWNER's uid (one business listing
+    // per account), but nothing here ever touches /users/{uid}.
+    match /businesses/{uid} {
+      allow read: if (isSignedIn() && resource.data.approved == true) || isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid)
+                    && request.resource.data.approved == false
+                    && request.resource.data.everApproved == false;
+      allow update: if isAdmin() || (isOwner(uid) && request.resource.data.approved == false);
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    match /businessReviewQueue/{uid} {
+      allow read: if isAdmin();
+      allow write: if (isOwner(uid) && request.auth.token.email_verified == true) || isAdmin();
+    }
+
+    // In-app notification bell. Only the Cloud Functions (via Admin SDK,
+    // which bypasses rules) ever create these — a signed-in user can only
+    // read their OWN notifications, and can only ever flip 'read' to true
+    // on their own notification, nothing else.
+    match /users/{uid}/notifications/{notifId} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow update: if isOwner(uid)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow create, delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if (isSignedIn() && resource.data.approved == true) || isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid)
+                    && request.resource.data.approved == false
+                    && request.resource.data.everApproved == false;
+      allow update: if isAdmin()
+                    || (isOwner(uid) && request.resource.data.approved == false)
+                    || (isOwner(uid)
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'notificationsEnabled', 'fcmTokens']));
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    match /reviewQueue/{uid} {
+      allow read: if isAdmin();
+      allow write: if (isOwner(uid) && request.auth.token.email_verified == true) || isAdmin();
+    }
+
+    match /messageLimits/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid)
+                   && request.resource.data.day == today()
+                   && request.resource.data.count <= 3
+                   && (
+                        (!exists(/databases/$(database)/documents/messageLimits/$(uid))
+                          && request.resource.data.count == 1)
+                        ||
+                        (exists(/databases/$(database)/documents/messageLimits/$(uid))
+                          && resource.data.day != today()
+                          && request.resource.data.count == 1)
+                        ||
+                        (exists(/databases/$(database)/documents/messageLimits/$(uid))
+                          && resource.data.day == today()
+                          && request.resource.data.count == resource.data.count + 1)
+                      );
+    }
+
+    // Rate-limits direct game invites to one per (inviter, invitee, game)
+    // per hour — deters someone spamming the same person with repeat
+    // invites. Doc ID convention: "<inviterUid>_<gameCollection>_<inviteeUid>",
+    // enforced client-side by createTable()/createWynneTable() in each
+    // game page, which write this in the same batch as the invite itself.
+    // Not read directly by any client UI, only via get()/exists() below.
+    match /gameInviteLimits/{limitId} {
+      // Only the inviter can read their own cooldown records (so the app
+      // can show "try again in X minutes" instead of a raw permission
+      // error) — not read by anyone else directly, only via get()/exists()
+      // from the game-creation rules above.
+      allow read: if isSignedIn() && request.auth.uid == resource.data.inviterUid;
+      allow create: if isSignedIn()
+                    && request.resource.data.inviterUid == request.auth.uid
+                    && limitId == request.auth.uid + '_' + request.resource.data.game + '_' + request.resource.data.inviteeUid
+                    && request.resource.data.lastInvitedAt == request.time;
+      allow update: if isSignedIn()
+                    && resource.data.inviterUid == request.auth.uid
+                    && request.resource.data.inviterUid == request.auth.uid
+                    && request.resource.data.game == resource.data.game
+                    && request.resource.data.inviteeUid == resource.data.inviteeUid
+                    && request.resource.data.lastInvitedAt == request.time
+                    && request.time > resource.data.lastInvitedAt + duration.value(1, 'h');
+    }
+
+    match /friendRequests/{pairId} {
+      allow read: if isSignedIn()
+                  && (resource == null || request.auth.uid in resource.data.participants);
+      allow create: if isSignedIn()
+                    && request.auth.uid in request.resource.data.participants
+                    && request.resource.data.participants.size() == 2
+                    && request.resource.data.requestedBy == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update: if isSignedIn()
+                    && request.auth.uid in resource.data.participants
+                    && request.resource.data.participants == resource.data.participants
+                    && resource.data.status == 'pending'
+                    && request.resource.data.status == 'accepted'
+                    && request.auth.uid != resource.data.requestedBy;
+      allow delete: if isSignedIn() && request.auth.uid in resource.data.participants;
+    }
+
+    match /blocks/{pairId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn()
+                    && request.auth.uid in request.resource.data.participants
+                    && request.resource.data.participants.size() == 2
+                    && request.resource.data.blockedBy == request.auth.uid;
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.blockedBy;
+      allow update: if false;
+    }
+
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+                    && request.resource.data.reportedBy == request.auth.uid
+                    && request.resource.data.reportedUid is string
+                    && request.resource.data.reason is string
+                    && request.resource.data.status == 'open'
+                    && (!('messageText' in request.resource.data)
+                        || (request.resource.data.messageText is string
+                            && request.resource.data.messageText.size() <= 2000));
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /chatMessageLimits/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid)
+                   && request.resource.data.day == today()
+                   && request.resource.data.count <= 3
+                   && (
+                        (!exists(/databases/$(database)/documents/chatMessageLimits/$(uid))
+                          && request.resource.data.count == 1)
+                        ||
+                        (exists(/databases/$(database)/documents/chatMessageLimits/$(uid))
+                          && resource.data.day != today()
+                          && request.resource.data.count == 1)
+                        ||
+                        (exists(/databases/$(database)/documents/chatMessageLimits/$(uid))
+                          && resource.data.day == today()
+                          && request.resource.data.count == resource.data.count + 1)
+                      );
+    }
+
+    match /chatRooms/{roomId}/messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && roomId in [
+                         'wynnewood-chat', 'elmore-city-chat', 'pauls-valley-chat',
+                         'davis-chat', 'paoli-chat', 'sulphur-chat', 'singles-chat',
+                         'music-chat', 'events-chat', 'rants-raves-chat',
+                         'local-jobs-chat', 'helping-hands-chat'
+                       ]
+                    && request.resource.data.senderId == request.auth.uid
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 500
+                    && request.resource.data.text.split(' ').size() <= 50;
+      allow update: if isSignedIn() && (
+                      // Toggling a like: only the likes array may change, and it
+                      // may only change by adding or removing YOUR OWN uid, one
+                      // at a time (the size-delta check blocks tampering with
+                      // anyone else's entry in the same write).
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+                        && request.resource.data.likes is list
+                        && (
+                          (!resource.data.get('likes', []).hasAny([request.auth.uid])
+                            && request.resource.data.likes.hasAny([request.auth.uid])
+                            && request.resource.data.likes.size() == resource.data.get('likes', []).size() + 1)
+                          ||
+                          (resource.data.get('likes', []).hasAny([request.auth.uid])
+                            && !request.resource.data.likes.hasAny([request.auth.uid])
+                            && request.resource.data.likes.size() == resource.data.get('likes', []).size() - 1)
+                        ))
+                      ||
+                      // Toggling a dislike: same idea, dislikes array only.
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dislikes'])
+                        && request.resource.data.dislikes is list
+                        && (
+                          (!resource.data.get('dislikes', []).hasAny([request.auth.uid])
+                            && request.resource.data.dislikes.hasAny([request.auth.uid])
+                            && request.resource.data.dislikes.size() == resource.data.get('dislikes', []).size() + 1)
+                          ||
+                          (resource.data.get('dislikes', []).hasAny([request.auth.uid])
+                            && !request.resource.data.dislikes.hasAny([request.auth.uid])
+                            && request.resource.data.dislikes.size() == resource.data.get('dislikes', []).size() - 1)
+                        ))
+                    );
+      allow delete: if isAdmin();
+    }
+
+    match /chessGames/{gameId} {
+      allow read: if isSignedIn() && (
+        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
+        (resource.data.inviteTo == request.auth.uid) ||
+        (request.auth.uid in resource.data.participants)
+      );
+      allow create: if isSignedIn()
+                    && request.resource.data.player1Uid == request.auth.uid
+                    && request.resource.data.player2Uid == null
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.participants == [request.auth.uid]
+                    && (
+                         request.resource.data.inviteTo == null
+                         || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_chessGames_' + request.resource.data.inviteTo))
+                         || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_chessGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
+                       );
+      allow update: if isSignedIn()
+                    && (
+                      request.auth.uid in resource.data.participants
+                      || request.auth.uid == resource.data.player1Uid
+                      || request.auth.uid == resource.data.inviteTo
+                      || (resource.data.status == 'open'
+                          && resource.data.player2Uid == null
+                          && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
+                    );
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.status == 'open' && (
+                          request.auth.uid == resource.data.player1Uid
+                          || request.auth.uid == resource.data.inviteTo
+                        ));
+    }
+
+    match /checkersGames/{gameId} {
+      allow read: if isSignedIn() && (
+        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
+        (resource.data.inviteTo == request.auth.uid) ||
+        (request.auth.uid in resource.data.participants)
+      );
+      allow create: if isSignedIn()
+                    && request.resource.data.player1Uid == request.auth.uid
+                    && request.resource.data.player2Uid == null
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.participants == [request.auth.uid]
+                    && (
+                         request.resource.data.inviteTo == null
+                         || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_checkersGames_' + request.resource.data.inviteTo))
+                         || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_checkersGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
+                       );
+      allow update: if isSignedIn()
+                    && (
+                      request.auth.uid in resource.data.participants
+                      || request.auth.uid == resource.data.player1Uid
+                      || request.auth.uid == resource.data.inviteTo
+                      || (resource.data.status == 'open'
+                          && resource.data.player2Uid == null
+                          && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
+                    );
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.status == 'open' && (
+                          request.auth.uid == resource.data.player1Uid
+                          || request.auth.uid == resource.data.inviteTo
+                        ));
+    }
+
+    match /wynneGames/{gameId} {
+      allow read: if isSignedIn() && (
+        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
+        (resource.data.inviteTo == request.auth.uid) ||
+        (request.auth.uid in resource.data.participants)
+      );
+      allow create: if isSignedIn()
+                    && request.resource.data.player1Uid == request.auth.uid
+                    && request.resource.data.player2Uid == null
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.participants == [request.auth.uid]
+                    && (
+                         request.resource.data.inviteTo == null
+                         || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_wynneGames_' + request.resource.data.inviteTo))
+                         || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_wynneGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
+                       );
+      allow update: if isSignedIn()
+                    && (
+                      request.auth.uid in resource.data.participants
+                      || request.auth.uid == resource.data.player1Uid
+                      || request.auth.uid == resource.data.inviteTo
+                      || (resource.data.status == 'open'
+                          && resource.data.player2Uid == null
+                          && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
+                    );
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.status == 'open' && (
+                          request.auth.uid == resource.data.player1Uid
+                          || request.auth.uid == resource.data.inviteTo
+                        ));
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create, update: if isSignedIn()
+                            && request.auth.uid in request.resource.data.participants
+                            && request.resource.data.participants.size() == 2;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && request.auth.uid in conversationId.split('_');
+        allow create: if isSignedIn()
+                      && request.resource.data.senderId == request.auth.uid
+                      && request.auth.uid in conversationId.split('_')
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 500
+                      && request.resource.data.text.split(' ').size() <= 50
+                      && !exists(/databases/$(database)/documents/blocks/$(conversationId));
+        allow update, delete: if false;
+      }
+    }
+  }
+}
