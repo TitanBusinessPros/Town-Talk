@@ -254,10 +254,10 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
-  collection, getDocs, query, where, orderBy, limit, runTransaction, addDoc, Timestamp, writeBatch,
+  collection, getDocs, query, where, orderBy, limit, runTransaction, addDoc, Timestamp, writeBatch, connectFirestoreEmulator,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -276,6 +276,13 @@ initializeAppCheck(app, {
 });
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
 
 let currentUid = null;
 let currentUserName = "Neighbor";
@@ -332,6 +339,7 @@ function isRecentlyActive(lastActiveAt) {
 // ============================= VIEW ROUTER =================================
 let unsubscribeOpenTables = null;
 let unsubscribeMyInvites = null;
+let unsubscribeMyActiveGame = null;
 let unsubscribeGame = null;
 let unsubscribeMiniChat = null;
 
@@ -353,7 +361,11 @@ function showView(name) {
   document.getElementById("nav-leaderboard").style.display = insideOnlineMultiplayer ? "inline" : "none";
 
   if (name === "waiting") { watchWaitingRoom(); }
-  else { if (unsubscribeOpenTables) unsubscribeOpenTables(); if (unsubscribeMyInvites) unsubscribeMyInvites(); }
+  else {
+    if (unsubscribeOpenTables) unsubscribeOpenTables();
+    if (unsubscribeMyInvites) unsubscribeMyInvites();
+    if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+  }
 
   if (name === "leaderboard") loadLeaderboard();
   if (name !== "game" && unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
@@ -397,6 +409,23 @@ async function checkForActiveGame() {
 function watchWaitingRoom() {
   if (unsubscribeOpenTables) unsubscribeOpenTables();
   if (unsubscribeMyInvites) unsubscribeMyInvites();
+  if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+
+  // Covers the ORIGINAL inviter's side: joinTable()/openGame() only ever
+  // runs for whoever clicks Accept. Without this, the person who sent the
+  // invite has no way to know it was accepted short of refreshing the page
+  // (checkForActiveGame() only runs once, at load) — they'd be stuck
+  // looking at an empty Waiting Room while their opponent is already on
+  // the board.
+  const myActiveQ = query(
+    collection(db, "chessGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "active")
+  );
+  unsubscribeMyActiveGame = onSnapshot(myActiveQ, (snap) => {
+    const mine = snap.docs.find((d) => d.data().player1Uid === currentUid);
+    if (mine && !activeGameId) openGame(mine.id);
+  }, (err) => console.error("My active game watch failed:", err));
 
   const openQ = query(
     collection(db, "chessGames"),

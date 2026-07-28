@@ -921,13 +921,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendPasswordResetEmail, onAuthStateChanged, signOut, deleteUser,
-  EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification,
+  EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification, connectAuthEmulator,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
-  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, addDoc, limitToLast, limit,
+  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, addDoc, limitToLast, limit, connectFirestoreEmulator,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, connectStorageEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
 import { getMessaging, getToken, onMessage, isSupported as isMessagingSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
@@ -962,6 +962,14 @@ initializeAppCheck(app, {
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  connectStorageEmulator(storage, "127.0.0.1", 9199);
+}
 
 // -----------------------------------------------------------------------
 // Push notifications (Firebase Cloud Messaging) — free, no SMS involved.
@@ -1152,6 +1160,7 @@ document.getElementById("nav-logout").addEventListener("click", async (e) => {
 });
 
 let isAdminUser = false;
+let didForceVerifiedTokenRefresh = false;
 
 function updateProtectedNavVisibility(user) {
   const agreed = !!(currentUserData && currentUserData.agreedToTerms);
@@ -1173,6 +1182,19 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById("nav-auth").style.display = user ? "none" : "inline";
 
   if (user) {
+    // A plain page reload (not just switching back to this tab) restores
+    // a signed-in session where user.emailVerified can already read true
+    // from account-info, WITHOUT the underlying security token ever being
+    // refreshed — refreshVerificationStatus()'s auto-refresh only fires
+    // when the page still thinks it's unverified, so that path gets
+    // skipped here. Force one fresh token per session whenever we come up
+    // already-verified, so request.auth.token.email_verified isn't stale
+    // for the first write that depends on it (e.g. joining reviewQueue).
+    if (user.emailVerified && !didForceVerifiedTokenRefresh) {
+      didForceVerifiedTokenRefresh = true;
+      await user.getIdToken(true).catch((err) => console.error("Couldn't refresh verification token:", err));
+    }
+
     currentUid = user.uid;
     watchUserDoc(user.uid);
     watchMessageLimit(user.uid);
