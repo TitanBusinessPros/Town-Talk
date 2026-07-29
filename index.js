@@ -161,6 +161,7 @@ const GAME_LABELS = {
   chessGames: { label: "Chess", page: "/chess.html" },
   checkersGames: { label: "Checkers", page: "/checkers.html" },
   wynneGames: { label: "WynneWars", page: "/ww.html" },
+  golfGames: { label: "Golf", page: "/golf.html" },
 };
 
 function makeGameInviteTrigger(collectionName) {
@@ -230,6 +231,7 @@ async function postGameInviteMessage({ fromUid, fromName, toUid, toName, label, 
 exports.onChessInvite = makeGameInviteTrigger("chessGames");
 exports.onCheckersInvite = makeGameInviteTrigger("checkersGames");
 exports.onWynneWarsInvite = makeGameInviteTrigger("wynneGames");
+exports.onGolfInvite = makeGameInviteTrigger("golfGames");
 
 // -----------------------------------------------------------------------
 // 2. First-time message notification.
@@ -317,7 +319,7 @@ exports.onChatReaction = onDocumentUpdated(
       type: "reaction",
       title: "Town Fuss — Chat Reaction",
       body: `${reactorName} ${verb} your message in chat.`,
-      clickAction: "/index.html",
+      clickAction: `/index.html?chatroom=${event.params.roomId}&msg=${event.params.messageId}`,
     });
   }
 );

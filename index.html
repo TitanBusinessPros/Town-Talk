@@ -93,6 +93,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 .chat-msg-row { padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
 .chat-msg-row:last-child { border-bottom: none; }
+.chat-msg-highlight { background: rgba(255, 204, 0, 0.25); border-radius: var(--radius-sm); transition: background 2.5s ease; }
 .chat-msg-header { display: flex; align-items: baseline; gap: 0.6rem; }
 .chat-msg-header .chat-msg-name { font-weight: 600; color: var(--amber-500); font-size: 0.88rem; }
 .chat-msg-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; background: var(--ink-700); }
@@ -310,6 +311,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .directory-search-wrap { max-width: 480px; margin: 0 auto 2rem; }
 .directory-grid { display: flex; gap: 1rem; margin-top: 1rem; overflow-x: auto; overflow-y: hidden; padding-bottom: 0.75rem; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
 .directory-card { flex: 0 0 220px; scroll-snap-align: start; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem; cursor: pointer; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; font-family: var(--font-body); }
+.business-directory-grid { display: grid; grid-template-columns: repeat(2, 1fr); overflow: visible; }
+.business-directory-grid .directory-card { flex: unset; width: auto; }
+@media (max-width: 640px) {
+  .business-directory-grid { grid-template-columns: 1fr; }
+}
 .directory-card:hover { background: var(--ink-700); }
 .directory-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); background: var(--ink-700); }
 .directory-card .dir-name { font-weight: 600; color: var(--paper-050); font-size: 0.95rem; }
@@ -692,7 +698,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     </div>
 
     <div id="business-directory-section">
-      <div id="business-directory-grid" class="directory-grid"></div>
+      <div id="business-directory-grid" class="directory-grid business-directory-grid"></div>
       <div id="business-directory-empty" class="empty-state" style="display:none">No businesses listed yet — be the first!</div>
     </div>
 
@@ -3426,6 +3432,7 @@ function renderChatRoomList() {
 }
 
 let activeChatRoom = null;
+let pendingHighlightMessageId = null;
 
 function closeChatRoomThread() {
   document.getElementById("chatroom-thread-view").style.display = "none";
@@ -3463,6 +3470,23 @@ async function toggleChatReaction(roomId, messageId, type, likes, dislikes) {
   }
 }
 
+// Parses a reaction notification's clickAction (e.g.
+// "/index.html?chatroom=pauls-valley-chat&msg=abc123") and jumps straight
+// to that room with the reacted-to message scrolled into view — falls
+// back to just opening the chat rooms list if the room/message no longer
+// resolves (e.g. an old notification for a room that's since changed).
+function openReactionNotification(clickAction) {
+  const url = new URL(clickAction || "/index.html", window.location.origin);
+  const roomId = url.searchParams.get("chatroom");
+  const msgId = url.searchParams.get("msg");
+  const room = CHAT_ROOMS.find((r) => r.id === roomId);
+  showView("chatrooms");
+  if (room && msgId) {
+    pendingHighlightMessageId = msgId;
+    openChatRoom(room);
+  }
+}
+
 function openChatRoom(room) {
   activeChatRoom = room;
   document.getElementById("chatroom-thread-view").style.display = "block";
@@ -3491,6 +3515,7 @@ function openChatRoom(room) {
       const time = m.sentAt ? new Date(m.sentAt.seconds * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
       const row = document.createElement("div");
       row.className = "chat-msg-row";
+      row.id = `chat-msg-${docSnap.id}`;
       const mine = m.senderId === currentUid;
       const initial = (m.senderName || "N").trim().charAt(0).toUpperCase();
       const avatarHtml = m.senderAvatarUrl
@@ -3538,7 +3563,19 @@ function openChatRoom(room) {
       }
       messagesEl.appendChild(row);
     });
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (pendingHighlightMessageId) {
+      const target = document.getElementById(`chat-msg-${pendingHighlightMessageId}`);
+      pendingHighlightMessageId = null;
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("chat-msg-highlight");
+        setTimeout(() => target.classList.remove("chat-msg-highlight"), 3000);
+      } else {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    } else {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
   }, (err) => console.error("Chat room load failed:", err));
 }
 
@@ -3915,7 +3952,7 @@ function watchNotificationBell(uid) {
           document.getElementById("notif-bell-panel").style.display = "none";
           if (n.type === "message") showView("messages");
           else if (n.type === "invite") window.location.href = n.clickAction || "chess.html";
-          else if (n.type === "reaction") showView("chatrooms");
+          else if (n.type === "reaction") openReactionNotification(n.clickAction);
         });
         list.appendChild(item);
       });

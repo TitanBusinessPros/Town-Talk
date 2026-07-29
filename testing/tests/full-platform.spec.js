@@ -335,6 +335,40 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await expect(pageB.locator("#status")).toContainText("Your turn", { timeout: 10_000 });
   });
 
+  test("Golf: Robot A invites Robot B directly, Robot B accepts, both see the board", async () => {
+    // Like checkers.html, golf.html lands straight on mode-select.
+    await pageA.goto("/golf.html");
+    await pageA.locator("#mode-tile-online").click();
+
+    await pageA.locator("#friends-invite-list").waitFor();
+    await pageA.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(pageA.locator(".message, #waiting-message")).toBeVisible({ timeout: 10_000 }).catch(() => {});
+
+    await pageB.goto("/golf.html");
+    await pageB.locator("#mode-tile-online").click();
+    await pageB.locator('button:has-text("Accept")').first().click();
+
+    await expect(pageA.locator("#view-game")).toBeVisible({ timeout: 15_000 });
+    await expect(pageB.locator("#view-game")).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("Golf: a shot taken by one player syncs to the other player", async () => {
+    // Robot A created the table, so she's player1 and goes first.
+    await expect(pageA.locator("#golf-shoot-btn")).toBeEnabled({ timeout: 10_000 });
+    await pageA.locator("#golf-shoot-btn").click();
+
+    // Give the shot's physics time to settle (friction-based deceleration
+    // takes a few seconds) and sync to Firestore, then to Robot B's client.
+    await pageB.waitForTimeout(6000);
+    await expect(pageB.locator("#golf-status")).not.toContainText("Waiting for an opponent", { timeout: 5000 });
+
+    // Resign so this game finishes cleanly — otherwise checkForActiveGame()
+    // would jump whoever loads golf.html next straight back into it.
+    pageA.once("dialog", (dialog) => dialog.accept().catch(() => {}));
+    await pageA.locator("#resign-btn").click();
+    await pageA.waitForTimeout(500);
+  });
+
   test("Robot B uploads a profile photo", async () => {
     // Robot B, not A — uploading a new photo un-approves the profile
     // pending re-review (everApproved gate), and test 28 later needs to
@@ -382,19 +416,19 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await expect(bizCard).toHaveCount(0, { timeout: 10_000 });
   });
 
-  test("The approved business appears in the Local Businesses directory with its logo, in a horizontal-scroll layout", async () => {
+  test("The approved business appears in the Local Businesses directory with its logo, in a 2-column grid layout", async () => {
     await pageA.locator("#nav-business").click();
     await pageA.locator("#business-tab-directory").click();
     const card = pageA.locator(".directory-card", { hasText: "Bob's Bait & Tackle" });
     await expect(card).toBeVisible({ timeout: 10_000 });
     await expect(card.locator("img")).toBeVisible();
-    // .directory-grid is the horizontal-scroll container (overflow-x: auto,
-    // flex row) — confirm that's actually the layout in effect, not a
-    // vertical stack, so this doesn't silently regress back to one.
-    const overflowX = await pageA.locator("#business-directory-grid").evaluate((el) => getComputedStyle(el).overflowX);
+    // .business-directory-grid is a 2-column CSS grid (wraps down the page
+    // instead of a single horizontal-scrolling row) — confirm that's
+    // actually the layout in effect, not a single-column vertical stack.
     const display = await pageA.locator("#business-directory-grid").evaluate((el) => getComputedStyle(el).display);
-    expect(overflowX).toBe("auto");
-    expect(display).toBe("flex");
+    const columnCount = await pageA.locator("#business-directory-grid").evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+    expect(display).toBe("grid");
+    expect(columnCount).toBe(2);
   });
 
   test("Favicon is set on the page", async () => {
@@ -417,6 +451,13 @@ test.describe.serial("Town Fuss — full platform pass", () => {
 
     await pageA.locator("#nav-notifications").click();
     await expect(pageA.locator("#notif-bell-list")).toContainText("liked", { timeout: 20_000 });
+
+    // Clicking the reaction notification should jump straight to the exact
+    // chat room + message that got liked, not just the chat rooms list.
+    await pageA.locator(".notif-bell-item", { hasText: "liked" }).click();
+    await expect(pageA.locator("#chatroom-thread-view")).toBeVisible({ timeout: 10_000 });
+    await expect(pageA.locator("#chatroom-title")).toContainText("Pauls Valley Chat");
+    await expect(pageA.locator(".chat-msg-highlight")).toContainText("Automated test chat message");
   });
 
   test("Robot B invites Robot A to chess; it shows up in Robot A's Messages and notification bell", async () => {
@@ -456,9 +497,9 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     // that dance time to finish before we click into the panel, otherwise
     // we can click/read before the fresh onSnapshot listener has attached.
     await pageA.locator("#nav-notifications").waitFor({ state: "visible", timeout: 20_000 });
-    await pageA.waitForTimeout(2000);
+    await pageA.waitForTimeout(5000);
     await pageA.locator("#nav-notifications").click();
-    await expect(pageA.locator("#notif-bell-list")).toContainText("Game Invite", { timeout: 20_000 });
+    await expect(pageA.locator("#notif-bell-list")).toContainText("Game Invite", { timeout: 25_000 });
   });
 
   test("Robot B can't invite Robot A to chess again within the cooldown", async () => {

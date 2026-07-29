@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Golf — Town Fuss</title>
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --sage-500: #74875a;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); }
+body { min-height: 100vh; }
+a { color: var(--amber-500); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; }
+p { color: var(--text-muted); line-height: 1.6; }
+.page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+.header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+.header-bar a.brand span { color: var(--amber-500); }
+.header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+.header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+.header-nav button.active { color: var(--amber-500); font-weight: 600; }
+
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+
+button { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+button:hover { background: var(--amber-600); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+.table-row, .invite-row, .friend-row, .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+.table-row > span:first-child, .invite-row > span:first-child, .friend-row > span:first-child, .leader-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+.table-row > span:last-child, .invite-row > span:last-child, .friend-row > span:last-child, .leader-row > span:last-child { flex: 0 0 auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.table-row:last-child, .invite-row:last-child, .friend-row:last-child, .leader-row:last-child { border-bottom: none; }
+.leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+
+.empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+.message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+.message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+
+.game-status { text-align: center; margin: 1rem 0; font-weight: 600; min-height: 1.4em; }
+.game-players { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.5rem; }
+.game-controls { display: flex; gap: 0.6rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+.field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+.mini-chat { margin-top: 1.5rem; }
+.mini-chat-messages { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem; }
+.mini-chat-msg { max-width: 80%; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.mini-chat-msg.mine { align-self: flex-end; background: var(--amber-500); color: #fff; }
+.mini-chat-msg.theirs { align-self: flex-start; background: var(--ink-700); }
+.mini-chat-form { display: flex; gap: 0.5rem; }
+.mini-chat-form input { flex: 1; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: var(--font-body); }
+
+/* ---- Golf-specific: the actual course canvas + shot controls ---- */
+.golf-canvas-wrap { text-align: center; }
+.golf-canvas-wrap canvas { background: #2d5a27; border-radius: 10px; border: 3px solid #4a752c; max-width: 100%; height: auto; touch-action: none; }
+.golf-hole-selector { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem; margin-top: 1rem; }
+.golf-hole-option { background: var(--ink-700); border-radius: var(--radius-sm); padding: 0.4rem; text-align: center; cursor: pointer; font-size: 0.72rem; font-family: var(--font-mono); }
+.golf-hole-option:hover { background: var(--line); }
+.golf-hole-option.active { background: var(--amber-500); color: #fff; font-weight: 600; }
+.golf-controls { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 1rem; }
+.golf-control-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.golf-control-group label { font-weight: 600; font-size: 0.85rem; }
+.golf-control-group input[type="range"] { width: 100%; }
+.golf-control-group select { padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--line); font-family: var(--font-body); }
+.golf-stats { background: var(--ink-700); padding: 1rem; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+.golf-stat-row { display: flex; justify-content: space-between; font-size: 0.88rem; }
+.golf-stat-row span:last-child { font-weight: 700; color: var(--amber-500); }
+@media (max-width: 480px) {
+  .golf-hole-selector { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<header class="header-bar">
+  <a class="brand" href="index.html">Town<span>Fuss</span> Games</a>
+  <nav class="header-nav">
+    <button id="nav-hub" class="active">Games</button>
+    <button id="nav-waiting" style="display:none;">Waiting Room</button>
+    <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+  </nav>
+</header>
+
+<main class="page">
+
+  <div id="signed-out-notice" class="card" style="display:none; text-align:center;">
+    <h2>Sign in on Town Fuss first</h2>
+    <p>You need a Town Fuss account to play golf with other members.</p>
+    <a href="index.html"><button type="button">Go to Town Fuss</button></a>
+  </div>
+
+  <div id="app-content" style="display:none;">
+
+    <!-- ================= GAMES HUB ================= -->
+    <section id="view-hub">
+      <span class="eyebrow">Town Fuss</span>
+      <h1>Games</h1>
+      <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+      <div class="card" style="max-width:280px; margin:0 auto; text-align:center; cursor:pointer;" id="game-tile-golf">
+        <img src="https://github.com/TitanBusinessPros/Golf-Game/raw/main/Golf%20Game%20Logo.png" alt="Golf" style="height:2.5rem; width:auto; margin:0 auto;" />
+        <h2 style="font-size:1.1rem; margin-top:0.5rem;">Golf</h2>
+        <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
+      </div>
+      <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+    </section>
+
+    <!-- ================= GOLF MODE SELECT ================= -->
+    <section id="view-mode-select" style="display:none;">
+      <button type="button" class="secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+      <span class="eyebrow">Golf</span>
+      <h1>How do you want to play?</h1>
+      <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-ai">
+        <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
+        <p class="field-hint" style="text-align:center;">Same device, choose a difficulty</p>
+      </div>
+      <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-2p">
+        <h2 style="font-size:1.05rem;">👥 Two Player</h2>
+        <p class="field-hint" style="text-align:center;">Take turns on this same device</p>
+      </div>
+      <div class="card" style="max-width:320px; margin:0 auto; text-align:center; cursor:pointer;" id="mode-tile-online">
+        <h2 style="font-size:1.05rem;">🌐 Play Online</h2>
+        <p class="field-hint" style="text-align:center;">Waiting room, invites, and the leaderboard</p>
+      </div>
+    </section>
+
+    <!-- ================= LOCAL GAME (AI or same-device 2P) ================= -->
+    <section id="view-local-game" style="display:none;">
+      <button type="button" class="secondary small" id="local-back-btn" style="margin-bottom:1rem;">&larr; Back</button>
+      <span class="eyebrow" id="local-mode-label">Golf</span>
+      <h1 id="local-mode-title">Play vs Computer</h1>
+      <div class="card">
+        <div id="local-difficulty-row" style="display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-bottom:1rem;">
+          <label for="local-difficulty" style="font-size:0.85rem;">Difficulty:</label>
+          <select id="local-difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div class="game-status" id="local-golf-status">Aim and adjust power to shoot!</div>
+        <div style="text-align:center; font-size:0.9rem; margin-bottom:0.5rem;" id="local-hole-info">Hole 1 • Par 3</div>
+        <div class="golf-canvas-wrap">
+          <canvas id="local-golf-canvas" width="800" height="500"></canvas>
+        </div>
+        <div class="golf-hole-selector" id="local-hole-selector"></div>
+        <div class="golf-controls">
+          <div class="golf-control-group">
+            <label>Shot Power: <span id="local-power-value">50%</span></label>
+            <input type="range" id="local-power" min="10" max="100" value="50" />
+          </div>
+          <div class="golf-control-group">
+            <label>Shot Angle: <span id="local-angle-value">45°</span></label>
+            <input type="range" id="local-angle" min="0" max="360" value="45" />
+          </div>
+        </div>
+        <div class="game-controls">
+          <button type="button" id="local-shoot-btn">Take Shot</button>
+          <button type="button" class="secondary small" id="local-restart-btn">Restart</button>
+        </div>
+        <div class="golf-stats">
+          <div class="golf-stat-row"><span>Current Player:</span><span id="local-current-player">Player 1</span></div>
+          <div class="golf-stat-row"><span>Strokes:</span><span id="local-stroke-count">0</span></div>
+          <div class="golf-stat-row"><span>Player 1 Score:</span><span id="local-p1-score">0</span></div>
+          <div class="golf-stat-row"><span>Player 2 Score:</span><span id="local-p2-score">0</span></div>
+          <div class="golf-stat-row"><span>Current Hole:</span><span id="local-hole-display">1/24</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= WAITING ROOM ================= -->
+    <section id="view-waiting" style="display:none;">
+      <button type="button" class="secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+      <span class="eyebrow">Golf</span>
+      <h1>Waiting Room</h1>
+      <p style="text-align:center;">Join an open table, invite a friend, or wait for someone to challenge you.</p>
+
+      <div class="card">
+        <h2 style="text-align:left;">Open tables</h2>
+        <p style="text-align:left;">Anyone can join one of these.</p>
+        <button type="button" id="create-table-btn">+ Create a table</button>
+        <div id="my-open-table-wrap" style="display:none; margin-top:1rem;">
+          <div class="table-row">
+            <span>Your table — waiting for someone to join</span>
+            <button type="button" class="secondary small" id="cancel-my-table-btn">Cancel</button>
+          </div>
+        </div>
+        <div id="open-tables-list" style="margin-top:1rem;"></div>
+        <div id="open-tables-empty" class="empty-state" style="display:none;">No open tables right now — create one!</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invites waiting on you</h2>
+        <div id="my-invites-list"></div>
+        <div id="my-invites-empty" class="empty-state" style="display:none;">No pending invites.</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invite a friend</h2>
+        <p style="text-align:left;">Only shows people you're already friends with on Town Fuss.</p>
+        <div id="friends-invite-list"></div>
+        <div id="friends-invite-empty" class="empty-state" style="display:none;">Add some friends on Town Fuss first.</div>
+      </div>
+
+      <div id="waiting-message" class="message" style="display:none;"></div>
+    </section>
+
+    <!-- ================= LEADERBOARD ================= -->
+    <section id="view-leaderboard" style="display:none;">
+      <span class="eyebrow">Golf</span>
+      <h1>Leaderboard</h1>
+      <p style="text-align:center;">Win = 3 points, draw = 1 point. Lowest total score over 24 holes wins each match. Top 10 get a badge on their Town Fuss profile.</p>
+      <div class="card">
+        <div id="leaderboard-list"></div>
+        <div id="leaderboard-empty" class="empty-state" style="display:none;">No games played yet — be the first!</div>
+      </div>
+    </section>
+
+    <!-- ================= GAME TABLE (online) ================= -->
+    <section id="view-game" style="display:none;">
+      <button type="button" class="secondary small" id="leave-table-btn" style="margin-bottom:1rem;">&larr; Back to Waiting Room</button>
+      <div class="card">
+        <div class="game-players">
+          <span id="golf-player1-label">Player 1: —</span>
+          <span id="golf-player2-label">Player 2: —</span>
+        </div>
+        <div class="game-status" id="golf-status">Waiting for opponent...</div>
+        <div style="text-align:center; font-size:0.9rem; margin-bottom:0.5rem;" id="golf-hole-info">Hole 1 • Par 3</div>
+        <div class="golf-canvas-wrap">
+          <canvas id="golf-canvas" width="800" height="500"></canvas>
+        </div>
+        <div class="golf-controls">
+          <div class="golf-control-group">
+            <label>Shot Power: <span id="golf-power-value">50%</span></label>
+            <input type="range" id="golf-power" min="10" max="100" value="50" />
+          </div>
+          <div class="golf-control-group">
+            <label>Shot Angle: <span id="golf-angle-value">45°</span></label>
+            <input type="range" id="golf-angle" min="0" max="360" value="45" />
+          </div>
+        </div>
+        <div class="game-controls">
+          <button type="button" id="golf-shoot-btn">Take Shot</button>
+          <button type="button" id="golf-next-hole-btn" style="display:none;">Next Hole</button>
+          <button type="button" class="secondary small" id="resign-btn">Resign</button>
+        </div>
+        <div class="golf-stats">
+          <div class="golf-stat-row"><span>Strokes this hole:</span><span id="golf-stroke-count">0</span></div>
+          <div class="golf-stat-row"><span>Your total score:</span><span id="golf-my-total">0</span></div>
+          <div class="golf-stat-row"><span>Opponent total score:</span><span id="golf-opp-total">0</span></div>
+        </div>
+        <p class="field-hint" style="text-align:center; margin-top:0.75rem;">Once a game is active (an opponent has joined), Resign is how you leave it — the "Cancel" option only works before anyone has joined your table.</p>
+      </div>
+
+      <div class="card mini-chat">
+        <h2 style="text-align:left; font-size:1rem;">Message your opponent</h2>
+        <p class="field-hint" id="game-msg-remaining">Loading your daily limit...</p>
+        <div id="mini-chat-messages" class="mini-chat-messages"></div>
+        <form id="mini-chat-form" class="mini-chat-form">
+          <input type="text" id="mini-chat-input" maxlength="500" placeholder="Say something..." />
+          <button type="submit">Send</button>
+        </form>
+        <div id="mini-chat-message" class="message" style="display:none;"></div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, runTransaction, addDoc, Timestamp, writeBatch, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  watchGameMessageLimit(currentUid);
+  startPresenceHeartbeat();
+  await reconcileFinishedGames();
+  const jumpedIntoGame = await checkForActiveGame();
+  if (!jumpedIntoGame) showView("mode-select");
+});
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+const ONLINE_THRESHOLD_MS = 3 * 60 * 1000;
+let presenceHeartbeatInterval = null;
+function startPresenceHeartbeat() {
+  if (presenceHeartbeatInterval) return;
+  presenceHeartbeatInterval = setInterval(() => {
+    if (document.visibilityState === "visible" && currentUid) {
+      updateDoc(doc(db, "users", currentUid), { lastActiveAt: serverTimestamp() }).catch(() => {});
+    }
+  }, 60 * 1000);
+}
+function isRecentlyActive(lastActiveAt) {
+  if (!lastActiveAt) return false;
+  const ms = lastActiveAt.seconds ? lastActiveAt.seconds * 1000 : 0;
+  return Date.now() - ms < ONLINE_THRESHOLD_MS;
+}
+
+// ============================= VIEW ROUTER =================================
+let unsubscribeOpenTables = null;
+let unsubscribeMyInvites = null;
+let unsubscribeMyActiveGame = null;
+let unsubscribeGame = null;
+let unsubscribeMiniChat = null;
+
+function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-local-game").style.display = name === "local-game" ? "block" : "none";
+  document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+  document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
+  document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  const insideOnlineMultiplayer = name === "waiting" || name === "leaderboard" || name === "game";
+  document.getElementById("nav-waiting").style.display = insideOnlineMultiplayer ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = insideOnlineMultiplayer ? "inline" : "none";
+
+  if (name === "waiting") { watchWaitingRoom(); }
+  else {
+    if (unsubscribeOpenTables) unsubscribeOpenTables();
+    if (unsubscribeMyInvites) unsubscribeMyInvites();
+    if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+  }
+
+  if (name === "leaderboard") loadLeaderboard();
+  if (name !== "game" && unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+  if (name !== "game" && unsubscribeMiniChat) { unsubscribeMiniChat(); unsubscribeMiniChat = null; }
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("game-tile-golf").addEventListener("click", () => showView("mode-select"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("back-to-hub-btn").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
+
+document.getElementById("mode-tile-ai").addEventListener("click", () => startLocalGame("1player"));
+document.getElementById("mode-tile-2p").addEventListener("click", () => startLocalGame("2player"));
+document.getElementById("mode-tile-online").addEventListener("click", () => showView("waiting"));
+document.getElementById("local-back-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("local-restart-btn").addEventListener("click", () => restartLocalGame());
+
+async function checkForActiveGame() {
+  const q = query(
+    collection(db, "golfGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "active")
+  );
+  const snap = await getDocs(q).catch(() => null);
+  if (snap && !snap.empty) {
+    openGame(snap.docs[0].id);
+    return true;
+  }
+  return false;
+}
+
+// ============================= WAITING ROOM =================================
+function watchWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+  if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+
+  const myActiveQ = query(
+    collection(db, "golfGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "active")
+  );
+  unsubscribeMyActiveGame = onSnapshot(myActiveQ, (snap) => {
+    const mine = snap.docs.find((d) => d.data().player1Uid === currentUid);
+    if (mine && !activeGameId) openGame(mine.id);
+  }, (err) => console.error("My active game watch failed:", err));
+
+  const openQ = query(
+    collection(db, "golfGames"),
+    where("status", "==", "open"),
+    where("inviteTo", "==", null)
+  );
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("open-tables-list");
+    const empty = document.getElementById("open-tables-empty");
+    const myTableWrap = document.getElementById("my-open-table-wrap");
+    list.innerHTML = "";
+    let shown = 0;
+    myOpenTableId = null;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.player1Uid === currentUid) {
+        myOpenTableId = docSnap.id;
+        return;
+      }
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => joinTable(docSnap.id, g));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    myTableWrap.style.display = myOpenTableId ? "block" : "none";
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "golfGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("my-invites-list");
+    const empty = document.getElementById("my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button";
+      acceptBtn.className = "small";
+      acceptBtn.textContent = "Accept";
+      acceptBtn.addEventListener("click", () => joinTable(docSnap.id, g));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button";
+      declineBtn.className = "secondary small";
+      declineBtn.textContent = "Decline";
+      declineBtn.style.marginLeft = "0.5rem";
+      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "golfGames", docSnap.id)).catch(() => {}));
+      actions.appendChild(acceptBtn);
+      actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadFriendsToInvite();
+}
+
+async function loadFriendsToInvite() {
+  const list = document.getElementById("friends-invite-list");
+  const empty = document.getElementById("friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    for (const docSnap of snap.docs) {
+      const d = docSnap.data();
+      if (d.status !== "accepted") continue;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+
+      let online = false;
+      try {
+        const friendSnap = await getDoc(doc(db, "users", otherUid));
+        if (friendSnap.exists()) online = isRecentlyActive(friendSnap.data().lastActiveAt);
+      } catch {
+        // Can't read them — just show as offline rather than erroring.
+      }
+
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${online ? "#2e8b1f" : "var(--line)"}; margin-right:0.4rem;" title="${online ? "Online" : "Offline"}"></span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Invite to golf";
+      btn.addEventListener("click", () => createTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+
+let myOpenTableId = null;
+document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenTableId) return;
+  try {
+    await deleteDoc(doc(db, "golfGames", myOpenTableId));
+  } catch (err) {
+    alert(`Couldn't cancel table: ${err.message}`);
+  }
+});
+
+const INVITE_COOLDOWN_MS = 60 * 60 * 1000;
+
+async function checkInviteCooldown(gameCollectionName, inviteToUid, inviteToName, msg) {
+  const limitRef = doc(db, "gameInviteLimits", `${currentUid}_${gameCollectionName}_${inviteToUid}`);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  if (!limitSnap || !limitSnap.exists()) return true;
+  const last = limitSnap.data().lastInvitedAt;
+  const lastMs = last?.seconds ? last.seconds * 1000 : 0;
+  const elapsedMs = Date.now() - lastMs;
+  if (elapsedMs >= INVITE_COOLDOWN_MS) return true;
+  const minsLeft = Math.max(1, Math.ceil((INVITE_COOLDOWN_MS - elapsedMs) / 60000));
+  showMessage(msg, `You can invite ${inviteToName} again in about ${minsLeft} minute(s).`, "error");
+  return false;
+}
+
+async function createTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    if (inviteToUid && !(await checkInviteCooldown("golfGames", inviteToUid, inviteToName, msg))) return;
+
+    const holeConfig = getHoleConfig(1);
+    const gameRef = doc(collection(db, "golfGames"));
+    const batch = writeBatch(db);
+    batch.set(gameRef, {
+      player1Uid: currentUid,
+      player1Name: currentUserName,
+      player2Uid: null,
+      player2Name: null,
+      inviteTo: inviteToUid || null,
+      inviteToName: inviteToName || null,
+      participants: [currentUid],
+      status: "open",
+      currentHole: 1,
+      par: holeConfig.par,
+      currentPlayer: "player1",
+      ballPositions: {
+        player1: { x: holeConfig.ballX, y: holeConfig.ballY },
+        player2: { x: holeConfig.ballX, y: holeConfig.ballY },
+      },
+      strokes: { player1: 0, player2: 0 },
+      playersCompletedHole: { player1: false, player2: false },
+      player1TotalScore: 0,
+      player2TotalScore: 0,
+      winner: null,
+      p1StatsRecorded: false,
+      p2StatsRecorded: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_golfGames_${inviteToUid}`);
+      batch.set(limitRef, {
+        inviterUid: currentUid,
+        game: "golfGames",
+        inviteeUid: inviteToUid,
+        lastInvitedAt: serverTimestamp(),
+      });
+    }
+    await batch.commit();
+    if (inviteToUid) {
+      showMessage(msg, `Invite sent to ${inviteToName}.`, "success");
+    } else {
+      openGame(gameRef.id);
+    }
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+async function joinTable(gameId, gameData) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    await updateDoc(doc(db, "golfGames", gameId), {
+      player2Uid: currentUid,
+      player2Name: currentUserName,
+      participants: [gameData.player1Uid, currentUid],
+      status: "active",
+      updatedAt: serverTimestamp(),
+    });
+    openGame(gameId);
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+function showMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      const points = d.golfPoints || 0;
+      const wins = d.golfWins || 0;
+      const losses = d.golfLosses || 0;
+      const draws = d.golfDraws || 0;
+      if (points > 0 || wins > 0 || losses > 0 || draws > 0) {
+        players.push({ name: d.profile?.name || "Neighbor", points, wins, losses, draws });
+      }
+    });
+    players.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (players.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    players.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `
+        <span class="leader-rank">#${i + 1}</span>
+        <span style="flex:1;">${escapeHtml(p.name)}</span>
+        <span class="field-hint">${p.wins}W-${p.losses}L-${p.draws}D</span>
+        <span style="font-weight:600;">${p.points} pts</span>
+      `;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+
+// ============================= SHARED GOLF ENGINE ============================
+// Pure functions, take ctx explicitly — reused by both the local canvas and
+// the online canvas so the 24 unique holes only need to be defined once.
+function getHoleConfig(holeNumber) {
+  const holeConfigs = [
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 3 },
+    { ballX: 100, ballY: 450, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 150, par: 3 },
+    { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 5 },
+    { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 3 },
+    { ballX: 100, ballY: 250, holeX: 400, holeY: 250, par: 3 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 3 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 5 },
+    { ballX: 100, ballY: 450, holeX: 700, holeY: 100, par: 5 },
+    { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 3 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
+    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 5 },
+  ];
+  return holeConfigs[holeNumber - 1] || holeConfigs[0];
+}
+
+function drawTree(ctx, x, y, size) {
+  ctx.fillStyle = "#8B4513";
+  ctx.fillRect(x - size / 6, y, size / 3, size);
+  ctx.fillStyle = "#2E8B57";
+  ctx.beginPath();
+  ctx.arc(x, y - size / 3, size / 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+function drawSandTrap(ctx, x, y, width, height) {
+  ctx.fillStyle = "#F4A460";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#D2691E";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 10; i++) {
+    const offsetX = Math.random() * width;
+    const offsetY = Math.random() * height;
+    ctx.beginPath();
+    ctx.arc(x + offsetX, y + offsetY, 2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+function drawWater(ctx, x, y, width, height) {
+  ctx.fillStyle = "#1E90FF";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#00BFFF";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 15; i++) {
+    const offsetX = Math.random() * width;
+    const offsetY = Math.random() * height;
+    ctx.beginPath();
+    ctx.arc(x + offsetX, y + offsetY, 3, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+function drawHill(ctx, x, y, width, height) {
+  ctx.fillStyle = "#3CB371";
+  ctx.beginPath();
+  ctx.moveTo(x, y + height);
+  ctx.bezierCurveTo(x + width / 2, y - height, x + width / 2, y - height, x + width, y + height);
+  ctx.closePath();
+  ctx.fill();
+}
+function drawFlower(ctx, x, y) {
+  ctx.strokeStyle = "#228B22";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y - 15);
+  ctx.stroke();
+  ctx.fillStyle = "#FF69B4";
+  ctx.beginPath();
+  ctx.arc(x, y - 15, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#FFD700";
+  ctx.beginPath();
+  ctx.arc(x, y - 15, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawHoleElements(ctx, holeNumber) {
+  switch (holeNumber) {
+    case 1: drawTree(ctx, 400, 300, 30); drawTree(ctx, 600, 400, 25); drawSandTrap(ctx, 200, 200, 100, 50); break;
+    case 2: drawWater(ctx, 300, 250, 200, 100); drawTree(ctx, 500, 350, 35); drawSandTrap(ctx, 650, 150, 80, 40); break;
+    case 3: drawHill(ctx, 400, 350, 100, 50); drawHill(ctx, 200, 200, 80, 40); drawTree(ctx, 650, 300, 30); drawSandTrap(ctx, 550, 150, 70, 35); break;
+    case 4: drawSandTrap(ctx, 250, 200, 80, 40); drawSandTrap(ctx, 450, 350, 100, 60); drawSandTrap(ctx, 600, 150, 70, 50); drawSandTrap(ctx, 300, 400, 90, 45); break;
+    case 5: drawWater(ctx, 350, 200, 150, 200); drawTree(ctx, 200, 250, 30); drawTree(ctx, 550, 400, 35); drawSandTrap(ctx, 650, 100, 60, 40); break;
+    case 6: drawTree(ctx, 300, 200, 25); drawTree(ctx, 400, 300, 30); drawTree(ctx, 500, 250, 28); drawTree(ctx, 350, 400, 32); drawTree(ctx, 600, 350, 29); drawSandTrap(ctx, 200, 150, 70, 35); break;
+    case 7: drawWater(ctx, 250, 100, 400, 40); drawWater(ctx, 250, 400, 400, 40); drawTree(ctx, 500, 250, 40); drawSandTrap(ctx, 150, 200, 60, 50); break;
+    case 8: drawWater(ctx, 150, 150, 500, 300); drawSandTrap(ctx, 650, 100, 80, 40); break;
+    case 9: drawHill(ctx, 300, 300, 120, 60); drawHill(ctx, 500, 200, 100, 50); drawHill(ctx, 200, 400, 90, 45); drawTree(ctx, 650, 350, 35); drawSandTrap(ctx, 400, 150, 70, 35); break;
+    case 10: drawTree(ctx, 400, 250, 40); drawTree(ctx, 400, 350, 40); drawWater(ctx, 600, 200, 50, 200); drawSandTrap(ctx, 200, 300, 80, 40); break;
+    case 11: drawHill(ctx, 650, 100, 100, 80); drawWater(ctx, 300, 200, 150, 80); drawTree(ctx, 200, 300, 35); drawSandTrap(ctx, 500, 350, 90, 45); break;
+    case 12: drawWater(ctx, 200, 150, 120, 70); drawWater(ctx, 500, 350, 120, 70); drawSandTrap(ctx, 350, 250, 100, 60); drawTree(ctx, 150, 400, 30); drawTree(ctx, 650, 200, 35); break;
+    case 13: drawSandTrap(ctx, 300, 150, 100, 60); drawSandTrap(ctx, 500, 250, 120, 70); drawSandTrap(ctx, 200, 350, 90, 50); drawTree(ctx, 650, 400, 35); drawTree(ctx, 150, 200, 30); break;
+    case 14: drawWater(ctx, 400, 100, 30, 300); drawWater(ctx, 300, 150, 30, 200); drawWater(ctx, 500, 200, 30, 150); drawTree(ctx, 200, 250, 40); drawSandTrap(ctx, 600, 350, 100, 50); break;
+    case 15: drawWater(ctx, 350, 200, 200, 100); drawHill(ctx, 650, 100, 80, 60); drawSandTrap(ctx, 200, 150, 70, 35); drawTree(ctx, 500, 400, 38); break;
+    case 16: drawTree(ctx, 250, 180, 28); drawTree(ctx, 350, 220, 32); drawTree(ctx, 450, 280, 30); drawTree(ctx, 550, 320, 34); drawTree(ctx, 300, 380, 29); drawTree(ctx, 500, 180, 31); drawSandTrap(ctx, 650, 250, 80, 40); break;
+    case 17: drawSandTrap(ctx, 200, 100, 400, 60); drawSandTrap(ctx, 300, 300, 200, 80); drawWater(ctx, 600, 150, 100, 200); drawTree(ctx, 150, 400, 36); break;
+    case 18:
+      drawWater(ctx, 200, 150, 400, 80);
+      ctx.fillStyle = "#8B4513";
+      ctx.fillRect(350, 190, 100, 20);
+      drawSandTrap(ctx, 650, 300, 100, 60);
+      drawTree(ctx, 500, 250, 40);
+      break;
+    case 19:
+      drawHill(ctx, 400, 300, 150, 80);
+      ctx.fillStyle = "#FF4500";
+      ctx.fillRect(200, 200, 100, 100);
+      ctx.fillRect(500, 350, 80, 80);
+      drawSandTrap(ctx, 650, 150, 70, 40);
+      drawTree(ctx, 150, 400, 35);
+      break;
+    case 20: drawWater(ctx, 150, 150, 200, 200); drawWater(ctx, 450, 250, 200, 200); drawTree(ctx, 350, 150, 33); drawTree(ctx, 650, 350, 37); drawSandTrap(ctx, 300, 400, 90, 45); break;
+    case 21: drawWater(ctx, 250, 100, 50, 300); drawWater(ctx, 450, 100, 50, 300); drawTree(ctx, 350, 250, 39); drawSandTrap(ctx, 150, 200, 60, 40); drawSandTrap(ctx, 650, 300, 70, 45); break;
+    case 22: drawTree(ctx, 300, 200, 25); drawTree(ctx, 500, 300, 28); drawTree(ctx, 400, 400, 26); drawFlower(ctx, 200, 250); drawFlower(ctx, 600, 200); drawFlower(ctx, 350, 300); drawSandTrap(ctx, 650, 100, 80, 40); break;
+    case 23: drawWater(ctx, 300, 150, 150, 80); drawWater(ctx, 500, 300, 150, 80); drawSandTrap(ctx, 200, 250, 100, 60); drawSandTrap(ctx, 600, 200, 90, 50); drawTree(ctx, 400, 400, 40); drawTree(ctx, 650, 350, 35); drawTree(ctx, 150, 300, 32); break;
+    case 24: drawWater(ctx, 200, 100, 400, 50); drawWater(ctx, 200, 350, 400, 50); drawSandTrap(ctx, 300, 200, 200, 100); drawTree(ctx, 150, 250, 38); drawTree(ctx, 650, 250, 38); drawHill(ctx, 400, 150, 100, 60); break;
+  }
+}
+
+function drawHoleCup(ctx, x, y) {
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.arc(x, y, 15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(x, y, 10, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function scoreLabel(strokes, par) {
+  const score = strokes - par;
+  if (score === 0) return "Par!";
+  if (score === -1) return "Birdie!";
+  if (score === -2) return "Eagle!";
+  if (score <= -3) return "Double Eagle!";
+  if (score === 1) return "Bogey";
+  if (score === 2) return "Double Bogey";
+  return `${score} over par`;
+}
+
+// ============================= LOCAL PLAY (AI + same-device 2-player) ======
+let localGameState = {
+  currentHole: 1,
+  gameMode: "1player",
+  difficulty: "medium",
+  currentPlayer: 1,
+  strokes: { player1: 0, player2: 0 },
+  player1TotalScore: 0,
+  player2TotalScore: 0,
+  ballPositions: { player1: { x: 100, y: 400 }, player2: { x: 100, y: 400 } },
+  par: 3,
+  playersCompleted: { player1: false, player2: false },
+};
+let localBallVelocity = { x: 0, y: 0 };
+let localBallInMotion = false;
+let localHoleCompleted = false;
+let localWaitingForAIShot = false;
+
+const localCanvas = document.getElementById("local-golf-canvas");
+const localCtx = localCanvas.getContext("2d");
+const localPowerSlider = document.getElementById("local-power");
+const localPowerValue = document.getElementById("local-power-value");
+const localAngleSlider = document.getElementById("local-angle");
+const localAngleValue = document.getElementById("local-angle-value");
+
+function initLocalHoleSelector() {
+  const el = document.getElementById("local-hole-selector");
+  el.innerHTML = "";
+  for (let i = 1; i <= 24; i++) {
+    const opt = document.createElement("div");
+    opt.className = `golf-hole-option${i === localGameState.currentHole ? " active" : ""}`;
+    opt.textContent = `Hole ${i}`;
+    opt.addEventListener("click", () => {
+      localGameState.currentHole = i;
+      resetLocalHole();
+      initLocalHoleSelector();
+    });
+    el.appendChild(opt);
+  }
+}
+
+function startLocalGame(mode) {
+  localGameState.gameMode = mode;
+  document.getElementById("local-mode-title").textContent = mode === "1player" ? "Play vs Computer" : "Two Player";
+  document.getElementById("local-difficulty-row").style.display = mode === "1player" ? "flex" : "none";
+  restartLocalGame();
+  showView("local-game");
+}
+
+function resetLocalHole() {
+  const holeConfig = getHoleConfig(localGameState.currentHole);
+  localGameState.ballPositions.player1 = { x: holeConfig.ballX, y: holeConfig.ballY };
+  localGameState.ballPositions.player2 = { x: holeConfig.ballX, y: holeConfig.ballY };
+  localGameState.par = holeConfig.par;
+  localGameState.strokes = { player1: 0, player2: 0 };
+  localGameState.currentPlayer = 1;
+  localGameState.playersCompleted = { player1: false, player2: false };
+  localBallInMotion = false;
+  localHoleCompleted = false;
+  localBallVelocity = { x: 0, y: 0 };
+  document.getElementById("local-golf-status").textContent = "Aim and adjust power to shoot!";
+  updateLocalUI();
+}
+
+function restartLocalGame() {
+  localGameState.currentHole = 1;
+  localGameState.player1TotalScore = 0;
+  localGameState.player2TotalScore = 0;
+  resetLocalHole();
+  initLocalHoleSelector();
+}
+
+function drawLocalGame() {
+  localCtx.clearRect(0, 0, localCanvas.width, localCanvas.height);
+  localCtx.fillStyle = "#2d5a27";
+  localCtx.fillRect(0, 0, localCanvas.width, localCanvas.height);
+  drawHoleElements(localCtx, localGameState.currentHole);
+  const holeConfig = getHoleConfig(localGameState.currentHole);
+  drawHoleCup(localCtx, holeConfig.holeX, holeConfig.holeY);
+
+  const ballPos = localGameState.ballPositions[`player${localGameState.currentPlayer}`];
+  localCtx.fillStyle = localGameState.currentPlayer === 1 ? "#ffffff" : "#ff4444";
+  localCtx.beginPath();
+  localCtx.arc(ballPos.x, ballPos.y, 10, 0, Math.PI * 2);
+  localCtx.fill();
+  localCtx.strokeStyle = "#000000";
+  localCtx.lineWidth = 2;
+  localCtx.stroke();
+
+  if (!localBallInMotion && !localHoleCompleted) {
+    const power = (parseInt(localPowerSlider.value, 10) / 100) * 2;
+    const angle = (parseInt(localAngleSlider.value, 10) * Math.PI) / 180;
+    const endX = ballPos.x + Math.cos(angle) * 50 * power;
+    const endY = ballPos.y - Math.sin(angle) * 50 * power;
+    localCtx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+    localCtx.lineWidth = 2;
+    localCtx.setLineDash([5, 5]);
+    localCtx.beginPath();
+    localCtx.moveTo(ballPos.x, ballPos.y);
+    localCtx.lineTo(endX, endY);
+    localCtx.stroke();
+    localCtx.setLineDash([]);
+  }
+}
+
+function updateLocalUI() {
+  document.getElementById("local-hole-info").textContent = `Hole ${localGameState.currentHole} • Par ${localGameState.par}`;
+  document.getElementById("local-hole-display").textContent = `${localGameState.currentHole}/24`;
+  document.getElementById("local-current-player").textContent =
+    localGameState.gameMode === "1player" ? (localGameState.currentPlayer === 1 ? "You" : "AI") : `Player ${localGameState.currentPlayer}`;
+  document.getElementById("local-stroke-count").textContent = localGameState.strokes[`player${localGameState.currentPlayer}`];
+  document.getElementById("local-p1-score").textContent = localGameState.player1TotalScore;
+  document.getElementById("local-p2-score").textContent = localGameState.player2TotalScore;
+}
+
+function updateLocalBallPosition() {
+  localBallVelocity.x *= 0.98;
+  localBallVelocity.y *= 0.98;
+  const ballPos = localGameState.ballPositions[`player${localGameState.currentPlayer}`];
+  ballPos.x += localBallVelocity.x;
+  ballPos.y += localBallVelocity.y;
+  if (ballPos.x < 10) { ballPos.x = 10; localBallVelocity.x *= -0.7; }
+  if (ballPos.x > localCanvas.width - 10) { ballPos.x = localCanvas.width - 10; localBallVelocity.x *= -0.7; }
+  if (ballPos.y < 10) { ballPos.y = 10; localBallVelocity.y *= -0.7; }
+  if (ballPos.y > localCanvas.height - 10) { ballPos.y = localCanvas.height - 10; localBallVelocity.y *= -0.7; }
+
+  if (Math.abs(localBallVelocity.x) < 0.1 && Math.abs(localBallVelocity.y) < 0.1) {
+    localBallInMotion = false;
+    localBallVelocity = { x: 0, y: 0 };
+    checkLocalWinCondition();
+  }
+}
+
+function checkLocalWinCondition() {
+  if (localHoleCompleted) return;
+  const holeConfig = getHoleConfig(localGameState.currentHole);
+  const ballPos = localGameState.ballPositions[`player${localGameState.currentPlayer}`];
+  const dx = ballPos.x - holeConfig.holeX;
+  const dy = ballPos.y - holeConfig.holeY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  if (distance < 18) {
+    localGameState.playersCompleted[`player${localGameState.currentPlayer}`] = true;
+    ballPos.x = holeConfig.holeX;
+    ballPos.y = holeConfig.holeY;
+    const strokes = localGameState.strokes[`player${localGameState.currentPlayer}`];
+    document.getElementById("local-golf-status").textContent = `Player ${localGameState.currentPlayer} completed the hole! ${scoreLabel(strokes, localGameState.par)}`;
+    if (localGameState.currentPlayer === 1) localGameState.player1TotalScore += strokes;
+    else localGameState.player2TotalScore += strokes;
+
+    const bothCompleted =
+      (localGameState.gameMode === "1player" && localGameState.playersCompleted.player2) ||
+      (localGameState.gameMode === "2player" && localGameState.playersCompleted.player1 && localGameState.playersCompleted.player2);
+
+    if (bothCompleted) {
+      localHoleCompleted = true;
+      if (localGameState.currentHole < 24) {
+        setTimeout(() => {
+          localGameState.currentHole++;
+          resetLocalHole();
+          initLocalHoleSelector();
+        }, 1800);
+      } else {
+        document.getElementById("local-golf-status").textContent = "You've completed all 24 holes!";
+      }
+    } else {
+      localGameState.currentPlayer = localGameState.gameMode === "1player" ? 2 : (localGameState.currentPlayer === 1 ? 2 : 1);
+      if (localGameState.gameMode === "1player") document.getElementById("local-golf-status").textContent = "AI's turn!";
+    }
+  }
+  updateLocalUI();
+}
+
+function takeLocalShot() {
+  if (localBallInMotion || localHoleCompleted) return;
+  localGameState.strokes[`player${localGameState.currentPlayer}`]++;
+  localBallInMotion = true;
+  document.getElementById("local-golf-status").textContent = "Ball in motion...";
+  const power = (parseInt(localPowerSlider.value, 10) / 100) * 15;
+  const angle = (parseInt(localAngleSlider.value, 10) * Math.PI) / 180;
+  localBallVelocity.x = Math.cos(angle) * power;
+  localBallVelocity.y = -Math.sin(angle) * power;
+}
+
+function simulateLocalAIShot() {
+  if (localBallInMotion || localHoleCompleted) return;
+  const holeConfig = getHoleConfig(localGameState.currentHole);
+  const ballPos = localGameState.ballPositions.player2;
+  const dx = holeConfig.holeX - ballPos.x;
+  const dy = holeConfig.holeY - ballPos.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  let targetAngle = Math.atan2(-dy, dx);
+  if (targetAngle < 0) targetAngle += Math.PI * 2;
+
+  let error = Math.PI / 6;
+  if (localGameState.difficulty === "easy") error = Math.PI / 3;
+  else if (localGameState.difficulty === "hard") error = Math.PI / 12;
+
+  const finalAngle = targetAngle + (Math.random() - 0.5) * error;
+  let power = Math.min(100, Math.max(20, (distance / 7) * (0.9 + Math.random() * 0.2)));
+  if (localGameState.difficulty === "easy") power *= 0.7 + Math.random() * 0.6;
+  else if (localGameState.difficulty === "hard") power *= 0.9 + Math.random() * 0.2;
+  power = Math.min(100, Math.max(10, power));
+
+  localAngleSlider.value = Math.round((finalAngle * 180) / Math.PI);
+  localPowerSlider.value = Math.round(power);
+  updateLocalSliderDisplays();
+  takeLocalShot();
+}
+
+function updateLocalSliderDisplays() {
+  localPowerValue.textContent = `${localPowerSlider.value}%`;
+  localAngleValue.textContent = `${localAngleSlider.value}°`;
+}
+localPowerSlider.addEventListener("input", updateLocalSliderDisplays);
+localAngleSlider.addEventListener("input", updateLocalSliderDisplays);
+document.getElementById("local-shoot-btn").addEventListener("click", takeLocalShot);
+
+document.getElementById("local-difficulty").addEventListener("change", (e) => {
+  localGameState.difficulty = e.target.value;
+});
+
+function localGameLoop() {
+  if (localBallInMotion) updateLocalBallPosition();
+  if (document.getElementById("view-local-game").style.display !== "none") {
+    drawLocalGame();
+    updateLocalUI();
+  }
+  if (
+    localGameState.gameMode === "1player" &&
+    localGameState.currentPlayer === 2 &&
+    !localBallInMotion &&
+    !localHoleCompleted &&
+    !localWaitingForAIShot
+  ) {
+    localWaitingForAIShot = true;
+    setTimeout(() => {
+      simulateLocalAIShot();
+      localWaitingForAIShot = false;
+    }, 1200);
+  }
+  requestAnimationFrame(localGameLoop);
+}
+requestAnimationFrame(localGameLoop);
+
+// ============================= ONLINE MULTIPLAYER GOLF ======================
+let activeGameId = null;
+let activeGameData = null;
+let myPlayerNum = null; // "player1" | "player2"
+let netMirror = null;
+let netBallInMotion = false;
+let netBallVelocity = { x: 0, y: 0 };
+
+const golfCanvas = document.getElementById("golf-canvas");
+const golfCtx = golfCanvas.getContext("2d");
+const golfPowerSlider = document.getElementById("golf-power");
+const golfPowerValue = document.getElementById("golf-power-value");
+const golfAngleSlider = document.getElementById("golf-angle");
+const golfAngleValue = document.getElementById("golf-angle-value");
+
+function makeNetMirror(data) {
+  return {
+    ...data,
+    ballPositions: {
+      player1: { ...data.ballPositions.player1 },
+      player2: { ...data.ballPositions.player2 },
+    },
+    strokes: { ...data.strokes },
+    playersCompletedHole: { ...data.playersCompletedHole },
+  };
+}
+
+function bothCompletedThisHole() {
+  return !!(netMirror && netMirror.playersCompletedHole.player1 && netMirror.playersCompletedHole.player2);
+}
+
+function openGame(gameId) {
+  activeGameId = gameId;
+  showView("game");
+  if (unsubscribeGame) unsubscribeGame();
+  unsubscribeGame = onSnapshot(doc(db, "golfGames", gameId), (snap) => {
+    if (!snap.exists()) { showView("waiting"); return; }
+    activeGameData = snap.data();
+    myPlayerNum = activeGameData.player1Uid === currentUid ? "player1" : "player2";
+    if (!netBallInMotion) netMirror = makeNetMirror(activeGameData);
+
+    document.getElementById("golf-player1-label").textContent = `${activeGameData.player1Name || "—"} (White)`;
+    document.getElementById("golf-player2-label").textContent = activeGameData.player2Name ? `${activeGameData.player2Name} (Red)` : "Waiting for opponent...";
+
+    updateGolfStatus();
+    updateGolfControls();
+    maybeRecordGolfStats();
+    watchMiniChat(gameId);
+  }, (err) => console.error("Golf game watch failed:", err));
+}
+
+function updateGolfStatus() {
+  const statusEl = document.getElementById("golf-status");
+  if (!activeGameData) return;
+  if (activeGameData.status === "open") { statusEl.textContent = "Waiting for an opponent to join..."; return; }
+  if (activeGameData.status === "finished") {
+    if (activeGameData.winner === currentUid) statusEl.textContent = "You won! 🎉";
+    else if (activeGameData.winner === "draw") statusEl.textContent = "It's a draw!";
+    else statusEl.textContent = "You lost this one.";
+    return;
+  }
+  if (bothCompletedThisHole()) {
+    statusEl.textContent = activeGameData.currentHole >= 24 ? "All 24 holes complete!" : "Hole complete — click Next Hole.";
+    return;
+  }
+  const whoseTurnName = activeGameData.currentPlayer === "player1" ? activeGameData.player1Name : activeGameData.player2Name;
+  statusEl.textContent = activeGameData.currentPlayer === myPlayerNum ? "Your turn" : `${whoseTurnName || "Opponent"}'s turn`;
+}
+
+function updateGolfControls() {
+  const isMyTurn = activeGameData && activeGameData.status === "active" && activeGameData.currentPlayer === myPlayerNum && !bothCompletedThisHole();
+  document.getElementById("golf-shoot-btn").disabled = !isMyTurn || netBallInMotion;
+  golfPowerSlider.disabled = !isMyTurn;
+  golfAngleSlider.disabled = !isMyTurn;
+  document.getElementById("golf-next-hole-btn").style.display = bothCompletedThisHole() && activeGameData.status === "active" ? "inline-flex" : "none";
+  document.getElementById("golf-hole-info").textContent = activeGameData ? `Hole ${activeGameData.currentHole} • Par ${activeGameData.par}` : "";
+  document.getElementById("golf-stroke-count").textContent = activeGameData ? activeGameData.strokes[myPlayerNum] : 0;
+  document.getElementById("golf-my-total").textContent = activeGameData ? activeGameData[myPlayerNum === "player1" ? "player1TotalScore" : "player2TotalScore"] : 0;
+  const oppKey = myPlayerNum === "player1" ? "player2TotalScore" : "player1TotalScore";
+  document.getElementById("golf-opp-total").textContent = activeGameData ? activeGameData[oppKey] : 0;
+}
+
+function drawGolfGame() {
+  if (!netMirror) return;
+  golfCtx.clearRect(0, 0, golfCanvas.width, golfCanvas.height);
+  golfCtx.fillStyle = "#2d5a27";
+  golfCtx.fillRect(0, 0, golfCanvas.width, golfCanvas.height);
+  drawHoleElements(golfCtx, netMirror.currentHole);
+  const holeConfig = getHoleConfig(netMirror.currentHole);
+  drawHoleCup(golfCtx, holeConfig.holeX, holeConfig.holeY);
+
+  const activePlayer = netMirror.currentPlayer;
+  const ballPos = netMirror.ballPositions[activePlayer];
+  golfCtx.fillStyle = activePlayer === "player1" ? "#ffffff" : "#ff4444";
+  golfCtx.beginPath();
+  golfCtx.arc(ballPos.x, ballPos.y, 10, 0, Math.PI * 2);
+  golfCtx.fill();
+  golfCtx.strokeStyle = "#000000";
+  golfCtx.lineWidth = 2;
+  golfCtx.stroke();
+
+  if (!netBallInMotion && activePlayer === myPlayerNum && netMirror.status === "active" && !bothCompletedThisHole()) {
+    const power = (parseInt(golfPowerSlider.value, 10) / 100) * 2;
+    const angle = (parseInt(golfAngleSlider.value, 10) * Math.PI) / 180;
+    const endX = ballPos.x + Math.cos(angle) * 50 * power;
+    const endY = ballPos.y - Math.sin(angle) * 50 * power;
+    golfCtx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+    golfCtx.lineWidth = 2;
+    golfCtx.setLineDash([5, 5]);
+    golfCtx.beginPath();
+    golfCtx.moveTo(ballPos.x, ballPos.y);
+    golfCtx.lineTo(endX, endY);
+    golfCtx.stroke();
+    golfCtx.setLineDash([]);
+  }
+}
+
+function updateNetBallPosition() {
+  netBallVelocity.x *= 0.98;
+  netBallVelocity.y *= 0.98;
+  const ballPos = netMirror.ballPositions[myPlayerNum];
+  ballPos.x += netBallVelocity.x;
+  ballPos.y += netBallVelocity.y;
+  if (ballPos.x < 10) { ballPos.x = 10; netBallVelocity.x *= -0.7; }
+  if (ballPos.x > golfCanvas.width - 10) { ballPos.x = golfCanvas.width - 10; netBallVelocity.x *= -0.7; }
+  if (ballPos.y < 10) { ballPos.y = 10; netBallVelocity.y *= -0.7; }
+  if (ballPos.y > golfCanvas.height - 10) { ballPos.y = golfCanvas.height - 10; netBallVelocity.y *= -0.7; }
+
+  if (Math.abs(netBallVelocity.x) < 0.1 && Math.abs(netBallVelocity.y) < 0.1) {
+    netBallInMotion = false;
+    netBallVelocity = { x: 0, y: 0 };
+    finalizeNetShot();
+  }
+}
+
+async function finalizeNetShot() {
+  const holeConfig = getHoleConfig(netMirror.currentHole);
+  const ballPos = netMirror.ballPositions[myPlayerNum];
+  const dx = ballPos.x - holeConfig.holeX;
+  const dy = ballPos.y - holeConfig.holeY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  const holedOut = distance < 18;
+
+  const update = {
+    ballPositions: netMirror.ballPositions,
+    strokes: netMirror.strokes,
+    updatedAt: serverTimestamp(),
+  };
+
+  if (holedOut) {
+    ballPos.x = holeConfig.holeX;
+    ballPos.y = holeConfig.holeY;
+    update.ballPositions = netMirror.ballPositions;
+    const completed = { ...netMirror.playersCompletedHole, [myPlayerNum]: true };
+    update.playersCompletedHole = completed;
+    const scoreField = myPlayerNum === "player1" ? "player1TotalScore" : "player2TotalScore";
+    update[scoreField] = (netMirror[scoreField] || 0) + netMirror.strokes[myPlayerNum];
+
+    const otherPlayer = myPlayerNum === "player1" ? "player2" : "player1";
+    if (!completed[otherPlayer]) update.currentPlayer = otherPlayer;
+  }
+
+  try {
+    await updateDoc(doc(db, "golfGames", activeGameId), update);
+  } catch (err) {
+    alert(`Couldn't submit shot: ${err.message}`);
+  }
+}
+
+function takeNetShot() {
+  if (!activeGameData || activeGameData.status !== "active" || !netMirror) return;
+  if (activeGameData.currentPlayer !== myPlayerNum) return;
+  if (netBallInMotion || bothCompletedThisHole()) return;
+
+  netMirror.strokes[myPlayerNum]++;
+  netBallInMotion = true;
+  const power = (parseInt(golfPowerSlider.value, 10) / 100) * 15;
+  const angle = (parseInt(golfAngleSlider.value, 10) * Math.PI) / 180;
+  netBallVelocity.x = Math.cos(angle) * power;
+  netBallVelocity.y = -Math.sin(angle) * power;
+}
+document.getElementById("golf-shoot-btn").addEventListener("click", takeNetShot);
+
+async function advanceHole() {
+  if (!activeGameData || !bothCompletedThisHole()) return;
+  const nextHoleNum = activeGameData.currentHole + 1;
+  try {
+    if (nextHoleNum > 24) {
+      const p1 = activeGameData.player1TotalScore;
+      const p2 = activeGameData.player2TotalScore;
+      let winner = "draw";
+      if (p1 < p2) winner = activeGameData.player1Uid;
+      else if (p2 < p1) winner = activeGameData.player2Uid;
+      await updateDoc(doc(db, "golfGames", activeGameId), { status: "finished", winner, updatedAt: serverTimestamp() });
+      return;
+    }
+    const holeConfig = getHoleConfig(nextHoleNum);
+    await updateDoc(doc(db, "golfGames", activeGameId), {
+      currentHole: nextHoleNum,
+      par: holeConfig.par,
+      ballPositions: {
+        player1: { x: holeConfig.ballX, y: holeConfig.ballY },
+        player2: { x: holeConfig.ballX, y: holeConfig.ballY },
+      },
+      strokes: { player1: 0, player2: 0 },
+      playersCompletedHole: { player1: false, player2: false },
+      currentPlayer: "player1",
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    alert(`Couldn't advance to the next hole: ${err.message}`);
+  }
+}
+document.getElementById("golf-next-hole-btn").addEventListener("click", advanceHole);
+
+document.getElementById("resign-btn").addEventListener("click", async () => {
+  if (!activeGameData || activeGameData.status !== "active") return;
+  if (!confirm("Resign this game?")) return;
+  const winnerUid = myPlayerNum === "player1" ? activeGameData.player2Uid : activeGameData.player1Uid;
+  try {
+    await updateDoc(doc(db, "golfGames", activeGameId), {
+      status: "finished",
+      winner: winnerUid,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+function updateGolfSliderDisplays() {
+  golfPowerValue.textContent = `${golfPowerSlider.value}%`;
+  golfAngleValue.textContent = `${golfAngleSlider.value}°`;
+}
+golfPowerSlider.addEventListener("input", updateGolfSliderDisplays);
+golfAngleSlider.addEventListener("input", updateGolfSliderDisplays);
+
+function golfGameLoop() {
+  if (netBallInMotion && netMirror) updateNetBallPosition();
+  if (activeGameId && document.getElementById("view-game").style.display !== "none") {
+    drawGolfGame();
+    updateGolfStatus();
+    updateGolfControls();
+  }
+  requestAnimationFrame(golfGameLoop);
+}
+requestAnimationFrame(golfGameLoop);
+
+async function recordGolfStatsForGame(gameId, gameData) {
+  const isP1 = gameData.player1Uid === currentUid;
+  const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
+  if (alreadyRecorded) return;
+
+  const won = gameData.winner === currentUid;
+  const draw = gameData.winner === "draw";
+  const pointsEarned = won ? 3 : draw ? 1 : 0;
+
+  try {
+    await updateDoc(doc(db, "golfGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      golfPoints: (data.golfPoints || 0) + pointsEarned,
+      golfWins: (data.golfWins || 0) + (won ? 1 : 0),
+      golfLosses: (data.golfLosses || 0) + (!won && !draw ? 1 : 0),
+      golfDraws: (data.golfDraws || 0) + (draw ? 1 : 0),
+    });
+  } catch (err) {
+    console.error("Couldn't record golf stats:", err);
+  }
+}
+
+async function maybeRecordGolfStats() {
+  if (!activeGameData || activeGameData.status !== "finished") return;
+  await recordGolfStatsForGame(activeGameId, activeGameData);
+}
+
+async function reconcileFinishedGames() {
+  try {
+    const q = query(collection(db, "golfGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status !== "finished") continue;
+      const isP1 = g.player1Uid === currentUid;
+      const alreadyRecorded = isP1 ? g.p1StatsRecorded : g.p2StatsRecorded;
+      if (!alreadyRecorded) await recordGolfStatsForGame(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished games:", err);
+  }
+}
+
+// ============================= MINI CHAT (reuses Town Fuss messaging) =======
+const DAILY_MESSAGE_LIMIT = 3;
+const MESSAGE_WORD_LIMIT = 50;
+let currentMessageLimit = { day: 0, count: 0 };
+let unsubscribeGameMsgLimit = null;
+
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+function countWords(text) { return text.trim().split(/\s+/).filter(Boolean).length; }
+function containsContactInfo(text) {
+  const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
+  const urlPattern = /\b((https?:\/\/)|(www\.))\S+/i;
+  const phonePattern = /(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/;
+  return emailPattern.test(text) || urlPattern.test(text) || phonePattern.test(text);
+}
+
+function watchGameMessageLimit(uid) {
+  if (unsubscribeGameMsgLimit) unsubscribeGameMsgLimit();
+  unsubscribeGameMsgLimit = onSnapshot(doc(db, "messageLimits", uid), (snap) => {
+    currentMessageLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGameMsgRemaining();
+  });
+}
+function remainingToday() {
+  if (currentMessageLimit.day !== todayNumber()) return DAILY_MESSAGE_LIMIT;
+  return Math.max(0, DAILY_MESSAGE_LIMIT - currentMessageLimit.count);
+}
+function renderGameMsgRemaining() {
+  const el = document.getElementById("game-msg-remaining");
+  if (el) el.textContent = `${remainingToday()} / ${DAILY_MESSAGE_LIMIT} messages left today (shared with your Town Fuss private messages)`;
+}
+
+function conversationIdFor(otherUid) { return [currentUid, otherUid].sort().join("_"); }
+
+function watchMiniChat(gameId) {
+  if (!activeGameData || !activeGameData.player2Uid) return;
+  const otherUid = activeGameData.player1Uid === currentUid ? activeGameData.player2Uid : activeGameData.player1Uid;
+  const conversationId = conversationIdFor(otherUid);
+  const messagesEl = document.getElementById("mini-chat-messages");
+
+  if (unsubscribeMiniChat) unsubscribeMiniChat();
+  unsubscribeMiniChat = onSnapshot(
+    query(collection(db, "conversations", conversationId, "messages"), orderBy("sentAt", "asc")),
+    (snap) => {
+      messagesEl.innerHTML = "";
+      snap.forEach((docSnap) => {
+        const m = docSnap.data();
+        const bubble = document.createElement("div");
+        bubble.className = `mini-chat-msg ${m.senderId === currentUid ? "mine" : "theirs"}`;
+        bubble.textContent = m.text || "";
+        messagesEl.appendChild(bubble);
+      });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    },
+    (err) => console.error("Mini chat load failed:", err)
+  );
+
+  document.getElementById("mini-chat-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const input = document.getElementById("mini-chat-input");
+    const msg = document.getElementById("mini-chat-message");
+    const text = input.value.trim();
+    if (!text) return;
+    if (remainingToday() <= 0) { showMessage(msg, "You've used all 3 messages for today.", "error"); return; }
+    if (countWords(text) > MESSAGE_WORD_LIMIT) { showMessage(msg, `Messages are limited to ${MESSAGE_WORD_LIMIT} words.`, "error"); return; }
+    if (containsContactInfo(text)) { showMessage(msg, "Links, phone numbers, and emails aren't allowed in messages.", "error"); return; }
+
+    const opponentName = activeGameData.player1Uid === currentUid ? activeGameData.player2Name : activeGameData.player1Name;
+
+    let existingReadBy = {};
+    try {
+      const convoSnapCheck = await getDoc(doc(db, "conversations", conversationId));
+      if (convoSnapCheck.exists()) existingReadBy = convoSnapCheck.data().readBy || {};
+    } catch {
+      // Doesn't exist yet — fine, start fresh.
+    }
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const limitRef = doc(db, "messageLimits", currentUid);
+        const limitSnap = await tx.get(limitRef);
+        const data = limitSnap.exists() ? limitSnap.data() : { day: 0, count: 0 };
+        const today = todayNumber();
+        const sameDay = data.day === today;
+        const newCount = sameDay ? data.count + 1 : 1;
+        if (sameDay && data.count >= DAILY_MESSAGE_LIMIT) throw new Error("You've used all 3 messages for today.");
+
+        const convoRef = doc(db, "conversations", conversationId);
+        const msgRef = doc(collection(db, "conversations", conversationId, "messages"));
+        tx.set(limitRef, { day: today, count: newCount });
+        tx.set(convoRef, {
+          participants: [currentUid, otherUid].sort(),
+          participantNames: {
+            [currentUid]: currentUserName,
+            [otherUid]: opponentName,
+          },
+          lastMessageAt: serverTimestamp(),
+          lastMessageText: text,
+          lastMessageSenderId: currentUid,
+          readBy: { ...existingReadBy, [currentUid]: serverTimestamp() },
+        }, { merge: true });
+        tx.set(msgRef, { senderId: currentUid, text, sentAt: serverTimestamp() });
+      });
+      input.value = "";
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  };
+}
+</script>
+</body>
+</html>
