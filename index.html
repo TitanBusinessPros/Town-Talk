@@ -2699,9 +2699,6 @@ function watchUnreadConversations(uid) {
   }, (err) => console.error("Unread message watch failed:", err));
 }
 
-// Mark a conversation as read by stamping readBy.<uid> = now, using
-// dot-notation so only our own entry changes — the other person's
-// read receipt is left untouched. No read-before-write needed here.
 async function markConversationRead(conversationId) {
   try {
     const convoRef = doc(db, "conversations", conversationId);

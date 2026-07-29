@@ -75,6 +75,7 @@ const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
+const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -103,7 +104,7 @@ async function logInAppNotification(uid, { type, title, body, clickAction }) {
       body,
       clickAction: clickAction || "/",
       read: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
   } catch (err) {
     console.error(`Couldn't log in-app notification for ${uid}:`, err);
@@ -145,7 +146,7 @@ async function sendPushToUser(uid, { type, title, body, clickAction }) {
   });
   if (deadTokens.length > 0) {
     await userSnap.ref.update({
-      fcmTokens: admin.firestore.FieldValue.arrayRemove(...deadTokens),
+      fcmTokens: FieldValue.arrayRemove(...deadTokens),
     });
   }
 }
@@ -206,7 +207,7 @@ async function postGameInviteMessage({ fromUid, fromName, toUid, toName, label, 
         {
           participants: [fromUid, toUid].sort(),
           participantNames: { [fromUid]: fromName, [toUid]: toName },
-          lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastMessageAt: FieldValue.serverTimestamp(),
           lastMessageText: `🎮 ${text}`,
           lastMessageSenderId: fromUid,
           readBy: existingReadBy,
@@ -218,7 +219,7 @@ async function postGameInviteMessage({ fromUid, fromName, toUid, toName, label, 
         text,
         type: "game_invite",
         game: page,
-        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        sentAt: FieldValue.serverTimestamp(),
       });
     });
   } catch (err) {
@@ -244,9 +245,16 @@ exports.onFirstMessageNotify = onDocumentCreated(
     if (!message) return;
     const { conversationId } = event.params;
 
+    // Was THIS message the first one in the conversation? A live count()
+    // at execution time is racy — if a second and third message land
+    // before this trigger actually runs (easily happens with rapid
+    // successive sends), the count is already >1 and a genuinely-first
+    // message gets wrongly skipped. Checking whether this message is the
+    // chronologically-oldest one is race-proof regardless of how many
+    // later messages already exist by the time this runs.
     const messagesRef = db.collection("conversations").doc(conversationId).collection("messages");
-    const countSnap = await messagesRef.count().get();
-    if (countSnap.data().count !== 1) return; // not the first message — skip
+    const oldestSnap = await messagesRef.orderBy("sentAt", "asc").limit(1).get();
+    if (oldestSnap.empty || oldestSnap.docs[0].id !== event.params.messageId) return; // not the first message — skip
 
     const convoSnap = await db.collection("conversations").doc(conversationId).get();
     if (!convoSnap.exists) return;
@@ -348,7 +356,7 @@ exports.refreshLeaderboardCache = onSchedule(
 
     await db.collection("leaderboardCache").doc("gameRanks").set({
       ...cache,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
   }
 );
@@ -441,8 +449,8 @@ exports.computeNeighborOfTheWeek = onSchedule(
     const weekStart = new Date(weekEnd);
     weekStart.setUTCDate(weekStart.getUTCDate() - 7);
 
-    const weekStartTs = admin.firestore.Timestamp.fromDate(weekStart);
-    const weekEndTs = admin.firestore.Timestamp.fromDate(weekEnd);
+    const weekStartTs = Timestamp.fromDate(weekStart);
+    const weekEndTs = Timestamp.fromDate(weekEnd);
 
     const [friendsWinner, likesWinner] = await Promise.all([
       mostFriendsGained(weekStartTs, weekEndTs),
@@ -472,7 +480,7 @@ exports.computeNeighborOfTheWeek = onSchedule(
       weekEnd: weekEndTs,
       mostFriends: friendsWinner || null,
       mostLikes: likesWinner || null,
-      computedAt: admin.firestore.FieldValue.serverTimestamp(),
+      computedAt: FieldValue.serverTimestamp(),
     });
   }
 );
@@ -489,7 +497,7 @@ exports.computeNeighborOfTheWeek = onSchedule(
 exports.expireBusinessListings = onSchedule(
   { schedule: "0 3 * * *", timeZone: "America/Chicago" },
   async () => {
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
     const snap = await db
       .collection("businesses")
       .where("approved", "==", true)

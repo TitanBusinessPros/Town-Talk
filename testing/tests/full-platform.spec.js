@@ -11,11 +11,13 @@
 //
 // Run with: npx playwright test
 
+const path = require("path");
 const { test, expect } = require("@playwright/test");
 const { verifyEmailByAddress, makeAdmin } = require("../emulatorAdmin");
 
 const ROBOT_A = { email: "robot.a@test.town", password: "TestPass123!", name: "Robot Alice", town: "Pauls Valley" };
 const ROBOT_B = { email: "robot.b@test.town", password: "TestPass123!", name: "Robot Bob", town: "Pauls Valley" };
+const TEST_IMAGE_PATH = path.resolve(__dirname, "..", "..", "Logo-Fav.png");
 
 // -----------------------------------------------------------------------
 // Small reusable helpers
@@ -70,8 +72,12 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     // Reload so each page picks up the now-verified status.
     await pageA.reload();
     await pageB.reload();
-    await expect(pageA.locator("#profile-form")).toBeVisible({ timeout: 15_000 });
-    await expect(pageB.locator("#profile-form")).toBeVisible({ timeout: 15_000 });
+    // Generous timeout here specifically: this is the very first real
+    // Firestore round-trip against a freshly-started emulator (cold
+    // gRPC/WebChannel connection setup for two concurrent listeners), which
+    // can take noticeably longer than any later request in the suite.
+    await expect(pageA.locator("#profile-form")).toBeVisible({ timeout: 45_000 });
+    await expect(pageB.locator("#profile-form")).toBeVisible({ timeout: 45_000 });
   });
 
   test("Both robots fill in their profile and submit a post", async () => {
@@ -245,6 +251,14 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await pageB.waitForTimeout(2000);
     const pieceMovedForB = await pageB.locator('[data-row="4"][data-col="4"]').textContent();
     expect(pieceMovedForB?.trim().length).toBeGreaterThan(0);
+
+    // Resign so this game is actually "finished" — otherwise
+    // checkForActiveGame() jumps whoever loads chess.html next straight
+    // back into this still-"active" game instead of the hub, breaking
+    // every later test that expects to start fresh from there.
+    pageA.once("dialog", (dialog) => dialog.accept().catch(() => {}));
+    await pageA.locator("#resign-btn").click();
+    await pageA.waitForTimeout(500);
   });
 
   test("Checkers: Robot A invites Robot B directly, Robot B accepts, both see the board", async () => {
@@ -319,6 +333,234 @@ test.describe.serial("Town Fuss — full platform pass", () => {
 
     // Robot B's board should now show it's their turn.
     await expect(pageB.locator("#status")).toContainText("Your turn", { timeout: 10_000 });
+  });
+
+  test("Robot B uploads a profile photo", async () => {
+    // Robot B, not A — uploading a new photo un-approves the profile
+    // pending re-review (everApproved gate), and test 28 later needs to
+    // find Robot A via directory search, which only shows approved
+    // profiles. Robot B's approval status isn't checked again after this.
+    // pageB is still on ww.html from the last game test — #nav-dashboard
+    // only exists on index.html.
+    await pageB.goto("/index.html");
+    await pageB.locator("#nav-dashboard").click();
+    await pageB.locator("#image-input").setInputFiles(TEST_IMAGE_PATH);
+    await expect(pageB.locator("#image-message")).toContainText("Uploaded", { timeout: 15_000 });
+    await expect(pageB.locator("#image-slots img")).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("Robot B creates a business listing with a logo", async () => {
+    await pageB.goto("/index.html");
+    await pageB.locator("#nav-business").click();
+    await pageB.locator("#business-tab-mylisting").click();
+    // Save the text fields first, then upload the logo — doing it the other
+    // way around races the form: uploading first creates a bare-bones
+    // listing doc with an empty name via setDoc(), and the live listener
+    // that keeps #biz-name in sync overwrites whatever was just typed
+    // there (it only skips the overwrite while the field has focus).
+    await pageB.locator("#biz-name").fill("Bob's Bait & Tackle");
+    await pageB.locator("#biz-phone").fill("(405) 555-0199");
+    await pageB.locator("#biz-town").selectOption("Pauls Valley");
+    await pageB.locator("#biz-description").fill("Worms, lures, and lake gossip since this morning.");
+    await pageB.locator("#business-form button[type=submit]").click();
+    await expect(pageB.locator("#business-form-message")).toContainText("Saved", { timeout: 10_000 });
+    await expect(pageB.locator("#business-status-badge")).toContainText("Pending review");
+
+    await pageB.locator("#business-image-input").setInputFiles(TEST_IMAGE_PATH);
+    await expect(pageB.locator("#business-image-message")).toContainText("Uploaded", { timeout: 15_000 });
+  });
+
+  test("Admin approves the business listing and marks it paid", async () => {
+    // pageA is still on ww.html from the WynneWars turn test.
+    await pageA.goto("/index.html");
+    await pageA.locator("#nav-admin").click();
+    const bizCard = pageA.locator("#admin-business-queue .admin-card", { hasText: "Bob's Bait & Tackle" });
+    await expect(bizCard).toBeVisible({ timeout: 10_000 });
+    await bizCard.locator('[data-action="mark-paid"]').click();
+    await expect(bizCard.locator(".message")).toContainText("Marked paid", { timeout: 10_000 });
+    await bizCard.locator('[data-action="approve"]').click();
+    await expect(bizCard).toHaveCount(0, { timeout: 10_000 });
+  });
+
+  test("The approved business appears in the Local Businesses directory with its logo, in a horizontal-scroll layout", async () => {
+    await pageA.locator("#nav-business").click();
+    await pageA.locator("#business-tab-directory").click();
+    const card = pageA.locator(".directory-card", { hasText: "Bob's Bait & Tackle" });
+    await expect(card).toBeVisible({ timeout: 10_000 });
+    await expect(card.locator("img")).toBeVisible();
+    // .directory-grid is the horizontal-scroll container (overflow-x: auto,
+    // flex row) — confirm that's actually the layout in effect, not a
+    // vertical stack, so this doesn't silently regress back to one.
+    const overflowX = await pageA.locator("#business-directory-grid").evaluate((el) => getComputedStyle(el).overflowX);
+    const display = await pageA.locator("#business-directory-grid").evaluate((el) => getComputedStyle(el).display);
+    expect(overflowX).toBe("auto");
+    expect(display).toBe("flex");
+  });
+
+  test("Favicon is set on the page", async () => {
+    const href = await pageA.locator('link[rel="icon"]').getAttribute("href");
+    expect(href).toContain("Logo-Fav.png");
+  });
+
+  test("Friend avatars render in the Friends section", async () => {
+    await pageA.locator("#nav-friends").click();
+    await expect(pageA.locator(".friend-list-item .profile-avatar, .friend-list-item .profile-avatar-fallback").first()).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("Notification bell shows entries for the earlier first message and chat reaction", async () => {
+    // Reuses events that already happened in earlier tests (Robot A
+    // messaged Robot B for the first time; Robot B liked Robot A's chat
+    // message) — just checking the bell picked them up, not re-triggering
+    // them.
+    await pageB.locator("#nav-notifications").click();
+    await expect(pageB.locator("#notif-bell-list")).toContainText("message", { timeout: 20_000 });
+
+    await pageA.locator("#nav-notifications").click();
+    await expect(pageA.locator("#notif-bell-list")).toContainText("liked", { timeout: 20_000 });
+  });
+
+  test("Robot B invites Robot A to chess; it shows up in Robot A's Messages and notification bell", async () => {
+    // Reverse direction from the earlier chess test (which was A -> B) so
+    // this doesn't collide with that invite's 1-hour rate-limit cooldown.
+    await pageB.goto("/chess.html");
+    // view-hub has no display:none in the static markup, so it's clickable
+    // immediately on load — but checkForActiveGame()'s async query can
+    // still be in flight and call showView("hub") *after* our click
+    // navigates past it, silently resetting back to the hub. Give it a
+    // moment to settle first (chessGames has accumulated enough documents
+    // by this point in the suite for that race to actually matter).
+    await pageB.waitForTimeout(1000);
+    await pageB.locator("#game-tile-chess").click();
+    await pageB.locator("#mode-tile-online").click();
+    await pageB.locator("#friends-invite-list").waitFor();
+    await pageB.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(pageB.locator(".message, #create-table-message")).toBeVisible({ timeout: 10_000 }).catch(() => {});
+
+    // The invite Cloud Function posts into Messages and the bell — give the
+    // emulator a moment to run the trigger.
+    await pageA.locator("#nav-messages").click();
+    await pageA.locator(".conversation-item", { hasText: "Robot Bob" }).click();
+    await expect(pageA.locator("#thread-messages")).toContainText("invited you to play Chess", { timeout: 15_000 });
+    await expect(pageA.locator("#thread-messages a[href='/chess.html'], #thread-messages a[href='chess.html']")).toBeVisible();
+
+    // The Messages check above already proves the invite Cloud Function ran
+    // (sendPushToUser, which logs the bell entry, runs before
+    // postGameInviteMessage in that same trigger) — so the notification doc
+    // already exists server-side. Reload for a fresh onSnapshot
+    // subscription rather than trust the existing listener to have already
+    // delivered it; that live-delivery timing has proven flaky under the
+    // load of this many tests hammering the emulator back-to-back.
+    await pageA.reload();
+    // Reload re-runs onAuthStateChanged, which does an awaited forced
+    // token refresh before watchNotificationBell() is even called — give
+    // that dance time to finish before we click into the panel, otherwise
+    // we can click/read before the fresh onSnapshot listener has attached.
+    await pageA.locator("#nav-notifications").waitFor({ state: "visible", timeout: 20_000 });
+    await pageA.waitForTimeout(2000);
+    await pageA.locator("#nav-notifications").click();
+    await expect(pageA.locator("#notif-bell-list")).toContainText("Game Invite", { timeout: 20_000 });
+  });
+
+  test("Robot B can't invite Robot A to chess again within the cooldown", async () => {
+    await pageB.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(pageB.locator("#waiting-message")).toContainText("again in about", { timeout: 10_000 });
+  });
+
+  test("Robot A declines Robot B's chess invite", async () => {
+    await pageA.goto("/chess.html");
+    await pageA.waitForTimeout(1000); // see note above on checkForActiveGame() race
+    await pageA.locator("#game-tile-chess").click();
+    await pageA.locator("#mode-tile-online").click();
+    const inviteRow = pageA.locator(".invite-row", { hasText: "Robot Bob" });
+    await expect(inviteRow).toBeVisible({ timeout: 10_000 });
+    await inviteRow.locator("button", { hasText: "Decline" }).click();
+    await expect(inviteRow).toHaveCount(0, { timeout: 10_000 });
+  });
+
+  test("Robot B reports Robot A's profile", async () => {
+    // pageB is still on chess.html from the cooldown test.
+    await pageB.goto("/index.html");
+    await pageB.locator("#nav-directory").click();
+    await pageB.locator("#directory-search").fill(ROBOT_A.name);
+    await pageB.locator(".directory-card", { hasText: ROBOT_A.name }).click();
+    await pageB.locator(".report-btn").first().click();
+    await pageB.locator("#report-reason-select").selectOption("other");
+    await pageB.locator("#report-details-text").fill("Automated test report — please ignore.");
+    await pageB.locator("#report-modal-form button[type=submit]").click();
+    await expect(pageB.locator("#report-modal-message")).toContainText("sent to our admin team", { timeout: 10_000 });
+  });
+
+  test("Robot A reports a chat room message from Robot B", async () => {
+    // Robot B has posted in chat before (liked A's message in an earlier
+    // test, but hasn't posted their own yet) — post one now so there's a
+    // message from Robot B for Robot A to report.
+    await pageB.locator("#nav-chatrooms").click();
+    await pageB.locator(".chatroom-tile", { hasText: "Pauls Valley Chat" }).click();
+    await pageB.locator("#chatroom-input").fill("Reportable test message from Bob.");
+    await pageB.locator("#chatroom-form button[type=submit]").click();
+    await expect(pageB.locator(".chat-msg-row").last()).toContainText("Reportable test message from Bob.");
+
+    // pageA is still on chess.html from the decline test.
+    await pageA.goto("/index.html");
+    await pageA.locator("#nav-chatrooms").click();
+    await pageA.locator(".chatroom-tile", { hasText: "Pauls Valley Chat" }).click();
+    const lastRow = pageA.locator(".chat-msg-row").last();
+    await expect(lastRow).toContainText("Reportable test message from Bob.");
+    await lastRow.locator(".report-btn").click();
+    await pageA.locator("#report-reason-select").selectOption("spam");
+    await pageA.locator("#report-modal-form button[type=submit]").click();
+    await expect(pageA.locator("#report-modal-message")).toContainText("sent to our admin team", { timeout: 10_000 });
+  });
+
+  test("Admin sees both reports in the Reports queue", async () => {
+    await pageA.locator("#nav-admin").click();
+    await expect(pageA.locator("#admin-reports-queue")).toContainText("Robot Alice", { timeout: 10_000 });
+    await expect(pageA.locator("#admin-reports-queue")).toContainText("Robot Bob", { timeout: 10_000 });
+  });
+
+  test("Password reset request succeeds against the Auth emulator", async ({ browser }) => {
+    // Independent context — doesn't touch Robot A/B's signed-in sessions.
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto("/index.html");
+    await page.locator('.tab[data-tab="reset"]').click();
+    await page.locator("#reset-email").fill(ROBOT_B.email);
+    await page.locator("#form-reset button[type=submit]").click();
+    await expect(page.locator("#reset-message")).toContainText("Check your email", { timeout: 10_000 });
+    await context.close();
+  });
+
+  test("Account deletion removes the account and its data", async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const throwaway = { email: `deleteme.${Date.now()}@test.town`, password: "TestPass123!", name: "Delete Me" };
+
+    await signUp(page, throwaway);
+    await page.waitForTimeout(500);
+    await verifyEmailByAddress(throwaway.email);
+    await page.reload();
+    await page.waitForSelector("#profile-form", { timeout: 15_000 });
+    await page.locator("#display-name").fill(throwaway.name);
+    await page.locator("#neighborhood").selectOption("Pauls Valley");
+    await page.locator("#profile-form button[type=submit]").click();
+
+    await page.locator("#nav-dashboard").click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.locator("#delete-password").fill(throwaway.password);
+    await page.locator("#delete-account-form button[type=submit]").click();
+
+    // onAuthStateChanged should detect the sign-out and drop back to a
+    // signed-out view.
+    await expect(page.locator("#nav-auth")).toBeVisible({ timeout: 10_000 });
+
+    // Confirm the account is actually gone, not just signed out — a
+    // deleted account can't log back in.
+    await page.locator("#login-email").fill(throwaway.email);
+    await page.locator("#login-password").fill(throwaway.password);
+    await page.locator("#form-login button[type=submit]").click();
+    await expect(page.locator("#login-message")).toContainText("incorrect", { timeout: 10_000 });
+
+    await context.close();
   });
 
   test.afterAll(async () => {
