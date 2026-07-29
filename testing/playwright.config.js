@@ -8,6 +8,9 @@ module.exports = defineConfig({
   testDir: "./tests",
   timeout: 60_000,
   fullyParallel: false, // the two robots need to interact with each other in a set order
+  workers: 1, // multiple spec files would otherwise run concurrently against the same
+              // shared local emulator, and the extra load is exactly what makes the
+              // timing-sensitive Firestore-listener tests flaky
   reporter: [["list"]],
   use: {
     baseURL: "http://127.0.0.1:5000", // Firebase Hosting emulator's default local address

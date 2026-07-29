@@ -985,6 +985,11 @@ function updateLocalBallPosition() {
   if (Math.abs(localBallVelocity.x) < 0.1 && Math.abs(localBallVelocity.y) < 0.1) {
     localBallInMotion = false;
     localBallVelocity = { x: 0, y: 0 };
+    // Reset the status message before checking for a hole-out — otherwise a
+    // shot that simply misses leaves "Ball in motion..." on screen forever,
+    // since nothing else ever clears it. checkLocalWinCondition() overwrites
+    // this with its own message if the ball actually did go in.
+    document.getElementById("local-golf-status").textContent = "Aim and adjust power to shoot!";
     checkLocalWinCondition();
   }
 }
