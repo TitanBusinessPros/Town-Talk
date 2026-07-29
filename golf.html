@@ -1,1 +1,1245 @@
-1
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Golf Challenge</title>
+    <link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/Golf-Game/raw/main/Golf%20Game%20Favicon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .game-logo {
+            max-width: 400px;
+            margin-bottom: 20px;
+        }
+        
+        .game-logo img {
+            width: 100%;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            width: 100%;
+        }
+        
+        .game-board {
+            flex: 1;
+            min-width: 600px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-ui {
+            flex: 0 0 300px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        canvas {
+            background: #2d5a27;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto;
+            border: 3px solid #4a752c;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        label {
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        select, button {
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: #4a752c;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        select:hover, button:hover {
+            background: #5a8a3c;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        .power-control {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .power-slider {
+            width: 100%;
+        }
+        
+        .angle-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .angle-display {
+            width: 40px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        .message {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 10px 0;
+            height: 30px;
+            color: #ffcc00;
+        }
+        
+        .hole-info {
+            text-align: center;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        
+        .game-status {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .player-turn {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #ffcc00;
+        }
+        
+        .hole-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .hole-option {
+            background: #3a5a1f;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .hole-option:hover {
+            background: #4a752c;
+            transform: scale(1.05);
+        }
+        
+        .hole-option.active {
+            background: #ffcc00;
+            color: #1a2a6c;
+            font-weight: bold;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .instructions h3 {
+            color: #ffcc00;
+            margin-bottom: 10px;
+        }
+        
+        .music-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 1000px) {
+            .game-container {
+                flex-direction: column;
+            }
+            
+            .game-board {
+                min-width: 100%;
+            }
+            
+            .game-ui {
+                width: 100%;
+            }
+            
+            .game-logo {
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="game-logo">
+            <img src="https://github.com/TitanBusinessPros/Golf-Game/raw/main/Golf%20Game%20Logo.png" alt="Ultimate Golf Challenge Logo">
+        </div>
+        
+        <header>
+            <h1>Ultimate Golf Challenge</h1>
+            <p class="subtitle">24 Unique Holes • Real Golf Rules • Battle in 2-Player mode or play solo. Turn your phone and zoom out for awesome mobile view!</p>
+        </header>
+        
+        <div class="game-container">
+            <div class="game-board">
+                <div class="game-status">
+                    <div class="player-turn">Player 1's Turn</div>
+                    <div class="hole-info">Hole 1 • Par 3</div>
+                </div>
+                <div class="message">Aim and adjust power to shoot!</div>
+                <canvas id="golfCanvas" width="800" height="500"></canvas>
+                
+                <div class="hole-selector">
+                    <div class="hole-option active" data-hole="1">Hole 1</div>
+                    <div class="hole-option" data-hole="2">Hole 2</div>
+                    <div class="hole-option" data-hole="3">Hole 3</div>
+                    <div class="hole-option" data-hole="4">Hole 4</div>
+                    <div class="hole-option" data-hole="5">Hole 5</div>
+                    <div class="hole-option" data-hole="6">Hole 6</div>
+                    <div class="hole-option" data-hole="7">Hole 7</div>
+                    <div class="hole-option" data-hole="8">Hole 8</div>
+                    <div class="hole-option" data-hole="9">Hole 9</div>
+                    <div class="hole-option" data-hole="10">Hole 10</div>
+                    <div class="hole-option" data-hole="11">Hole 11</div>
+                    <div class="hole-option" data-hole="12">Hole 12</div>
+                    <div class="hole-option" data-hole="13">Hole 13</div>
+                    <div class="hole-option" data-hole="14">Hole 14</div>
+                    <div class="hole-option" data-hole="15">Hole 15</div>
+                    <div class="hole-option" data-hole="16">Hole 16</div>
+                    <div class="hole-option" data-hole="17">Hole 17</div>
+                    <div class="hole-option" data-hole="18">Hole 18</div>
+                    <div class="hole-option" data-hole="19">Hole 19</div>
+                    <div class="hole-option" data-hole="20">Hole 20</div>
+                    <div class="hole-option" data-hole="21">Hole 21</div>
+                    <div class="hole-option" data-hole="22">Hole 22</div>
+                    <div class="hole-option" data-hole="23">Hole 23</div>
+                    <div class="hole-option" data-hole="24">Hole 24</div>
+                </div>
+                
+                <div class="music-control">
+                    <button id="musicToggle">🔊 Play Music</button>
+                    <input type="range" id="volumeControl" min="0" max="100" value="50">
+                </div>
+            </div>
+            
+            <div class="game-ui">
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="gameMode">Game Mode</label>
+                        <select id="gameMode">
+                            <option value="1player">1 Player</option>
+                            <option value="2player">2 Players</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="difficulty">AI Difficulty</label>
+                        <select id="difficulty">
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                    
+                    <div class="power-control">
+                        <label for="power">Shot Power: <span id="powerValue">50%</span></label>
+                        <input type="range" id="power" class="power-slider" min="10" max="100" value="50">
+                    </div>
+                    
+                    <div class="angle-control">
+                        <label for="angle">Shot Angle:</label>
+                        <input type="range" id="angle" min="0" max="360" value="45">
+                        <div class="angle-display" id="angleValue">45°</div>
+                    </div>
+                    
+                    <button id="shootBtn">Take Shot</button>
+                    <button id="restartBtn">Restart Game</button>
+                    <button id="nextHoleBtn">Next Hole</button>
+                </div>
+                
+                <div class="stats">
+                    <h3>Game Statistics</h3>
+                    <div class="stat-row">
+                        <span>Current Player:</span>
+                        <span class="stat-value" id="currentPlayer">Player 1</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Strokes:</span>
+                        <span class="stat-value" id="strokeCount">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Distance to Hole:</span>
+                        <span class="stat-value" id="distanceToHole">0 yd</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Player 1 Score:</span>
+                        <span class="stat-value" id="player1Score">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Player 2 Score:</span>
+                        <span class="stat-value" id="player2Score">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Current Hole:</span>
+                        <span class="stat-value" id="currentHoleDisplay">1/24</span>
+                    </div>
+                </div>
+                
+                <div class="instructions">
+                    <h3>How to Play</h3>
+                    <p>1. Select a hole and game mode</p>
+                    <p>2. Adjust shot angle and power</p>
+                    <p>3. Click "Take Shot" to hit the ball</p>
+                    <p>4. Get the ball in the hole with the fewest strokes</p>
+                    <p>5. Game saves automatically to your browser</p>
+                    <p>6. In 2-player mode, players alternate shots</p>
+                    <p>7. Have Fun!!!</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Titan Business Pros &copy; 2025 | Game saves automatically to your browser</p>
+        </div>
+    </div>
+
+    <!-- Audio element for background music -->
+    <audio id="backgroundMusic" loop>
+        <source src="https://github.com/TitanBusinessPros/Golf-Game/raw/main/Golf%20Game%20Theme%20Song.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script>
+        // Game variables
+        const canvas = document.getElementById('golfCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameState = {
+            currentHole: 1,
+            gameMode: '1player',
+            difficulty: 'medium',
+            currentPlayer: 1,
+            strokes: { player1: 0, player2: 0 },
+            player1TotalScore: 0,
+            player2TotalScore: 0,
+            ballPositions: { 
+                player1: { x: 100, y: 400 },
+                player2: { x: 100, y: 400 }
+            },
+            holePosition: { x: 700, y: 100 },
+            ballVelocity: { x: 0, y: 0 },
+            ballInMotion: false,
+            gameOver: false,
+            holeCompleted: false,
+            par: 3,
+            waitingForAIShot: false,
+            playersCompleted: { player1: false, player2: false }
+        };
+
+        // DOM elements
+        const powerSlider = document.getElementById('power');
+        const powerValue = document.getElementById('powerValue');
+        const angleSlider = document.getElementById('angle');
+        const angleValue = document.getElementById('angleValue');
+        const shootBtn = document.getElementById('shootBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const nextHoleBtn = document.getElementById('nextHoleBtn');
+        const gameModeSelect = document.getElementById('gameMode');
+        const difficultySelect = document.getElementById('difficulty');
+        const currentPlayerDisplay = document.getElementById('currentPlayer');
+        const strokeCountDisplay = document.getElementById('strokeCount');
+        const distanceToHoleDisplay = document.getElementById('distanceToHole');
+        const player1ScoreDisplay = document.getElementById('player1Score');
+        const player2ScoreDisplay = document.getElementById('player2Score');
+        const currentHoleDisplay = document.getElementById('currentHoleDisplay');
+        const messageDisplay = document.querySelector('.message');
+        const playerTurnDisplay = document.querySelector('.player-turn');
+        const holeInfoDisplay = document.querySelector('.hole-info');
+        const holeOptions = document.querySelectorAll('.hole-option');
+        
+        // Music elements
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const musicToggle = document.getElementById('musicToggle');
+        const volumeControl = document.getElementById('volumeControl');
+
+        // Initialize game
+        function initGame() {
+            // Load saved game if exists
+            loadGame();
+            
+            // Set up event listeners
+            powerSlider.addEventListener('input', updatePowerDisplay);
+            angleSlider.addEventListener('input', updateAngleDisplay);
+            shootBtn.addEventListener('click', takeShot);
+            restartBtn.addEventListener('click', restartGame);
+            nextHoleBtn.addEventListener('click', nextHole);
+            gameModeSelect.addEventListener('change', updateGameMode);
+            difficultySelect.addEventListener('change', updateDifficulty);
+            
+            // Music controls
+            musicToggle.addEventListener('click', toggleMusic);
+            volumeControl.addEventListener('input', updateVolume);
+            
+            // Hole selection
+            holeOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    holeOptions.forEach(opt => opt.classList.remove('active'));
+                    option.classList.add('active');
+                    gameState.currentHole = parseInt(option.dataset.hole);
+                    resetHole();
+                    drawGame();
+                });
+            });
+            
+            // Initial draw
+            drawGame();
+            
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (gameState.ballInMotion) {
+                updateBallPosition();
+            }
+            
+            drawGame();
+            updateUI();
+            
+            // Check for win condition
+            checkWinCondition();
+            
+            // If it's AI's turn and the ball is not moving, have AI take a shot
+            if (gameState.gameMode === '1player' && 
+                gameState.currentPlayer === 2 && 
+                !gameState.ballInMotion && 
+                !gameState.holeCompleted &&
+                !gameState.waitingForAIShot) {
+                gameState.waitingForAIShot = true;
+                setTimeout(() => {
+                    simulateAIShot();
+                    gameState.waitingForAIShot = false;
+                }, 1500);
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Draw everything on the canvas
+        function drawGame() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background (grass)
+            ctx.fillStyle = '#2d5a27';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw hole elements based on current hole
+            drawHoleElements();
+            
+            // Draw hole
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(gameState.holePosition.x, gameState.holePosition.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(gameState.holePosition.x, gameState.holePosition.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw current player's ball
+            const currentBallPos = gameState.ballPositions[`player${gameState.currentPlayer}`];
+            ctx.fillStyle = gameState.currentPlayer === 1 ? '#ffffff' : '#ff4444';
+            ctx.beginPath();
+            ctx.arc(currentBallPos.x, currentBallPos.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add outline to ball for better visibility
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw shot direction indicator when aiming
+            if (!gameState.ballInMotion && !gameState.holeCompleted) {
+                const power = parseInt(powerSlider.value) / 100 * 2;
+                const angle = parseInt(angleSlider.value) * Math.PI / 180;
+                const endX = currentBallPos.x + Math.cos(angle) * 50 * power;
+                const endY = currentBallPos.y - Math.sin(angle) * 50 * power;
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(currentBallPos.x, currentBallPos.y);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // Draw hole-specific elements - COMPLETELY UNIQUE FOR ALL 24 HOLES
+        function drawHoleElements() {
+            switch(gameState.currentHole) {
+                case 1:
+                    // Classic Par 3
+                    drawTree(400, 300, 30);
+                    drawTree(600, 400, 25);
+                    drawSandTrap(200, 200, 100, 50);
+                    break;
+                case 2:
+                    // Water Hazard Challenge
+                    drawWater(300, 250, 200, 100);
+                    drawTree(500, 350, 35);
+                    drawSandTrap(650, 150, 80, 40);
+                    break;
+                case 3:
+                    // Hilly Adventure
+                    drawHill(400, 350, 100, 50);
+                    drawHill(200, 200, 80, 40);
+                    drawTree(650, 300, 30);
+                    drawSandTrap(550, 150, 70, 35);
+                    break;
+                case 4:
+                    // Bunker Bonanza
+                    drawSandTrap(250, 200, 80, 40);
+                    drawSandTrap(450, 350, 100, 60);
+                    drawSandTrap(600, 150, 70, 50);
+                    drawSandTrap(300, 400, 90, 45);
+                    break;
+                case 5:
+                    // Lake Crossing
+                    drawWater(350, 200, 150, 200);
+                    drawTree(200, 250, 30);
+                    drawTree(550, 400, 35);
+                    drawSandTrap(650, 100, 60, 40);
+                    break;
+                case 6:
+                    // Forest Path
+                    drawTree(300, 200, 25);
+                    drawTree(400, 300, 30);
+                    drawTree(500, 250, 28);
+                    drawTree(350, 400, 32);
+                    drawTree(600, 350, 29);
+                    drawSandTrap(200, 150, 70, 35);
+                    break;
+                case 7:
+                    // Narrow Canyon
+                    drawWater(250, 100, 400, 40);
+                    drawWater(250, 400, 400, 40);
+                    drawTree(500, 250, 40);
+                    drawSandTrap(150, 200, 60, 50);
+                    break;
+                case 8:
+                    // Island Green
+                    drawWater(150, 150, 500, 300);
+                    drawSandTrap(650, 100, 80, 40);
+                    break;
+                case 9:
+                    // Mountain Pass
+                    drawHill(300, 300, 120, 60);
+                    drawHill(500, 200, 100, 50);
+                    drawHill(200, 400, 90, 45);
+                    drawTree(650, 350, 35);
+                    drawSandTrap(400, 150, 70, 35);
+                    break;
+                case 10:
+                    // Dogleg Right
+                    drawTree(400, 250, 40);
+                    drawTree(400, 350, 40);
+                    drawWater(600, 200, 50, 200);
+                    drawSandTrap(200, 300, 80, 40);
+                    break;
+                case 11:
+                    // Elevated Green
+                    drawHill(650, 100, 100, 80);
+                    drawWater(300, 200, 150, 80);
+                    drawTree(200, 300, 35);
+                    drawSandTrap(500, 350, 90, 45);
+                    break;
+                case 12:
+                    // Double Water Hazard
+                    drawWater(200, 150, 120, 70);
+                    drawWater(500, 350, 120, 70);
+                    drawSandTrap(350, 250, 100, 60);
+                    drawTree(150, 400, 30);
+                    drawTree(650, 200, 35);
+                    break;
+                case 13:
+                    // Triple Bunker Challenge
+                    drawSandTrap(300, 150, 100, 60);
+                    drawSandTrap(500, 250, 120, 70);
+                    drawSandTrap(200, 350, 90, 50);
+                    drawTree(650, 400, 35);
+                    drawTree(150, 200, 30);
+                    break;
+                case 14:
+                    // Winding River
+                    drawWater(400, 100, 30, 300);
+                    drawWater(300, 150, 30, 200);
+                    drawWater(500, 200, 30, 150);
+                    drawTree(200, 250, 40);
+                    drawSandTrap(600, 350, 100, 50);
+                    break;
+                case 15:
+                    // Cliffside Carry
+                    drawWater(350, 200, 200, 100);
+                    drawHill(650, 100, 80, 60);
+                    drawSandTrap(200, 150, 70, 35);
+                    drawTree(500, 400, 38);
+                    break;
+                case 16:
+                    // Pine Forest
+                    drawTree(250, 180, 28);
+                    drawTree(350, 220, 32);
+                    drawTree(450, 280, 30);
+                    drawTree(550, 320, 34);
+                    drawTree(300, 380, 29);
+                    drawTree(500, 180, 31);
+                    drawSandTrap(650, 250, 80, 40);
+                    break;
+                case 17:
+                    // Desert Oasis
+                    drawSandTrap(200, 100, 400, 60);
+                    drawSandTrap(300, 300, 200, 80);
+                    drawWater(600, 150, 100, 200);
+                    drawTree(150, 400, 36);
+                    break;
+                case 18:
+                    // Bridge Crossing
+                    drawWater(200, 150, 400, 80);
+                    // Draw bridge
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(350, 190, 100, 20);
+                    drawSandTrap(650, 300, 100, 60);
+                    drawTree(500, 250, 40);
+                    break;
+                case 19:
+                    // Volcano Hole
+                    drawHill(400, 300, 150, 80);
+                    // Lava (red water)
+                    ctx.fillStyle = '#FF4500';
+                    ctx.fillRect(200, 200, 100, 100);
+                    ctx.fillRect(500, 350, 80, 80);
+                    drawSandTrap(650, 150, 70, 40);
+                    drawTree(150, 400, 35);
+                    break;
+                case 20:
+                    // Mirror Lake
+                    drawWater(150, 150, 200, 200);
+                    drawWater(450, 250, 200, 200);
+                    drawTree(350, 150, 33);
+                    drawTree(650, 350, 37);
+                    drawSandTrap(300, 400, 90, 45);
+                    break;
+                case 21:
+                    // Zigzag Fairway
+                    drawWater(250, 100, 50, 300);
+                    drawWater(450, 100, 50, 300);
+                    drawTree(350, 250, 39);
+                    drawSandTrap(150, 200, 60, 40);
+                    drawSandTrap(650, 300, 70, 45);
+                    break;
+                case 22:
+                    // Flower Garden
+                    drawTree(300, 200, 25);
+                    drawTree(500, 300, 28);
+                    drawTree(400, 400, 26);
+                    // Draw flowers
+                    drawFlower(200, 250);
+                    drawFlower(600, 200);
+                    drawFlower(350, 300);
+                    drawSandTrap(650, 100, 80, 40);
+                    break;
+                case 23:
+                    // Championship Finale
+                    drawWater(300, 150, 150, 80);
+                    drawWater(500, 300, 150, 80);
+                    drawSandTrap(200, 250, 100, 60);
+                    drawSandTrap(600, 200, 90, 50);
+                    drawTree(400, 400, 40);
+                    drawTree(650, 350, 35);
+                    drawTree(150, 300, 32);
+                    break;
+                case 24:
+                    // Ultimate Challenge
+                    drawWater(200, 100, 400, 50);
+                    drawWater(200, 350, 400, 50);
+                    drawSandTrap(300, 200, 200, 100);
+                    drawTree(150, 250, 38);
+                    drawTree(650, 250, 38);
+                    drawHill(400, 150, 100, 60);
+                    break;
+            }
+        }
+
+        // Helper drawing functions
+        function drawTree(x, y, size) {
+            // Tree trunk
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(x - size/6, y, size/3, size);
+            
+            // Tree leaves
+            ctx.fillStyle = '#2E8B57';
+            ctx.beginPath();
+            ctx.arc(x, y - size/3, size/2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawSandTrap(x, y, width, height) {
+            ctx.fillStyle = '#F4A460';
+            ctx.fillRect(x, y, width, height);
+            
+            // Sand texture
+            ctx.strokeStyle = '#D2691E';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 10; i++) {
+                const offsetX = Math.random() * width;
+                const offsetY = Math.random() * height;
+                ctx.beginPath();
+                ctx.arc(x + offsetX, y + offsetY, 2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        function drawWater(x, y, width, height) {
+            ctx.fillStyle = '#1E90FF';
+            ctx.fillRect(x, y, width, height);
+            
+            // Water texture
+            ctx.strokeStyle = '#00BFFF';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 15; i++) {
+                const offsetX = Math.random() * width;
+                const offsetY = Math.random() * height;
+                ctx.beginPath();
+                ctx.arc(x + offsetX, y + offsetY, 3, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        function drawHill(x, y, width, height) {
+            ctx.fillStyle = '#3CB371';
+            ctx.beginPath();
+            ctx.moveTo(x, y + height);
+            ctx.bezierCurveTo(
+                x + width/2, y - height,
+                x + width/2, y - height,
+                x + width, y + height
+            );
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawFlower(x, y) {
+            // Flower stem
+            ctx.strokeStyle = '#228B22';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y - 15);
+            ctx.stroke();
+            
+            // Flower petals
+            ctx.fillStyle = '#FF69B4';
+            ctx.beginPath();
+            ctx.arc(x, y - 15, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Flower center
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(x, y - 15, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Update ball position based on physics
+        function updateBallPosition() {
+            // Apply friction
+            gameState.ballVelocity.x *= 0.98;
+            gameState.ballVelocity.y *= 0.98;
+            
+            // Update position for current player's ball
+            const currentBallPos = gameState.ballPositions[`player${gameState.currentPlayer}`];
+            currentBallPos.x += gameState.ballVelocity.x;
+            currentBallPos.y += gameState.ballVelocity.y;
+            
+            // Boundary checks
+            if (currentBallPos.x < 10) {
+                currentBallPos.x = 10;
+                gameState.ballVelocity.x *= -0.7;
+            }
+            if (currentBallPos.x > canvas.width - 10) {
+                currentBallPos.x = canvas.width - 10;
+                gameState.ballVelocity.x *= -0.7;
+            }
+            if (currentBallPos.y < 10) {
+                currentBallPos.y = 10;
+                gameState.ballVelocity.y *= -0.7;
+            }
+            if (currentBallPos.y > canvas.height - 10) {
+                currentBallPos.y = canvas.height - 10;
+                gameState.ballVelocity.y *= -0.7;
+            }
+            
+            // Check if ball has stopped moving
+            if (Math.abs(gameState.ballVelocity.x) < 0.1 && Math.abs(gameState.ballVelocity.y) < 0.1) {
+                gameState.ballInMotion = false;
+                gameState.ballVelocity.x = 0;
+                gameState.ballVelocity.y = 0;
+                
+                // Save game state
+                saveGame();
+            }
+        }
+
+        // Take a shot
+        function takeShot() {
+            if (gameState.ballInMotion || gameState.holeCompleted) return;
+            
+            gameState.strokes[`player${gameState.currentPlayer}`]++;
+            gameState.ballInMotion = true;
+            messageDisplay.textContent = "Ball in motion...";
+            
+            // Calculate velocity based on power and angle
+            const power = parseInt(powerSlider.value) / 100 * 15;
+            const angle = parseInt(angleSlider.value) * Math.PI / 180;
+            
+            gameState.ballVelocity.x = Math.cos(angle) * power;
+            gameState.ballVelocity.y = -Math.sin(angle) * power;
+        }
+
+        // Simulate AI shot
+        function simulateAIShot() {
+            if (gameState.ballInMotion || gameState.holeCompleted) return;
+            
+            const currentBallPos = gameState.ballPositions.player2;
+            
+            // Calculate direction to hole
+            const dx = gameState.holePosition.x - currentBallPos.x;
+            const dy = gameState.holePosition.y - currentBallPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Calculate angle to hole
+            let targetAngle = Math.atan2(-dy, dx);
+            if (targetAngle < 0) targetAngle += Math.PI * 2;
+            
+            // Add some error based on difficulty
+            let error = 0;
+            switch(gameState.difficulty) {
+                case 'easy':
+                    error = Math.PI / 3; // 60 degrees error
+                    break;
+                case 'medium':
+                    error = Math.PI / 6; // 30 degrees error
+                    break;
+                case 'hard':
+                    error = Math.PI / 12; // 15 degrees error
+                    break;
+            }
+            
+            // Apply random error
+            const angleError = (Math.random() - 0.5) * error;
+            const finalAngle = targetAngle + angleError;
+            
+            // Calculate power needed (with some error)
+            let power = Math.min(100, Math.max(20, (distance / 7) * (0.9 + Math.random() * 0.2)));
+            
+            // Adjust power based on difficulty
+            if (gameState.difficulty === 'easy') {
+                power *= (0.7 + Math.random() * 0.6);
+            } else if (gameState.difficulty === 'medium') {
+                power *= (0.8 + Math.random() * 0.4);
+            } else {
+                power *= (0.9 + Math.random() * 0.2);
+            }
+            
+            // Ensure power is within bounds
+            power = Math.min(100, Math.max(10, power));
+            
+            // Set AI shot parameters
+            angleSlider.value = Math.round(finalAngle * 180 / Math.PI);
+            powerSlider.value = Math.round(power);
+            
+            updateAngleDisplay();
+            updatePowerDisplay();
+            
+            // Take the shot
+            takeShot();
+        }
+
+        // Check if the ball is in the hole
+        function checkWinCondition() {
+            if (gameState.holeCompleted) return;
+            
+            const currentBallPos = gameState.ballPositions[`player${gameState.currentPlayer}`];
+            const dx = currentBallPos.x - gameState.holePosition.x;
+            const dy = currentBallPos.y - gameState.holePosition.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Ball is in the hole if it's close enough and not moving too fast
+            if (distance < 18 && (!gameState.ballInMotion || 
+                (Math.abs(gameState.ballVelocity.x) < 1 && Math.abs(gameState.ballVelocity.y) < 1))) {
+                
+                // Ball is in the hole!
+                gameState.ballInMotion = false;
+                gameState.playersCompleted[`player${gameState.currentPlayer}`] = true;
+                
+                // Snap ball to hole for visual effect
+                currentBallPos.x = gameState.holePosition.x;
+                currentBallPos.y = gameState.holePosition.y;
+                
+                // Calculate score
+                const playerStrokes = gameState.strokes[`player${gameState.currentPlayer}`];
+                const score = playerStrokes - gameState.par;
+                let scoreText = "";
+                
+                if (score === 0) {
+                    scoreText = "Par!";
+                } else if (score === -1) {
+                    scoreText = "Birdie!";
+                } else if (score === -2) {
+                    scoreText = "Eagle!";
+                } else if (score === -3) {
+                    scoreText = "Double Eagle!";
+                } else if (score === 1) {
+                    scoreText = "Bogey";
+                } else if (score === 2) {
+                    scoreText = "Double Bogey";
+                } else {
+                    scoreText = `${score} over par`;
+                }
+                
+                messageDisplay.textContent = `Player ${gameState.currentPlayer} completed the hole! ${scoreText}`;
+                
+                // Update player scores
+                if (gameState.currentPlayer === 1) {
+                    gameState.player1TotalScore += playerStrokes;
+                } else {
+                    gameState.player2TotalScore += playerStrokes;
+                }
+                
+                // Check if both players have completed the hole
+                const bothPlayersCompleted = 
+                    (gameState.gameMode === '1player' && gameState.playersCompleted.player2) ||
+                    (gameState.gameMode === '2player' && gameState.playersCompleted.player1 && gameState.playersCompleted.player2);
+                
+                if (bothPlayersCompleted) {
+                    gameState.holeCompleted = true;
+                } else {
+                    // Switch to next player
+                    if (gameState.gameMode === '1player') {
+                        gameState.currentPlayer = 2;
+                        messageDisplay.textContent = "AI's turn!";
+                    } else {
+                        gameState.currentPlayer = gameState.currentPlayer === 1 ? 2 : 1;
+                        messageDisplay.textContent = `Player ${gameState.currentPlayer}'s turn`;
+                    }
+                }
+                
+                // Save game
+                saveGame();
+            }
+        }
+
+        // Reset the current hole
+        function resetHole() {
+            // Reset ball positions and hole position based on hole
+            const holeConfig = getHoleConfig(gameState.currentHole);
+            gameState.ballPositions.player1 = { x: holeConfig.ballX, y: holeConfig.ballY };
+            gameState.ballPositions.player2 = { x: holeConfig.ballX, y: holeConfig.ballY };
+            gameState.holePosition = { x: holeConfig.holeX, y: holeConfig.holeY };
+            gameState.par = holeConfig.par;
+            
+            gameState.strokes.player1 = 0;
+            gameState.strokes.player2 = 0;
+            gameState.ballInMotion = false;
+            gameState.holeCompleted = false;
+            gameState.currentPlayer = 1;
+            gameState.ballVelocity = { x: 0, y: 0 };
+            gameState.playersCompleted = { player1: false, player2: false };
+            
+            updateUI();
+            saveGame();
+        }
+
+        // Get configuration for a specific hole
+        function getHoleConfig(holeNumber) {
+            const holeConfigs = [
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 3 },  // Hole 1
+                { ballX: 100, ballY: 450, holeX: 700, holeY: 100, par: 4 },  // Hole 2
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 150, par: 3 },  // Hole 3
+                { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 4 },  // Hole 4
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 5
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 5 },  // Hole 6
+                { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 3 },  // Hole 7
+                { ballX: 100, ballY: 250, holeX: 400, holeY: 250, par: 3 },  // Hole 8
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 9
+                { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 4 },  // Hole 10
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 3 },  // Hole 11
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 5 },  // Hole 12
+                { ballX: 100, ballY: 450, holeX: 700, holeY: 100, par: 5 },  // Hole 13
+                { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 4 },  // Hole 14
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 3 },  // Hole 15
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 16
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 17
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 18
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 19
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 20
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 21
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 22
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },  // Hole 23
+                { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 5 }   // Hole 24
+            ];
+            
+            return holeConfigs[holeNumber - 1] || holeConfigs[0];
+        }
+
+        // Go to the next hole
+        function nextHole() {
+            if (gameState.currentHole < 24) {
+                gameState.currentHole++;
+                resetHole();
+                
+                // Update hole selection UI
+                holeOptions.forEach(option => {
+                    option.classList.remove('active');
+                    if (parseInt(option.dataset.hole) === gameState.currentHole) {
+                        option.classList.add('active');
+                    }
+                });
+            } else {
+                messageDisplay.textContent = "Congratulations! You've completed all 24 holes!";
+            }
+        }
+
+        // Restart the game
+        function restartGame() {
+            resetHole();
+            gameState.player1TotalScore = 0;
+            gameState.player2TotalScore = 0;
+            gameState.currentHole = 1;
+            
+            // Update hole selection UI
+            holeOptions.forEach(option => {
+                option.classList.remove('active');
+                if (parseInt(option.dataset.hole) === 1) {
+                    option.classList.add('active');
+                }
+            });
+            
+            messageDisplay.textContent = "Game restarted!";
+            saveGame();
+        }
+
+        // Update game mode
+        function updateGameMode() {
+            gameState.gameMode = gameModeSelect.value;
+            resetHole();
+        }
+
+        // Update difficulty
+        function updateDifficulty() {
+            gameState.difficulty = difficultySelect.value;
+        }
+
+        // Update power display
+        function updatePowerDisplay() {
+            powerValue.textContent = `${powerSlider.value}%`;
+        }
+
+        // Update angle display
+        function updateAngleDisplay() {
+            angleValue.textContent = `${angleSlider.value}°`;
+        }
+
+        // Toggle music on/off
+        function toggleMusic() {
+            if (backgroundMusic.paused) {
+                backgroundMusic.play();
+                musicToggle.textContent = '🔊 Music On';
+            } else {
+                backgroundMusic.pause();
+                musicToggle.textContent = '🔇 Music Off';
+            }
+        }
+
+        // Update volume
+        function updateVolume() {
+            backgroundMusic.volume = volumeControl.value / 100;
+        }
+
+        // Update UI elements
+        function updateUI() {
+            // Update player display
+            if (gameState.gameMode === '1player') {
+                currentPlayerDisplay.textContent = gameState.currentPlayer === 1 ? "You" : "AI";
+                playerTurnDisplay.textContent = gameState.currentPlayer === 1 ? "Your Turn" : "AI's Turn";
+            } else {
+                currentPlayerDisplay.textContent = `Player ${gameState.currentPlayer}`;
+                playerTurnDisplay.textContent = `Player ${gameState.currentPlayer}'s Turn`;
+            }
+            
+            // Update stroke count
+            strokeCountDisplay.textContent = gameState.strokes[`player${gameState.currentPlayer}`];
+            
+            // Update distance to hole
+            const currentBallPos = gameState.ballPositions[`player${gameState.currentPlayer}`];
+            const dx = currentBallPos.x - gameState.holePosition.x;
+            const dy = currentBallPos.y - gameState.holePosition.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            distanceToHoleDisplay.textContent = `${Math.round(distance / 5)} yd`;
+            
+            // Update scores
+            player1ScoreDisplay.textContent = gameState.player1TotalScore;
+            player2ScoreDisplay.textContent = gameState.player2TotalScore;
+            
+            // Update hole info
+            holeInfoDisplay.textContent = `Hole ${gameState.currentHole} • Par ${gameState.par}`;
+            currentHoleDisplay.textContent = `${gameState.currentHole}/24`;
+        }
+
+        // Save game to local storage
+        function saveGame() {
+            localStorage.setItem('golfGameState', JSON.stringify(gameState));
+        }
+
+        // Load game from local storage
+        function loadGame() {
+            const savedState = localStorage.getItem('golfGameState');
+            if (savedState) {
+                const parsedState = JSON.parse(savedState);
+                Object.assign(gameState, parsedState);
+                
+                // Update UI to match loaded state
+                gameModeSelect.value = gameState.gameMode;
+                difficultySelect.value = gameState.difficulty;
+                
+                // Update hole selection
+                holeOptions.forEach(option => {
+                    option.classList.remove('active');
+                    if (parseInt(option.dataset.hole) === gameState.currentHole) {
+                        option.classList.add('active');
+                    }
+                });
+                
+                messageDisplay.textContent = "Game loaded!";
+            }
+        }
+
+        // Initialize the game when the page loads
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
