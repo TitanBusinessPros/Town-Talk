@@ -934,7 +934,6 @@ function updateLocalFgUI() {
   document.getElementById("local-p1-card").classList.toggle("active", localFg.currentPlayer === 1 && !localFg.hasCompletedHole[0]);
   document.getElementById("local-p1-card").classList.toggle("completed", localFg.hasCompletedHole[0]);
   const p2Card = document.getElementById("local-p2-card");
-  p2Card.style.display = localFg.gameMode === "ai" ? "none" : "block";
   p2Card.classList.toggle("active", localFg.currentPlayer === 2 && !localFg.hasCompletedHole[1]);
   p2Card.classList.toggle("completed", localFg.hasCompletedHole[1]);
 }
@@ -968,7 +967,10 @@ function updateLocalFgPhysics() {
     localFg.frisbee.vx = 0;
     localFg.frisbee.vy = 0;
     localFg.playerPositions[localFg.currentPlayer - 1] = { x: localFg.frisbee.x / localScaleX, y: localFg.frisbee.y / localScaleY };
-    if (localFg.gameMode === "2player" && !localFg.hasCompletedHole[localFg.currentPlayer - 1]) {
+    // Both local modes alternate turn-by-turn on a non-catching throw (real
+    // disc golf rules) — "ai" was excluded here by mistake, which meant the
+    // AI opponent could never actually get a turn.
+    if (!localFg.hasCompletedHole[localFg.currentPlayer - 1]) {
       setTimeout(() => { if (!localFg.isTransitioning) switchLocalFgPlayer(); }, 800);
     }
   }
@@ -997,7 +999,10 @@ function checkLocalFgCatch() {
     updateLocalFgUI();
 
     setTimeout(() => {
-      const bothDone = localFg.gameMode === "ai" || (localFg.hasCompletedHole[0] && localFg.hasCompletedHole[1]);
+      // Requires BOTH to be done regardless of mode — this used to
+      // short-circuit "ai" mode to always-done the instant the human
+      // caught it, which skipped the AI's turn entirely every single hole.
+      const bothDone = localFg.hasCompletedHole[0] && localFg.hasCompletedHole[1];
       if (bothDone) {
         if (localFg.currentHole < 24) {
           setTimeout(() => { localFg.currentHole++; initLocalFgHole(); }, 800);
