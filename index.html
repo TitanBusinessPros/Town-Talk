@@ -19,6 +19,12 @@
 <meta name="twitter:description" content="A community platform for Pauls Valley, Oklahoma. Create a profile, share a post, and message your neighbors." />
 
 <link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#c1502e" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Town Fuss" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
@@ -51,6 +57,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
 .site-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.75rem; border-bottom: 1px solid var(--line); }
+
+.install-banner { display: none; align-items: center; justify-content: center; gap: 0.85rem; flex-wrap: wrap; padding: 0.65rem 1.25rem; background: var(--amber-500); color: #fff; font-family: var(--font-body); font-size: 0.85rem; text-align: center; }
+.install-banner button { border: none; border-radius: var(--radius-sm); padding: 0.4rem 0.9rem; font-family: var(--font-body); font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.install-banner-action { background: #fff; color: var(--amber-600); }
+.install-banner-action:hover { background: var(--ink-900); }
+.install-banner-dismiss { background: transparent; color: #fff; font-size: 0.95rem; padding: 0.2rem 0.5rem; opacity: 0.85; }
+.install-banner-dismiss:hover { opacity: 1; }
 
 .brand-banner {
   display: flex;
@@ -412,6 +425,12 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <a href="#" id="nav-logout" style="display:none">Log out</a>
   </nav>
 </header>
+
+<div id="install-banner" class="install-banner">
+  <span id="install-banner-text"></span>
+  <button type="button" id="install-banner-action" class="install-banner-action" style="display:none">Install Town Fuss</button>
+  <button type="button" id="install-banner-dismiss" class="install-banner-dismiss" aria-label="Dismiss">✕</button>
+</div>
 
 <main class="page">
 
@@ -1096,6 +1115,76 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
   connectStorageEmulator(storage, "127.0.0.1", 9199);
+}
+
+// ============================= PWA INSTALL BANNER ===========================
+// Independent of sign-in state — shows for anyone visiting in a regular
+// browser tab, on both Android/Chrome (native install prompt) and iOS
+// Safari (which has no install-prompt API at all, so we just explain the
+// manual "Share -> Add to Home Screen" steps instead). Never shown if the
+// site is already running installed/standalone, and dismissing it is
+// remembered in localStorage so it doesn't come back every visit.
+const INSTALL_DISMISS_KEY = "townfuss_install_dismissed";
+let deferredInstallPrompt = null;
+
+function isRunningStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function isIOSSafari() {
+  const ua = window.navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(ua);
+  return isIOS && isSafari;
+}
+function wasInstallBannerDismissed() {
+  return localStorage.getItem(INSTALL_DISMISS_KEY) === "true";
+}
+function hideInstallBanner() {
+  document.getElementById("install-banner").style.display = "none";
+}
+function dismissInstallBanner() {
+  localStorage.setItem(INSTALL_DISMISS_KEY, "true");
+  hideInstallBanner();
+}
+function showInstallBanner(mode) {
+  if (isRunningStandalone() || wasInstallBannerDismissed()) return;
+  const banner = document.getElementById("install-banner");
+  const textEl = document.getElementById("install-banner-text");
+  const actionBtn = document.getElementById("install-banner-action");
+  if (mode === "android") {
+    textEl.textContent = "Add Town Fuss to your home screen for quick access.";
+    actionBtn.style.display = "inline-flex";
+  } else {
+    textEl.textContent = 'Add Town Fuss to your Home Screen: tap the Share icon, then "Add to Home Screen".';
+    actionBtn.style.display = "none";
+  }
+  banner.style.display = "flex";
+}
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallBanner("android");
+});
+
+document.getElementById("install-banner-action").addEventListener("click", async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  hideInstallBanner();
+  if (outcome === "accepted") localStorage.setItem(INSTALL_DISMISS_KEY, "true");
+});
+
+document.getElementById("install-banner-dismiss").addEventListener("click", dismissInstallBanner);
+
+window.addEventListener("appinstalled", () => {
+  localStorage.setItem(INSTALL_DISMISS_KEY, "true");
+  hideInstallBanner();
+});
+
+if (isIOSSafari() && !isRunningStandalone() && !wasInstallBannerDismissed()) {
+  showInstallBanner("ios");
 }
 
 // -----------------------------------------------------------------------

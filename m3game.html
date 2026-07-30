@@ -371,7 +371,18 @@ button:active{transform:translateY(0);box-shadow:0 2px 4px rgba(0,0,0,0.3)}
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --radius: 14px; --radius-sm: 8px;
   background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body);
-  min-height: 100vh;
+  /* The base page's `body { overflow: hidden }` (further up in this file)
+     is intentional for the fixed-viewport felt table, but it also disables
+     page-level scrolling everywhere else, including here — #site-chrome's
+     header + intro text + 3 stacked cards are easily taller than one
+     viewport (especially on mobile), so without its own scroll region,
+     anything below the fold is silently clipped by the browser with no way
+     to reach it. Giving this element an explicit height + its own
+     overflow-y creates an independent scrolling context that isn't
+     affected by body's overflow:hidden. */
+  height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 #site-chrome a { color: var(--amber-500); }
 #site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
