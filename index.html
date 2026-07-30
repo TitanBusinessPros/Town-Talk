@@ -3998,7 +3998,7 @@ function renderMyBusiness(data) {
     payLink.style.display = "inline-block";
   }
   const params = new URLSearchParams();
-  params.set("client_reference_id", currentUid);
+  params.set("client_reference_id", `business_${currentUid}`);
   if (auth.currentUser?.email) params.set("prefilled_email", auth.currentUser.email);
   payLink.href = `${STRIPE_BUSINESS_LISTING_URL}?${params.toString()}`;
 }
