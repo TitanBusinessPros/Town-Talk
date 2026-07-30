@@ -43,4 +43,18 @@ async function makeAdmin(uid) {
   await admin.firestore().collection("admins").doc(uid).set({ grantedByTestSetup: true });
 }
 
-module.exports = { admin, verifyEmailByAddress, makeAdmin };
+// Batch 2 added tiered daily limits (3 free / 10 Gold / unlimited Diamond)
+// for online game plays and direct messages, shared across ALL 5 games via
+// a single gamePlayLimits/{uid} counter. Grant Diamond here, mid-suite,
+// AFTER the dedicated free-tier limit test runs but BEFORE the multi-game
+// invite/move tests — otherwise the same two robot accounts run out of
+// their 3 free online-game plays partway through (e.g. by the time the
+// suite gets to Golf) since the counter isn't per-game.
+async function grantUnlimitedGamePlay(uid) {
+  await admin.firestore().collection("users").doc(uid).set(
+    { isDiamondMember: true, diamondExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+    { merge: true }
+  );
+}
+
+module.exports = { admin, verifyEmailByAddress, makeAdmin, grantUnlimitedGamePlay };

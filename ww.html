@@ -156,6 +156,7 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
       <span class="eyebrow">WynneWars</span>
       <h1>Waiting Room</h1>
       <p style="text-align:center;">Whole turns sync at once — when you click "End Turn," your opponent sees the finished result, not a live move-by-move replay.</p>
+      <p class="field-hint" id="ww-play-remaining" style="text-align:center;">Loading your daily limit...</p>
 
       <div class="card">
         <h2 style="text-align:left;">Open tables</h2>
@@ -385,6 +386,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   watchWynneMessageLimit(currentUid);
+  watchGamePlayLimit(currentUid);
   await reconcileFinishedWynneGames();
   const jumped = await checkForActiveWynneGame();
   if (!jumped) showView("mode-select");
@@ -591,10 +593,57 @@ async function checkInviteCooldown(gameCollectionName, inviteToUid, inviteToName
   return false;
 }
 
+// ============================= GAME PLAY LIMIT (online games only) =========
+// Counts starting a NEW online game: creating a table, joining an open table,
+// or accepting a direct invite. Local vs-computer / same-device play is unaffected.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("ww-play-remaining");
+  if (!el) return;
+  const limit = myDailyTierLimit();
+  if (limit === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limit - currentGamePlayLimit.count) : limit;
+  el.textContent = `${remaining} / ${limit} online games left today`;
+}
+// Fresh-read precheck + increment plan for the SAME writeBatch that starts a
+// new online game. Returns { ok:false } (and shows a friendly message) if the
+// player is out of plays for today, otherwise { ok:true, limitRef, count }.
+async function reserveGamePlaySlot(msg) {
+  const limit = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limit - data.count : limit;
+  if (remaining <= 0) {
+    showWwMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, limitRef, count: newCount };
+}
+
 async function createWynneTable(inviteToUid, inviteToName) {
   const msg = document.getElementById("ww-waiting-message");
   try {
     if (inviteToUid && !(await checkInviteCooldown("wynneGames", inviteToUid, inviteToName, msg))) return;
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
 
     const gameRef = doc(collection(db, "wynneGames"));
     const batch = writeBatch(db);
@@ -619,6 +668,7 @@ async function createWynneTable(inviteToUid, inviteToName) {
         lastInvitedAt: serverTimestamp(),
       });
     }
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
     await batch.commit();
     if (inviteToUid) {
       showWwMessage(msg, `Invite sent to ${inviteToName}.`, "success");
@@ -626,12 +676,16 @@ async function createWynneTable(inviteToUid, inviteToName) {
       openWynneGame(gameRef.id);
     }
   } catch (err) {
-    // checkInviteCooldown() above already catches the normal case client-side
-    // — this only fires if that read raced the cooldown doc and the
+    // checkInviteCooldown()/reserveGamePlaySlot() above already catch the normal
+    // case client-side — this only fires if a read raced the limit doc and the
     // server-side rule caught it instead. Same friendly message either way,
     // not the raw Firestore error.
     if (inviteToUid && err.code === "permission-denied") {
-      showWwMessage(msg, `You can invite ${inviteToName} again in about an hour.`, "error");
+      showWwMessage(msg, `You can invite ${inviteToName} again in about an hour, or you've reached your daily game limit.`, "error");
+      return;
+    }
+    if (err.code === "permission-denied") {
+      showWwMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
       return;
     }
     showWwMessage(msg, err.message, "error");
@@ -641,13 +695,23 @@ async function createWynneTable(inviteToUid, inviteToName) {
 async function joinWynneTable(gameId, gameData) {
   const msg = document.getElementById("ww-waiting-message");
   try {
-    await updateDoc(doc(db, "wynneGames", gameId), {
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const batch = writeBatch(db);
+    batch.update(doc(db, "wynneGames", gameId), {
       player2Uid: currentUid, player2Name: currentUserName,
       participants: [gameData.player1Uid, currentUid],
       status: "active", updatedAt: serverTimestamp(),
     });
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    await batch.commit();
     openWynneGame(gameId);
   } catch (err) {
+    if (err.code === "permission-denied") {
+      showWwMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+      return;
+    }
     showWwMessage(msg, err.message, "error");
   }
 }
@@ -740,7 +804,6 @@ async function reconcileFinishedWynneGames() {
 }
 
 // ============================= MINI CHAT (reuses Town Fuss messaging) =======
-const DAILY_MESSAGE_LIMIT = 3;
 const MESSAGE_WORD_LIMIT = 50;
 let currentWwMessageLimit = { day: 0, count: 0 };
 let unsubscribeWwLimit = null;
@@ -759,14 +822,20 @@ function watchWynneMessageLimit(uid) {
     currentWwMessageLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
     const el = document.getElementById("ww-msg-remaining");
     if (el) {
-      const left = currentWwMessageLimit.day !== todayNumber() ? DAILY_MESSAGE_LIMIT : Math.max(0, DAILY_MESSAGE_LIMIT - currentWwMessageLimit.count);
-      el.textContent = `${left} / ${DAILY_MESSAGE_LIMIT} messages left today (shared with your Town Fuss private messages)`;
+      const limit = myDailyTierLimit();
+      if (limit === Infinity) {
+        el.textContent = "Unlimited messages today (Diamond member) — shared with your Town Fuss private messages";
+      } else {
+        const left = currentWwMessageLimit.day !== todayNumber() ? limit : Math.max(0, limit - currentWwMessageLimit.count);
+        el.textContent = `${left} / ${limit} messages left today (shared with your Town Fuss private messages)`;
+      }
     }
   });
 }
 function wwRemainingToday() {
-  if (currentWwMessageLimit.day !== todayNumber()) return DAILY_MESSAGE_LIMIT;
-  return Math.max(0, DAILY_MESSAGE_LIMIT - currentWwMessageLimit.count);
+  const limit = myDailyTierLimit();
+  if (currentWwMessageLimit.day !== todayNumber()) return limit;
+  return Math.max(0, limit - currentWwMessageLimit.count);
 }
 function conversationIdFor(otherUid) { return [currentUid, otherUid].sort().join("_"); }
 
@@ -799,7 +868,7 @@ function watchWynneMiniChat(gameId) {
     const msg = document.getElementById("ww-mini-chat-message");
     const text = input.value.trim();
     if (!text) return;
-    if (wwRemainingToday() <= 0) { showWwMessage(msg, "You've used all 3 messages for today.", "error"); return; }
+    if (wwRemainingToday() <= 0) { showWwMessage(msg, "You've used all your messages for today. Upgrade to Gold or Diamond for more.", "error"); return; }
     if (countWords(text) > MESSAGE_WORD_LIMIT) { showWwMessage(msg, `Messages are limited to ${MESSAGE_WORD_LIMIT} words.`, "error"); return; }
     if (containsContactInfo(text)) { showWwMessage(msg, "Links, phone numbers, and emails aren't allowed in messages.", "error"); return; }
 
@@ -818,7 +887,7 @@ function watchWynneMiniChat(gameId) {
         const today = todayNumber();
         const sameDay = data.day === today;
         const newCount = sameDay ? data.count + 1 : 1;
-        if (sameDay && data.count >= DAILY_MESSAGE_LIMIT) throw new Error("You've used all 3 messages for today.");
+        if (sameDay && data.count >= myDailyTierLimit()) throw new Error("You've used all your messages for today. Upgrade to Gold or Diamond for more.");
 
         const convoRef = doc(db, "conversations", conversationId);
         const msgRef = doc(collection(db, "conversations", conversationId, "messages"));

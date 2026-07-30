@@ -13,7 +13,7 @@
 
 const path = require("path");
 const { test, expect } = require("@playwright/test");
-const { verifyEmailByAddress, makeAdmin } = require("../emulatorAdmin");
+const { verifyEmailByAddress, makeAdmin, grantUnlimitedGamePlay } = require("../emulatorAdmin");
 
 const ROBOT_A = { email: "robot.a@test.town", password: "TestPass123!", name: "Robot Alice", town: "Pauls Valley" };
 const ROBOT_B = { email: "robot.b@test.town", password: "TestPass123!", name: "Robot Bob", town: "Pauls Valley" };
@@ -229,6 +229,17 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     pageA.once("dialog", (dialog) => dialog.accept());
     const unblockBtn = pageA.locator('#blocked-users-list button:has-text("Unblock")').first();
     if (await unblockBtn.count()) await unblockBtn.click();
+  });
+
+  test("Grant both robots Diamond membership for the remaining game tests", async () => {
+    // The free-tier message/game-play limit itself is already covered by the
+    // earlier "daily 3-message limit" test. Everything from here on plays
+    // through 5 different games with the same two accounts, and
+    // gamePlayLimits/{uid} is ONE shared counter across all of them — so
+    // without this, Robot A would run out of her 3 free online-game plays
+    // partway through (e.g. by the time the suite reaches Golf).
+    await grantUnlimitedGamePlay(uidA);
+    await grantUnlimitedGamePlay(uidB);
   });
 
   test("Chess: Robot A invites Robot B directly, Robot B accepts, both see the board", async () => {

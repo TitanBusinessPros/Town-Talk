@@ -1191,7 +1191,15 @@ document.getElementById("notif-toggle-checkbox").addEventListener("change", asyn
 });
 
 const MAX_IMAGES = 1;
+// Flat 3/day for everyone — only chat room posts (chatMessageLimits) use this.
+// Direct messages (messageLimits) are tiered instead, see myDailyTierLimit().
 const DAILY_MESSAGE_LIMIT = 3;
+// Direct-message daily cap by membership tier: 3 Free / 10 Gold / unlimited Diamond.
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
 let currentUid = null;
 let unsubscribeSnapshot = null;
 let unsubscribeMessageLimit = null;
@@ -2780,14 +2788,20 @@ function watchMessageLimit(uid) {
 }
 
 function remainingToday() {
-  if (currentMessageLimit.day !== todayNumber()) return DAILY_MESSAGE_LIMIT;
-  return Math.max(0, DAILY_MESSAGE_LIMIT - currentMessageLimit.count);
+  const limit = myDailyTierLimit();
+  if (currentMessageLimit.day !== todayNumber()) return limit;
+  return Math.max(0, limit - currentMessageLimit.count);
 }
 
 function renderMessageRemaining() {
   const left = remainingToday();
+  const limit = myDailyTierLimit();
   const el = document.getElementById("messages-remaining");
-  if (el) el.textContent = `${left} / ${DAILY_MESSAGE_LIMIT} messages left today`;
+  if (el) {
+    el.textContent = limit === Infinity
+      ? "Unlimited messages today (Diamond member)"
+      : `${left} / ${limit} messages left today`;
+  }
   const sendBtn = document.getElementById("thread-send-btn");
   if (sendBtn) sendBtn.disabled = left <= 0;
 }
@@ -2970,7 +2984,7 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
   if (!text || !activeOtherUid) return;
 
   if (remainingToday() <= 0) {
-    showMessage(msg, "You've used all 3 messages for today — it resets tomorrow.", "error");
+    showMessage(msg, "You've used all your messages for today — it resets tomorrow, or upgrade to Gold or Diamond for more.", "error");
     return;
   }
   if (countWords(text) > MESSAGE_WORD_LIMIT) {
@@ -3011,8 +3025,8 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
       const today = todayNumber();
       const sameDay = data.day === today;
       const newCount = sameDay ? data.count + 1 : 1;
-      if (sameDay && data.count >= DAILY_MESSAGE_LIMIT) {
-        throw new Error("You've used all 3 messages for today — it resets tomorrow.");
+      if (sameDay && data.count >= myDailyTierLimit()) {
+        throw new Error("You've used all your messages for today — it resets tomorrow, or upgrade to Gold or Diamond for more.");
       }
 
       const convoRef = doc(db, "conversations", conversationId);

@@ -31,6 +31,15 @@ service cloud.firestore {
           && request.resource.data.get('diamondExpiresAt', null) == resource.data.get('diamondExpiresAt', null)
           && request.resource.data.get('stripeCustomerId', null) == resource.data.get('stripeCustomerId', null);
     }
+    // Shared daily-cap lookup for both direct messages and online game
+    // plays: 3/day free, 10/day Gold, effectively unlimited for Diamond.
+    // Reads the user's OWN membership flags — safe from tampering since
+    // those fields can never be client-written (see above).
+    function dailyTierLimit(uid) {
+      let userData = get(/databases/$(database)/documents/users/$(uid)).data;
+      return userData.get('isDiamondMember', false) ? 999999999
+           : (userData.get('isGoldMember', false) ? 10 : 3);
+    }
 
     match /admins/{uid} {
       allow read: if isOwner(uid);
@@ -123,7 +132,7 @@ service cloud.firestore {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid)
                    && request.resource.data.day == today()
-                   && request.resource.data.count <= 3
+                   && request.resource.data.count <= dailyTierLimit(uid)
                    && (
                         (!exists(/databases/$(database)/documents/messageLimits/$(uid))
                           && request.resource.data.count == 1)
@@ -133,6 +142,30 @@ service cloud.firestore {
                           && request.resource.data.count == 1)
                         ||
                         (exists(/databases/$(database)/documents/messageLimits/$(uid))
+                          && resource.data.day == today()
+                          && request.resource.data.count == resource.data.count + 1)
+                      );
+    }
+
+    // Rate-limits joining/creating ONLINE games (across all 5 games) to
+    // the same tier caps as messageLimits above — 3/day free, 10/day Gold,
+    // effectively unlimited Diamond. Doc ID is just the uid (one shared
+    // counter across every game, not per-game), written in the same batch
+    // as the createTable()/joinTable() write it's gating.
+    match /gamePlayLimits/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid)
+                   && request.resource.data.day == today()
+                   && request.resource.data.count <= dailyTierLimit(uid)
+                   && (
+                        (!exists(/databases/$(database)/documents/gamePlayLimits/$(uid))
+                          && request.resource.data.count == 1)
+                        ||
+                        (exists(/databases/$(database)/documents/gamePlayLimits/$(uid))
+                          && resource.data.day != today()
+                          && request.resource.data.count == 1)
+                        ||
+                        (exists(/databases/$(database)/documents/gamePlayLimits/$(uid))
                           && resource.data.day == today()
                           && request.resource.data.count == resource.data.count + 1)
                       );
