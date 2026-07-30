@@ -14,6 +14,23 @@ service cloud.firestore {
     function today() {
       return int(request.time.toMillis() / 86400000);
     }
+    // Membership fields (granted only by the Stripe webhook via the Admin
+    // SDK, which bypasses rules entirely) must never be settable by the
+    // user themselves — false/absent on create, and unchanged on any
+    // owner-initiated update to their own users/{uid} doc, including the
+    // "re-submit for review" self-edit path which otherwise doesn't
+    // restrict which other fields can change.
+    function membershipFieldsUntouched() {
+      return request.resource.data.get('isGoldMember', false) == false
+          && request.resource.data.get('isDiamondMember', false) == false;
+    }
+    function membershipFieldsUnchanged() {
+      return request.resource.data.get('isGoldMember', false) == resource.data.get('isGoldMember', false)
+          && request.resource.data.get('goldExpiresAt', null) == resource.data.get('goldExpiresAt', null)
+          && request.resource.data.get('isDiamondMember', false) == resource.data.get('isDiamondMember', false)
+          && request.resource.data.get('diamondExpiresAt', null) == resource.data.get('diamondExpiresAt', null)
+          && request.resource.data.get('stripeCustomerId', null) == resource.data.get('stripeCustomerId', null);
+    }
 
     match /admins/{uid} {
       allow read: if isOwner(uid);
@@ -47,10 +64,22 @@ service cloud.firestore {
     // per account), but nothing here ever touches /users/{uid}.
     match /businesses/{uid} {
       allow read: if (isSignedIn() && resource.data.approved == true) || isOwner(uid) || isAdmin();
+      // businessPaidUntil is granted only by the Stripe webhook (Admin SDK,
+      // bypasses rules) or an admin's manual "mark paid" — an owner editing
+      // their own listing must never be able to change it, even via the
+      // "resubmit for review" self-edit path below.
       allow create: if isOwner(uid)
                     && request.resource.data.approved == false
-                    && request.resource.data.everApproved == false;
-      allow update: if isAdmin() || (isOwner(uid) && request.resource.data.approved == false);
+                    && request.resource.data.everApproved == false
+                    && (
+                         request.resource.data.get('businessPaidUntil', null) == null
+                         || (request.auth.token.email != null
+                             && exists(/databases/$(database)/documents/businessPromoWhitelist/$(request.auth.token.email.lower())))
+                       );
+      allow update: if isAdmin()
+                    || (isOwner(uid)
+                        && request.resource.data.approved == false
+                        && request.resource.data.get('businessPaidUntil', null) == resource.data.get('businessPaidUntil', null));
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -74,10 +103,12 @@ service cloud.firestore {
       allow read: if (isSignedIn() && resource.data.approved == true) || isOwner(uid) || isAdmin();
       allow create: if isOwner(uid)
                     && request.resource.data.approved == false
-                    && request.resource.data.everApproved == false;
+                    && request.resource.data.everApproved == false
+                    && membershipFieldsUntouched();
       allow update: if isAdmin()
-                    || (isOwner(uid) && request.resource.data.approved == false)
+                    || (isOwner(uid) && request.resource.data.approved == false && membershipFieldsUnchanged())
                     || (isOwner(uid)
+                        && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'notificationsEnabled', 'fcmTokens']));
       allow delete: if isOwner(uid) || isAdmin();

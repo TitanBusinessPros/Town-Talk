@@ -5,6 +5,7 @@
     "test": "playwright test"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@playwright/test": "^1.48.0"
   },
   "dependencies": {

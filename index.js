@@ -73,7 +73,10 @@
 
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
+const { defineSecret } = require("firebase-functions/params");
+const Stripe = require("stripe");
 const admin = require("firebase-admin");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 
@@ -512,5 +515,132 @@ exports.expireBusinessListings = onSchedule(
     const batch = db.batch();
     snap.forEach((docSnap) => batch.update(docSnap.ref, { approved: false }));
     await batch.commit();
+  }
+);
+
+// -----------------------------------------------------------------------
+// 7. Stripe payments: Gold membership, Diamond membership, and business
+// listings all go through the same webhook, distinguished by a prefix on
+// client_reference_id ("gold_<uid>", "diamond_<uid>", "business_<uid>") —
+// set client-side when building each Stripe Payment Link URL.
+//
+// Gold and business are simple one-time annual payments (grant one year
+// from the moment of payment, same as the pre-webhook "mark paid by hand"
+// flow this replaces for business). Diamond is a real Stripe subscription
+// ($2.99/month): checkout.session.completed grants the first month and
+// records the Stripe customer ID; invoice.payment_succeeded (fired on
+// each monthly renewal charge) extends it another month by looking the
+// user up via that stored customer ID, since renewal invoice events don't
+// carry client_reference_id; customer.subscription.deleted revokes it
+// immediately on cancellation, same lookup.
+// -----------------------------------------------------------------------
+const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
+const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+const ONE_MONTH_MS = 31 * 24 * 60 * 60 * 1000;
+
+async function grantFromCheckout(session) {
+  const ref = session.client_reference_id || "";
+  if (ref.startsWith("business_")) {
+    const uid = ref.slice("business_".length);
+    await db
+      .collection("businesses")
+      .doc(uid)
+      .update({ businessPaidUntil: Timestamp.fromDate(new Date(Date.now() + ONE_YEAR_MS)) })
+      .catch((err) => console.error(`Stripe webhook: couldn't mark business ${uid} paid:`, err));
+  } else if (ref.startsWith("gold_")) {
+    const uid = ref.slice("gold_".length);
+    await db
+      .collection("users")
+      .doc(uid)
+      .update({
+        isGoldMember: true,
+        goldExpiresAt: Timestamp.fromDate(new Date(Date.now() + ONE_YEAR_MS)),
+      })
+      .catch((err) => console.error(`Stripe webhook: couldn't grant gold to ${uid}:`, err));
+  } else if (ref.startsWith("diamond_")) {
+    const uid = ref.slice("diamond_".length);
+    await db
+      .collection("users")
+      .doc(uid)
+      .update({
+        isDiamondMember: true,
+        diamondExpiresAt: Timestamp.fromDate(new Date(Date.now() + ONE_MONTH_MS)),
+        stripeCustomerId: session.customer || null,
+      })
+      .catch((err) => console.error(`Stripe webhook: couldn't grant diamond to ${uid}:`, err));
+  } else {
+    console.error("Stripe webhook: checkout.session.completed with unrecognized client_reference_id:", ref);
+  }
+}
+
+async function extendDiamondFromInvoice(invoice) {
+  if (!invoice.customer || !invoice.subscription) return;
+  const snap = await db.collection("users").where("stripeCustomerId", "==", invoice.customer).limit(1).get();
+  if (snap.empty) return; // likely the subscription's first invoice, already covered by checkout.session.completed
+  await snap.docs[0].ref
+    .update({
+      isDiamondMember: true,
+      diamondExpiresAt: Timestamp.fromDate(new Date(Date.now() + ONE_MONTH_MS)),
+    })
+    .catch((err) => console.error(`Stripe webhook: couldn't extend diamond for customer ${invoice.customer}:`, err));
+}
+
+async function revokeDiamondFromSubscription(subscription) {
+  if (!subscription.customer) return;
+  const snap = await db.collection("users").where("stripeCustomerId", "==", subscription.customer).limit(1).get();
+  if (snap.empty) return;
+  await snap.docs[0].ref
+    .update({ isDiamondMember: false })
+    .catch((err) => console.error(`Stripe webhook: couldn't revoke diamond for customer ${subscription.customer}:`, err));
+}
+
+exports.stripeWebhook = onRequest({ secrets: [stripeSecretKey, stripeWebhookSecret] }, async (req, res) => {
+  const stripe = new Stripe(stripeSecretKey.value());
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.rawBody, req.headers["stripe-signature"], stripeWebhookSecret.value());
+  } catch (err) {
+    console.error("Stripe webhook signature verification failed:", err.message);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }
+
+  try {
+    if (event.type === "checkout.session.completed") {
+      await grantFromCheckout(event.data.object);
+    } else if (event.type === "invoice.payment_succeeded") {
+      await extendDiamondFromInvoice(event.data.object);
+    } else if (event.type === "customer.subscription.deleted") {
+      await revokeDiamondFromSubscription(event.data.object);
+    }
+    res.status(200).send("ok");
+  } catch (err) {
+    // Still 200 so Stripe doesn't retry forever on a bug on our end for an
+    // event that's already been logged loudly here.
+    console.error("Stripe webhook: error handling event", event.type, err);
+    res.status(200).send("logged error");
+  }
+});
+
+// Safety net alongside the webhook's own subscription.deleted handling —
+// clears expired membership flags even if a cancellation event is ever
+// missed (delivery failure, etc.), same defensive pattern as
+// expireBusinessListings above.
+exports.expireMemberships = onSchedule(
+  { schedule: "0 4 * * *", timeZone: "America/Chicago" },
+  async () => {
+    const now = Timestamp.now();
+    const batch = db.batch();
+    let any = false;
+
+    const goldSnap = await db.collection("users").where("isGoldMember", "==", true).where("goldExpiresAt", "<", now).get();
+    goldSnap.forEach((docSnap) => { batch.update(docSnap.ref, { isGoldMember: false }); any = true; });
+
+    const diamondSnap = await db.collection("users").where("isDiamondMember", "==", true).where("diamondExpiresAt", "<", now).get();
+    diamondSnap.forEach((docSnap) => { batch.update(docSnap.ref, { isDiamondMember: false }); any = true; });
+
+    if (any) await batch.commit();
   }
 );

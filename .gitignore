@@ -5,3 +5,4 @@ ui-debug.log
 *-debug.log
 test-results/
 playwright-report/
+.secret.local

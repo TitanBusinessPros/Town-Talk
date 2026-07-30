@@ -82,6 +82,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 .profile-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--ink-700); flex-shrink: 0; }
 .profile-avatar-fallback { width: 40px; height: 40px; border-radius: 50%; background: var(--ink-700); color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 600; flex-shrink: 0; }
+.profile-avatar.gold-member, .profile-avatar-fallback.gold-member { box-shadow: 0 0 0 3px #f5c94b, 0 0 10px rgba(245, 201, 75, 0.6); }
+.profile-avatar.diamond-member, .profile-avatar-fallback.diamond-member { box-shadow: 0 0 0 3px #4fc3f7, 0 0 10px rgba(79, 195, 247, 0.6); }
+.membership-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-family: var(--font-mono); font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 999px; }
+.membership-badge.gold { background: linear-gradient(135deg, #f5c94b, #c1502e); color: #fff; }
+.membership-badge.diamond { background: linear-gradient(135deg, #4fc3f7, #1565c0); color: #fff; }
 .name-with-avatar { display: flex; align-items: center; gap: 0.6rem; }
 
 .slot-caption { font-family: var(--font-mono); font-size: 0.68rem; color: var(--amber-500); text-align: center; margin-top: 0.35rem; }
@@ -316,6 +321,17 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 @media (max-width: 640px) {
   .business-directory-grid { grid-template-columns: 1fr; }
 }
+.pricing-grid { display: flex; gap: 1.25rem; flex-wrap: wrap; justify-content: center; align-items: stretch; margin-top: 2rem; }
+.pricing-card { flex: 1 1 230px; max-width: 260px; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+.pricing-card.featured { border-color: var(--amber-500); box-shadow: 0 0 0 2px rgba(193, 80, 46, 0.25); position: relative; }
+.pricing-card.diamond-tier { border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.25); }
+.pricing-tier-name { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-align: center; }
+.pricing-price { font-family: var(--font-display); font-size: 2rem; font-weight: 600; text-align: center; color: var(--amber-500); }
+.pricing-price span { font-size: 0.9rem; font-weight: 400; color: var(--text-muted); font-family: var(--font-body); }
+.pricing-features { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
+.pricing-features li { font-size: 0.88rem; padding-left: 1.4rem; position: relative; text-align: left; }
+.pricing-features li::before { content: "✓"; position: absolute; left: 0; color: var(--sage-500); font-weight: 700; }
+.pricing-current-badge { text-align: center; font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sage-500); }
 .directory-card:hover { background: var(--ink-700); }
 .directory-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-sm); background: var(--ink-700); }
 .directory-card .dir-name { font-weight: 600; color: var(--paper-050); font-size: 0.95rem; }
@@ -373,6 +389,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 <header class="site-header">
   <button class="brand" id="brand-link">Town<span class="brand-mark">Fuss</span></button>
   <nav class="nav-links">
+    <a href="#" id="nav-pricing" style="display:none">Pricing</a>
     <a href="#" id="nav-feed" style="display:none">Feed</a>
     <a href="#" id="nav-directory" style="display:none">Profiles</a>
     <a href="#" id="nav-messages" style="display:none">Messages</a>
@@ -756,6 +773,68 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     </div>
   </section>
 
+  <!-- ================= PRICING VIEW ================= -->
+  <section id="view-pricing" class="view">
+    <div class="view-header">
+      <p class="eyebrow">Town Fuss</p>
+      <h1>Membership &amp; Pricing</h1>
+      <p>Everyone gets a full Town Fuss account for free. Gold and Diamond raise your daily limits and add a badge on your profile — pick what fits you.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-tier-name">Free</div>
+        <div class="pricing-price">$0</div>
+        <ul class="pricing-features">
+          <li>Full personal profile &amp; photos</li>
+          <li>All games &amp; chat rooms</li>
+          <li>3 online games per day</li>
+          <li>3 direct messages per day</li>
+        </ul>
+        <div id="pricing-free-badge" class="pricing-current-badge" style="display:none;">Your current plan</div>
+      </div>
+
+      <div class="pricing-card featured">
+        <div class="pricing-tier-name">⭐ Gold</div>
+        <div class="pricing-price">$12<span>/year</span></div>
+        <ul class="pricing-features">
+          <li>Everything in Free</li>
+          <li>10 online games per day</li>
+          <li>10 direct messages per day</li>
+          <li>Gold ring &amp; Gold Member badge on your profile</li>
+        </ul>
+        <a id="pricing-gold-link" href="#" target="_blank" rel="noopener"><button type="button">Subscribe with Stripe</button></a>
+        <div id="pricing-gold-badge" class="pricing-current-badge" style="display:none;">Your current plan</div>
+      </div>
+
+      <div class="pricing-card diamond-tier">
+        <div class="pricing-tier-name">💎 Diamond</div>
+        <div class="pricing-price">$2.99<span>/month</span></div>
+        <ul class="pricing-features">
+          <li>Everything in Gold</li>
+          <li>Unlimited online games</li>
+          <li>Unlimited direct messages</li>
+          <li>Blue ring &amp; Diamond Member badge on your profile</li>
+        </ul>
+        <a id="pricing-diamond-link" href="#" target="_blank" rel="noopener"><button type="button">Subscribe with Stripe</button></a>
+        <div id="pricing-diamond-badge" class="pricing-current-badge" style="display:none;">Your current plan</div>
+      </div>
+
+      <div class="pricing-card">
+        <div class="pricing-tier-name">🏢 Business</div>
+        <div class="pricing-price">$12<span>/year</span></div>
+        <ul class="pricing-features">
+          <li>List your business in the directory</li>
+          <li>Logo/photo showcase</li>
+          <li>Reach the whole local community</li>
+          <li>Separate from your personal profile</li>
+        </ul>
+        <button type="button" id="pricing-business-btn" class="secondary">Get Started</button>
+      </div>
+    </div>
+    <p class="field-hint" style="text-align:center; margin-top:1.5rem;">Membership status updates automatically within a few minutes of payment.</p>
+  </section>
+
   <!-- ================= MESSAGES VIEW ================= -->
   <section id="view-messages" class="view">
     <div class="view-header">
@@ -1124,7 +1203,7 @@ let unsubscribeMyBusiness = null;
 let unsubscribeNotifBell = null;
 
 // ============================= VIEW ROUTER ==============================
-const PROTECTED_VIEWS = ["feed", "directory", "profile", "dashboard", "messages", "friends", "chatrooms", "admin", "business"];
+const PROTECTED_VIEWS = ["feed", "directory", "profile", "dashboard", "messages", "friends", "chatrooms", "admin", "business", "pricing"];
 
 function showView(name) {
   if (PROTECTED_VIEWS.includes(name) && !auth.currentUser) {
@@ -1154,6 +1233,7 @@ function showView(name) {
   if (name === "chatrooms") { closeChatRoomThread(); renderChatRoomList(); }
   else if (unsubscribeChatRoom) { unsubscribeChatRoom(); unsubscribeChatRoom = null; }
   if (name === "admin") { loadAdminQueue(); loadAdminReports(); loadAdminBugReports(); loadPromoWhitelist(); loadBusinessAdminQueue(); }
+  if (name === "pricing") loadPricingView();
   if (name === "messages") { closeThread(); watchConversations(); }
   else if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
   if (name === "business") loadBusinessDirectory();
@@ -1170,6 +1250,7 @@ document.getElementById("nav-messages").addEventListener("click", (e) => { e.pre
 document.getElementById("nav-friends").addEventListener("click", (e) => { e.preventDefault(); showView("friends"); });
 document.getElementById("nav-chatrooms").addEventListener("click", (e) => { e.preventDefault(); showView("chatrooms"); });
 document.getElementById("nav-business").addEventListener("click", (e) => { e.preventDefault(); showView("business"); });
+document.getElementById("nav-pricing").addEventListener("click", (e) => { e.preventDefault(); showView("pricing"); });
 document.getElementById("nav-notifications").addEventListener("click", (e) => {
   e.preventDefault();
   const panel = document.getElementById("notif-bell-panel");
@@ -1200,6 +1281,7 @@ function updateProtectedNavVisibility(user) {
   document.getElementById("nav-chatrooms").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-games").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-business").style.display = canSeeFullNav ? "inline" : "none";
+  document.getElementById("nav-pricing").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-report-issue").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("notif-bell-wrap").style.display = canSeeFullNav ? "inline-block" : "none";
 }
@@ -1988,6 +2070,19 @@ function spotlightBadgesHtml(data) {
   return html;
 }
 
+// Diamond takes priority over Gold when shown together (Diamond includes
+// everything Gold does and then some) — a member is never shown both rings.
+function membershipRingClass(data) {
+  if (data.isDiamondMember) return "diamond-member";
+  if (data.isGoldMember) return "gold-member";
+  return "";
+}
+function membershipBadgeHtml(data) {
+  if (data.isDiamondMember) return `<span class="membership-badge diamond">💎 Diamond Member</span>`;
+  if (data.isGoldMember) return `<span class="membership-badge gold">⭐ Gold Member</span>`;
+  return "";
+}
+
 // Business account marker — shown wherever a business's name appears.
 function renderCard(uid, data) {
   const profile = data.profile || {};
@@ -2011,9 +2106,10 @@ function renderCard(uid, data) {
 
   const avatarUrl = images.length ? images[0].url : null;
   const initial = (profile.name || "N").trim().charAt(0).toUpperCase();
+  const ringClass = membershipRingClass(data);
   const avatarHtml = avatarUrl
-    ? `<img class="profile-avatar" src="${avatarUrl}" alt="${escapeHtml(profile.name || "Neighbor")}" />`
-    : `<div class="profile-avatar-fallback">${escapeHtml(initial)}</div>`;
+    ? `<img class="profile-avatar ${ringClass}" src="${avatarUrl}" alt="${escapeHtml(profile.name || "Neighbor")}" />`
+    : `<div class="profile-avatar-fallback ${ringClass}">${escapeHtml(initial)}</div>`;
 
   const friendCount = typeof data.friendCount === "number" ? data.friendCount : 0;
   const friendCountHtml = `<span class="field-hint" style="margin:0;">${friendCount} friend${friendCount === 1 ? "" : "s"}</span>`;
@@ -2026,6 +2122,7 @@ function renderCard(uid, data) {
         <span>${escapeHtml(profile.name || "Neighbor")}</span>
         ${profile.neighborhood ? `<span>${escapeHtml(profile.neighborhood)}</span>` : ""}
         ${friendCountHtml}
+        ${membershipBadgeHtml(data)}
         ${chessBadgeHtml(uid)}
         ${checkersBadgeHtml(uid)}
         ${wynneWarsBadgeHtml(uid)}
@@ -3798,6 +3895,29 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
 // payment tracking. A person can have a personal profile, a business
 // listing, both, or neither; nothing here ever touches /users/{uid}.
 const STRIPE_BUSINESS_LISTING_URL = "https://buy.stripe.com/fZu8wQaRH4kg5XIb3x7AI0T";
+const STRIPE_GOLD_MEMBERSHIP_URL = "https://buy.stripe.com/5kQcN6f7X6soadYb3x7AI0U";
+const STRIPE_DIAMOND_MEMBERSHIP_URL = "https://buy.stripe.com/28EcN66BraIE3PA0oT7AI0V";
+
+// ============================= PRICING ============================
+function loadPricingView() {
+  const params = new URLSearchParams();
+  if (auth.currentUser?.email) params.set("prefilled_email", auth.currentUser.email);
+
+  const goldParams = new URLSearchParams(params);
+  goldParams.set("client_reference_id", `gold_${currentUid}`);
+  document.getElementById("pricing-gold-link").href = `${STRIPE_GOLD_MEMBERSHIP_URL}?${goldParams.toString()}`;
+
+  const diamondParams = new URLSearchParams(params);
+  diamondParams.set("client_reference_id", `diamond_${currentUid}`);
+  document.getElementById("pricing-diamond-link").href = `${STRIPE_DIAMOND_MEMBERSHIP_URL}?${diamondParams.toString()}`;
+
+  const isDiamond = !!currentUserData.isDiamondMember;
+  const isGold = !!currentUserData.isGoldMember;
+  document.getElementById("pricing-free-badge").style.display = !isGold && !isDiamond ? "block" : "none";
+  document.getElementById("pricing-gold-badge").style.display = isGold && !isDiamond ? "block" : "none";
+  document.getElementById("pricing-diamond-badge").style.display = isDiamond ? "block" : "none";
+}
+document.getElementById("pricing-business-btn").addEventListener("click", () => showView("business"));
 const BUSINESS_WORD_LIMIT = 500;
 let currentMyBusinessData = null;
 
@@ -3927,6 +4047,7 @@ document.getElementById("business-form").addEventListener("submit", async (e) =>
       // own email (rules only allow reading the ONE entry matching our
       // own email, so this can't browse who else is on the list).
       let promoFields = {};
+      let hadPromo = false;
       const emailLower = (auth.currentUser.email || "").toLowerCase();
       try {
         const promoSnap = await getDoc(doc(db, "businessPromoWhitelist", emailLower));
@@ -3934,7 +4055,7 @@ document.getElementById("business-form").addEventListener("submit", async (e) =>
           const oneYearFromNow = new Date();
           oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
           promoFields = { businessPromoGranted: true, businessPaidUntil: Timestamp.fromDate(oneYearFromNow) };
-          await deleteDoc(doc(db, "businessPromoWhitelist", emailLower)).catch(() => {});
+          hadPromo = true;
         }
       } catch {
         // No matching promo entry — proceed as a normal (unpaid) listing.
@@ -3953,6 +4074,12 @@ document.getElementById("business-form").addEventListener("submit", async (e) =>
         lastEditedAt: serverTimestamp(),
         ...promoFields,
       });
+      // Only consume the whitelist entry once the listing (with
+      // businessPaidUntil already set) has actually been created — the
+      // create rule checks this entry still exists at write time to allow
+      // businessPaidUntil to be set at all, so deleting it beforehand would
+      // have made that write fail.
+      if (hadPromo) await deleteDoc(doc(db, "businessPromoWhitelist", emailLower)).catch(() => {});
     } else {
       const update = { name, phone, town, description, lastEditedAt: serverTimestamp() };
       if (currentMyBusinessData.everApproved) update.approved = false;
