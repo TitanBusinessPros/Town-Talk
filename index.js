@@ -535,7 +535,14 @@ exports.expireBusinessListings = onSchedule(
 // immediately on cancellation, same lookup.
 // -----------------------------------------------------------------------
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
-const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+// 3 separate secrets, not 1 — Stripe assigns a distinct signing secret per
+// webhook *destination*, and this project has 3 separate destinations
+// (rather than one destination subscribed to all 3 events) all posting to
+// this same function, so an incoming request could legitimately be signed
+// with any one of them.
+const stripeWebhookSecret1 = defineSecret("STRIPE_WEBHOOK_SECRET_1");
+const stripeWebhookSecret2 = defineSecret("STRIPE_WEBHOOK_SECRET_2");
+const stripeWebhookSecret3 = defineSecret("STRIPE_WEBHOOK_SECRET_3");
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const ONE_MONTH_MS = 31 * 24 * 60 * 60 * 1000;
@@ -596,33 +603,56 @@ async function revokeDiamondFromSubscription(subscription) {
     .catch((err) => console.error(`Stripe webhook: couldn't revoke diamond for customer ${subscription.customer}:`, err));
 }
 
-exports.stripeWebhook = onRequest({ secrets: [stripeSecretKey, stripeWebhookSecret] }, async (req, res) => {
-  const stripe = new Stripe(stripeSecretKey.value());
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(req.rawBody, req.headers["stripe-signature"], stripeWebhookSecret.value());
-  } catch (err) {
-    console.error("Stripe webhook signature verification failed:", err.message);
-    res.status(400).send(`Webhook Error: ${err.message}`);
-    return;
-  }
-
-  try {
-    if (event.type === "checkout.session.completed") {
-      await grantFromCheckout(event.data.object);
-    } else if (event.type === "invoice.payment_succeeded") {
-      await extendDiamondFromInvoice(event.data.object);
-    } else if (event.type === "customer.subscription.deleted") {
-      await revokeDiamondFromSubscription(event.data.object);
+// Tries each configured secret in turn against the incoming signature;
+// the first one that verifies wins. Blank/unset secrets (defineSecret
+// still resolves to an empty string if never given a value) are skipped.
+function verifyStripeSignature(stripe, rawBody, signatureHeader, candidateSecrets) {
+  let lastError = new Error("No Stripe webhook secrets configured");
+  for (const secret of candidateSecrets) {
+    if (!secret) continue;
+    try {
+      return stripe.webhooks.constructEvent(rawBody, signatureHeader, secret);
+    } catch (err) {
+      lastError = err;
     }
-    res.status(200).send("ok");
-  } catch (err) {
-    // Still 200 so Stripe doesn't retry forever on a bug on our end for an
-    // event that's already been logged loudly here.
-    console.error("Stripe webhook: error handling event", event.type, err);
-    res.status(200).send("logged error");
   }
-});
+  throw lastError;
+}
+
+exports.stripeWebhook = onRequest(
+  { secrets: [stripeSecretKey, stripeWebhookSecret1, stripeWebhookSecret2, stripeWebhookSecret3] },
+  async (req, res) => {
+    const stripe = new Stripe(stripeSecretKey.value());
+    let event;
+    try {
+      event = verifyStripeSignature(stripe, req.rawBody, req.headers["stripe-signature"], [
+        stripeWebhookSecret1.value(),
+        stripeWebhookSecret2.value(),
+        stripeWebhookSecret3.value(),
+      ]);
+    } catch (err) {
+      console.error("Stripe webhook signature verification failed:", err.message);
+      res.status(400).send(`Webhook Error: ${err.message}`);
+      return;
+    }
+
+    try {
+      if (event.type === "checkout.session.completed") {
+        await grantFromCheckout(event.data.object);
+      } else if (event.type === "invoice.payment_succeeded") {
+        await extendDiamondFromInvoice(event.data.object);
+      } else if (event.type === "customer.subscription.deleted") {
+        await revokeDiamondFromSubscription(event.data.object);
+      }
+      res.status(200).send("ok");
+    } catch (err) {
+      // Still 200 so Stripe doesn't retry forever on a bug on our end for an
+      // event that's already been logged loudly here.
+      console.error("Stripe webhook: error handling event", event.type, err);
+      res.status(200).send("logged error");
+    }
+  }
+);
 
 // Safety net alongside the webhook's own subscription.deleted handling —
 // clears expired membership flags even if a cancellation event is ever
