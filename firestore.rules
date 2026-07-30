@@ -486,6 +486,59 @@ service cloud.firestore {
                         ));
     }
 
+    match /cribbageGames/{gameId} {
+      allow read: if isSignedIn() && (
+        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
+        (resource.data.inviteTo == request.auth.uid) ||
+        (request.auth.uid in resource.data.participants)
+      );
+      allow create: if isSignedIn()
+                    && request.resource.data.player1Uid == request.auth.uid
+                    && request.resource.data.player2Uid == null
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.participants == [request.auth.uid]
+                    && (
+                         request.resource.data.inviteTo == null
+                         || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_cribbageGames_' + request.resource.data.inviteTo))
+                         || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_cribbageGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
+                       );
+      allow update: if isSignedIn()
+                    && (
+                      request.auth.uid in resource.data.participants
+                      || request.auth.uid == resource.data.player1Uid
+                      || request.auth.uid == resource.data.inviteTo
+                      || (resource.data.status == 'open'
+                          && resource.data.player2Uid == null
+                          && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
+                    );
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.status == 'open' && (
+                          request.auth.uid == resource.data.player1Uid
+                          || request.auth.uid == resource.data.inviteTo
+                        ));
+
+      // Phase 2: each player's hand stays hidden from the opponent until the
+      // show phase reveals it into the shared document above — only the
+      // owning player can ever read their own private hand doc.
+      match /private/{uid} {
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow create: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/cribbageGames/$(gameId)).data.participants;
+        // player1's client deals EVERY hand (first and all subsequent), which
+        // means re-dealing overwrites an already-existing doc — an update,
+        // not a create, in rules terms. A participant other than the doc's
+        // own owner may only perform that overwrite when it's structurally a
+        // fresh deal (exactly 6 cards, nothing discarded yet); the owner can
+        // always update their own doc for anything (discarding, playing a
+        // card, etc.).
+        allow update: if isSignedIn() && (
+          request.auth.uid == uid
+          || (request.auth.uid in get(/databases/$(database)/documents/cribbageGames/$(gameId)).data.participants
+              && request.resource.data.hand.size() == 6
+              && request.resource.data.cribHalf.size() == 0)
+        );
+      }
+    }
+
     match /conversations/{conversationId} {
       allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
       allow create, update: if isSignedIn()
