@@ -516,6 +516,16 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
           <option value="Davis">Davis</option>
           <option value="Sulphur">Sulphur</option>
           <option value="Paoli">Paoli</option>
+          <option value="Whitebead">Whitebead</option>
+          <option value="Maysville">Maysville</option>
+          <option value="Katie">Katie</option>
+          <option value="Stratford">Stratford</option>
+          <option value="Lindsay">Lindsay</option>
+          <option value="Roff">Roff</option>
+          <option value="Wanette">Wanette</option>
+          <option value="Wayne">Wayne</option>
+          <option value="Purcell">Purcell</option>
+          <option value="Marlow">Marlow</option>
         </select>
         <div class="form-row"><button type="submit">Save details</button></div>
         <div id="profile-message" class="message" style="display:none"></div>
@@ -753,6 +763,16 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
             <option value="Davis">Davis</option>
             <option value="Sulphur">Sulphur</option>
             <option value="Paoli">Paoli</option>
+            <option value="Whitebead">Whitebead</option>
+            <option value="Maysville">Maysville</option>
+            <option value="Katie">Katie</option>
+            <option value="Stratford">Stratford</option>
+            <option value="Lindsay">Lindsay</option>
+            <option value="Roff">Roff</option>
+            <option value="Wanette">Wanette</option>
+            <option value="Wayne">Wayne</option>
+            <option value="Purcell">Purcell</option>
+            <option value="Marlow">Marlow</option>
           </select>
           <label for="biz-description">Tell people about your business</label>
           <textarea id="biz-description" maxlength="6000" placeholder="What do you offer? Hours, specialties, anything neighbors should know."></textarea>
@@ -2169,7 +2189,10 @@ function renderCard(uid, data) {
   return card;
 }
 
-const TOWNS = ["Wynnewood", "Pauls Valley", "Elmore City", "Davis", "Sulphur", "Paoli"];
+const TOWNS = [
+  "Wynnewood", "Pauls Valley", "Elmore City", "Davis", "Sulphur", "Paoli",
+  "Whitebead", "Maysville", "Katie", "Stratford", "Lindsay", "Roff", "Wanette", "Wayne", "Purcell", "Marlow",
+];
 const TOP_PROFILES_LIMIT = 21;
 let selectedTown = "Pauls Valley";
 
@@ -3654,6 +3677,16 @@ const CHAT_ROOMS = [
   { id: "davis-chat", name: "Davis Chat" },
   { id: "paoli-chat", name: "Paoli Chat" },
   { id: "sulphur-chat", name: "Sulphur Chat" },
+  { id: "whitebead-chat", name: "Whitebead Chat" },
+  { id: "maysville-chat", name: "Maysville Chat" },
+  { id: "katie-chat", name: "Katie Chat" },
+  { id: "stratford-chat", name: "Stratford Chat" },
+  { id: "lindsay-chat", name: "Lindsay Chat" },
+  { id: "roff-chat", name: "Roff Chat" },
+  { id: "wanette-chat", name: "Wanette Chat" },
+  { id: "wayne-chat", name: "Wayne Chat" },
+  { id: "purcell-chat", name: "Purcell Chat" },
+  { id: "marlow-chat", name: "Marlow Chat" },
   { id: "singles-chat", name: "Singles Chat" },
   { id: "music-chat", name: "Music Chat" },
   { id: "events-chat", name: "Events Chat" },
