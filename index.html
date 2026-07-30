@@ -339,6 +339,17 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .pricing-card.featured { border-color: var(--amber-500); box-shadow: 0 0 0 2px rgba(193, 80, 46, 0.25); position: relative; }
 .pricing-card.diamond-tier { border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.25); }
 .pricing-tier-name { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-align: center; }
+
+.about-grid { display: flex; gap: 1.25rem; flex-wrap: wrap; justify-content: center; align-items: stretch; margin-top: 1.5rem; }
+.about-card { flex: 1 1 260px; max-width: 320px; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.75rem; }
+.about-card .about-card-icon { font-size: 1.75rem; margin-bottom: 0.5rem; }
+.about-card h2 { font-size: 1.1rem; text-align: left; margin-bottom: 0.6rem; }
+.about-card p { margin: 0; }
+.about-towns { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 1.25rem; }
+.about-town-chip { font-family: var(--font-mono); font-size: 0.78rem; background: var(--ink-700); color: var(--paper-050); padding: 0.3rem 0.7rem; border-radius: 999px; }
+.about-feature-list { max-width: 640px; margin: 1.5rem auto 0; }
+.about-feature-list li { margin-bottom: 0.6rem; line-height: 1.6; }
+.about-cta { text-align: center; margin-top: 2.5rem; padding: 2rem 1.5rem; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); }
 .pricing-price { font-family: var(--font-display); font-size: 2rem; font-weight: 600; text-align: center; color: var(--amber-500); }
 .pricing-price span { font-size: 0.9rem; font-weight: 400; color: var(--text-muted); font-family: var(--font-body); }
 .pricing-features { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
@@ -402,6 +413,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 <header class="site-header">
   <button class="brand" id="brand-link">Town<span class="brand-mark">Fuss</span></button>
   <nav class="nav-links">
+    <a href="#" id="nav-about">Why Town Fuss</a>
     <a href="#" id="nav-pricing" style="display:none">Pricing</a>
     <a href="#" id="nav-feed" style="display:none">Feed</a>
     <a href="#" id="nav-directory" style="display:none">Profiles</a>
@@ -441,6 +453,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <p class="eyebrow">Pauls Valley · Oklahoma</p>
         <h1>Sign in to your account</h1>
         <p>Create a free account with your email. Your profile stays private until our admin team reviews and approves it.</p>
+        <p><a href="#" id="landing-why-link">New here? See why Town Fuss is different &rarr;</a></p>
       </div>
 
       <div class="tabs">
@@ -872,6 +885,71 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       </div>
     </div>
     <p class="field-hint" style="text-align:center; margin-top:1.5rem;">Membership status updates automatically within a few minutes of payment.</p>
+  </section>
+
+  <!-- ================= ABOUT / WHY TOWN FUSS VIEW ================= -->
+  <section id="view-about" class="view">
+    <div class="view-header">
+      <p class="eyebrow">Town Fuss</p>
+      <h1>A community built for small-town Oklahoma — not the whole internet</h1>
+      <p>Most social platforms try to connect you with everyone, everywhere. Town Fuss does the opposite on purpose: it's built specifically for the people living in and around Pauls Valley — a place to actually meet your neighbors, not scroll past strangers three time zones away.</p>
+    </div>
+
+    <div class="about-grid">
+      <div class="about-card">
+        <div class="about-card-icon">🏡</div>
+        <h2>Small towns, not big cities</h2>
+        <p>Town Fuss isn't trying to be Facebook for the whole planet. It's made for Pauls Valley and the small Oklahoma towns around it — so when you post, message, or join a chat room, the people on the other end actually live nearby.</p>
+      </div>
+      <div class="about-card">
+        <div class="about-card-icon">🔞</div>
+        <h2>Adults only — actually enforced</h2>
+        <p>Most major platforms let anyone sign up, minors included. Town Fuss doesn't. Every account has to confirm they're 18 or older, and every profile is reviewed by a real admin before it ever goes live — so you know who you're actually talking to.</p>
+      </div>
+      <div class="about-card">
+        <div class="about-card-icon">🤝</div>
+        <h2>Built for meeting real neighbors</h2>
+        <p>Not endless scrolling — actual ways to connect: chat rooms by town and by topic, direct messages, friend requests, games you can play with people nearby, and a directory of local businesses run by people in your community.</p>
+      </div>
+    </div>
+
+    <div class="about-towns">
+      <span class="about-town-chip">Pauls Valley</span>
+      <span class="about-town-chip">Wynnewood</span>
+      <span class="about-town-chip">Elmore City</span>
+      <span class="about-town-chip">Davis</span>
+      <span class="about-town-chip">Sulphur</span>
+      <span class="about-town-chip">Paoli</span>
+      <span class="about-town-chip">Whitebead</span>
+      <span class="about-town-chip">Maysville</span>
+      <span class="about-town-chip">Katie</span>
+      <span class="about-town-chip">Stratford</span>
+      <span class="about-town-chip">Lindsay</span>
+      <span class="about-town-chip">Roff</span>
+      <span class="about-town-chip">Wanette</span>
+      <span class="about-town-chip">Wayne</span>
+      <span class="about-town-chip">Purcell</span>
+      <span class="about-town-chip">Marlow</span>
+    </div>
+
+    <div class="view-header" style="margin-top:2.5rem;">
+      <p class="eyebrow">What you get</p>
+      <h1 style="font-size:1.5rem;">Everything you need to actually be part of your community</h1>
+    </div>
+    <ul class="about-feature-list">
+      <li><strong>A real profile &amp; local directory</strong> — find and be found by neighbors in your town, reviewed and approved before it's ever public.</li>
+      <li><strong>Direct messaging</strong> — talk one-on-one with people you meet, free tier included, with higher limits for Gold/Diamond members.</li>
+      <li><strong>Chat rooms</strong> — a room for every town, plus topic rooms like Introduce Yourself, Food &amp; Recipes, Local Jobs, and Helping Hands.</li>
+      <li><strong>Games together</strong> — chess, checkers, WynneWars, golf, frisbee golf, and cribbage, playable against a friend nearby or online with other members.</li>
+      <li><strong>A local business directory</strong> — discover and support small businesses run by people in your own towns.</li>
+      <li><strong>Neighbor of the Week</strong> — a standing spotlight on active, friendly members of the community.</li>
+    </ul>
+
+    <div class="about-cta">
+      <h2 style="margin-bottom:0.75rem;">Ready to meet your neighbors?</h2>
+      <p style="margin-bottom:1.25rem;">It's free to join, and your profile stays private until it's approved.</p>
+      <button type="button" id="about-cta-signup-btn">Create your free account</button>
+    </div>
   </section>
 
   <!-- ================= MESSAGES VIEW ================= -->
@@ -1368,6 +1446,12 @@ document.getElementById("nav-friends").addEventListener("click", (e) => { e.prev
 document.getElementById("nav-chatrooms").addEventListener("click", (e) => { e.preventDefault(); showView("chatrooms"); });
 document.getElementById("nav-business").addEventListener("click", (e) => { e.preventDefault(); showView("business"); });
 document.getElementById("nav-pricing").addEventListener("click", (e) => { e.preventDefault(); showView("pricing"); });
+document.getElementById("nav-about").addEventListener("click", (e) => { e.preventDefault(); showView("about"); });
+document.getElementById("landing-why-link").addEventListener("click", (e) => { e.preventDefault(); showView("about"); });
+document.getElementById("about-cta-signup-btn").addEventListener("click", () => {
+  showView("landing");
+  document.querySelector('.tab[data-tab="signup"]').click();
+});
 document.getElementById("nav-notifications").addEventListener("click", (e) => {
   e.preventDefault();
   const panel = document.getElementById("notif-bell-panel");
