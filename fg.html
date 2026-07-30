@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>Golf — Town Fuss</title>
+<title>Frisbee Golf — Town Fuss</title>
 <link rel="icon" type="image/png" href="/Logo-Fav.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -71,23 +71,21 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 .mini-chat-form { display: flex; gap: 0.5rem; }
 .mini-chat-form input { flex: 1; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: var(--font-body); }
 
-/* ---- Golf-specific: the actual course canvas + shot controls ---- */
-.golf-canvas-wrap { text-align: center; }
-.golf-canvas-wrap canvas { background: #2d5a27; border-radius: 10px; border: 3px solid #4a752c; max-width: 100%; height: auto; touch-action: none; }
-.golf-hole-selector { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem; margin-top: 1rem; }
-.golf-hole-option { background: var(--ink-700); border-radius: var(--radius-sm); padding: 0.4rem; text-align: center; cursor: pointer; font-size: 0.72rem; font-family: var(--font-mono); }
-.golf-hole-option:hover { background: var(--line); }
-.golf-hole-option.active { background: var(--amber-500); color: #fff; font-weight: 600; }
-.golf-controls { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 1rem; }
-.golf-control-group { display: flex; flex-direction: column; gap: 0.4rem; }
-.golf-control-group label { font-weight: 600; font-size: 0.85rem; }
-.golf-control-group input[type="range"] { width: 100%; }
-.golf-control-group select { padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--line); font-family: var(--font-body); }
-.golf-stats { background: var(--ink-700); padding: 1rem; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
-.golf-stat-row { display: flex; justify-content: space-between; font-size: 0.88rem; }
-.golf-stat-row span:last-child { font-weight: 700; color: var(--amber-500); }
+/* ---- Frisbee golf-specific ---- */
+.fg-canvas-wrap { text-align: center; }
+.fg-canvas-wrap canvas { border-radius: 10px; border: 3px solid var(--sage-500); max-width: 100%; height: auto; touch-action: none; cursor: crosshair; display: block; margin: 0 auto; }
+.fg-players { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+.fg-player-card { flex: 1; background: var(--ink-700); border-radius: var(--radius-sm); padding: 0.75rem; text-align: center; font-size: 0.85rem; }
+.fg-player-card.active { background: rgba(193,80,46,0.15); border: 1px solid var(--amber-500); }
+.fg-player-card.completed { opacity: 0.6; }
+.fg-power-bar { width: 100%; height: 18px; background: var(--ink-700); border-radius: 999px; overflow: hidden; margin-top: 0.75rem; }
+.fg-power-fill { height: 100%; background: var(--amber-500); width: 0%; transition: width 0.05s; }
+.fg-hole-selector { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.4rem; margin-top: 1rem; }
+.fg-hole-option { background: var(--ink-700); border-radius: var(--radius-sm); padding: 0.4rem; text-align: center; cursor: pointer; font-size: 0.72rem; font-family: var(--font-mono); }
+.fg-hole-option:hover { background: var(--line); }
+.fg-hole-option.active { background: var(--amber-500); color: #fff; font-weight: 600; }
 @media (max-width: 480px) {
-  .golf-hole-selector { grid-template-columns: repeat(4, 1fr); }
+  .fg-hole-selector { grid-template-columns: repeat(4, 1fr); }
 }
 </style>
 </head>
@@ -106,7 +104,7 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 
   <div id="signed-out-notice" class="card" style="display:none; text-align:center;">
     <h2>Sign in on Town Fuss first</h2>
-    <p>You need a Town Fuss account to play golf with other members.</p>
+    <p>You need a Town Fuss account to play frisbee golf with other members.</p>
     <a href="index.html"><button type="button">Go to Town Fuss</button></a>
   </div>
 
@@ -117,22 +115,22 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
       <span class="eyebrow">Town Fuss</span>
       <h1>Games</h1>
       <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
-      <div class="card" style="max-width:280px; margin:0 auto; text-align:center; cursor:pointer;" id="game-tile-golf">
-        <img src="https://github.com/TitanBusinessPros/Golf-Game/raw/main/Golf%20Game%20Logo.png" alt="Golf" style="height:2.5rem; width:auto; margin:0 auto;" />
-        <h2 style="font-size:1.1rem; margin-top:0.5rem;">Golf</h2>
+      <div class="card" style="max-width:280px; margin:0 auto; text-align:center; cursor:pointer;" id="game-tile-fg">
+        <img src="https://github.com/TitanBusinessPros/Frisbee-Golf/raw/main/Frisbee%20Golf%20Game%20Logo.png" alt="Frisbee Golf" style="height:2.5rem; width:auto; margin:0 auto;" />
+        <h2 style="font-size:1.1rem; margin-top:0.5rem;">Frisbee Golf</h2>
         <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
       </div>
       <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
     </section>
 
-    <!-- ================= GOLF MODE SELECT ================= -->
+    <!-- ================= FRISBEE GOLF MODE SELECT ================= -->
     <section id="view-mode-select" style="display:none;">
       <button type="button" class="secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
-      <span class="eyebrow">Golf</span>
+      <span class="eyebrow">Frisbee Golf</span>
       <h1>How do you want to play?</h1>
       <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-ai">
         <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
-        <p class="field-hint" style="text-align:center;">Same device, choose a difficulty</p>
+        <p class="field-hint" style="text-align:center;">Same device, take turns with a simple AI</p>
       </div>
       <div class="card" style="max-width:320px; margin:0 auto 1rem; text-align:center; cursor:pointer;" id="mode-tile-2p">
         <h2 style="font-size:1.05rem;">👥 Two Player</h2>
@@ -144,46 +142,34 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
       </div>
     </section>
 
-    <!-- ================= LOCAL GAME (AI or same-device 2P) ================= -->
+    <!-- ================= LOCAL GAME (2P same-device; AI reuses the same view) ================= -->
     <section id="view-local-game" style="display:none;">
       <button type="button" class="secondary small" id="local-back-btn" style="margin-bottom:1rem;">&larr; Back</button>
-      <span class="eyebrow" id="local-mode-label">Golf</span>
-      <h1 id="local-mode-title">Play vs Computer</h1>
+      <span class="eyebrow">Frisbee Golf</span>
+      <h1 id="local-mode-title">Two Player</h1>
       <div class="card">
-        <div id="local-difficulty-row" style="display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-bottom:1rem;">
-          <label for="local-difficulty" style="font-size:0.85rem;">Difficulty:</label>
-          <select id="local-difficulty">
-            <option value="easy">Easy</option>
-            <option value="medium" selected>Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-        </div>
-        <div class="game-status" id="local-golf-status">Aim and adjust power to shoot!</div>
-        <div style="text-align:center; font-size:0.9rem; margin-bottom:0.5rem;" id="local-hole-info">Hole 1 • Par 3</div>
-        <div class="golf-canvas-wrap">
-          <canvas id="local-golf-canvas" width="800" height="500"></canvas>
-        </div>
-        <div class="golf-hole-selector" id="local-hole-selector"></div>
-        <div class="golf-controls">
-          <div class="golf-control-group">
-            <label>Shot Power: <span id="local-power-value">50%</span></label>
-            <input type="range" id="local-power" min="10" max="100" value="50" />
+        <div class="game-status" id="local-hole-info">Hole 1 of 24 — Par 3</div>
+        <div class="fg-players">
+          <div class="fg-player-card active" id="local-p1-card">
+            <strong>Player 1</strong>
+            <div>Total: <span id="local-p1-score">0</span></div>
+            <div>This hole: <span id="local-p1-throws">0</span> throws</div>
           </div>
-          <div class="golf-control-group">
-            <label>Shot Angle: <span id="local-angle-value">45°</span></label>
-            <input type="range" id="local-angle" min="0" max="360" value="45" />
+          <div class="fg-player-card" id="local-p2-card">
+            <strong id="local-p2-label">Player 2</strong>
+            <div>Total: <span id="local-p2-score">0</span></div>
+            <div>This hole: <span id="local-p2-throws">0</span> throws</div>
           </div>
         </div>
+        <div class="fg-canvas-wrap">
+          <canvas id="local-fg-canvas" width="800" height="600"></canvas>
+        </div>
+        <div class="fg-power-bar"><div class="fg-power-fill" id="local-power-fill"></div></div>
+        <p class="field-hint" style="text-align:center;">Touch/click and drag away from the disc to aim, release to throw.</p>
         <div class="game-controls">
-          <button type="button" id="local-shoot-btn">Take Shot</button>
-          <button type="button" class="secondary small" id="local-restart-btn">Restart</button>
-        </div>
-        <div class="golf-stats">
-          <div class="golf-stat-row"><span>Current Player:</span><span id="local-current-player">Player 1</span></div>
-          <div class="golf-stat-row"><span>Strokes:</span><span id="local-stroke-count">0</span></div>
-          <div class="golf-stat-row"><span>Player 1 Score:</span><span id="local-p1-score">0</span></div>
-          <div class="golf-stat-row"><span>Player 2 Score:</span><span id="local-p2-score">0</span></div>
-          <div class="golf-stat-row"><span>Current Hole:</span><span id="local-hole-display">1/24</span></div>
+          <button type="button" class="secondary small" id="local-reset-hole-btn">Reset Hole</button>
+          <button type="button" class="secondary small" id="local-restart-btn">Restart Game</button>
+          <button type="button" id="local-next-hole-btn" style="display:none;">Next Hole &rarr;</button>
         </div>
       </div>
     </section>
@@ -191,7 +177,7 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
     <!-- ================= WAITING ROOM ================= -->
     <section id="view-waiting" style="display:none;">
       <button type="button" class="secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
-      <span class="eyebrow">Golf</span>
+      <span class="eyebrow">Frisbee Golf</span>
       <h1>Waiting Room</h1>
       <p style="text-align:center;">Join an open table, invite a friend, or wait for someone to challenge you.</p>
 
@@ -227,9 +213,9 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 
     <!-- ================= LEADERBOARD ================= -->
     <section id="view-leaderboard" style="display:none;">
-      <span class="eyebrow">Golf</span>
+      <span class="eyebrow">Frisbee Golf</span>
       <h1>Leaderboard</h1>
-      <p style="text-align:center;">Win = 3 points, draw = 1 point. Lowest total score over 24 holes wins each match. Top 10 get a badge on their Town Fuss profile.</p>
+      <p style="text-align:center;">Win = 3 points, draw = 1 point. Lowest total throws over 24 holes wins each match. Top 10 get a badge on their Town Fuss profile.</p>
       <div class="card">
         <div id="leaderboard-list"></div>
         <div id="leaderboard-empty" class="empty-state" style="display:none;">No games played yet — be the first!</div>
@@ -241,33 +227,24 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
       <button type="button" class="secondary small" id="leave-table-btn" style="margin-bottom:1rem;">&larr; Back to Waiting Room</button>
       <div class="card">
         <div class="game-players">
-          <span id="golf-player1-label">Player 1: —</span>
-          <span id="golf-player2-label">Player 2: —</span>
+          <span id="fg-player1-label">Player 1: —</span>
+          <span id="fg-player2-label">Player 2: —</span>
         </div>
-        <div class="game-status" id="golf-status">Waiting for opponent...</div>
-        <div style="text-align:center; font-size:0.9rem; margin-bottom:0.5rem;" id="golf-hole-info">Hole 1 • Par 3</div>
-        <div class="golf-canvas-wrap">
-          <canvas id="golf-canvas" width="800" height="500"></canvas>
+        <div class="game-status" id="fg-status">Waiting for opponent...</div>
+        <div style="text-align:center; font-size:0.9rem; margin-bottom:0.5rem;" id="fg-hole-info">Hole 1 • Par 3</div>
+        <div class="fg-canvas-wrap">
+          <canvas id="fg-canvas" width="800" height="600"></canvas>
         </div>
-        <div class="golf-controls">
-          <div class="golf-control-group">
-            <label>Shot Power: <span id="golf-power-value">50%</span></label>
-            <input type="range" id="golf-power" min="10" max="100" value="50" />
-          </div>
-          <div class="golf-control-group">
-            <label>Shot Angle: <span id="golf-angle-value">45°</span></label>
-            <input type="range" id="golf-angle" min="0" max="360" value="45" />
-          </div>
-        </div>
+        <div class="fg-power-bar"><div class="fg-power-fill" id="fg-power-fill"></div></div>
+        <p class="field-hint" style="text-align:center;">On your turn: touch/click and drag away from the disc to aim, release to throw.</p>
         <div class="game-controls">
-          <button type="button" id="golf-shoot-btn">Take Shot</button>
-          <button type="button" id="golf-next-hole-btn" style="display:none;">Next Hole</button>
+          <button type="button" id="fg-next-hole-btn" style="display:none;">Next Hole &rarr;</button>
           <button type="button" class="secondary small" id="resign-btn">Resign</button>
         </div>
-        <div class="golf-stats">
-          <div class="golf-stat-row"><span>Strokes this hole:</span><span id="golf-stroke-count">0</span></div>
-          <div class="golf-stat-row"><span>Your total score:</span><span id="golf-my-total">0</span></div>
-          <div class="golf-stat-row"><span>Opponent total score:</span><span id="golf-opp-total">0</span></div>
+        <div class="fg-players" style="margin-top:1rem;">
+          <div class="fg-player-card"><strong>This hole</strong><div id="fg-throw-count">0 throws</div></div>
+          <div class="fg-player-card"><strong>Your total</strong><div id="fg-my-total">0</div></div>
+          <div class="fg-player-card"><strong>Opponent total</strong><div id="fg-opp-total">0</div></div>
         </div>
         <p class="field-hint" style="text-align:center; margin-top:0.75rem;">Once a game is active (an opponent has joined), Resign is how you leave it — the "Cancel" option only works before anyone has joined your table.</p>
       </div>
@@ -313,8 +290,6 @@ initializeAppCheck(app, {
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Local testing only — never runs against the real production site, which
-// is served from www.townfuss.com, not localhost.
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
@@ -405,22 +380,21 @@ function showView(name) {
 }
 
 document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
-document.getElementById("game-tile-golf").addEventListener("click", () => showView("mode-select"));
+document.getElementById("game-tile-fg").addEventListener("click", () => showView("mode-select"));
 document.getElementById("mode-select-back-btn").addEventListener("click", () => { location.href = "chess.html"; });
 document.getElementById("back-to-hub-btn").addEventListener("click", () => { location.href = "chess.html"; });
 document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
 document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
 document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
 
-document.getElementById("mode-tile-ai").addEventListener("click", () => startLocalGame("1player"));
-document.getElementById("mode-tile-2p").addEventListener("click", () => startLocalGame("2player"));
+document.getElementById("mode-tile-ai").addEventListener("click", () => startLocalFgGame("ai"));
+document.getElementById("mode-tile-2p").addEventListener("click", () => startLocalFgGame("2player"));
 document.getElementById("mode-tile-online").addEventListener("click", () => showView("waiting"));
 document.getElementById("local-back-btn").addEventListener("click", () => showView("mode-select"));
-document.getElementById("local-restart-btn").addEventListener("click", () => restartLocalGame());
 
 async function checkForActiveGame() {
   const q = query(
-    collection(db, "golfGames"),
+    collection(db, "fgGames"),
     where("participants", "array-contains", currentUid),
     where("status", "==", "active")
   );
@@ -439,7 +413,7 @@ function watchWaitingRoom() {
   if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
 
   const myActiveQ = query(
-    collection(db, "golfGames"),
+    collection(db, "fgGames"),
     where("participants", "array-contains", currentUid),
     where("status", "==", "active")
   );
@@ -449,7 +423,7 @@ function watchWaitingRoom() {
   }, (err) => console.error("My active game watch failed:", err));
 
   const openQ = query(
-    collection(db, "golfGames"),
+    collection(db, "fgGames"),
     where("status", "==", "open"),
     where("inviteTo", "==", null)
   );
@@ -482,7 +456,7 @@ function watchWaitingRoom() {
     empty.style.display = shown === 0 ? "block" : "none";
   }, (err) => console.error("Open tables watch failed:", err));
 
-  const inviteQ = query(collection(db, "golfGames"), where("inviteTo", "==", currentUid));
+  const inviteQ = query(collection(db, "fgGames"), where("inviteTo", "==", currentUid));
   unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
     const list = document.getElementById("my-invites-list");
     const empty = document.getElementById("my-invites-empty");
@@ -506,7 +480,7 @@ function watchWaitingRoom() {
       declineBtn.className = "secondary small";
       declineBtn.textContent = "Decline";
       declineBtn.style.marginLeft = "0.5rem";
-      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "golfGames", docSnap.id)).catch(() => {}));
+      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "fgGames", docSnap.id)).catch(() => {}));
       actions.appendChild(acceptBtn);
       actions.appendChild(declineBtn);
       row.appendChild(actions);
@@ -547,7 +521,7 @@ async function loadFriendsToInvite() {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "small";
-      btn.textContent = "Invite to golf";
+      btn.textContent = "Invite to frisbee golf";
       btn.addEventListener("click", () => createTable(otherUid, otherName));
       row.appendChild(btn);
       list.appendChild(row);
@@ -564,7 +538,7 @@ let myOpenTableId = null;
 document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
   if (!myOpenTableId) return;
   try {
-    await deleteDoc(doc(db, "golfGames", myOpenTableId));
+    await deleteDoc(doc(db, "fgGames", myOpenTableId));
   } catch (err) {
     alert(`Couldn't cancel table: ${err.message}`);
   }
@@ -588,10 +562,10 @@ async function checkInviteCooldown(gameCollectionName, inviteToUid, inviteToName
 async function createTable(inviteToUid, inviteToName) {
   const msg = document.getElementById("waiting-message");
   try {
-    if (inviteToUid && !(await checkInviteCooldown("golfGames", inviteToUid, inviteToName, msg))) return;
+    if (inviteToUid && !(await checkInviteCooldown("fgGames", inviteToUid, inviteToName, msg))) return;
 
-    const holeConfig = getHoleConfig(1);
-    const gameRef = doc(collection(db, "golfGames"));
+    const holeConfig = getFgHoleConfig(1);
+    const gameRef = doc(collection(db, "fgGames"));
     const batch = writeBatch(db);
     batch.set(gameRef, {
       player1Uid: currentUid,
@@ -605,11 +579,11 @@ async function createTable(inviteToUid, inviteToName) {
       currentHole: 1,
       par: holeConfig.par,
       currentPlayer: "player1",
-      ballPositions: {
-        player1: { x: holeConfig.ballX, y: holeConfig.ballY },
-        player2: { x: holeConfig.ballX, y: holeConfig.ballY },
+      frisbeePositions: {
+        player1: { x: holeConfig.start.x, y: holeConfig.start.y },
+        player2: { x: holeConfig.start.x, y: holeConfig.start.y },
       },
-      strokes: { player1: 0, player2: 0 },
+      throws: { player1: 0, player2: 0 },
       playersCompletedHole: { player1: false, player2: false },
       player1TotalScore: 0,
       player2TotalScore: 0,
@@ -620,10 +594,10 @@ async function createTable(inviteToUid, inviteToName) {
       updatedAt: serverTimestamp(),
     });
     if (inviteToUid) {
-      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_golfGames_${inviteToUid}`);
+      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_fgGames_${inviteToUid}`);
       batch.set(limitRef, {
         inviterUid: currentUid,
-        game: "golfGames",
+        game: "fgGames",
         inviteeUid: inviteToUid,
         lastInvitedAt: serverTimestamp(),
       });
@@ -636,21 +610,22 @@ async function createTable(inviteToUid, inviteToName) {
     }
   } catch (err) {
     // checkInviteCooldown() above already catches the normal case client-side
-    // — this only fires if that read raced the cooldown doc and the
-    // server-side rule caught it instead. Same friendly message either way,
-    // not the raw Firestore error.
+    // — this only fires if that read raced the cooldown doc (e.g. right
+    // after this same account's prior invite) and the server-side rule
+    // caught it instead. Same friendly message either way, not the raw
+    // Firestore error.
     if (inviteToUid && err.code === "permission-denied") {
       showMessage(msg, `You can invite ${inviteToName} again in about an hour.`, "error");
-      return;
+    } else {
+      showMessage(msg, err.message, "error");
     }
-    showMessage(msg, err.message, "error");
   }
 }
 
 async function joinTable(gameId, gameData) {
   const msg = document.getElementById("waiting-message");
   try {
-    await updateDoc(doc(db, "golfGames", gameId), {
+    await updateDoc(doc(db, "fgGames", gameId), {
       player2Uid: currentUid,
       player2Name: currentUserName,
       participants: [gameData.player1Uid, currentUid],
@@ -680,10 +655,10 @@ async function loadLeaderboard() {
     const players = [];
     snap.forEach((docSnap) => {
       const d = docSnap.data();
-      const points = d.golfPoints || 0;
-      const wins = d.golfWins || 0;
-      const losses = d.golfLosses || 0;
-      const draws = d.golfDraws || 0;
+      const points = d.fgPoints || 0;
+      const wins = d.fgWins || 0;
+      const losses = d.fgLosses || 0;
+      const draws = d.fgDraws || 0;
       if (points > 0 || wins > 0 || losses > 0 || draws > 0) {
         players.push({ name: d.profile?.name || "Neighbor", points, wins, losses, draws });
       }
@@ -708,153 +683,167 @@ async function loadLeaderboard() {
   }
 }
 
-// ============================= SHARED GOLF ENGINE ============================
-// Pure functions, take ctx explicitly — reused by both the local canvas and
-// the online canvas so the 24 unique holes only need to be defined once.
-function getHoleConfig(holeNumber) {
-  const holeConfigs = [
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 3 },
-    { ballX: 100, ballY: 450, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 150, par: 3 },
-    { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 5 },
-    { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 3 },
-    { ballX: 100, ballY: 250, holeX: 400, holeY: 250, par: 3 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 3 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 5 },
-    { ballX: 100, ballY: 450, holeX: 700, holeY: 100, par: 5 },
-    { ballX: 100, ballY: 250, holeX: 700, holeY: 250, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 3 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 4 },
-    { ballX: 100, ballY: 400, holeX: 700, holeY: 100, par: 5 },
-  ];
-  return holeConfigs[holeNumber - 1] || holeConfigs[0];
+// ============================= SHARED FRISBEE GOLF ENGINE ===================
+// 24 unique holes: par, start tee, basket, and obstacles (circles have r,
+// rectangles have w/h) — all in an 800x600 logical design space.
+const FG_HOLES = [
+  { par: 3, start: {x: 100, y: 300}, basket: {x: 700, y: 300}, obstacles: [] },
+  { par: 3, start: {x: 100, y: 500}, basket: {x: 700, y: 100}, obstacles: [{x: 400, y: 300, w: 80, h: 200}] },
+  { par: 4, start: {x: 100, y: 100}, basket: {x: 700, y: 500}, obstacles: [{x: 300, y: 250, r: 60}, {x: 500, y: 350, r: 60}] },
+  { par: 3, start: {x: 400, y: 550}, basket: {x: 400, y: 50}, obstacles: [{x: 250, y: 300, w: 300, h: 20}] },
+  { par: 4, start: {x: 100, y: 300}, basket: {x: 700, y: 300}, obstacles: [{x: 300, y: 200, w: 20, h: 200}, {x: 500, y: 200, w: 20, h: 200}] },
+  { par: 5, start: {x: 100, y: 500}, basket: {x: 700, y: 100}, obstacles: [{x: 250, y: 400, r: 50}, {x: 400, y: 250, r: 50}, {x: 550, y: 200, r: 50}] },
+  { par: 3, start: {x: 700, y: 300}, basket: {x: 100, y: 300}, obstacles: [{x: 400, y: 300, r: 70}] },
+  { par: 4, start: {x: 100, y: 100}, basket: {x: 700, y: 500}, obstacles: [{x: 200, y: 300, w: 400, h: 20}] },
+  { par: 4, start: {x: 400, y: 300}, basket: {x: 700, y: 100}, obstacles: [{x: 200, y: 150, r: 40}, {x: 550, y: 250, r: 40}] },
+  { par: 5, start: {x: 100, y: 300}, basket: {x: 700, y: 300}, obstacles: [{x: 250, y: 200, w: 20, h: 80}, {x: 400, y: 350, w: 20, h: 80}, {x: 550, y: 200, w: 20, h: 80}] },
+  { par: 4, start: {x: 100, y: 550}, basket: {x: 700, y: 50}, obstacles: [{x: 300, y: 400, r: 55}, {x: 500, y: 200, r: 55}] },
+  { par: 5, start: {x: 100, y: 100}, basket: {x: 700, y: 500}, obstacles: [{x: 300, y: 200, w: 60, h: 60}, {x: 450, y: 300, r: 50}, {x: 600, y: 350, w: 60, h: 60}] },
+  { par: 3, start: {x: 700, y: 100}, basket: {x: 100, y: 500}, obstacles: [{x: 400, y: 300, w: 30, h: 200}, {x: 500, y: 200, w: 30, h: 200}] },
+  { par: 4, start: {x: 100, y: 100}, basket: {x: 700, y: 100}, obstacles: [{x: 300, y: 200, r: 50}, {x: 500, y: 200, r: 50}] },
+  { par: 3, start: {x: 700, y: 500}, basket: {x: 100, y: 100}, obstacles: [{x: 400, y: 300, w: 150, h: 20}] },
+  { par: 4, start: {x: 100, y: 300}, basket: {x: 700, y: 300}, obstacles: [{x: 250, y: 200, r: 40}, {x: 400, y: 300, r: 40}, {x: 550, y: 400, r: 40}] },
+  { par: 5, start: {x: 100, y: 100}, basket: {x: 700, y: 500}, obstacles: [{x: 200, y: 200, w: 20, h: 100}, {x: 350, y: 300, w: 100, h: 20}, {x: 500, y: 400, w: 20, h: 100}] },
+  { par: 3, start: {x: 400, y: 50}, basket: {x: 400, y: 550}, obstacles: [{x: 250, y: 200, r: 35}, {x: 550, y: 400, r: 35}] },
+  { par: 4, start: {x: 700, y: 300}, basket: {x: 100, y: 300}, obstacles: [{x: 400, y: 200, w: 20, h: 200}, {x: 500, y: 200, w: 20, h: 200}, {x: 300, y: 200, w: 20, h: 200}] },
+  { par: 3, start: {x: 100, y: 500}, basket: {x: 700, y: 500}, obstacles: [{x: 250, y: 400, r: 45}, {x: 400, y: 400, r: 45}, {x: 550, y: 400, r: 45}] },
+  { par: 4, start: {x: 700, y: 100}, basket: {x: 100, y: 500}, obstacles: [{x: 400, y: 300, w: 200, h: 20}, {x: 300, y: 200, w: 20, h: 200}] },
+  { par: 5, start: {x: 100, y: 300}, basket: {x: 700, y: 300}, obstacles: [{x: 250, y: 200, r: 30}, {x: 350, y: 250, r: 30}, {x: 450, y: 300, r: 30}, {x: 550, y: 350, r: 30}] },
+  { par: 3, start: {x: 700, y: 500}, basket: {x: 100, y: 100}, obstacles: [{x: 400, y: 300, w: 100, h: 100}] },
+  { par: 4, start: {x: 100, y: 100}, basket: {x: 700, y: 500}, obstacles: [{x: 300, y: 200, w: 20, h: 200}, {x: 500, y: 200, w: 20, h: 200}, {x: 400, y: 300, r: 40}] },
+  { par: 5, start: {x: 100, y: 500}, basket: {x: 700, y: 100}, obstacles: [{x: 200, y: 400, w: 100, h: 20}, {x: 400, y: 300, w: 100, h: 20}, {x: 600, y: 200, w: 100, h: 20}] },
+];
+function getFgHoleConfig(holeNumber) {
+  return FG_HOLES[holeNumber - 1] || FG_HOLES[0];
 }
 
-function drawTree(ctx, x, y, size) {
-  ctx.fillStyle = "#8B4513";
-  ctx.fillRect(x - size / 6, y, size / 3, size);
-  ctx.fillStyle = "#2E8B57";
-  ctx.beginPath();
-  ctx.arc(x, y - size / 3, size / 2, 0, Math.PI * 2);
-  ctx.fill();
-}
-function drawSandTrap(ctx, x, y, width, height) {
-  ctx.fillStyle = "#F4A460";
-  ctx.fillRect(x, y, width, height);
-  ctx.strokeStyle = "#D2691E";
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 10; i++) {
-    const offsetX = Math.random() * width;
-    const offsetY = Math.random() * height;
-    ctx.beginPath();
-    ctx.arc(x + offsetX, y + offsetY, 2, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-}
-function drawWater(ctx, x, y, width, height) {
-  ctx.fillStyle = "#1E90FF";
-  ctx.fillRect(x, y, width, height);
-  ctx.strokeStyle = "#00BFFF";
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 15; i++) {
-    const offsetX = Math.random() * width;
-    const offsetY = Math.random() * height;
-    ctx.beginPath();
-    ctx.arc(x + offsetX, y + offsetY, 3, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-}
-function drawHill(ctx, x, y, width, height) {
-  ctx.fillStyle = "#3CB371";
-  ctx.beginPath();
-  ctx.moveTo(x, y + height);
-  ctx.bezierCurveTo(x + width / 2, y - height, x + width / 2, y - height, x + width, y + height);
-  ctx.closePath();
-  ctx.fill();
-}
-function drawFlower(ctx, x, y) {
-  ctx.strokeStyle = "#228B22";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(x, y - 15);
-  ctx.stroke();
-  ctx.fillStyle = "#FF69B4";
-  ctx.beginPath();
-  ctx.arc(x, y - 15, 5, 0, Math.PI * 2);
-  ctx.fill();
+const FRISBEE_RADIUS = 8;
+const CATCH_RADIUS = 50;
+
+function drawFgCourse(ctx, canvasWidth, canvasHeight, holeNumber, scaleX, scaleY) {
+  const hole = getFgHoleConfig(holeNumber);
+  const scale = Math.min(scaleX, scaleY);
+
+  const grad = ctx.createLinearGradient(0, 0, 0, canvasHeight);
+  grad.addColorStop(0, "#87CEEB");
+  grad.addColorStop(1, "#98D8C8");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  ctx.fillStyle = "#90EE90";
+  ctx.fillRect(0, canvasHeight * 0.15, canvasWidth, canvasHeight * 0.85);
+
+  hole.obstacles.forEach((obs) => {
+    if (obs.r) {
+      const radius = obs.r * scale;
+      ctx.fillStyle = "#8B4513";
+      ctx.fillRect(obs.x * scaleX - 10, obs.y * scaleY - 10, 20, 40);
+      ctx.fillStyle = "#228B22";
+      ctx.beginPath();
+      ctx.arc(obs.x * scaleX, obs.y * scaleY, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#1a6b1a";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "#A0522D";
+      ctx.fillRect(obs.x * scaleX, obs.y * scaleY, obs.w * scaleX, obs.h * scaleY);
+      ctx.strokeStyle = "#654321";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(obs.x * scaleX, obs.y * scaleY, obs.w * scaleX, obs.h * scaleY);
+    }
+  });
+
+  // Tee
   ctx.fillStyle = "#FFD700";
   ctx.beginPath();
-  ctx.arc(x, y - 15, 2, 0, Math.PI * 2);
+  ctx.arc(hole.start.x * scaleX, hole.start.y * scaleY, 15 * scale, 0, Math.PI * 2);
   ctx.fill();
-}
+  ctx.strokeStyle = "#FFA500";
+  ctx.lineWidth = 3;
+  ctx.stroke();
 
-function drawHoleElements(ctx, holeNumber) {
-  switch (holeNumber) {
-    case 1: drawTree(ctx, 400, 300, 30); drawTree(ctx, 600, 400, 25); drawSandTrap(ctx, 200, 200, 100, 50); break;
-    case 2: drawWater(ctx, 300, 250, 200, 100); drawTree(ctx, 500, 350, 35); drawSandTrap(ctx, 650, 150, 80, 40); break;
-    case 3: drawHill(ctx, 400, 350, 100, 50); drawHill(ctx, 200, 200, 80, 40); drawTree(ctx, 650, 300, 30); drawSandTrap(ctx, 550, 150, 70, 35); break;
-    case 4: drawSandTrap(ctx, 250, 200, 80, 40); drawSandTrap(ctx, 450, 350, 100, 60); drawSandTrap(ctx, 600, 150, 70, 50); drawSandTrap(ctx, 300, 400, 90, 45); break;
-    case 5: drawWater(ctx, 350, 200, 150, 200); drawTree(ctx, 200, 250, 30); drawTree(ctx, 550, 400, 35); drawSandTrap(ctx, 650, 100, 60, 40); break;
-    case 6: drawTree(ctx, 300, 200, 25); drawTree(ctx, 400, 300, 30); drawTree(ctx, 500, 250, 28); drawTree(ctx, 350, 400, 32); drawTree(ctx, 600, 350, 29); drawSandTrap(ctx, 200, 150, 70, 35); break;
-    case 7: drawWater(ctx, 250, 100, 400, 40); drawWater(ctx, 250, 400, 400, 40); drawTree(ctx, 500, 250, 40); drawSandTrap(ctx, 150, 200, 60, 50); break;
-    case 8: drawWater(ctx, 150, 150, 500, 300); drawSandTrap(ctx, 650, 100, 80, 40); break;
-    case 9: drawHill(ctx, 300, 300, 120, 60); drawHill(ctx, 500, 200, 100, 50); drawHill(ctx, 200, 400, 90, 45); drawTree(ctx, 650, 350, 35); drawSandTrap(ctx, 400, 150, 70, 35); break;
-    case 10: drawTree(ctx, 400, 250, 40); drawTree(ctx, 400, 350, 40); drawWater(ctx, 600, 200, 50, 200); drawSandTrap(ctx, 200, 300, 80, 40); break;
-    case 11: drawHill(ctx, 650, 100, 100, 80); drawWater(ctx, 300, 200, 150, 80); drawTree(ctx, 200, 300, 35); drawSandTrap(ctx, 500, 350, 90, 45); break;
-    case 12: drawWater(ctx, 200, 150, 120, 70); drawWater(ctx, 500, 350, 120, 70); drawSandTrap(ctx, 350, 250, 100, 60); drawTree(ctx, 150, 400, 30); drawTree(ctx, 650, 200, 35); break;
-    case 13: drawSandTrap(ctx, 300, 150, 100, 60); drawSandTrap(ctx, 500, 250, 120, 70); drawSandTrap(ctx, 200, 350, 90, 50); drawTree(ctx, 650, 400, 35); drawTree(ctx, 150, 200, 30); break;
-    case 14: drawWater(ctx, 400, 100, 30, 300); drawWater(ctx, 300, 150, 30, 200); drawWater(ctx, 500, 200, 30, 150); drawTree(ctx, 200, 250, 40); drawSandTrap(ctx, 600, 350, 100, 50); break;
-    case 15: drawWater(ctx, 350, 200, 200, 100); drawHill(ctx, 650, 100, 80, 60); drawSandTrap(ctx, 200, 150, 70, 35); drawTree(ctx, 500, 400, 38); break;
-    case 16: drawTree(ctx, 250, 180, 28); drawTree(ctx, 350, 220, 32); drawTree(ctx, 450, 280, 30); drawTree(ctx, 550, 320, 34); drawTree(ctx, 300, 380, 29); drawTree(ctx, 500, 180, 31); drawSandTrap(ctx, 650, 250, 80, 40); break;
-    case 17: drawSandTrap(ctx, 200, 100, 400, 60); drawSandTrap(ctx, 300, 300, 200, 80); drawWater(ctx, 600, 150, 100, 200); drawTree(ctx, 150, 400, 36); break;
-    case 18:
-      drawWater(ctx, 200, 150, 400, 80);
-      ctx.fillStyle = "#8B4513";
-      ctx.fillRect(350, 190, 100, 20);
-      drawSandTrap(ctx, 650, 300, 100, 60);
-      drawTree(ctx, 500, 250, 40);
-      break;
-    case 19:
-      drawHill(ctx, 400, 300, 150, 80);
-      ctx.fillStyle = "#FF4500";
-      ctx.fillRect(200, 200, 100, 100);
-      ctx.fillRect(500, 350, 80, 80);
-      drawSandTrap(ctx, 650, 150, 70, 40);
-      drawTree(ctx, 150, 400, 35);
-      break;
-    case 20: drawWater(ctx, 150, 150, 200, 200); drawWater(ctx, 450, 250, 200, 200); drawTree(ctx, 350, 150, 33); drawTree(ctx, 650, 350, 37); drawSandTrap(ctx, 300, 400, 90, 45); break;
-    case 21: drawWater(ctx, 250, 100, 50, 300); drawWater(ctx, 450, 100, 50, 300); drawTree(ctx, 350, 250, 39); drawSandTrap(ctx, 150, 200, 60, 40); drawSandTrap(ctx, 650, 300, 70, 45); break;
-    case 22: drawTree(ctx, 300, 200, 25); drawTree(ctx, 500, 300, 28); drawTree(ctx, 400, 400, 26); drawFlower(ctx, 200, 250); drawFlower(ctx, 600, 200); drawFlower(ctx, 350, 300); drawSandTrap(ctx, 650, 100, 80, 40); break;
-    case 23: drawWater(ctx, 300, 150, 150, 80); drawWater(ctx, 500, 300, 150, 80); drawSandTrap(ctx, 200, 250, 100, 60); drawSandTrap(ctx, 600, 200, 90, 50); drawTree(ctx, 400, 400, 40); drawTree(ctx, 650, 350, 35); drawTree(ctx, 150, 300, 32); break;
-    case 24: drawWater(ctx, 200, 100, 400, 50); drawWater(ctx, 200, 350, 400, 50); drawSandTrap(ctx, 300, 200, 200, 100); drawTree(ctx, 150, 250, 38); drawTree(ctx, 650, 250, 38); drawHill(ctx, 400, 150, 100, 60); break;
+  // Basket
+  ctx.fillStyle = "#FF4500";
+  ctx.beginPath();
+  ctx.arc(hole.basket.x * scaleX, hole.basket.y * scaleY, 30 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#8B0000";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(255, 215, 0, 0.5)";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.arc(hole.basket.x * scaleX, hole.basket.y * scaleY, CATCH_RADIUS * scale, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  for (let i = 0; i < 8; i++) {
+    const angle = ((Math.PI * 2) / 8) * i;
+    ctx.beginPath();
+    ctx.moveTo(hole.basket.x * scaleX, hole.basket.y * scaleY - 20 * scale);
+    ctx.lineTo(hole.basket.x * scaleX + Math.cos(angle) * 25 * scale, hole.basket.y * scaleY + Math.sin(angle) * 25 * scale);
+    ctx.strokeStyle = "#C0C0C0";
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 }
 
-function drawHoleCup(ctx, x, y) {
-  ctx.fillStyle = "#000";
+function drawFrisbeeDisc(ctx, x, y, color, scale) {
+  ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(x, y, 15, 0, Math.PI * 2);
+  ctx.arc(x, y, FRISBEE_RADIUS * scale, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(x, y, 10, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+  ctx.stroke();
 }
 
-function scoreLabel(strokes, par) {
-  const score = strokes - par;
+// Resolves wall + obstacle collisions in place on the given frisbee object
+// (mutates x/y/vx/vy) — shared by local and online physics steps so the
+// bounce behavior is identical in both.
+function resolveFgCollisions(frisbee, canvasWidth, canvasHeight, holeNumber, scaleX, scaleY) {
+  if (frisbee.x < FRISBEE_RADIUS || frisbee.x > canvasWidth - FRISBEE_RADIUS) {
+    frisbee.vx *= -0.7;
+    frisbee.x = Math.max(FRISBEE_RADIUS, Math.min(canvasWidth - FRISBEE_RADIUS, frisbee.x));
+  }
+  if (frisbee.y < FRISBEE_RADIUS || frisbee.y > canvasHeight - FRISBEE_RADIUS) {
+    frisbee.vy *= -0.7;
+    frisbee.y = Math.max(FRISBEE_RADIUS, Math.min(canvasHeight - FRISBEE_RADIUS, frisbee.y));
+  }
+
+  const hole = getFgHoleConfig(holeNumber);
+  hole.obstacles.forEach((obs) => {
+    if (obs.r) {
+      const radius = obs.r * Math.min(scaleX, scaleY);
+      const dx = frisbee.x - obs.x * scaleX;
+      const dy = frisbee.y - obs.y * scaleY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < radius + FRISBEE_RADIUS) {
+        const angle = Math.atan2(dy, dx);
+        frisbee.x = obs.x * scaleX + Math.cos(angle) * (radius + FRISBEE_RADIUS);
+        frisbee.y = obs.y * scaleY + Math.sin(angle) * (radius + FRISBEE_RADIUS);
+        frisbee.vx *= -0.5;
+        frisbee.vy *= -0.5;
+      }
+    } else {
+      const obsX = obs.x * scaleX, obsY = obs.y * scaleY, obsW = obs.w * scaleX, obsH = obs.h * scaleY;
+      if (
+        frisbee.x > obsX - FRISBEE_RADIUS && frisbee.x < obsX + obsW + FRISBEE_RADIUS &&
+        frisbee.y > obsY - FRISBEE_RADIUS && frisbee.y < obsY + obsH + FRISBEE_RADIUS
+      ) {
+        const cx = Math.max(obsX, Math.min(frisbee.x, obsX + obsW));
+        const cy = Math.max(obsY, Math.min(frisbee.y, obsY + obsH));
+        if (Math.abs(frisbee.x - cx) < FRISBEE_RADIUS) frisbee.vx *= -0.5;
+        if (Math.abs(frisbee.y - cy) < FRISBEE_RADIUS) frisbee.vy *= -0.5;
+      }
+    }
+  });
+}
+
+function scoreLabel(throws, par) {
+  const score = throws - par;
   if (score === 0) return "Par!";
   if (score === -1) return "Birdie!";
   if (score === -2) return "Eagle!";
@@ -865,308 +854,294 @@ function scoreLabel(strokes, par) {
 }
 
 // ============================= LOCAL PLAY (AI + same-device 2-player) ======
-let localGameState = {
-  currentHole: 1,
-  gameMode: "1player",
-  difficulty: "medium",
-  currentPlayer: 1,
-  strokes: { player1: 0, player2: 0 },
-  player1TotalScore: 0,
-  player2TotalScore: 0,
-  ballPositions: { player1: { x: 100, y: 400 }, player2: { x: 100, y: 400 } },
-  par: 3,
-  playersCompleted: { player1: false, player2: false },
-};
-let localBallVelocity = { x: 0, y: 0 };
-let localBallInMotion = false;
-let localHoleCompleted = false;
-let localWaitingForAIShot = false;
-
-const localCanvas = document.getElementById("local-golf-canvas");
+const localCanvas = document.getElementById("local-fg-canvas");
 const localCtx = localCanvas.getContext("2d");
-const localPowerSlider = document.getElementById("local-power");
-const localPowerValue = document.getElementById("local-power-value");
-const localAngleSlider = document.getElementById("local-angle");
-const localAngleValue = document.getElementById("local-angle-value");
+let localScaleX = 1, localScaleY = 1;
 
-function initLocalHoleSelector() {
-  const el = document.getElementById("local-hole-selector");
-  el.innerHTML = "";
-  for (let i = 1; i <= 24; i++) {
-    const opt = document.createElement("div");
-    opt.className = `golf-hole-option${i === localGameState.currentHole ? " active" : ""}`;
-    opt.textContent = `Hole ${i}`;
-    opt.addEventListener("click", () => {
-      localGameState.currentHole = i;
-      resetLocalHole();
-      initLocalHoleSelector();
-    });
-    el.appendChild(opt);
-  }
+let localFg = {
+  currentHole: 1,
+  gameMode: "2player",
+  currentPlayer: 1,
+  frisbee: { x: 0, y: 0, vx: 0, vy: 0 },
+  isDragging: false,
+  dragStart: { x: 0, y: 0 },
+  scores: [0, 0],
+  holeThrows: [0, 0],
+  hasCompletedHole: [false, false],
+  playerPositions: [{ x: 0, y: 0 }, { x: 0, y: 0 }],
+  isTransitioning: false,
+};
+
+function resizeLocalCanvas() {
+  const wrap = localCanvas.closest(".card");
+  const width = Math.max(280, (wrap ? wrap.clientWidth : 720) - 48);
+  localCanvas.width = width;
+  localCanvas.height = Math.round(width * 0.75);
+  localScaleX = localCanvas.width / 800;
+  localScaleY = localCanvas.height / 600;
 }
-
-function startLocalGame(mode) {
-  localGameState.gameMode = mode;
-  document.getElementById("local-mode-title").textContent = mode === "1player" ? "Play vs Computer" : "Two Player";
-  document.getElementById("local-difficulty-row").style.display = mode === "1player" ? "flex" : "none";
-  restartLocalGame();
-  showView("local-game");
-}
-
-function resetLocalHole() {
-  const holeConfig = getHoleConfig(localGameState.currentHole);
-  localGameState.ballPositions.player1 = { x: holeConfig.ballX, y: holeConfig.ballY };
-  localGameState.ballPositions.player2 = { x: holeConfig.ballX, y: holeConfig.ballY };
-  localGameState.par = holeConfig.par;
-  localGameState.strokes = { player1: 0, player2: 0 };
-  localGameState.currentPlayer = 1;
-  localGameState.playersCompleted = { player1: false, player2: false };
-  localBallInMotion = false;
-  localHoleCompleted = false;
-  localBallVelocity = { x: 0, y: 0 };
-  document.getElementById("local-golf-status").textContent = "Aim and adjust power to shoot!";
-  updateLocalUI();
-}
-
-function restartLocalGame() {
-  localGameState.currentHole = 1;
-  localGameState.player1TotalScore = 0;
-  localGameState.player2TotalScore = 0;
-  resetLocalHole();
-  initLocalHoleSelector();
-}
-
-function drawLocalGame() {
-  localCtx.clearRect(0, 0, localCanvas.width, localCanvas.height);
-  localCtx.fillStyle = "#2d5a27";
-  localCtx.fillRect(0, 0, localCanvas.width, localCanvas.height);
-  drawHoleElements(localCtx, localGameState.currentHole);
-  const holeConfig = getHoleConfig(localGameState.currentHole);
-  drawHoleCup(localCtx, holeConfig.holeX, holeConfig.holeY);
-
-  const ballPos = localGameState.ballPositions[`player${localGameState.currentPlayer}`];
-  localCtx.fillStyle = localGameState.currentPlayer === 1 ? "#ffffff" : "#ff4444";
-  localCtx.beginPath();
-  localCtx.arc(ballPos.x, ballPos.y, 10, 0, Math.PI * 2);
-  localCtx.fill();
-  localCtx.strokeStyle = "#000000";
-  localCtx.lineWidth = 2;
-  localCtx.stroke();
-
-  if (!localBallInMotion && !localHoleCompleted) {
-    const power = (parseInt(localPowerSlider.value, 10) / 100) * 2;
-    const angle = (parseInt(localAngleSlider.value, 10) * Math.PI) / 180;
-    const endX = ballPos.x + Math.cos(angle) * 50 * power;
-    const endY = ballPos.y - Math.sin(angle) * 50 * power;
-    localCtx.strokeStyle = "rgba(255, 255, 255, 0.7)";
-    localCtx.lineWidth = 2;
-    localCtx.setLineDash([5, 5]);
-    localCtx.beginPath();
-    localCtx.moveTo(ballPos.x, ballPos.y);
-    localCtx.lineTo(endX, endY);
-    localCtx.stroke();
-    localCtx.setLineDash([]);
-  }
-}
-
-function updateLocalUI() {
-  document.getElementById("local-hole-info").textContent = `Hole ${localGameState.currentHole} • Par ${localGameState.par}`;
-  document.getElementById("local-hole-display").textContent = `${localGameState.currentHole}/24`;
-  document.getElementById("local-current-player").textContent =
-    localGameState.gameMode === "1player" ? (localGameState.currentPlayer === 1 ? "You" : "AI") : `Player ${localGameState.currentPlayer}`;
-  document.getElementById("local-stroke-count").textContent = localGameState.strokes[`player${localGameState.currentPlayer}`];
-  document.getElementById("local-p1-score").textContent = localGameState.player1TotalScore;
-  document.getElementById("local-p2-score").textContent = localGameState.player2TotalScore;
-}
-
-function updateLocalBallPosition() {
-  localBallVelocity.x *= 0.98;
-  localBallVelocity.y *= 0.98;
-  const ballPos = localGameState.ballPositions[`player${localGameState.currentPlayer}`];
-  ballPos.x += localBallVelocity.x;
-  ballPos.y += localBallVelocity.y;
-  if (ballPos.x < 10) { ballPos.x = 10; localBallVelocity.x *= -0.7; }
-  if (ballPos.x > localCanvas.width - 10) { ballPos.x = localCanvas.width - 10; localBallVelocity.x *= -0.7; }
-  if (ballPos.y < 10) { ballPos.y = 10; localBallVelocity.y *= -0.7; }
-  if (ballPos.y > localCanvas.height - 10) { ballPos.y = localCanvas.height - 10; localBallVelocity.y *= -0.7; }
-
-  if (Math.abs(localBallVelocity.x) < 0.1 && Math.abs(localBallVelocity.y) < 0.1) {
-    localBallInMotion = false;
-    localBallVelocity = { x: 0, y: 0 };
-    // Reset the status message before checking for a hole-out — otherwise a
-    // shot that simply misses leaves "Ball in motion..." on screen forever,
-    // since nothing else ever clears it. checkLocalWinCondition() overwrites
-    // this with its own message if the ball actually did go in.
-    document.getElementById("local-golf-status").textContent = "Aim and adjust power to shoot!";
-    checkLocalWinCondition();
-  }
-}
-
-function checkLocalWinCondition() {
-  if (localHoleCompleted) return;
-  const holeConfig = getHoleConfig(localGameState.currentHole);
-  const ballPos = localGameState.ballPositions[`player${localGameState.currentPlayer}`];
-  const dx = ballPos.x - holeConfig.holeX;
-  const dy = ballPos.y - holeConfig.holeY;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-
-  if (distance < 18) {
-    localGameState.playersCompleted[`player${localGameState.currentPlayer}`] = true;
-    ballPos.x = holeConfig.holeX;
-    ballPos.y = holeConfig.holeY;
-    const strokes = localGameState.strokes[`player${localGameState.currentPlayer}`];
-    document.getElementById("local-golf-status").textContent = `Player ${localGameState.currentPlayer} completed the hole! ${scoreLabel(strokes, localGameState.par)}`;
-    if (localGameState.currentPlayer === 1) localGameState.player1TotalScore += strokes;
-    else localGameState.player2TotalScore += strokes;
-
-    const bothCompleted =
-      (localGameState.gameMode === "1player" && localGameState.playersCompleted.player2) ||
-      (localGameState.gameMode === "2player" && localGameState.playersCompleted.player1 && localGameState.playersCompleted.player2);
-
-    if (bothCompleted) {
-      localHoleCompleted = true;
-      if (localGameState.currentHole < 24) {
-        setTimeout(() => {
-          localGameState.currentHole++;
-          resetLocalHole();
-          initLocalHoleSelector();
-        }, 1800);
-      } else {
-        document.getElementById("local-golf-status").textContent = "You've completed all 24 holes!";
-      }
-    } else {
-      localGameState.currentPlayer = localGameState.gameMode === "1player" ? 2 : (localGameState.currentPlayer === 1 ? 2 : 1);
-      if (localGameState.gameMode === "1player") document.getElementById("local-golf-status").textContent = "AI's turn!";
-    }
-  }
-  updateLocalUI();
-}
-
-function takeLocalShot() {
-  if (localBallInMotion || localHoleCompleted) return;
-  localGameState.strokes[`player${localGameState.currentPlayer}`]++;
-  localBallInMotion = true;
-  document.getElementById("local-golf-status").textContent = "Ball in motion...";
-  const power = (parseInt(localPowerSlider.value, 10) / 100) * 15;
-  const angle = (parseInt(localAngleSlider.value, 10) * Math.PI) / 180;
-  localBallVelocity.x = Math.cos(angle) * power;
-  localBallVelocity.y = -Math.sin(angle) * power;
-}
-
-function simulateLocalAIShot() {
-  if (localBallInMotion || localHoleCompleted) return;
-  const holeConfig = getHoleConfig(localGameState.currentHole);
-  const ballPos = localGameState.ballPositions.player2;
-  const dx = holeConfig.holeX - ballPos.x;
-  const dy = holeConfig.holeY - ballPos.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  let targetAngle = Math.atan2(-dy, dx);
-  if (targetAngle < 0) targetAngle += Math.PI * 2;
-
-  let error = Math.PI / 6;
-  if (localGameState.difficulty === "easy") error = Math.PI / 3;
-  else if (localGameState.difficulty === "hard") error = Math.PI / 12;
-
-  const finalAngle = targetAngle + (Math.random() - 0.5) * error;
-  let power = Math.min(100, Math.max(20, (distance / 7) * (0.9 + Math.random() * 0.2)));
-  if (localGameState.difficulty === "easy") power *= 0.7 + Math.random() * 0.6;
-  else if (localGameState.difficulty === "hard") power *= 0.9 + Math.random() * 0.2;
-  power = Math.min(100, Math.max(10, power));
-
-  localAngleSlider.value = Math.round((finalAngle * 180) / Math.PI);
-  localPowerSlider.value = Math.round(power);
-  updateLocalSliderDisplays();
-  takeLocalShot();
-}
-
-function updateLocalSliderDisplays() {
-  localPowerValue.textContent = `${localPowerSlider.value}%`;
-  localAngleValue.textContent = `${localAngleSlider.value}°`;
-}
-localPowerSlider.addEventListener("input", updateLocalSliderDisplays);
-localAngleSlider.addEventListener("input", updateLocalSliderDisplays);
-document.getElementById("local-shoot-btn").addEventListener("click", takeLocalShot);
-
-document.getElementById("local-difficulty").addEventListener("change", (e) => {
-  localGameState.difficulty = e.target.value;
+window.addEventListener("resize", () => {
+  resizeLocalCanvas();
+  if (document.getElementById("view-local-game").style.display !== "none") drawLocalFg();
 });
 
-function localGameLoop() {
-  if (localBallInMotion) updateLocalBallPosition();
-  if (document.getElementById("view-local-game").style.display !== "none") {
-    drawLocalGame();
-    updateLocalUI();
+function startLocalFgGame(mode) {
+  localFg.gameMode = mode;
+  document.getElementById("local-mode-title").textContent = mode === "ai" ? "Play vs Computer" : "Two Player";
+  document.getElementById("local-p2-label").textContent = mode === "ai" ? "Computer" : "Player 2";
+  // Order matters: the section must be visible before resizeLocalCanvas()
+  // can read a real container width (a display:none ancestor reports 0),
+  // and the scale factors it computes must exist before restartLocalFgGame()
+  // positions the disc using them.
+  showView("local-game");
+  resizeLocalCanvas();
+  restartLocalFgGame();
+}
+
+function initLocalFgHole() {
+  const hole = getFgHoleConfig(localFg.currentHole);
+  localFg.playerPositions = [{ x: hole.start.x, y: hole.start.y }, { x: hole.start.x, y: hole.start.y }];
+  localFg.holeThrows = [0, 0];
+  localFg.hasCompletedHole = [false, false];
+  localFg.isTransitioning = false;
+  localFg.currentPlayer = 1;
+  localFg.frisbee = { x: hole.start.x * localScaleX, y: hole.start.y * localScaleY, vx: 0, vy: 0 };
+  document.getElementById("local-next-hole-btn").style.display = "none";
+  updateLocalFgUI();
+}
+
+function restartLocalFgGame() {
+  localFg.currentHole = 1;
+  localFg.scores = [0, 0];
+  initLocalFgHole();
+}
+
+function switchLocalFgPlayer() {
+  localFg.currentPlayer = localFg.currentPlayer === 1 ? 2 : 1;
+  const hole = getFgHoleConfig(localFg.currentHole);
+  const pos = localFg.playerPositions[localFg.currentPlayer - 1];
+  localFg.frisbee = { x: pos.x * localScaleX, y: pos.y * localScaleY, vx: 0, vy: 0 };
+  updateLocalFgUI();
+}
+
+function updateLocalFgUI() {
+  const hole = getFgHoleConfig(localFg.currentHole);
+  document.getElementById("local-hole-info").textContent = `Hole ${localFg.currentHole} of 24 — Par ${hole.par}`;
+  document.getElementById("local-p1-score").textContent = localFg.scores[0];
+  document.getElementById("local-p2-score").textContent = localFg.scores[1];
+  document.getElementById("local-p1-throws").textContent = localFg.holeThrows[0];
+  document.getElementById("local-p2-throws").textContent = localFg.holeThrows[1];
+  document.getElementById("local-p1-card").classList.toggle("active", localFg.currentPlayer === 1 && !localFg.hasCompletedHole[0]);
+  document.getElementById("local-p1-card").classList.toggle("completed", localFg.hasCompletedHole[0]);
+  const p2Card = document.getElementById("local-p2-card");
+  p2Card.style.display = localFg.gameMode === "ai" ? "none" : "block";
+  p2Card.classList.toggle("active", localFg.currentPlayer === 2 && !localFg.hasCompletedHole[1]);
+  p2Card.classList.toggle("completed", localFg.hasCompletedHole[1]);
+}
+
+function drawLocalFg() {
+  drawFgCourse(localCtx, localCanvas.width, localCanvas.height, localFg.currentHole, localScaleX, localScaleY);
+  drawFrisbeeDisc(localCtx, localFg.frisbee.x, localFg.frisbee.y, localFg.currentPlayer === 1 ? "#FF1493" : "#00BFFF", Math.min(localScaleX, localScaleY));
+
+  if (localFg.isDragging) {
+    localCtx.beginPath();
+    localCtx.moveTo(localFg.frisbee.x, localFg.frisbee.y);
+    localCtx.lineTo(localFg.dragStart.x, localFg.dragStart.y);
+    localCtx.strokeStyle = "rgba(0,0,0,0.5)";
+    localCtx.lineWidth = 3;
+    localCtx.stroke();
+    const dx = localFg.dragStart.x - localFg.frisbee.x;
+    const dy = localFg.dragStart.y - localFg.frisbee.y;
+    const power = Math.min(Math.sqrt(dx * dx + dy * dy) / 2, 100);
+    document.getElementById("local-power-fill").style.width = `${power}%`;
   }
-  if (
-    localGameState.gameMode === "1player" &&
-    localGameState.currentPlayer === 2 &&
-    !localBallInMotion &&
-    !localHoleCompleted &&
-    !localWaitingForAIShot
-  ) {
-    localWaitingForAIShot = true;
+}
+
+function updateLocalFgPhysics() {
+  if (localFg.frisbee.vx === 0 && localFg.frisbee.vy === 0) return;
+  localFg.frisbee.x += localFg.frisbee.vx;
+  localFg.frisbee.y += localFg.frisbee.vy;
+  localFg.frisbee.vx *= 0.98;
+  localFg.frisbee.vy *= 0.98;
+
+  if (Math.abs(localFg.frisbee.vx) < 0.1 && Math.abs(localFg.frisbee.vy) < 0.1) {
+    localFg.frisbee.vx = 0;
+    localFg.frisbee.vy = 0;
+    localFg.playerPositions[localFg.currentPlayer - 1] = { x: localFg.frisbee.x / localScaleX, y: localFg.frisbee.y / localScaleY };
+    if (localFg.gameMode === "2player" && !localFg.hasCompletedHole[localFg.currentPlayer - 1]) {
+      setTimeout(() => { if (!localFg.isTransitioning) switchLocalFgPlayer(); }, 800);
+    }
+  }
+
+  resolveFgCollisions(localFg.frisbee, localCanvas.width, localCanvas.height, localFg.currentHole, localScaleX, localScaleY);
+  checkLocalFgCatch();
+}
+
+function checkLocalFgCatch() {
+  if (localFg.isTransitioning || localFg.hasCompletedHole[localFg.currentPlayer - 1]) return;
+  const hole = getFgHoleConfig(localFg.currentHole);
+  const basketX = hole.basket.x * localScaleX, basketY = hole.basket.y * localScaleY;
+  const dx = localFg.frisbee.x - basketX, dy = localFg.frisbee.y - basketY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const speed = Math.sqrt(localFg.frisbee.vx * localFg.frisbee.vx + localFg.frisbee.vy * localFg.frisbee.vy);
+  const scale = Math.min(localScaleX, localScaleY);
+
+  if (dist < CATCH_RADIUS * scale && speed < 10) {
+    localFg.isTransitioning = true;
+    localFg.frisbee.vx = 0;
+    localFg.frisbee.vy = 0;
+    localFg.frisbee.x = basketX;
+    localFg.frisbee.y = basketY;
+    localFg.hasCompletedHole[localFg.currentPlayer - 1] = true;
+    localFg.scores[localFg.currentPlayer - 1] += localFg.holeThrows[localFg.currentPlayer - 1];
+    updateLocalFgUI();
+
     setTimeout(() => {
-      simulateLocalAIShot();
-      localWaitingForAIShot = false;
+      const bothDone = localFg.gameMode === "ai" || (localFg.hasCompletedHole[0] && localFg.hasCompletedHole[1]);
+      if (bothDone) {
+        if (localFg.currentHole < 24) {
+          setTimeout(() => { localFg.currentHole++; initLocalFgHole(); }, 800);
+        } else {
+          document.getElementById("local-next-hole-btn").style.display = "none";
+        }
+      } else {
+        switchLocalFgPlayer();
+      }
+      localFg.isTransitioning = false;
     }, 1200);
   }
-  requestAnimationFrame(localGameLoop);
 }
-requestAnimationFrame(localGameLoop);
 
-// ============================= ONLINE MULTIPLAYER GOLF ======================
+function handleLocalFgStart(x, y) {
+  if (localFg.isTransitioning || localFg.hasCompletedHole[localFg.currentPlayer - 1]) return;
+  if (localFg.frisbee.vx === 0 && localFg.frisbee.vy === 0) {
+    localFg.dragStart = { x, y };
+    localFg.isDragging = true;
+  }
+}
+function handleLocalFgMove(x, y) {
+  if (localFg.isDragging) localFg.dragStart = { x, y };
+}
+function handleLocalFgEnd() {
+  if (!localFg.isDragging) return;
+  const dx = localFg.frisbee.x - localFg.dragStart.x;
+  const dy = localFg.frisbee.y - localFg.dragStart.y;
+  localFg.frisbee.vx = dx * 0.15;
+  localFg.frisbee.vy = dy * 0.15;
+  localFg.isDragging = false;
+  localFg.holeThrows[localFg.currentPlayer - 1]++;
+  updateLocalFgUI();
+  document.getElementById("local-power-fill").style.width = "0%";
+  // The AI's own turn is scheduled from the physics loop (simulateLocalFgAiTurn())
+  // once the disc settles — nothing else to trigger here.
+}
+
+// Converts a page-space (clientX/clientY) point into the canvas's internal
+// pixel space. Necessary because these canvases render CSS-scaled
+// (max-width:100%) while their drawing/physics coordinates are relative to
+// the fixed width/height attribute — without this correction, touch/mouse
+// input would be silently misaligned any time the canvas displays smaller
+// than its native resolution, which is effectively always on this site's
+// 720px-wide page.
+function canvasPointFromEvent(canvasEl, clientX, clientY) {
+  const rect = canvasEl.getBoundingClientRect();
+  const scaleX = canvasEl.width / rect.width;
+  const scaleY = canvasEl.height / rect.height;
+  return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+}
+
+localCanvas.addEventListener("mousedown", (e) => { const p = canvasPointFromEvent(localCanvas, e.clientX, e.clientY); handleLocalFgStart(p.x, p.y); });
+localCanvas.addEventListener("mousemove", (e) => { const p = canvasPointFromEvent(localCanvas, e.clientX, e.clientY); handleLocalFgMove(p.x, p.y); });
+localCanvas.addEventListener("mouseup", () => handleLocalFgEnd());
+localCanvas.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.touches[0]; const p = canvasPointFromEvent(localCanvas, t.clientX, t.clientY); handleLocalFgStart(p.x, p.y); }, { passive: false });
+localCanvas.addEventListener("touchmove", (e) => { e.preventDefault(); const t = e.touches[0]; const p = canvasPointFromEvent(localCanvas, t.clientX, t.clientY); handleLocalFgMove(p.x, p.y); }, { passive: false });
+localCanvas.addEventListener("touchend", (e) => { e.preventDefault(); handleLocalFgEnd(); }, { passive: false });
+
+let localFgWaitingForAI = false;
+function simulateLocalFgAiTurn() {
+  if (localFg.gameMode !== "ai" || localFg.currentPlayer !== 2) return;
+  if (localFg.frisbee.vx !== 0 || localFg.frisbee.vy !== 0) return;
+  if (localFg.hasCompletedHole[1] || localFg.isTransitioning || localFgWaitingForAI) return;
+  localFgWaitingForAI = true;
+  setTimeout(() => {
+    const hole = getFgHoleConfig(localFg.currentHole);
+    const basketX = hole.basket.x * localScaleX, basketY = hole.basket.y * localScaleY;
+    const dx = basketX - localFg.frisbee.x, dy = basketY - localFg.frisbee.y;
+    const errorFactor = 0.75 + Math.random() * 0.5;
+    localFg.frisbee.vx = dx * 0.15 * errorFactor;
+    localFg.frisbee.vy = dy * 0.15 * errorFactor;
+    localFg.holeThrows[1]++;
+    updateLocalFgUI();
+    localFgWaitingForAI = false;
+  }, 900);
+}
+
+document.getElementById("local-reset-hole-btn").addEventListener("click", () => initLocalFgHole());
+document.getElementById("local-restart-btn").addEventListener("click", () => restartLocalFgGame());
+
+function localFgLoop() {
+  if (localFg.frisbee.vx !== 0 || localFg.frisbee.vy !== 0) updateLocalFgPhysics();
+  if (document.getElementById("view-local-game").style.display !== "none") drawLocalFg();
+  if (localFg.gameMode === "ai") simulateLocalFgAiTurn();
+  requestAnimationFrame(localFgLoop);
+}
+requestAnimationFrame(localFgLoop);
+
+// ============================= ONLINE MULTIPLAYER FRISBEE GOLF ==============
 let activeGameId = null;
 let activeGameData = null;
-let myPlayerNum = null; // "player1" | "player2"
-let netMirror = null;
-let netBallInMotion = false;
-let netBallVelocity = { x: 0, y: 0 };
+let myPlayerNum = null;
+let netFgMirror = null;
+let netFgDragging = false;
+let netFgDragStart = { x: 0, y: 0 };
 
-const golfCanvas = document.getElementById("golf-canvas");
-const golfCtx = golfCanvas.getContext("2d");
-const golfPowerSlider = document.getElementById("golf-power");
-const golfPowerValue = document.getElementById("golf-power-value");
-const golfAngleSlider = document.getElementById("golf-angle");
-const golfAngleValue = document.getElementById("golf-angle-value");
+const fgCanvas = document.getElementById("fg-canvas");
+const fgCtx = fgCanvas.getContext("2d");
+let netFrisbee = { x: 0, y: 0, vx: 0, vy: 0 };
 
-function makeNetMirror(data) {
+function makeFgMirror(data) {
   return {
     ...data,
-    ballPositions: {
-      player1: { ...data.ballPositions.player1 },
-      player2: { ...data.ballPositions.player2 },
+    frisbeePositions: {
+      player1: { ...data.frisbeePositions.player1 },
+      player2: { ...data.frisbeePositions.player2 },
     },
-    strokes: { ...data.strokes },
+    throws: { ...data.throws },
     playersCompletedHole: { ...data.playersCompletedHole },
   };
 }
 
-function bothCompletedThisHole() {
-  return !!(netMirror && netMirror.playersCompletedHole.player1 && netMirror.playersCompletedHole.player2);
+function bothFgCompletedThisHole() {
+  return !!(netFgMirror && netFgMirror.playersCompletedHole.player1 && netFgMirror.playersCompletedHole.player2);
 }
 
 function openGame(gameId) {
   activeGameId = gameId;
   showView("game");
   if (unsubscribeGame) unsubscribeGame();
-  unsubscribeGame = onSnapshot(doc(db, "golfGames", gameId), (snap) => {
+  unsubscribeGame = onSnapshot(doc(db, "fgGames", gameId), (snap) => {
     if (!snap.exists()) { showView("waiting"); return; }
     activeGameData = snap.data();
     myPlayerNum = activeGameData.player1Uid === currentUid ? "player1" : "player2";
-    if (!netBallInMotion) netMirror = makeNetMirror(activeGameData);
+    const frisbeeInMotion = netFrisbee.vx !== 0 || netFrisbee.vy !== 0;
+    if (!frisbeeInMotion) {
+      netFgMirror = makeFgMirror(activeGameData);
+      const pos = netFgMirror.frisbeePositions[netFgMirror.currentPlayer];
+      netFrisbee = { x: pos.x, y: pos.y, vx: 0, vy: 0 };
+    }
 
-    document.getElementById("golf-player1-label").textContent = `${activeGameData.player1Name || "—"} (White)`;
-    document.getElementById("golf-player2-label").textContent = activeGameData.player2Name ? `${activeGameData.player2Name} (Red)` : "Waiting for opponent...";
+    document.getElementById("fg-player1-label").textContent = `${activeGameData.player1Name || "—"} (Pink)`;
+    document.getElementById("fg-player2-label").textContent = activeGameData.player2Name ? `${activeGameData.player2Name} (Blue)` : "Waiting for opponent...";
 
-    updateGolfStatus();
-    updateGolfControls();
-    maybeRecordGolfStats();
+    updateFgStatus();
+    updateFgControls();
+    maybeRecordFgStats();
     watchMiniChat(gameId);
-  }, (err) => console.error("Golf game watch failed:", err));
+  }, (err) => console.error("Frisbee golf game watch failed:", err));
 }
 
-function updateGolfStatus() {
-  const statusEl = document.getElementById("golf-status");
+function updateFgStatus() {
+  const statusEl = document.getElementById("fg-status");
   if (!activeGameData) return;
   if (activeGameData.status === "open") { statusEl.textContent = "Waiting for an opponent to join..."; return; }
   if (activeGameData.status === "finished") {
@@ -1175,130 +1150,121 @@ function updateGolfStatus() {
     else statusEl.textContent = "You lost this one.";
     return;
   }
-  if (bothCompletedThisHole()) {
+  if (bothFgCompletedThisHole()) {
     statusEl.textContent = activeGameData.currentHole >= 24 ? "All 24 holes complete!" : "Hole complete — click Next Hole.";
     return;
   }
   const whoseTurnName = activeGameData.currentPlayer === "player1" ? activeGameData.player1Name : activeGameData.player2Name;
-  statusEl.textContent = activeGameData.currentPlayer === myPlayerNum ? "Your turn" : `${whoseTurnName || "Opponent"}'s turn`;
+  statusEl.textContent = activeGameData.currentPlayer === myPlayerNum ? "Your turn — drag the disc to throw" : `${whoseTurnName || "Opponent"}'s turn`;
 }
 
-function updateGolfControls() {
-  const isMyTurn = activeGameData && activeGameData.status === "active" && activeGameData.currentPlayer === myPlayerNum && !bothCompletedThisHole();
-  document.getElementById("golf-shoot-btn").disabled = !isMyTurn || netBallInMotion;
-  golfPowerSlider.disabled = !isMyTurn;
-  golfAngleSlider.disabled = !isMyTurn;
-  document.getElementById("golf-next-hole-btn").style.display = bothCompletedThisHole() && activeGameData.status === "active" ? "inline-flex" : "none";
-  document.getElementById("golf-hole-info").textContent = activeGameData ? `Hole ${activeGameData.currentHole} • Par ${activeGameData.par}` : "";
-  document.getElementById("golf-stroke-count").textContent = activeGameData ? activeGameData.strokes[myPlayerNum] : 0;
-  document.getElementById("golf-my-total").textContent = activeGameData ? activeGameData[myPlayerNum === "player1" ? "player1TotalScore" : "player2TotalScore"] : 0;
+function updateFgControls() {
+  document.getElementById("fg-next-hole-btn").style.display = bothFgCompletedThisHole() && activeGameData.status === "active" ? "inline-flex" : "none";
+  document.getElementById("fg-hole-info").textContent = activeGameData ? `Hole ${activeGameData.currentHole} • Par ${activeGameData.par}` : "";
+  document.getElementById("fg-throw-count").textContent = activeGameData ? `${activeGameData.throws[myPlayerNum]} throws` : "0 throws";
+  document.getElementById("fg-my-total").textContent = activeGameData ? activeGameData[myPlayerNum === "player1" ? "player1TotalScore" : "player2TotalScore"] : 0;
   const oppKey = myPlayerNum === "player1" ? "player2TotalScore" : "player1TotalScore";
-  document.getElementById("golf-opp-total").textContent = activeGameData ? activeGameData[oppKey] : 0;
+  document.getElementById("fg-opp-total").textContent = activeGameData ? activeGameData[oppKey] : 0;
 }
 
-function drawGolfGame() {
-  if (!netMirror) return;
-  golfCtx.clearRect(0, 0, golfCanvas.width, golfCanvas.height);
-  golfCtx.fillStyle = "#2d5a27";
-  golfCtx.fillRect(0, 0, golfCanvas.width, golfCanvas.height);
-  drawHoleElements(golfCtx, netMirror.currentHole);
-  const holeConfig = getHoleConfig(netMirror.currentHole);
-  drawHoleCup(golfCtx, holeConfig.holeX, holeConfig.holeY);
+function isMyFgTurn() {
+  return activeGameData && activeGameData.status === "active" && activeGameData.currentPlayer === myPlayerNum && !bothFgCompletedThisHole();
+}
 
-  const activePlayer = netMirror.currentPlayer;
-  const ballPos = netMirror.ballPositions[activePlayer];
-  golfCtx.fillStyle = activePlayer === "player1" ? "#ffffff" : "#ff4444";
-  golfCtx.beginPath();
-  golfCtx.arc(ballPos.x, ballPos.y, 10, 0, Math.PI * 2);
-  golfCtx.fill();
-  golfCtx.strokeStyle = "#000000";
-  golfCtx.lineWidth = 2;
-  golfCtx.stroke();
+function drawNetFg() {
+  if (!netFgMirror) return;
+  drawFgCourse(fgCtx, fgCanvas.width, fgCanvas.height, netFgMirror.currentHole, 1, 1);
+  const activePlayer = netFgMirror.currentPlayer;
+  drawFrisbeeDisc(fgCtx, netFrisbee.x, netFrisbee.y, activePlayer === "player1" ? "#FF1493" : "#00BFFF", 1);
 
-  if (!netBallInMotion && activePlayer === myPlayerNum && netMirror.status === "active" && !bothCompletedThisHole()) {
-    const power = (parseInt(golfPowerSlider.value, 10) / 100) * 2;
-    const angle = (parseInt(golfAngleSlider.value, 10) * Math.PI) / 180;
-    const endX = ballPos.x + Math.cos(angle) * 50 * power;
-    const endY = ballPos.y - Math.sin(angle) * 50 * power;
-    golfCtx.strokeStyle = "rgba(255, 255, 255, 0.7)";
-    golfCtx.lineWidth = 2;
-    golfCtx.setLineDash([5, 5]);
-    golfCtx.beginPath();
-    golfCtx.moveTo(ballPos.x, ballPos.y);
-    golfCtx.lineTo(endX, endY);
-    golfCtx.stroke();
-    golfCtx.setLineDash([]);
+  if (netFgDragging) {
+    fgCtx.beginPath();
+    fgCtx.moveTo(netFrisbee.x, netFrisbee.y);
+    fgCtx.lineTo(netFgDragStart.x, netFgDragStart.y);
+    fgCtx.strokeStyle = "rgba(0,0,0,0.5)";
+    fgCtx.lineWidth = 3;
+    fgCtx.stroke();
+    const dx = netFgDragStart.x - netFrisbee.x, dy = netFgDragStart.y - netFrisbee.y;
+    const power = Math.min(Math.sqrt(dx * dx + dy * dy) / 2, 100);
+    document.getElementById("fg-power-fill").style.width = `${power}%`;
   }
 }
 
-function updateNetBallPosition() {
-  netBallVelocity.x *= 0.98;
-  netBallVelocity.y *= 0.98;
-  const ballPos = netMirror.ballPositions[myPlayerNum];
-  ballPos.x += netBallVelocity.x;
-  ballPos.y += netBallVelocity.y;
-  if (ballPos.x < 10) { ballPos.x = 10; netBallVelocity.x *= -0.7; }
-  if (ballPos.x > golfCanvas.width - 10) { ballPos.x = golfCanvas.width - 10; netBallVelocity.x *= -0.7; }
-  if (ballPos.y < 10) { ballPos.y = 10; netBallVelocity.y *= -0.7; }
-  if (ballPos.y > golfCanvas.height - 10) { ballPos.y = golfCanvas.height - 10; netBallVelocity.y *= -0.7; }
+function updateNetFgPhysics() {
+  netFrisbee.x += netFrisbee.vx;
+  netFrisbee.y += netFrisbee.vy;
+  netFrisbee.vx *= 0.98;
+  netFrisbee.vy *= 0.98;
+  resolveFgCollisions(netFrisbee, fgCanvas.width, fgCanvas.height, netFgMirror.currentHole, 1, 1);
 
-  if (Math.abs(netBallVelocity.x) < 0.1 && Math.abs(netBallVelocity.y) < 0.1) {
-    netBallInMotion = false;
-    netBallVelocity = { x: 0, y: 0 };
-    finalizeNetShot();
+  if (Math.abs(netFrisbee.vx) < 0.1 && Math.abs(netFrisbee.vy) < 0.1) {
+    netFrisbee.vx = 0;
+    netFrisbee.vy = 0;
+    finalizeNetFgThrow();
   }
 }
 
-async function finalizeNetShot() {
-  const holeConfig = getHoleConfig(netMirror.currentHole);
-  const ballPos = netMirror.ballPositions[myPlayerNum];
-  const dx = ballPos.x - holeConfig.holeX;
-  const dy = ballPos.y - holeConfig.holeY;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  const holedOut = distance < 18;
+async function finalizeNetFgThrow() {
+  const hole = getFgHoleConfig(netFgMirror.currentHole);
+  const dx = netFrisbee.x - hole.basket.x, dy = netFrisbee.y - hole.basket.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const caught = dist < CATCH_RADIUS;
 
+  netFgMirror.frisbeePositions[myPlayerNum] = { x: netFrisbee.x, y: netFrisbee.y };
   const update = {
-    ballPositions: netMirror.ballPositions,
-    strokes: netMirror.strokes,
+    frisbeePositions: netFgMirror.frisbeePositions,
+    throws: netFgMirror.throws,
     updatedAt: serverTimestamp(),
   };
 
-  if (holedOut) {
-    ballPos.x = holeConfig.holeX;
-    ballPos.y = holeConfig.holeY;
-    update.ballPositions = netMirror.ballPositions;
-    const completed = { ...netMirror.playersCompletedHole, [myPlayerNum]: true };
+  if (caught) {
+    netFrisbee.x = hole.basket.x;
+    netFrisbee.y = hole.basket.y;
+    netFgMirror.frisbeePositions[myPlayerNum] = { x: hole.basket.x, y: hole.basket.y };
+    update.frisbeePositions = netFgMirror.frisbeePositions;
+    const completed = { ...netFgMirror.playersCompletedHole, [myPlayerNum]: true };
     update.playersCompletedHole = completed;
     const scoreField = myPlayerNum === "player1" ? "player1TotalScore" : "player2TotalScore";
-    update[scoreField] = (netMirror[scoreField] || 0) + netMirror.strokes[myPlayerNum];
+    update[scoreField] = (netFgMirror[scoreField] || 0) + netFgMirror.throws[myPlayerNum];
 
     const otherPlayer = myPlayerNum === "player1" ? "player2" : "player1";
     if (!completed[otherPlayer]) update.currentPlayer = otherPlayer;
   }
 
   try {
-    await updateDoc(doc(db, "golfGames", activeGameId), update);
+    await updateDoc(doc(db, "fgGames", activeGameId), update);
   } catch (err) {
-    alert(`Couldn't submit shot: ${err.message}`);
+    alert(`Couldn't submit throw: ${err.message}`);
   }
 }
 
-function takeNetShot() {
-  if (!activeGameData || activeGameData.status !== "active" || !netMirror) return;
-  if (activeGameData.currentPlayer !== myPlayerNum) return;
-  if (netBallInMotion || bothCompletedThisHole()) return;
-
-  netMirror.strokes[myPlayerNum]++;
-  netBallInMotion = true;
-  const power = (parseInt(golfPowerSlider.value, 10) / 100) * 15;
-  const angle = (parseInt(golfAngleSlider.value, 10) * Math.PI) / 180;
-  netBallVelocity.x = Math.cos(angle) * power;
-  netBallVelocity.y = -Math.sin(angle) * power;
+function handleNetFgStart(x, y) {
+  if (!isMyFgTurn() || netFrisbee.vx !== 0 || netFrisbee.vy !== 0) return;
+  netFgDragStart = { x, y };
+  netFgDragging = true;
 }
-document.getElementById("golf-shoot-btn").addEventListener("click", takeNetShot);
+function handleNetFgMove(x, y) {
+  if (netFgDragging) netFgDragStart = { x, y };
+}
+function handleNetFgEnd() {
+  if (!netFgDragging) return;
+  const dx = netFrisbee.x - netFgDragStart.x, dy = netFrisbee.y - netFgDragStart.y;
+  netFrisbee.vx = dx * 0.15;
+  netFrisbee.vy = dy * 0.15;
+  netFgDragging = false;
+  netFgMirror.throws[myPlayerNum] = (netFgMirror.throws[myPlayerNum] || 0) + 1;
+  document.getElementById("fg-power-fill").style.width = "0%";
+}
 
-async function advanceHole() {
-  if (!activeGameData || !bothCompletedThisHole()) return;
+fgCanvas.addEventListener("mousedown", (e) => { const p = canvasPointFromEvent(fgCanvas, e.clientX, e.clientY); handleNetFgStart(p.x, p.y); });
+fgCanvas.addEventListener("mousemove", (e) => { const p = canvasPointFromEvent(fgCanvas, e.clientX, e.clientY); handleNetFgMove(p.x, p.y); });
+fgCanvas.addEventListener("mouseup", () => handleNetFgEnd());
+fgCanvas.addEventListener("touchstart", (e) => { e.preventDefault(); const t = e.touches[0]; const p = canvasPointFromEvent(fgCanvas, t.clientX, t.clientY); handleNetFgStart(p.x, p.y); }, { passive: false });
+fgCanvas.addEventListener("touchmove", (e) => { e.preventDefault(); const t = e.touches[0]; const p = canvasPointFromEvent(fgCanvas, t.clientX, t.clientY); handleNetFgMove(p.x, p.y); }, { passive: false });
+fgCanvas.addEventListener("touchend", (e) => { e.preventDefault(); handleNetFgEnd(); }, { passive: false });
+
+async function advanceFgHole() {
+  if (!activeGameData || !bothFgCompletedThisHole()) return;
   const nextHoleNum = activeGameData.currentHole + 1;
   try {
     if (nextHoleNum > 24) {
@@ -1307,18 +1273,18 @@ async function advanceHole() {
       let winner = "draw";
       if (p1 < p2) winner = activeGameData.player1Uid;
       else if (p2 < p1) winner = activeGameData.player2Uid;
-      await updateDoc(doc(db, "golfGames", activeGameId), { status: "finished", winner, updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, "fgGames", activeGameId), { status: "finished", winner, updatedAt: serverTimestamp() });
       return;
     }
-    const holeConfig = getHoleConfig(nextHoleNum);
-    await updateDoc(doc(db, "golfGames", activeGameId), {
+    const holeConfig = getFgHoleConfig(nextHoleNum);
+    await updateDoc(doc(db, "fgGames", activeGameId), {
       currentHole: nextHoleNum,
       par: holeConfig.par,
-      ballPositions: {
-        player1: { x: holeConfig.ballX, y: holeConfig.ballY },
-        player2: { x: holeConfig.ballX, y: holeConfig.ballY },
+      frisbeePositions: {
+        player1: { x: holeConfig.start.x, y: holeConfig.start.y },
+        player2: { x: holeConfig.start.x, y: holeConfig.start.y },
       },
-      strokes: { player1: 0, player2: 0 },
+      throws: { player1: 0, player2: 0 },
       playersCompletedHole: { player1: false, player2: false },
       currentPlayer: "player1",
       updatedAt: serverTimestamp(),
@@ -1327,14 +1293,14 @@ async function advanceHole() {
     alert(`Couldn't advance to the next hole: ${err.message}`);
   }
 }
-document.getElementById("golf-next-hole-btn").addEventListener("click", advanceHole);
+document.getElementById("fg-next-hole-btn").addEventListener("click", advanceFgHole);
 
 document.getElementById("resign-btn").addEventListener("click", async () => {
   if (!activeGameData || activeGameData.status !== "active") return;
   if (!confirm("Resign this game?")) return;
   const winnerUid = myPlayerNum === "player1" ? activeGameData.player2Uid : activeGameData.player1Uid;
   try {
-    await updateDoc(doc(db, "golfGames", activeGameId), {
+    await updateDoc(doc(db, "fgGames", activeGameId), {
       status: "finished",
       winner: winnerUid,
       updatedAt: serverTimestamp(),
@@ -1344,25 +1310,18 @@ document.getElementById("resign-btn").addEventListener("click", async () => {
   }
 });
 
-function updateGolfSliderDisplays() {
-  golfPowerValue.textContent = `${golfPowerSlider.value}%`;
-  golfAngleValue.textContent = `${golfAngleSlider.value}°`;
-}
-golfPowerSlider.addEventListener("input", updateGolfSliderDisplays);
-golfAngleSlider.addEventListener("input", updateGolfSliderDisplays);
-
-function golfGameLoop() {
-  if (netBallInMotion && netMirror) updateNetBallPosition();
+function fgGameLoop() {
+  if (netFrisbee.vx !== 0 || netFrisbee.vy !== 0) updateNetFgPhysics();
   if (activeGameId && document.getElementById("view-game").style.display !== "none") {
-    drawGolfGame();
-    updateGolfStatus();
-    updateGolfControls();
+    drawNetFg();
+    updateFgStatus();
+    updateFgControls();
   }
-  requestAnimationFrame(golfGameLoop);
+  requestAnimationFrame(fgGameLoop);
 }
-requestAnimationFrame(golfGameLoop);
+requestAnimationFrame(fgGameLoop);
 
-async function recordGolfStatsForGame(gameId, gameData) {
+async function recordFgStatsForGame(gameId, gameData) {
   const isP1 = gameData.player1Uid === currentUid;
   const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
   if (alreadyRecorded) return;
@@ -1372,35 +1331,35 @@ async function recordGolfStatsForGame(gameId, gameData) {
   const pointsEarned = won ? 3 : draw ? 1 : 0;
 
   try {
-    await updateDoc(doc(db, "golfGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
+    await updateDoc(doc(db, "fgGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
     const userSnap = await getDoc(doc(db, "users", currentUid));
     const data = userSnap.exists() ? userSnap.data() : {};
     await updateDoc(doc(db, "users", currentUid), {
-      golfPoints: (data.golfPoints || 0) + pointsEarned,
-      golfWins: (data.golfWins || 0) + (won ? 1 : 0),
-      golfLosses: (data.golfLosses || 0) + (!won && !draw ? 1 : 0),
-      golfDraws: (data.golfDraws || 0) + (draw ? 1 : 0),
+      fgPoints: (data.fgPoints || 0) + pointsEarned,
+      fgWins: (data.fgWins || 0) + (won ? 1 : 0),
+      fgLosses: (data.fgLosses || 0) + (!won && !draw ? 1 : 0),
+      fgDraws: (data.fgDraws || 0) + (draw ? 1 : 0),
     });
   } catch (err) {
-    console.error("Couldn't record golf stats:", err);
+    console.error("Couldn't record frisbee golf stats:", err);
   }
 }
 
-async function maybeRecordGolfStats() {
+async function maybeRecordFgStats() {
   if (!activeGameData || activeGameData.status !== "finished") return;
-  await recordGolfStatsForGame(activeGameId, activeGameData);
+  await recordFgStatsForGame(activeGameId, activeGameData);
 }
 
 async function reconcileFinishedGames() {
   try {
-    const q = query(collection(db, "golfGames"), where("participants", "array-contains", currentUid));
+    const q = query(collection(db, "fgGames"), where("participants", "array-contains", currentUid));
     const snap = await getDocs(q);
     for (const docSnap of snap.docs) {
       const g = docSnap.data();
       if (g.status !== "finished") continue;
       const isP1 = g.player1Uid === currentUid;
       const alreadyRecorded = isP1 ? g.p1StatsRecorded : g.p2StatsRecorded;
-      if (!alreadyRecorded) await recordGolfStatsForGame(docSnap.id, g);
+      if (!alreadyRecorded) await recordFgStatsForGame(docSnap.id, g);
     }
   } catch (err) {
     console.error("Couldn't reconcile finished games:", err);

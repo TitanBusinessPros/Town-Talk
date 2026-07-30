@@ -130,6 +130,11 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
           <h2 style="font-size:1.1rem; margin-top:0.5rem;">Golf</h2>
           <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
         </div>
+        <div class="card" style="max-width:280px; text-align:center; cursor:pointer;" id="game-tile-fg">
+          <img src="https://github.com/TitanBusinessPros/Frisbee-Golf/raw/main/Frisbee%20Golf%20Game%20Logo.png" alt="Frisbee Golf" style="height:2.5rem; width:auto; margin:0 auto;" />
+          <h2 style="font-size:1.1rem; margin-top:0.5rem;">Frisbee Golf</h2>
+          <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
+        </div>
       </div>
       <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
     </section>
@@ -382,6 +387,7 @@ document.getElementById("game-tile-chess").addEventListener("click", () => showV
 document.getElementById("game-tile-checkers").addEventListener("click", () => { location.href = "checkers.html"; });
 document.getElementById("game-tile-wynnewars").addEventListener("click", () => { location.href = "ww.html"; });
 document.getElementById("game-tile-golf").addEventListener("click", () => { location.href = "golf.html"; });
+document.getElementById("game-tile-fg").addEventListener("click", () => { location.href = "fg.html"; });
 document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
@@ -610,6 +616,14 @@ async function createTable(inviteToUid, inviteToName) {
       openGame(gameRef.id);
     }
   } catch (err) {
+    // checkInviteCooldown() above already catches the normal case client-side
+    // — this only fires if that read raced the cooldown doc and the
+    // server-side rule caught it instead. Same friendly message either way,
+    // not the raw Firestore error.
+    if (inviteToUid && err.code === "permission-denied") {
+      showMessage(msg, `You can invite ${inviteToName} again in about an hour.`, "error");
+      return;
+    }
     showMessage(msg, err.message, "error");
   }
 }

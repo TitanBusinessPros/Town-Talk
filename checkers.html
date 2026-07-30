@@ -593,6 +593,14 @@ async function createTable(inviteToUid, inviteToName) {
       openGame(gameRef.id);
     }
   } catch (err) {
+    // checkInviteCooldown() above already catches the normal case client-side
+    // — this only fires if that read raced the cooldown doc and the
+    // server-side rule caught it instead. Same friendly message either way,
+    // not the raw Firestore error.
+    if (inviteToUid && err.code === "permission-denied") {
+      showMessage(msg, `You can invite ${inviteToName} again in about an hour.`, "error");
+      return;
+    }
     showMessage(msg, err.message, "error");
   }
 }

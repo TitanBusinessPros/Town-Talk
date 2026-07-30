@@ -162,6 +162,7 @@ const GAME_LABELS = {
   checkersGames: { label: "Checkers", page: "/checkers.html" },
   wynneGames: { label: "WynneWars", page: "/ww.html" },
   golfGames: { label: "Golf", page: "/golf.html" },
+  fgGames: { label: "Frisbee Golf", page: "/fg.html" },
 };
 
 function makeGameInviteTrigger(collectionName) {
@@ -232,6 +233,7 @@ exports.onChessInvite = makeGameInviteTrigger("chessGames");
 exports.onCheckersInvite = makeGameInviteTrigger("checkersGames");
 exports.onWynneWarsInvite = makeGameInviteTrigger("wynneGames");
 exports.onGolfInvite = makeGameInviteTrigger("golfGames");
+exports.onFrisbeeGolfInvite = makeGameInviteTrigger("fgGames");
 
 // -----------------------------------------------------------------------
 // 2. First-time message notification.

@@ -79,7 +79,7 @@ service cloud.firestore {
                     || (isOwner(uid) && request.resource.data.approved == false)
                     || (isOwner(uid)
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'notificationsEnabled', 'fcmTokens']));
+                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'notificationsEnabled', 'fcmTokens']));
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -169,6 +169,31 @@ service cloud.firestore {
                         || (request.resource.data.messageText is string
                             && request.resource.data.messageText.size() <= 2000));
       allow read, update, delete: if isAdmin();
+    }
+
+    // "Report Issue" — anyone can flag a platform bug (separate from
+    // reporting another person, above). Rate-limited to one OPEN report at
+    // a time per account via the openBugReportByUser existence check, so
+    // the create rule can't be satisfied again until an admin resolves or
+    // dismisses the pending one (which deletes that flag doc).
+    match /bugReports/{reportId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.reportedBy == request.auth.uid);
+      allow create: if isSignedIn()
+                    && request.resource.data.reportedBy == request.auth.uid
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 1000
+                    && request.resource.data.text.split(' ').size() <= 50
+                    && !exists(/databases/$(database)/documents/openBugReportByUser/$(request.auth.uid));
+      allow update, delete: if isAdmin();
+    }
+
+    match /openBugReportByUser/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+      allow update: if false;
     }
 
     match /chatMessageLimits/{uid} {
@@ -316,6 +341,38 @@ service cloud.firestore {
                          request.resource.data.inviteTo == null
                          || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_wynneGames_' + request.resource.data.inviteTo))
                          || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_wynneGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
+                       );
+      allow update: if isSignedIn()
+                    && (
+                      request.auth.uid in resource.data.participants
+                      || request.auth.uid == resource.data.player1Uid
+                      || request.auth.uid == resource.data.inviteTo
+                      || (resource.data.status == 'open'
+                          && resource.data.player2Uid == null
+                          && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
+                    );
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.status == 'open' && (
+                          request.auth.uid == resource.data.player1Uid
+                          || request.auth.uid == resource.data.inviteTo
+                        ));
+    }
+
+    match /fgGames/{gameId} {
+      allow read: if isSignedIn() && (
+        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
+        (resource.data.inviteTo == request.auth.uid) ||
+        (request.auth.uid in resource.data.participants)
+      );
+      allow create: if isSignedIn()
+                    && request.resource.data.player1Uid == request.auth.uid
+                    && request.resource.data.player2Uid == null
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.participants == [request.auth.uid]
+                    && (
+                         request.resource.data.inviteTo == null
+                         || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_fgGames_' + request.resource.data.inviteTo))
+                         || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_fgGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
                        );
       allow update: if isSignedIn()
                     && (

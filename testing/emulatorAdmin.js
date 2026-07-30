@@ -21,10 +21,22 @@ if (!admin.apps.length) {
   admin.initializeApp({ projectId: "town-talk-87ff7" });
 }
 
-async function verifyEmailByAddress(email) {
-  const user = await admin.auth().getUserByEmail(email);
-  await admin.auth().updateUser(user.uid, { emailVerified: true });
-  return user.uid;
+// createUserWithEmailAndPassword() on the client is async, so calling this
+// right after a signup form submit can race the account actually existing
+// yet in the Auth emulator — worse the more load the emulator is already
+// under (e.g. deep into a long combined test run). Retry briefly instead
+// of failing outright on a timing hiccup.
+async function verifyEmailByAddress(email, retries = 10, delayMs = 500) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const user = await admin.auth().getUserByEmail(email);
+      await admin.auth().updateUser(user.uid, { emailVerified: true });
+      return user.uid;
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
 }
 
 async function makeAdmin(uid) {

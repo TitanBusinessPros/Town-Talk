@@ -380,6 +380,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <a href="#" id="nav-chatrooms" style="display:none">Chat Rooms</a>
     <a href="chess.html" id="nav-games" style="display:none">Games</a>
     <a href="#" id="nav-business" style="display:none">Business</a>
+    <a href="#" id="nav-report-issue" style="display:none">🐞 Report Issue</a>
     <div class="notif-bell-wrap" id="notif-bell-wrap" style="display:none">
       <a href="#" id="nav-notifications" class="notif-bell-link">🔔<span class="nav-badge-count" id="notif-bell-badge" style="display:none">0</span></a>
       <div class="notif-bell-panel" id="notif-bell-panel" style="display:none">
@@ -578,6 +579,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <p>Reports submitted by users — minors, harassment, spam, or anything else flagged for review.</p>
     <div id="admin-reports-queue"></div>
     <div id="admin-reports-empty" class="empty-state" style="display:none">No open reports.</div>
+
+    <h2 style="margin-top:2.5rem;">Bug reports</h2>
+    <p>Reported directly from the "🐞 Report Issue" link anyone sees in the nav. Each account can only have one open report at a time, so mark one reviewed or dismissed to let that person report again.</p>
+    <div id="admin-bug-reports-queue"></div>
+    <div id="admin-bug-reports-empty" class="empty-state" style="display:none">No open bug reports.</div>
 
     <h2 style="margin-top:2.5rem;">Free business promo</h2>
     <p>Grant a free first year to a business email as a promo. The moment that person creates a business listing (in their own "Business" section) with that exact email, it's applied automatically. If they already created a listing before you added them here, use "Mark paid" on their submission under "Business listings" above instead.</p>
@@ -904,6 +910,22 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   </div>
 </div>
 
+<div id="bug-report-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal-box">
+    <h2 style="margin-top:0;">Report an issue</h2>
+    <p class="field-hint" style="text-align:left;">Something not working right? Describe it in a sentence or two — this goes straight to our team.</p>
+    <form id="bug-report-modal-form">
+      <textarea id="bug-report-text" maxlength="1000" style="min-height:90px;" placeholder="What happened, and what page were you on?"></textarea>
+      <p class="field-hint" id="bug-report-word-count" style="text-align:left;">0 / 50 words</p>
+      <div class="form-row">
+        <button type="submit">Submit report</button>
+        <button type="button" class="secondary" id="bug-report-modal-cancel">Cancel</button>
+      </div>
+      <div id="bug-report-modal-message" class="message" style="display:none"></div>
+    </form>
+  </div>
+</div>
+
 
 <footer class="site-footer">
   <div class="footer-brand">Town<span style="color:var(--amber-500)">Fuss</span></div>
@@ -931,7 +953,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
-  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, addDoc, limitToLast, limit, connectFirestoreEmulator,
+  collection, getDocs, query, where, orderBy, Timestamp, runTransaction, addDoc, limitToLast, limit, writeBatch, connectFirestoreEmulator,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, connectStorageEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
@@ -1131,7 +1153,7 @@ function showView(name) {
   if (name === "friends") loadFriendsView();
   if (name === "chatrooms") { closeChatRoomThread(); renderChatRoomList(); }
   else if (unsubscribeChatRoom) { unsubscribeChatRoom(); unsubscribeChatRoom = null; }
-  if (name === "admin") { loadAdminQueue(); loadAdminReports(); loadPromoWhitelist(); loadBusinessAdminQueue(); }
+  if (name === "admin") { loadAdminQueue(); loadAdminReports(); loadAdminBugReports(); loadPromoWhitelist(); loadBusinessAdminQueue(); }
   if (name === "messages") { closeThread(); watchConversations(); }
   else if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
   if (name === "business") loadBusinessDirectory();
@@ -1178,6 +1200,7 @@ function updateProtectedNavVisibility(user) {
   document.getElementById("nav-chatrooms").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-games").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-business").style.display = canSeeFullNav ? "inline" : "none";
+  document.getElementById("nav-report-issue").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("notif-bell-wrap").style.display = canSeeFullNav ? "inline-block" : "none";
 }
 
@@ -3274,6 +3297,140 @@ document.getElementById("report-modal-form").addEventListener("submit", async (e
     showMessage(msg, err.message, "error");
   }
 });
+
+// ---- "Report Issue" (platform bug reports, separate from reporting a person) ----
+async function openBugReportModal() {
+  const msg = document.getElementById("bug-report-modal-message");
+  const textEl = document.getElementById("bug-report-text");
+  textEl.value = "";
+  msg.style.display = "none";
+  updateBugReportWordCount();
+
+  const submitBtn = document.querySelector("#bug-report-modal-form button[type=submit]");
+  submitBtn.disabled = false;
+  try {
+    const flagSnap = await getDoc(doc(db, "openBugReportByUser", currentUid));
+    if (flagSnap.exists()) {
+      showMessage(msg, "You already have an open report being reviewed — you can submit another once it's been handled.", "error");
+      submitBtn.disabled = true;
+    }
+  } catch {
+    // If we can't check, just let the actual submit attempt enforce it.
+  }
+
+  document.getElementById("bug-report-modal-backdrop").style.display = "flex";
+}
+
+function closeBugReportModal() {
+  document.getElementById("bug-report-modal-backdrop").style.display = "none";
+}
+
+function updateBugReportWordCount() {
+  const words = countWords(document.getElementById("bug-report-text").value);
+  document.getElementById("bug-report-word-count").textContent = `${words} / ${MESSAGE_WORD_LIMIT} words`;
+}
+
+document.getElementById("nav-report-issue").addEventListener("click", (e) => {
+  e.preventDefault();
+  openBugReportModal();
+});
+document.getElementById("bug-report-modal-cancel").addEventListener("click", closeBugReportModal);
+document.getElementById("bug-report-modal-backdrop").addEventListener("click", (e) => {
+  if (e.target.id === "bug-report-modal-backdrop") closeBugReportModal();
+});
+document.getElementById("bug-report-text").addEventListener("input", updateBugReportWordCount);
+
+document.getElementById("bug-report-modal-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("bug-report-modal-message");
+  const text = document.getElementById("bug-report-text").value.trim();
+  if (!text) {
+    showMessage(msg, "Please describe the issue first.", "error");
+    return;
+  }
+  if (countWords(text) > MESSAGE_WORD_LIMIT) {
+    showMessage(msg, `Please keep it to ${MESSAGE_WORD_LIMIT} words or fewer.`, "error");
+    return;
+  }
+
+  try {
+    const reportRef = doc(collection(db, "bugReports"));
+    const flagRef = doc(db, "openBugReportByUser", currentUid);
+    const batch = writeBatch(db);
+    batch.set(reportRef, {
+      reportedBy: currentUid,
+      reportedByName: currentUserData?.profile?.name || "Neighbor",
+      text,
+      page: location.pathname,
+      status: "open",
+      createdAt: serverTimestamp(),
+    });
+    batch.set(flagRef, { reportId: reportRef.id, createdAt: serverTimestamp() });
+    await batch.commit();
+    showMessage(msg, "Thanks — this has been sent to our team.", "success");
+    setTimeout(closeBugReportModal, 1500);
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
+
+// ---- Admin: Bug reports queue ----
+async function loadAdminBugReports() {
+  const container = document.getElementById("admin-bug-reports-queue");
+  const empty = document.getElementById("admin-bug-reports-empty");
+  container.innerHTML = "";
+  empty.style.display = "none";
+
+  const q = query(collection(db, "bugReports"), where("status", "==", "open"), orderBy("createdAt", "asc"));
+  const snap = await getDocs(q).catch((err) => {
+    container.innerHTML = `<div class="message error">Couldn't load bug reports: ${err.message}</div>`;
+    return null;
+  });
+  if (!snap) return;
+
+  if (snap.empty) {
+    empty.style.display = "block";
+    return;
+  }
+
+  snap.forEach((reportDoc) => {
+    const report = reportDoc.data();
+    const time = report.createdAt ? new Date(report.createdAt.seconds * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    const card = document.createElement("div");
+    card.className = "admin-card";
+    card.innerHTML = `
+      <div class="admin-meta">
+        Reported by: <strong>${escapeHtml(report.reportedByName || "Neighbor")}</strong>
+        &nbsp;·&nbsp; ${escapeHtml(time)}
+        ${report.page ? `&nbsp;·&nbsp; Page: ${escapeHtml(report.page)}` : ""}
+      </div>
+      <p class="admin-post">${escapeHtml(report.text || "")}</p>
+      <div class="admin-actions">
+        <button type="button" data-action="resolve">Mark reviewed (real bug)</button>
+        <button type="button" class="secondary" data-action="dismiss">Dismiss</button>
+      </div>
+      <div class="message" style="display:none"></div>
+    `;
+    const msg = card.querySelector(".message");
+
+    async function closeBugReport(newStatus) {
+      try {
+        const batch = writeBatch(db);
+        batch.update(doc(db, "bugReports", reportDoc.id), { status: newStatus });
+        batch.delete(doc(db, "openBugReportByUser", report.reportedBy));
+        await batch.commit();
+        card.remove();
+      } catch (err) {
+        showMessage(msg, err.message, "error");
+      }
+    }
+
+    card.querySelector('[data-action="resolve"]').addEventListener("click", () => closeBugReport("reviewed"));
+    card.querySelector('[data-action="dismiss"]').addEventListener("click", () => closeBugReport("dismissed"));
+
+    container.appendChild(card);
+  });
+}
 
 document.body.addEventListener("click", (e) => {
   const btn = e.target.closest(".report-btn");

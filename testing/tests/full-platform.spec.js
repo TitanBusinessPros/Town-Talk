@@ -50,6 +50,27 @@ async function fillBasicsAndPost(page, robot) {
   await page.locator("#post-form button[type=submit]").click();
 }
 
+// Simulates a real mouse drag on a frisbee-golf canvas. Coordinates are in
+// the canvas's LOGICAL pixel space (its width/height attributes, e.g.
+// 800x600) — converted here to real page coordinates via the canvas's
+// current on-screen bounding box, so it works correctly regardless of how
+// small the canvas is actually rendered (it's CSS-scaled to fit the page).
+async function dragFrisbee(page, canvasLocator, fromLogical, toLogical) {
+  const box = await canvasLocator.boundingBox();
+  const canvasWidth = await canvasLocator.evaluate((el) => el.width);
+  const canvasHeight = await canvasLocator.evaluate((el) => el.height);
+  const toPage = (p) => ({
+    x: box.x + (p.x / canvasWidth) * box.width,
+    y: box.y + (p.y / canvasHeight) * box.height,
+  });
+  const start = toPage(fromLogical);
+  const end = toPage(toLogical);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(end.x, end.y, { steps: 5 });
+  await page.mouse.up();
+}
+
 // =========================================================================
 test.describe.serial("Town Fuss — full platform pass", () => {
   test.setTimeout(180_000);
@@ -369,6 +390,41 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await pageA.waitForTimeout(500);
   });
 
+  test("Frisbee Golf: Robot A invites Robot B directly, Robot B accepts, both see the board", async () => {
+    await pageA.goto("/fg.html");
+    await pageA.locator("#mode-tile-online").click();
+
+    await pageA.locator("#friends-invite-list").waitFor();
+    await pageA.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(pageA.locator(".message, #waiting-message")).toBeVisible({ timeout: 10_000 }).catch(() => {});
+
+    await pageB.goto("/fg.html");
+    await pageB.locator("#mode-tile-online").click();
+    await pageB.locator('button:has-text("Accept")').first().click();
+
+    await expect(pageA.locator("#view-game")).toBeVisible({ timeout: 15_000 });
+    await expect(pageB.locator("#view-game")).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("Frisbee Golf: a throw taken by one player syncs to the other player", async () => {
+    // Robot A created the table, so she's player1 and goes first. Hole 1
+    // has no obstacles and a straight horizontal shot, so any modest
+    // pull-back-and-release drag is a safe, uncomplicated smoke test.
+    await expect(pageA.locator("#fg-status")).toContainText("Your turn", { timeout: 10_000 });
+    await dragFrisbee(pageA, pageA.locator("#fg-canvas"), { x: 100, y: 300 }, { x: 20, y: 300 });
+
+    // Give the throw's physics time to settle and sync to Firestore, then
+    // to Robot B's client.
+    await pageB.waitForTimeout(6000);
+    await expect(pageB.locator("#fg-status")).not.toContainText("Waiting for an opponent", { timeout: 5000 });
+
+    // Resign so this game finishes cleanly — otherwise checkForActiveGame()
+    // would jump whoever loads fg.html next straight back into it.
+    pageA.once("dialog", (dialog) => dialog.accept().catch(() => {}));
+    await pageA.locator("#resign-btn").click();
+    await pageA.waitForTimeout(500);
+  });
+
   test("Robot B uploads a profile photo", async () => {
     // Robot B, not A — uploading a new photo un-approves the profile
     // pending re-review (everApproved gate), and test 28 later needs to
@@ -557,6 +613,35 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await pageA.locator("#nav-admin").click();
     await expect(pageA.locator("#admin-reports-queue")).toContainText("Robot Alice", { timeout: 10_000 });
     await expect(pageA.locator("#admin-reports-queue")).toContainText("Robot Bob", { timeout: 10_000 });
+  });
+
+  test("Robot B submits a bug report, and it shows up in the admin Bug reports queue", async () => {
+    await pageB.locator("#nav-report-issue").click();
+    await pageB.locator("#bug-report-text").fill("Automated test bug report — please ignore.");
+    await pageB.locator("#bug-report-modal-form button[type=submit]").click();
+    await expect(pageB.locator("#bug-report-modal-message")).toContainText("sent to our team", { timeout: 10_000 });
+
+    await pageA.locator("#nav-admin").click();
+    await expect(pageA.locator("#admin-bug-reports-queue")).toContainText("Robot Bob", { timeout: 10_000 });
+    await expect(pageA.locator("#admin-bug-reports-queue")).toContainText("Automated test bug report", { timeout: 10_000 });
+  });
+
+  test("Robot B can't submit a second bug report while the first is still open", async () => {
+    await pageB.locator("#nav-report-issue").click();
+    await expect(pageB.locator("#bug-report-modal-message")).toContainText("already have an open report", { timeout: 10_000 });
+    // The submit button should be disabled by that same pre-check.
+    await expect(pageB.locator("#bug-report-modal-form button[type=submit]")).toBeDisabled();
+    await pageB.locator("#bug-report-modal-cancel").click();
+  });
+
+  test("Admin resolves the bug report, which frees Robot B to submit a new one", async () => {
+    await pageA.locator("#admin-bug-reports-queue button", { hasText: "Mark reviewed" }).first().click();
+    await expect(pageA.locator("#admin-bug-reports-queue")).not.toContainText("Automated test bug report", { timeout: 10_000 });
+
+    await pageB.locator("#nav-report-issue").click();
+    await expect(pageB.locator("#bug-report-modal-message")).not.toBeVisible();
+    await expect(pageB.locator("#bug-report-modal-form button[type=submit]")).toBeEnabled();
+    await pageB.locator("#bug-report-modal-cancel").click();
   });
 
   test("Password reset request succeeds against the Auth emulator", async ({ browser }) => {
