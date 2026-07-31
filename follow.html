@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Follow Along — Town Fuss</title>
+    <link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/Follow-Along/raw/main/Follow%20Along%20Logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 15px;
+            font-family: 'Arial', sans-serif;
+            background: #000000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+            text-align: center;
+        }
+
+        #score {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        #message {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            min-height: 30px;
+            font-weight: bold;
+            text-align: center;
+            width: 100%;
+        }
+
+        #run-status {
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #ffd93d;
+            font-weight: bold;
+        }
+
+        #game-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 3/2;
+        }
+
+        .button {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.1s;
+            position: relative;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            width: 100%;
+            height: 100%;
+        }
+
+        .button:active {
+            transform: scale(0.95);
+        }
+
+        .button.glow {
+            box-shadow: 0 0 60px currentColor, 0 0 120px currentColor, 0 0 180px currentColor;
+            transform: scale(1.1);
+            border-color: white;
+            filter: brightness(1.5);
+        }
+
+        .button.disabled {
+            cursor: not-allowed;
+        }
+
+        #btn1 { background-color: #ff4444; color: #ff4444; }
+        #btn2 { background-color: #44ff44; color: #44ff44; }
+        #btn3 { background-color: #4444ff; color: #4444ff; }
+        #btn4 { background-color: #ffff44; color: #ffff44; }
+        #btn5 { background-color: #ff44ff; color: #ff44ff; }
+        #btn6 { background-color: #44ffff; color: #44ffff; }
+
+        #start-btn {
+            padding: 18px 40px;
+            font-size: 1.3em;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            width: 80%;
+            max-width: 300px;
+        }
+
+        #start-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+        }
+
+        #start-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #back-to-hub-game-btn {
+            padding: 10px 25px;
+            font-size: 1em;
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        #music-controls {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        #music-toggle {
+            background: none;
+            border: 2px solid white;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #music-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Media Queries for different screen sizes */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            #score, #message {
+                font-size: 1.2em;
+            }
+
+            #game-container {
+                gap: 10px;
+                max-width: 400px;
+            }
+
+            #start-btn {
+                padding: 16px 35px;
+                font-size: 1.2em;
+            }
+        }
+
+        @media (max-width: 360px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            #score, #message {
+                font-size: 1.1em;
+            }
+
+            #game-container {
+                gap: 8px;
+                max-width: 320px;
+            }
+
+            #start-btn {
+                padding: 14px 30px;
+                font-size: 1.1em;
+            }
+        }
+
+        /* ===========================================================================
+           SITE CHROME — Town Fuss header/hub/leaderboard, matching match3.html/
+           m3game.html. Scoped under #site-chrome so it can never collide with the
+           game's own CSS above (which already claims bare `h1` and `body` rules)
+           — an #id-scoped selector always beats a bare element selector.
+           =========================================================================== */
+        #site-chrome {
+            --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+            --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+            --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+            --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+            --radius: 14px; --radius-sm: 8px;
+            background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body);
+            width: 100%; max-width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #site-chrome a { color: var(--amber-500); }
+        #site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); text-shadow: none; }
+        #site-chrome p { color: var(--text-muted); line-height: 1.6; }
+        #site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        #site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+        #site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+        #site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+        #site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; box-shadow: none; margin-top: 0; }
+        #site-chrome .header-nav button:hover { transform: none; box-shadow: none; }
+        #site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+        #site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+        #site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+        #site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; box-shadow: none; margin-top: 0; }
+        #site-chrome button.site-btn:hover { background: var(--amber-600); transform: none; box-shadow: none; }
+        #site-chrome button.site-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+        #site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+        #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+        #site-chrome .leader-row:last-child { border-bottom: none; }
+        #site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+        #site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+        #site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+        #site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+        #site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+        #site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+        #site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+        /* Body used to provide flex centering directly to the game elements
+           (they were all direct children of body); now that they're wrapped
+           in #followGameWrapper alongside the sibling #site-chrome div, the
+           wrapper needs to reproduce that same centering itself. */
+        #followGameWrapper {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="site-chrome">
+    <header class="header-bar">
+        <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+        <nav class="header-nav">
+            <button id="nav-hub" class="active">Games</button>
+            <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+        </nav>
+    </header>
+
+    <main class="page">
+
+        <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+            <h2>Sign in on Town Fuss first</h2>
+            <p>You need a Town Fuss account to play Follow Along online and appear on the leaderboard.</p>
+            <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+        </div>
+
+        <div id="app-content" style="display:none;">
+
+            <!-- ================= GAMES HUB ================= -->
+            <section id="view-hub">
+                <span class="eyebrow">Town Fuss</span>
+                <h1>Games</h1>
+                <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+                <div class="uicard mode-tile" id="game-tile-follow">
+                    <img src="https://github.com/TitanBusinessPros/Follow-Along/raw/main/Follow%20Along%20Logo.png" alt="Follow Along" style="max-width:180px; width:100%; height:auto; margin:0 auto; border-radius:10px;" />
+                    <h2 style="font-size:1.1rem; margin-top:0.5rem;">Follow Along</h2>
+                    <p class="field-hint" style="text-align:center;">Play for fun, or go online to chase the furthest round and the fastest pace</p>
+                </div>
+                <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+            </section>
+
+            <!-- ================= MODE SELECT ================= -->
+            <section id="view-mode-select" style="display:none;">
+                <button type="button" class="site-btn secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+                <span class="eyebrow">Follow Along</span>
+                <h1>How do you want to play?</h1>
+                <p class="field-hint" id="follow-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+                <div class="uicard mode-tile" id="mode-tile-offline">
+                    <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+                    <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+                </div>
+                <div class="uicard mode-tile" id="mode-tile-online">
+                    <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+                    <p class="field-hint" style="text-align:center;">Your furthest round and fastest pace get submitted to the leaderboard</p>
+                </div>
+                <div id="mode-select-message" class="site-message" style="display:none;"></div>
+            </section>
+
+            <!-- ================= LEADERBOARD ================= -->
+            <section id="view-leaderboard" style="display:none;">
+                <span class="eyebrow">Follow Along</span>
+                <h1>Leaderboard</h1>
+                <p style="text-align:center;">Ranked by furthest round first — ties go to whoever got there fastest. Only Online (Ranked) runs count.</p>
+                <div class="uicard">
+                    <h2 style="text-align:left;">🏆 Top Players</h2>
+                    <div id="leaderboard-list"></div>
+                    <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked runs yet — be the first!</div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<div id="followGameWrapper" style="display:none;">
+    <button type="button" id="back-to-hub-game-btn" onclick="backToGamesHub()">&larr; Back to Games</button>
+    <div id="run-status"></div>
+    <h1>🎮 Follow Along</h1>
+    <div id="score">Round: <span id="score-value">0</span></div>
+    <div id="message"></div>
+    <div id="game-container">
+        <div class="button" id="btn1" data-id="1"></div>
+        <div class="button" id="btn2" data-id="2"></div>
+        <div class="button" id="btn3" data-id="3"></div>
+        <div class="button" id="btn4" data-id="4"></div>
+        <div class="button" id="btn5" data-id="5"></div>
+        <div class="button" id="btn6" data-id="6"></div>
+    </div>
+    <button id="start-btn">Start Game</button>
+
+    <div id="music-controls">
+        <button id="music-toggle">🔇 Mute Music</button>
+    </div>
+
+    <!-- Audio element for background music -->
+    <audio id="bg-music" loop>
+        <source src="https://github.com/TitanBusinessPros/Follow-Along/raw/main/Follow%20Along%20Theme%20Song.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
+</div>
+
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Background music control
+        const bgMusic = document.getElementById('bg-music');
+        const musicToggle = document.getElementById('music-toggle');
+        let isMusicMuted = false;
+
+        // Try to play background music when the game starts
+        function startBackgroundMusic() {
+            bgMusic.volume = 0.5;
+            bgMusic.play().catch(error => {
+                console.log("Autoplay was prevented. Please interact with the page first.");
+            });
+        }
+
+        // Toggle music on/off
+        musicToggle.addEventListener('click', () => {
+            if (isMusicMuted) {
+                bgMusic.play();
+                musicToggle.textContent = "🔇 Mute Music";
+            } else {
+                bgMusic.pause();
+                musicToggle.textContent = "🔊 Play Music";
+            }
+            isMusicMuted = !isMusicMuted;
+        });
+
+        const frequencies = {
+            1: 261.63, // C
+            2: 329.63, // E
+            3: 392.00, // G
+            4: 523.25, // C (high)
+            5: 440.00, // A
+            6: 493.88  // B
+        };
+
+        function playTone(buttonId, duration = 300) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = frequencies[buttonId];
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration / 1000);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration / 1000);
+        }
+
+        function playBuzzer() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 100;
+            oscillator.type = 'sawtooth';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        let sequence = [];
+        let playerSequence = [];
+        let level = 0;
+        let isPlayingSequence = false;
+        let isPlayerTurn = false;
+
+        // Online-run tracking (Town Fuss additions) — mirrors match3.html's
+        // approach: isOnlineRun/runStartTime track a ranked attempt, and the
+        // "rounds reached" (level - 1, the same number already shown as the
+        // final score) plus elapsed time get submitted together as one
+        // connected pair, never mixed with a different run's numbers.
+        let isOnlineRun = false;
+        let runStartTime = 0;
+
+        const buttons = document.querySelectorAll('.button');
+        const startBtn = document.getElementById('start-btn');
+        const scoreValue = document.getElementById('score-value');
+        const message = document.getElementById('message');
+
+        function lightUpButton(buttonId, duration = 500) {
+            const button = document.getElementById(`btn${buttonId}`);
+            button.classList.add('glow');
+            playTone(buttonId);
+
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    button.classList.remove('glow');
+                    resolve();
+                }, duration);
+            });
+        }
+
+        async function playSequence() {
+            isPlayingSequence = true;
+            disableButtons();
+            message.textContent = "Watch the pattern...";
+
+            for (let i = 0; i < sequence.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                await lightUpButton(sequence[i]);
+            }
+
+            isPlayingSequence = false;
+            isPlayerTurn = true;
+            enableButtons();
+            message.textContent = "Your turn!";
+        }
+
+        function addToSequence() {
+            const randomButton = Math.floor(Math.random() * 6) + 1;
+            sequence.push(randomButton);
+            level++;
+            scoreValue.textContent = level - 1;
+        }
+
+        function disableButtons() {
+            buttons.forEach(btn => {
+                btn.style.pointerEvents = 'none';
+            });
+        }
+
+        function enableButtons() {
+            buttons.forEach(btn => {
+                btn.style.pointerEvents = 'auto';
+            });
+        }
+
+        function resetGame() {
+            sequence = [];
+            playerSequence = [];
+            level = 0;
+            isPlayerTurn = false;
+            scoreValue.textContent = '0';
+            message.textContent = '';
+            startBtn.disabled = false;
+        }
+
+        async function startGame() {
+            // Starting another game after finishing one (without going back
+            // through the hub) always resumes as a plain, untracked run —
+            // going online again requires an explicit choice from the mode
+            // select screen, same as match3.html, so a play slot is never
+            // consumed by accident.
+            isOnlineRun = false;
+            document.getElementById('run-status').textContent = '';
+            resetGame();
+            startBtn.disabled = true;
+            message.textContent = "Get ready...";
+
+            // Start background music when game starts
+            startBackgroundMusic();
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            nextRound();
+        }
+
+        async function nextRound() {
+            playerSequence = [];
+            addToSequence();
+            await playSequence();
+        }
+
+        async function handleButtonClick(buttonId) {
+            if (!isPlayerTurn || isPlayingSequence) return;
+
+            await lightUpButton(buttonId, 300);
+            playerSequence.push(buttonId);
+
+            const currentIndex = playerSequence.length - 1;
+
+            if (playerSequence[currentIndex] !== sequence[currentIndex]) {
+                // Wrong button!
+                playBuzzer();
+                message.textContent = `Game Over! Final Score: ${level - 1}`;
+                isPlayerTurn = false;
+                disableButtons();
+                startBtn.disabled = false;
+                if (isOnlineRun && window.submitRunResult) {
+                    window.submitRunResult({ rounds: level - 1, elapsedMs: Date.now() - runStartTime });
+                }
+                isOnlineRun = false;
+                return;
+            }
+
+            if (playerSequence.length === sequence.length) {
+                // Completed the sequence!
+                isPlayerTurn = false;
+                message.textContent = "Correct! Next round...";
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                nextRound();
+            }
+        }
+
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                const buttonId = parseInt(button.dataset.id);
+                handleButtonClick(buttonId);
+            });
+
+            // Add touch event for better mobile support
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const buttonId = parseInt(button.dataset.id);
+                handleButtonClick(buttonId);
+            });
+        });
+
+        startBtn.addEventListener('click', startGame);
+
+        // Add touch event for start button
+        startBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startGame();
+        });
+
+        // Initialize
+        disableButtons();
+
+        // Called by the site-chrome module script when starting a run from
+        // mode-select — "online" reserves a daily play slot and begins
+        // tracking rounds/time for the leaderboard; "offline" is just the
+        // plain game, untracked.
+        function beginRun(online) {
+            document.getElementById('followGameWrapper').style.display = 'flex';
+            document.getElementById('site-chrome').style.display = 'none';
+            isOnlineRun = online;
+            runStartTime = Date.now();
+            document.getElementById('run-status').textContent = online ? '🌐 Online run — your furthest round and pace are being tracked' : '🎮 Just for fun — nothing is tracked';
+            resetGame();
+        }
+        window.beginRun = beginRun;
+
+        // Bridges back from the game view into the Town Fuss site chrome
+        // (hub/leaderboard), which lives in a separate `type="module"` script
+        // and isn't reachable from these plain inline onclick handlers
+        // directly — window.onReturnToHub is exposed by that module script.
+        function backToGamesHub() {
+            if (isOnlineRun && level > 1 && window.submitRunResult) {
+                window.submitRunResult({ rounds: level - 1, elapsedMs: Date.now() - runStartTime });
+            }
+            isOnlineRun = false;
+            document.getElementById('followGameWrapper').style.display = 'none';
+            document.getElementById('site-chrome').style.display = 'block';
+            if (window.onReturnToHub) window.onReturnToHub();
+        }
+        window.backToGamesHub = backToGamesHub;
+    </script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  showView("hub");
+});
+
+// ============================= VIEW ROUTER =================================
+function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = name === "hub" ? "none" : "inline";
+
+  if (name === "leaderboard") loadLeaderboard();
+}
+window.onReturnToHub = () => showView("hub");
+
+document.getElementById("nav-hub").addEventListener("click", () => { showView("hub"); });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
+document.getElementById("game-tile-follow").addEventListener("click", () => showView("mode-select"));
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.beginRun(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.beginRun(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as the other
+// 7 games, sharing the SAME gamePlayLimits/{uid} counter — starting a
+// ranked Follow Along run counts as one of your daily online plays.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("follow-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+// Called from the classic script when an online run ends (a mistake, or
+// leaving mid-run). Self-reported, same trust model as every other game's
+// stats on this site — Firestore rules just gate WHO can write, not
+// whether the number is honest.
+//
+// Rounds and time are connected, not independent bests: reaching further
+// always outranks reaching less far, REGARDLESS of time — time only
+// breaks a tie between two runs that reached the exact same round. Both
+// fields only ever update together, from the same run.
+window.submitRunResult = async ({ rounds, elapsedMs }) => {
+  if (!currentUid || !rounds || rounds < 1) return;
+  try {
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    const storedRounds = data.followBestRounds || 0;
+    const storedTimeMs = data.followBestTimeMs || Infinity;
+    const isBetter = rounds > storedRounds || (rounds === storedRounds && elapsedMs < storedTimeMs);
+    if (isBetter) {
+      await updateDoc(doc(db, "users", currentUid), {
+        followBestRounds: rounds,
+        followBestTimeMs: elapsedMs,
+      });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Follow Along run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+function formatTime(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}m ${secs}s`;
+}
+
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(
+      collection(db, "users"),
+      where("followBestRounds", ">", 0),
+      orderBy("followBestRounds", "desc"),
+      orderBy("followBestTimeMs", "asc"),
+      limit(10)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>Round ${u.followBestRounds} in ${formatTime(u.followBestTimeMs)}</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>

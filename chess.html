@@ -151,6 +151,11 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
           <h2 style="font-size:1.1rem; margin-top:0.5rem;">Match-3</h2>
           <p class="field-hint" style="text-align:center;">Play for fun, or go online for the high score and speed-run leaderboards</p>
         </div>
+        <div class="card" style="max-width:280px; text-align:center; cursor:pointer;" id="game-tile-follow">
+          <img src="https://github.com/TitanBusinessPros/Follow-Along/raw/main/Follow%20Along%20Logo.png" alt="Follow Along" style="height:2.5rem; width:auto; margin:0 auto;" />
+          <h2 style="font-size:1.1rem; margin-top:0.5rem;">Follow Along</h2>
+          <p class="field-hint" style="text-align:center;">Play for fun, or go online to chase the furthest round and fastest pace</p>
+        </div>
       </div>
       <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
     </section>
@@ -408,6 +413,7 @@ document.getElementById("game-tile-golf").addEventListener("click", () => { loca
 document.getElementById("game-tile-fg").addEventListener("click", () => { location.href = "fg.html"; });
 document.getElementById("game-tile-cribbage").addEventListener("click", () => { location.href = "m3game.html"; });
 document.getElementById("game-tile-match3").addEventListener("click", () => { location.href = "match3.html"; });
+document.getElementById("game-tile-follow").addEventListener("click", () => { location.href = "follow.html"; });
 document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
