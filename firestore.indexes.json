@@ -7,14 +7,6 @@
         { "fieldPath": "followBestRounds", "order": "DESCENDING" },
         { "fieldPath": "followBestTimeMs", "order": "ASCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "sudokuBestDifficultyRank", "order": "DESCENDING" },
-        { "fieldPath": "sudokuBestWrongCount", "order": "ASCENDING" }
-      ]
     }
   ],
   "fieldOverrides": []

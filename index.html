@@ -1127,6 +1127,29 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   </div>
 </div>
 
+<!-- Admin PIN gate — a lightweight extra confirmation step shown once per
+     browser tab when an admin account signs in, before any admin-only
+     screens are used. This is a convenience speed-bump, NOT a real security
+     boundary: actual admin permissions are enforced by firestore.rules'
+     isAdmin() check regardless of this popup, same as always. -->
+<div id="admin-pin-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal-box" style="max-width:340px; text-align:center;">
+    <h2 style="margin-top:0;">Admin PIN</h2>
+    <p class="field-hint" style="text-align:center;">Enter your admin PIN to continue.</p>
+    <form id="admin-pin-form">
+      <input type="password" id="admin-pin-input" inputmode="numeric" autocomplete="off" maxlength="12"
+             style="width:100%; padding:0.65rem; border-radius:8px; border:1px solid var(--line); text-align:center; font-size:1.3rem; letter-spacing:0.3em; margin-top:0.5rem; font-family:var(--font-body); background:var(--ink-900); color:var(--paper-050);" />
+      <div class="form-row" style="justify-content:center;">
+        <button type="submit">Unlock</button>
+      </div>
+      <div id="admin-pin-message" class="message" style="display:none"></div>
+      <p class="field-hint" style="text-align:center; margin-top:1rem;">
+        Not you? <a href="#" id="admin-pin-signout-link">Sign out</a>
+      </p>
+    </form>
+  </div>
+</div>
+
 
 <footer class="site-footer">
   <div class="footer-brand">Town<span style="color:var(--amber-500)">Fuss</span></div>
@@ -1557,6 +1580,7 @@ onAuthStateChanged(auth, async (user) => {
     console.log("Signed in uid:", user.uid, "| isAdmin:", isAdminUser);
     document.getElementById("nav-admin").style.display = isAdminUser ? "inline" : "none";
     updateProtectedNavVisibility(user);
+    maybeShowAdminPinGate();
 
     showView("dashboard");
   } else {
@@ -3707,6 +3731,58 @@ document.getElementById("bug-report-modal-form").addEventListener("submit", asyn
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
+});
+
+// ---- Admin PIN gate ----
+// A convenience speed-bump shown once per browser tab (sessionStorage, not
+// localStorage — a fresh tab always re-prompts) after an admin account
+// signs in. NOT a real security boundary: firestore.rules' isAdmin() check
+// is what actually gates admin data access, regardless of this popup — this
+// only gates the client-side UI as an extra "confirm it's really you" step.
+//
+// ADMIN_PIN_HASH is a SHA-256 hex digest of the PIN, never the PIN itself —
+// set it by running this yourself (never paste the raw PIN into chat):
+//   $pin = Read-Host -AsSecureString "Enter your admin PIN"
+//   $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($pin)
+//   $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+//   $hash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($plain))) -replace '-',''
+//   $hash.ToLower()
+// then paste ONLY the resulting hash in as the value below.
+const ADMIN_PIN_HASH = "REPLACE_WITH_YOUR_PIN_HASH";
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function maybeShowAdminPinGate() {
+  if (!isAdminUser) return;
+  if (sessionStorage.getItem("adminPinVerified") === "true") return;
+  document.getElementById("admin-pin-input").value = "";
+  document.getElementById("admin-pin-message").style.display = "none";
+  document.getElementById("admin-pin-modal-backdrop").style.display = "flex";
+}
+
+document.getElementById("admin-pin-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("admin-pin-message");
+  const input = document.getElementById("admin-pin-input");
+  const hash = await sha256Hex(input.value.trim());
+  if (hash === ADMIN_PIN_HASH) {
+    sessionStorage.setItem("adminPinVerified", "true");
+    document.getElementById("admin-pin-modal-backdrop").style.display = "none";
+  } else {
+    showMessage(msg, "Incorrect PIN — try again.", "error");
+  }
+  input.value = "";
+  input.focus();
+});
+
+document.getElementById("admin-pin-signout-link").addEventListener("click", async (e) => {
+  e.preventDefault();
+  sessionStorage.removeItem("adminPinVerified");
+  document.getElementById("admin-pin-modal-backdrop").style.display = "none";
+  await signOut(auth).catch(() => {});
 });
 
 // ---- Admin: Bug reports queue ----

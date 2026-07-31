@@ -846,7 +846,7 @@
                 </div>
                 <div class="uicard mode-tile" id="mode-tile-online">
                     <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
-                    <p class="field-hint" style="text-align:center;">Your hardest solved difficulty and fewest wrong guesses get submitted to the leaderboard</p>
+                    <p class="field-hint" style="text-align:center;">Win puzzles back-to-back — your longest streak gets submitted to the leaderboard</p>
                 </div>
                 <div id="mode-select-message" class="site-message" style="display:none;"></div>
             </section>
@@ -855,7 +855,7 @@
             <section id="view-leaderboard" style="display:none;">
                 <span class="eyebrow">Sudoku</span>
                 <h1>Leaderboard</h1>
-                <p style="text-align:center;">Ranked by hardest difficulty solved first, then fewest wrong guesses. Only Online (Ranked) wins count.</p>
+                <p style="text-align:center;">Ranked by longest online win streak. One loss ends the run — only Online (Ranked) attempts count.</p>
                 <div class="uicard">
                     <h2 style="text-align:left;">🏆 Top Players</h2>
                     <div id="leaderboard-list"></div>
@@ -1030,10 +1030,15 @@
             let musicEnabled = false;
 
             // Online-run tracking (Town Fuss additions) — isOnlineRun marks a
-            // ranked attempt; a win submits {difficultyRank, wrongCount}
-            // together as one connected pair, same trust model as the other
-            // games (see submitRunResult in the module script below).
+            // ranked session: winning a puzzle advances onlineStreak and
+            // submits it as the run's best-so-far (see submitRunResult in
+            // the module script below); losing a puzzle (max wrong guesses)
+            // resets both the streak and the session back to untracked, so
+            // starting a new streak attempt requires spending another daily
+            // play slot via mode-select, same as every other game's "restart
+            // always resumes untracked" convention.
             let isOnlineRun = false;
+            let onlineStreak = 0;
 
             // Statistics
             let totalWins = 0;
@@ -1172,30 +1177,31 @@
                 return array;
             }
 
-            // Ranks difficulty for the leaderboard: solving a harder puzzle
-            // always outranks an easier one, regardless of wrong-guess count —
-            // wrong guesses only ever break a tie between two wins at the SAME
-            // difficulty (mirrors follow.html's rounds-primary/time-tiebreak
-            // leaderboard design).
-            function difficultyRank(d) {
-                if (d === 'hard') return 3;
-                if (d === 'medium') return 2;
-                return 1;
-            }
-
-            function recordWinIfOnline() {
-                if (isOnlineRun && window.submitRunResult) {
-                    window.submitRunResult({ difficultyRank: difficultyRank(difficulty), wrongCount });
+            // Winning a puzzle while online advances the streak and submits
+            // it as this run's best-so-far — submitting on every win (not
+            // just at the end) means progress survives even if the browser
+            // closes mid-streak, same as match3.html submitting an early
+            // exit's score instead of only a full clear.
+            function recordStreakWinIfOnline() {
+                if (!isOnlineRun) return;
+                onlineStreak++;
+                document.getElementById('run-status').textContent = `🌐 Online run — current streak: ${onlineStreak}`;
+                if (window.submitRunResult) {
+                    window.submitRunResult({ streak: onlineStreak });
                 }
             }
 
             // Called by the site-chrome module script when starting a run from
-            // mode-select — "online" reserves a daily play slot and marks this
-            // run's eventual win for submission; "offline" is just the plain
-            // game, untracked.
+            // mode-select — "online" reserves a daily play slot and starts a
+            // fresh streak attempt; "offline" is just the plain game,
+            // untracked. Hints are disabled for online runs — with a
+            // streak-only leaderboard metric, free hints would let anyone
+            // farm an infinite streak with no real solving involved.
             function beginRun(online) {
                 isOnlineRun = online;
-                document.getElementById('run-status').textContent = online ? '🌐 Online run — your hardest solved difficulty and fewest wrong guesses are being tracked' : '🎮 Just for fun — nothing is tracked';
+                onlineStreak = 0;
+                document.getElementById('run-status').textContent = online ? '🌐 Online run — win puzzles in a row to build your streak!' : '🎮 Just for fun — nothing is tracked';
+                document.getElementById('hintBtn').style.display = online ? 'none' : 'inline-block';
                 document.getElementById('sudokuGameWrapper').style.display = 'flex';
                 document.getElementById('site-chrome').style.display = 'none';
                 initializeBoard();
@@ -1210,6 +1216,7 @@
             // module script.
             function backToGamesHub() {
                 isOnlineRun = false;
+                onlineStreak = 0;
                 document.getElementById('sudokuGameWrapper').style.display = 'none';
                 document.getElementById('site-chrome').style.display = 'block';
                 if (window.onReturnToHub) window.onReturnToHub();
@@ -1476,7 +1483,7 @@
                         currentStreakElement.textContent = currentStreak;
                         maxStreakElement.textContent = maxStreak;
 
-                        recordWinIfOnline();
+                        recordStreakWinIfOnline();
                         showVictoryCelebration();
                     }
                 } else {
@@ -1484,6 +1491,15 @@
                         gameActive = false;
                         currentStreak = 0;
                         currentStreakElement.textContent = currentStreak;
+                        // A loss ends the online streak attempt entirely —
+                        // starting a new one requires going back through
+                        // mode-select (and spending another daily play slot),
+                        // same as every other game's "restart resumes
+                        // untracked" convention.
+                        if (isOnlineRun) {
+                            onlineStreak = 0;
+                            isOnlineRun = false;
+                        }
                         showGameOver();
                         return;
                     }
@@ -1532,6 +1548,12 @@
             }
 
             function provideHint() {
+                // Hints are hidden entirely during online runs (see
+                // beginRun) — this guard is defense-in-depth in case the
+                // button is ever triggered some other way, since a free
+                // hint on every puzzle would make the streak leaderboard
+                // meaningless.
+                if (isOnlineRun) return;
                 const emptyCells = [];
                 for (let i = 0; i < 9; i++) {
                     for (let j = 0; j < 9; j++) {
@@ -1565,7 +1587,9 @@
                     currentStreakElement.textContent = currentStreak;
                     maxStreakElement.textContent = maxStreak;
 
-                    recordWinIfOnline();
+                    // Not a streak win — hints are unavailable during online
+                    // runs (guarded at the top of this function), so this
+                    // branch only ever runs in "Play for Fun" mode.
                     showVictoryCelebration();
                 }
 
@@ -1655,11 +1679,6 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 function todayNumber() { return Math.floor(Date.now() / 86400000); }
-function difficultyName(rank) {
-  if (rank === 3) return "Hard";
-  if (rank === 2) return "Medium";
-  return "Easy";
-}
 
 // ============================= AUTH =========================================
 onAuthStateChanged(auth, async (user) => {
@@ -1769,29 +1788,19 @@ async function reserveGamePlaySlot(msg) {
 }
 
 // ============================= SUBMIT RESULTS ===============================
-// Called from the classic script when an online run's puzzle is solved
-// (normal fill or a hint that completes it). Self-reported, same trust model
-// as every other game's stats on this site — Firestore rules just gate WHO
-// can write, not whether the number is honest.
-//
-// Difficulty and wrong-guess count are NOT independent bests — solving a
-// harder puzzle always outranks an easier one, regardless of wrong guesses;
-// wrong-guess count only breaks a tie between two wins at the SAME
-// difficulty. Both fields only ever update together, from whichever single
-// win ranks best so far.
-window.submitRunResult = async ({ difficultyRank, wrongCount }) => {
-  if (!currentUid || !difficultyRank) return;
+// Called from the classic script after every online win, with the streak's
+// CURRENT length — submitted on every win (not just when the streak ends)
+// so progress survives even if the tab closes mid-streak. Self-reported,
+// same trust model as every other game's stats on this site — Firestore
+// rules just gate WHO can write, not whether the number is honest (hints
+// are disabled online specifically to keep this number meaningful).
+window.submitRunResult = async ({ streak }) => {
+  if (!currentUid || !streak) return;
   try {
     const snap = await getDoc(doc(db, "users", currentUid));
     const data = snap.exists() ? snap.data() : {};
-    const storedRank = data.sudokuBestDifficultyRank || 0;
-    const storedWrong = data.sudokuBestWrongCount ?? Infinity;
-    const isBetter = difficultyRank > storedRank || (difficultyRank === storedRank && wrongCount < storedWrong);
-    if (isBetter) {
-      await updateDoc(doc(db, "users", currentUid), {
-        sudokuBestDifficultyRank: difficultyRank,
-        sudokuBestWrongCount: wrongCount,
-      });
+    if (streak > (data.sudokuBestStreak || 0)) {
+      await updateDoc(doc(db, "users", currentUid), { sudokuBestStreak: streak });
     }
   } catch (err) {
     console.error("Couldn't submit Sudoku run result:", err);
@@ -1805,13 +1814,7 @@ async function loadLeaderboard() {
   list.innerHTML = "";
 
   try {
-    const q = query(
-      collection(db, "users"),
-      where("sudokuBestDifficultyRank", ">", 0),
-      orderBy("sudokuBestDifficultyRank", "desc"),
-      orderBy("sudokuBestWrongCount", "asc"),
-      limit(10)
-    );
+    const q = query(collection(db, "users"), where("sudokuBestStreak", ">", 0), orderBy("sudokuBestStreak", "desc"), limit(10));
     const snap = await getDocs(q);
     if (snap.empty) { empty.style.display = "block"; return; }
     empty.style.display = "none";
@@ -1821,7 +1824,8 @@ async function loadLeaderboard() {
       const u = docSnap.data();
       const row = document.createElement("div");
       row.className = "leader-row";
-      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${difficultyName(u.sudokuBestDifficultyRank)} · ${u.sudokuBestWrongCount} wrong</span>`;
+      const streakWord = u.sudokuBestStreak === 1 ? "win" : "wins";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${u.sudokuBestStreak} ${streakWord} in a row</span>`;
       list.appendChild(row);
     });
   } catch (err) {
