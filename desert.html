@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Desert Rattler — Town Fuss</title>
+    <link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/Desert-Rattler-/raw/main/Desert%20Rattler%20Favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            font-family: sans-serif;
+            text-align: center;
+            background: linear-gradient(135deg, #e6b87a 0%, #d89a3e 100%);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            position: relative;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .cactus-emoji {
+            position: absolute;
+            z-index: -1;
+            pointer-events: none;
+        }
+        #cactus-large {
+            bottom: 60px;
+            left: 5%;
+            font-size: 120px;
+            opacity: 0.8;
+        }
+        #cactus-small {
+            top: 20%;
+            right: 10%;
+            font-size: 70px;
+            opacity: 0.6;
+        }
+        #cactus-medium1 {
+            bottom: 30%;
+            left: 15%;
+            font-size: 90px;
+            opacity: 0.7;
+        }
+        #cactus-medium2 {
+            top: 10%;
+            left: 5%;
+            font-size: 80px;
+            opacity: 0.6;
+        }
+        #cactus-medium3 {
+            bottom: 15%;
+            right: 15%;
+            font-size: 100px;
+            opacity: 0.7;
+        }
+
+        #gameLogo {
+            max-width: 90%;
+            max-height: 80px;
+            margin-bottom: 5px;
+        }
+
+        canvas {
+            background-color: #fff;
+            border: 2px solid #333;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 90vw;
+            max-width: 450px;
+            height: 90vw;
+            max-height: 450px;
+            margin: 10px 0;
+        }
+
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            max-width: 450px;
+            margin-top: 10px;
+        }
+
+        #gameControlsRow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .scoreDisplay {
+            font-size: 1em;
+            font-weight: bold;
+            flex: 1;
+            padding: 0 5px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 5px;
+            margin: 0 5px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .game-btn-action {
+            background-color: #4FC3F7;
+            padding: 10px 15px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            width: 100px;
+            margin: 0 5px;
+        }
+        .game-btn-action:hover {
+            background-color: #00B0FF;
+        }
+
+        .mute-btn {
+            background-color: #FF9800;
+            padding: 10px 15px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            width: 80px;
+            margin-left: 10px;
+        }
+        .mute-btn:hover {
+            background-color: #F57C00;
+        }
+
+        .controls-row {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-top: 5px;
+        }
+        .control-btn {
+            background-color: #66BB6A;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            text-align: center;
+            touch-action: manipulation;
+            width: 50px;
+            height: 50px;
+            margin: 2px;
+            font-size: 0.9em;
+        }
+        .control-btn:hover {
+            background-color: #4CAF50;
+        }
+        .spacer {
+            width: 50px;
+            height: 50px;
+            margin: 2px;
+        }
+
+        /* Tumbleweed background animation */
+        .tumbleweed-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .tumbleweed {
+            position: absolute;
+            font-size: 30px;
+            opacity: 0.3;
+            animation: tumble 20s linear infinite;
+        }
+
+        @keyframes tumble {
+            0% {
+                transform: translateX(-50px) rotate(0deg);
+            }
+            100% {
+                transform: translateX(calc(100vw + 50px)) rotate(360deg);
+            }
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Stage selection */
+        #stageSelection {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 10px 0;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .stage-btn {
+            background-color: #8D6E63;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.8em;
+            flex: 1;
+            min-width: 70px;
+            max-width: 100px;
+        }
+
+        .stage-btn.active {
+            background-color: #5D4037;
+            box-shadow: 0 0 5px #FFD700;
+        }
+
+        .stage-btn:hover {
+            background-color: #6D4C41;
+        }
+
+        /* Power-up indicators */
+        #powerUpIndicators {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .power-up-indicator {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            padding: 5px 10px;
+            font-size: 0.8em;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .power-up-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .speed-icon { background-color: #4FC3F7; color: white; }
+        .slow-icon { background-color: #FF9800; color: white; }
+        .ghost-icon { background-color: #9C27B0; color: white; }
+        .double-icon { background-color: #4CAF50; color: white; }
+        .magnet-icon { background-color: #F44336; color: white; }
+
+        /* Mobile-specific adjustments */
+        @media (max-width: 480px) {
+            .game-btn-action, .mute-btn {
+                padding: 12px 10px;
+                font-size: 0.8em;
+                margin: 2px;
+            }
+
+            .scoreDisplay {
+                font-size: 0.9em;
+                padding: 5px;
+            }
+
+            #gameControlsRow {
+                flex-wrap: wrap;
+            }
+
+            .stage-btn {
+                padding: 10px 5px;
+                font-size: 0.7em;
+            }
+
+            .power-up-indicator {
+                font-size: 0.7em;
+                padding: 3px 8px;
+            }
+        }
+
+        /* Snake sprite styling */
+        .snake-sprite {
+            display: none;
+        }
+
+        /* Power-up animations */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .pulsing {
+            animation: pulse 0.5s infinite;
+        }
+
+        #run-status {
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #5D4037;
+        }
+
+        #back-to-hub-game-btn {
+            background-color: #795548;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 16px;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        /* ===========================================================================
+           SITE CHROME — Town Fuss header/hub/leaderboard, matching match3.html/
+           follow.html. Scoped under #site-chrome so it can never collide with the
+           game's own CSS above.
+           =========================================================================== */
+        #site-chrome {
+            --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+            --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+            --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+            --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+            --radius: 14px; --radius-sm: 8px;
+            background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body);
+            width: 100%; max-width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #site-chrome a { color: var(--amber-500); }
+        #site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
+        #site-chrome p { color: var(--text-muted); line-height: 1.6; }
+        #site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        #site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+        #site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+        #site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+        #site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+        #site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+        #site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+        #site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+        #site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+        #site-chrome button.site-btn:hover { background: var(--amber-600); }
+        #site-chrome button.site-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+        #site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+        #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+        #site-chrome .leader-row:last-child { border-bottom: none; }
+        #site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+        #site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+        #site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+        #site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+        #site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+        #site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+        #site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+        /* Body used to provide flex centering directly to the game elements
+           (they were all direct children of body); now that they're wrapped
+           in #desertGameWrapper alongside sibling #site-chrome, the wrapper
+           needs to reproduce that same centering itself. */
+        #desertGameWrapper {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="site-chrome">
+    <header class="header-bar">
+        <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+        <nav class="header-nav">
+            <button id="nav-hub" class="active">Games</button>
+            <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+        </nav>
+    </header>
+
+    <main class="page">
+
+        <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+            <h2>Sign in on Town Fuss first</h2>
+            <p>You need a Town Fuss account to play Desert Rattler online and appear on the leaderboard.</p>
+            <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+        </div>
+
+        <div id="app-content" style="display:none;">
+
+            <!-- ================= GAMES HUB ================= -->
+            <section id="view-hub">
+                <span class="eyebrow">Town Fuss</span>
+                <h1>Games</h1>
+                <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+                <div class="uicard mode-tile" id="game-tile-desert">
+                    <img src="https://github.com/TitanBusinessPros/Desert-Rattler-/raw/main/Desert%20Rattler%20Logo.png" alt="Desert Rattler" style="max-width:180px; width:100%; height:auto; margin:0 auto; border-radius:10px;" />
+                    <h2 style="font-size:1.1rem; margin-top:0.5rem;">Desert Rattler</h2>
+                    <p class="field-hint" style="text-align:center;">Play for fun, or go online to chase the high score leaderboard</p>
+                </div>
+                <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+            </section>
+
+            <!-- ================= MODE SELECT ================= -->
+            <section id="view-mode-select" style="display:none;">
+                <button type="button" class="site-btn secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+                <span class="eyebrow">Desert Rattler</span>
+                <h1>How do you want to play?</h1>
+                <p class="field-hint" id="desert-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+                <div class="uicard mode-tile" id="mode-tile-offline">
+                    <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+                    <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+                </div>
+                <div class="uicard mode-tile" id="mode-tile-online">
+                    <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+                    <p class="field-hint" style="text-align:center;">Your high score gets submitted to the leaderboard</p>
+                </div>
+                <div id="mode-select-message" class="site-message" style="display:none;"></div>
+            </section>
+
+            <!-- ================= LEADERBOARD ================= -->
+            <section id="view-leaderboard" style="display:none;">
+                <span class="eyebrow">Desert Rattler</span>
+                <h1>Leaderboard</h1>
+                <p style="text-align:center;">Highest score wins. Only Online (Ranked) runs count.</p>
+                <div class="uicard">
+                    <h2 style="text-align:left;">🏆 Top Players</h2>
+                    <div id="leaderboard-list"></div>
+                    <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked runs yet — be the first!</div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<div id="desertGameWrapper">
+    <button type="button" id="back-to-hub-game-btn" onclick="backToGamesHub()">&larr; Back to Games</button>
+    <div id="run-status"></div>
+
+    <div class="tumbleweed-bg" id="tumbleweedBg"></div>
+
+    <span id="cactus-large" class="cactus-emoji">🌵</span>
+    <span id="cactus-small" class="cactus-emoji">🌵</span>
+    <span id="cactus-medium1" class="cactus-emoji">🌵</span>
+    <span id="cactus-medium2" class="cactus-emoji">🌵</span>
+    <span id="cactus-medium3" class="cactus-emoji">🌵</span>
+
+    <img id="gameLogo" src="https://github.com/TitanBusinessPros/Desert-Rattler-/raw/main/Desert%20Rattler%20Logo.png" alt="Desert Rattler Logo">
+
+    <div id="stageSelection">
+        <button class="stage-btn active" onclick="changeStage(0)">Sandy Dunes</button>
+        <button class="stage-btn" onclick="changeStage(1)">Red Canyon</button>
+        <button class="stage-btn" onclick="changeStage(2)">Oasis</button>
+        <button class="stage-btn" onclick="changeStage(3)">Mesa</button>
+        <button class="stage-btn" onclick="changeStage(4)">Night Desert</button>
+    </div>
+
+    <canvas id="gameCanvas" width="450" height="450"></canvas>
+
+    <div id="powerUpIndicators">
+        <!-- Power-up indicators will be added here dynamically -->
+    </div>
+
+    <div id="controls">
+        <div id="gameControlsRow">
+            <div id="currentScoreDisplay" class="scoreDisplay">Score: 0</div>
+            <div id="highScoreDisplay" class="scoreDisplay">High Score: 0</div>
+        </div>
+
+        <div class="button-container">
+            <button id="startButton" class="game-btn-action" onclick="startGame()">Start Game</button>
+            <button id="restartButton" class="game-btn-action" onclick="restartGame()" style="display: none;">Restart Game</button>
+            <button id="muteButton" class="mute-btn" onclick="toggleMute()">Mute</button>
+        </div>
+
+        <div class="controls-row">
+            <div class="spacer"></div>
+            <button class="control-btn" ontouchstart="setDirection(38)" onclick="setDirection(38)">Up</button>
+            <div class="spacer"></div>
+        </div>
+        <div class="controls-row">
+            <button class="control-btn" ontouchstart="setDirection(37)" onclick="setDirection(37)">Left</button>
+            <button class="control-btn" ontouchstart="setDirection(39)" onclick="setDirection(39)">Right</button>
+        </div>
+        <div class="controls-row">
+            <div class="spacer"></div>
+            <button class="control-btn" ontouchstart="setDirection(40)" onclick="setDirection(40)">Down</button>
+            <div class="spacer"></div>
+        </div>
+    </div>
+
+    <audio id="backgroundMusic" loop>
+        <source src="https://github.com/TitanBusinessPros/Desert-Rattler-/raw/main/Desert%20Rattler%20Theme%20Song.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <!-- Preload snake sprite -->
+    <img id="snakeSprite" class="snake-sprite" src="https://github.com/TitanBusinessPros/Desert-Rattler-/raw/main/Desert%20Rattler%20Favicon.png" alt="Snake Sprite">
+</div>
+
+    <script>
+        // Game variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 15;
+        let baseGameSpeed = 150;
+        let gameSpeed = baseGameSpeed;
+        const MAX_FRUITS = 5;
+        const MAX_POWERUPS = 2;
+        let snake = [];
+        let fruits = [];
+        let powerUps = [];
+        let dx = 0;
+        let dy = 0;
+        let score = 0;
+        let highScore = 0;
+        let gameInterval;
+        let changingDirection = false;
+        let gameRunning = false;
+        let isMuted = false;
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const snakeSprite = document.getElementById('snakeSprite');
+
+        // Online-run tracking (Town Fuss additions) — mirrors match3.html/
+        // follow.html's approach. This game only has ONE metric (high score,
+        // no time component), so submission is simpler: just report the
+        // score whenever an online run ends.
+        let isOnlineRun = false;
+
+        // Power-up types and effects
+        const POWERUP_TYPES = {
+            SPEED_BOOST: {
+                name: "Speed Boost",
+                color: "#4FC3F7",
+                icon: "⚡",
+                duration: 10000, // 10 seconds
+                effect: () => {
+                    gameSpeed = baseGameSpeed / 2; // Double speed
+                    if (gameInterval) {
+                        clearInterval(gameInterval);
+                        gameInterval = setInterval(gameLoop, gameSpeed);
+                    }
+                },
+                reset: () => {
+                    gameSpeed = baseGameSpeed;
+                    if (gameInterval) {
+                        clearInterval(gameInterval);
+                        gameInterval = setInterval(gameLoop, gameSpeed);
+                    }
+                }
+            },
+            SLOW_MOTION: {
+                name: "Slow Motion",
+                color: "#FF9800",
+                icon: "🐌",
+                duration: 8000, // 8 seconds
+                effect: () => {
+                    gameSpeed = baseGameSpeed * 2; // Half speed
+                    if (gameInterval) {
+                        clearInterval(gameInterval);
+                        gameInterval = setInterval(gameLoop, gameSpeed);
+                    }
+                },
+                reset: () => {
+                    gameSpeed = baseGameSpeed;
+                    if (gameInterval) {
+                        clearInterval(gameInterval);
+                        gameInterval = setInterval(gameLoop, gameSpeed);
+                    }
+                }
+            },
+            GHOST_MODE: {
+                name: "Ghost Mode",
+                color: "#9C27B0",
+                icon: "👻",
+                duration: 12000, // 12 seconds
+                effect: () => {
+                    // Ghost mode allows passing through walls
+                    // This is handled in the collision detection
+                },
+                reset: () => {
+                    // No special reset needed
+                }
+            },
+            DOUBLE_POINTS: {
+                name: "Double Points",
+                color: "#4CAF50",
+                icon: "2×",
+                duration: 15000, // 15 seconds
+                effect: () => {
+                    // Double points is handled when scoring
+                },
+                reset: () => {
+                    // No special reset needed
+                }
+            },
+            FRUIT_MAGNET: {
+                name: "Fruit Magnet",
+                color: "#F44336",
+                icon: "🧲",
+                duration: 10000, // 10 seconds
+                effect: () => {
+                    // Fruit magnet is handled in the game loop
+                },
+                reset: () => {
+                    // No special reset needed
+                }
+            }
+        };
+
+        // Active power-ups
+        let activePowerUps = {};
+
+        // Stage configurations
+        const stages = [
+            {
+                name: "Sandy Dunes",
+                background: "linear-gradient(135deg, #e6b87a 0%, #d89a3e 100%)",
+                groundColor: "#f5d7a1",
+                fruitColors: ['#FF6347', '#4682B4', '#32CD32', '#FFD700', '#9370DB']
+            },
+            {
+                name: "Red Canyon",
+                background: "linear-gradient(135deg, #c1440e 0%, #8b3101 100%)",
+                groundColor: "#d15e27",
+                fruitColors: ['#FF8C00', '#FF4500', '#DC143C', '#B22222', '#8B0000']
+            },
+            {
+                name: "Oasis",
+                background: "linear-gradient(135deg, #87CEEB 0%, #20B2AA 100%)",
+                groundColor: "#98FB98",
+                fruitColors: ['#32CD32', '#00FA9A', '#00FF7F', '#3CB371', '#2E8B57']
+            },
+            {
+                name: "Mesa",
+                background: "linear-gradient(135deg, #CD853F 0%, #8B4513 100%)",
+                groundColor: "#DEB887",
+                fruitColors: ['#D2691E', '#A0522D', '#8B4513', '#CD853F', '#D2B48C']
+            },
+            {
+                name: "Night Desert",
+                background: "linear-gradient(135deg, #2c3e50 0%, #34495e 100%)",
+                groundColor: "#4a6572",
+                fruitColors: ['#FFD700', '#FFA500', '#FF8C00', '#FF6347', '#9370DB']
+            }
+        ];
+
+        let currentStage = 0;
+        let ateFruit = false; // Track if we ate a fruit in the current move
+
+        // Create background tumbleweeds
+        function createBackgroundTumbleweeds() {
+            const tumbleweedBg = document.getElementById('tumbleweedBg');
+            tumbleweedBg.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                const tumbleweed = document.createElement('div');
+                tumbleweed.className = 'tumbleweed';
+                tumbleweed.innerHTML = '🌵';
+                tumbleweed.style.top = `${Math.random() * 100}%`;
+                tumbleweed.style.animationDelay = `${Math.random() * 20}s`;
+                tumbleweedBg.appendChild(tumbleweed);
+            }
+        }
+
+        // Change stage function
+        function changeStage(stageIndex) {
+            currentStage = stageIndex;
+            const stageButtons = document.querySelectorAll('.stage-btn');
+            stageButtons.forEach((btn, index) => {
+                if (index === stageIndex) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Update background
+            document.body.style.background = stages[stageIndex].background;
+
+            // Update canvas background color
+            canvas.style.backgroundColor = stages[stageIndex].groundColor;
+
+            // Redraw the game with new stage settings
+            if (!gameRunning) {
+                draw();
+            }
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Initialize game state and load high score
+        function initializeGame() {
+            snake = [{ x: 15, y: 15 }];
+            dx = 0;
+            dy = 0;
+            score = 0;
+            fruits = [];
+            powerUps = [];
+            activePowerUps = {};
+            ateFruit = false;
+            gameSpeed = baseGameSpeed;
+            document.getElementById('currentScoreDisplay').innerText = 'Score: 0';
+            highScore = localStorage.getItem('snakeHighScore') || 0;
+            document.getElementById('highScoreDisplay').innerText = 'High Score: ' + highScore;
+            for (let i = 0; i < 3; i++) {
+                generateFruit();
+            }
+            updatePowerUpIndicators();
+            draw();
+
+            // Reset button states
+            document.getElementById('startButton').style.display = 'inline-block';
+            document.getElementById('restartButton').style.display = 'none';
+        }
+
+        function generateFruit() {
+            const minSize = 8;
+            const randomSize = Math.floor(Math.random() * (gridSize - minSize + 1)) + minSize;
+            const newFruit = {
+                x: Math.floor(Math.random() * (canvas.width / gridSize)),
+                y: Math.floor(Math.random() * (canvas.height / gridSize)),
+                color: stages[currentStage].fruitColors[Math.floor(Math.random() * stages[currentStage].fruitColors.length)],
+                size: randomSize
+            };
+
+            // Make sure fruit doesn't spawn on snake
+            let onSnake = false;
+            for (let segment of snake) {
+                if (segment.x === newFruit.x && segment.y === newFruit.y) {
+                    onSnake = true;
+                    break;
+                }
+            }
+
+            if (!onSnake) {
+                fruits.push(newFruit);
+            } else {
+                // Try again if fruit would spawn on snake
+                generateFruit();
+            }
+        }
+
+        function generatePowerUp() {
+            // Only generate power-ups if we have less than the max and randomly
+            if (powerUps.length >= MAX_POWERUPS || Math.random() > 0.02) return;
+
+            const powerUpTypes = Object.keys(POWERUP_TYPES);
+            const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+
+            const newPowerUp = {
+                x: Math.floor(Math.random() * (canvas.width / gridSize)),
+                y: Math.floor(Math.random() * (canvas.height / gridSize)),
+                type: randomType,
+                color: POWERUP_TYPES[randomType].color,
+                icon: POWERUP_TYPES[randomType].icon
+            };
+
+            // Make sure power-up doesn't spawn on snake or fruit
+            let invalidPosition = false;
+            for (let segment of snake) {
+                if (segment.x === newPowerUp.x && segment.y === newPowerUp.y) {
+                    invalidPosition = true;
+                    break;
+                }
+            }
+
+            for (let fruit of fruits) {
+                if (fruit.x === newPowerUp.x && fruit.y === newPowerUp.y) {
+                    invalidPosition = true;
+                    break;
+                }
+            }
+
+            if (!invalidPosition) {
+                powerUps.push(newPowerUp);
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw snake with custom sprite for head and body segments
+            snake.forEach((segment, index) => {
+                if (index === 0) {
+                    // Draw head with custom sprite
+                    ctx.drawImage(snakeSprite, segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+                } else {
+                    // Draw body segments with color based on stage
+                    ctx.fillStyle = getSnakeBodyColor();
+                    roundRect(ctx, segment.x * gridSize + 1, segment.y * gridSize + 1, gridSize - 2, gridSize - 2, 4);
+                }
+            });
+
+            // Draw fruits
+            fruits.forEach(fruit => {
+                ctx.fillStyle = fruit.color;
+                const offset = (gridSize - fruit.size) / 2;
+                ctx.fillRect(fruit.x * gridSize + offset, fruit.y * gridSize + offset, fruit.size, fruit.size);
+            });
+
+            // Draw power-ups
+            powerUps.forEach(powerUp => {
+                ctx.fillStyle = powerUp.color;
+                ctx.beginPath();
+                ctx.arc(
+                    powerUp.x * gridSize + gridSize/2,
+                    powerUp.y * gridSize + gridSize/2,
+                    gridSize/2 - 1,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+
+                // Draw icon
+                ctx.fillStyle = "white";
+                ctx.font = "10px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(
+                    powerUp.icon,
+                    powerUp.x * gridSize + gridSize/2,
+                    powerUp.y * gridSize + gridSize/2
+                );
+            });
+        }
+
+        function getSnakeBodyColor() {
+            // Return different colors based on stage for variety
+            const stageColors = ['#6E9A3C', '#8B4513', '#2E8B57', '#CD853F', '#4a6572'];
+            return stageColors[currentStage];
+        }
+
+        function updatePowerUpIndicators() {
+            const container = document.getElementById('powerUpIndicators');
+            container.innerHTML = '';
+
+            Object.keys(activePowerUps).forEach(powerUpType => {
+                const powerUp = activePowerUps[powerUpType];
+                const timeLeft = Math.ceil((powerUp.endTime - Date.now()) / 1000);
+
+                const indicator = document.createElement('div');
+                indicator.className = 'power-up-indicator';
+                indicator.innerHTML = `
+                    <div class="power-up-icon ${powerUpType.toLowerCase().replace('_', '-')}-icon">
+                        ${POWERUP_TYPES[powerUpType].icon}
+                    </div>
+                    ${timeLeft}s
+                `;
+
+                container.appendChild(indicator);
+            });
+        }
+
+        // Move the snake and check for collisions
+        function moveSnake() {
+            const head = snake[0];
+            const headX = head.x + dx;
+            const headY = head.y + dy;
+            const newHead = { x: headX, y: headY };
+            snake.unshift(newHead);
+            changingDirection = false;
+
+            ateFruit = false;
+            for (let i = 0; i < fruits.length; i++) {
+                if (newHead.x === fruits[i].x && newHead.y === fruits[i].y) {
+                    ateFruit = true;
+                    // Check for double points power-up
+                    const pointsMultiplier = activePowerUps.DOUBLE_POINTS ? 2 : 1;
+                    score += pointsMultiplier;
+                    document.getElementById('currentScoreDisplay').innerText = 'Score: ' + score;
+                    fruits.splice(i, 1);
+                    if (fruits.length < MAX_FRUITS) {
+                        generateFruit();
+                    }
+                    break;
+                }
+            }
+
+            // Check for power-up collisions
+            for (let i = 0; i < powerUps.length; i++) {
+                if (newHead.x === powerUps[i].x && newHead.y === powerUps[i].y) {
+                    activatePowerUp(powerUps[i].type);
+                    powerUps.splice(i, 1);
+                    break;
+                }
+            }
+
+            // Fruit magnet effect - attract nearby fruits
+            if (activePowerUps.FRUIT_MAGNET) {
+                const magnetRange = 5; // Grid cells
+                fruits.forEach((fruit, index) => {
+                    const distance = Math.sqrt(
+                        Math.pow(fruit.x - newHead.x, 2) +
+                        Math.pow(fruit.y - newHead.y, 2)
+                    );
+
+                    if (distance <= magnetRange && distance > 0) {
+                        // Move fruit one step closer to snake
+                        if (fruit.x < newHead.x) fruit.x += 1;
+                        else if (fruit.x > newHead.x) fruit.x -= 1;
+
+                        if (fruit.y < newHead.y) fruit.y += 1;
+                        else if (fruit.y > newHead.y) fruit.y -= 1;
+                    }
+                });
+            }
+
+            // Only remove the tail if we didn't eat a fruit
+            if (!ateFruit) {
+                snake.pop();
+            }
+        }
+
+        function activatePowerUp(powerUpType) {
+            const powerUp = POWERUP_TYPES[powerUpType];
+
+            // If this power-up is already active, reset it first
+            if (activePowerUps[powerUpType]) {
+                clearTimeout(activePowerUps[powerUpType].timeout);
+                powerUp.reset();
+            }
+
+            // Apply the power-up effect
+            powerUp.effect();
+
+            // Set up the power-up duration
+            const endTime = Date.now() + powerUp.duration;
+            activePowerUps[powerUpType] = {
+                endTime: endTime,
+                timeout: setTimeout(() => {
+                    powerUp.reset();
+                    delete activePowerUps[powerUpType];
+                    updatePowerUpIndicators();
+                }, powerUp.duration)
+            };
+
+            updatePowerUpIndicators();
+        }
+
+        // Check for game over
+        function checkGameOver() {
+            const head = snake[0];
+
+            // Check wall collision (unless in ghost mode)
+            if (!activePowerUps.GHOST_MODE) {
+                if (head.x < 0 || head.x >= canvas.width / gridSize || head.y < 0 || head.y >= canvas.height / gridSize) {
+                    return true;
+                }
+            } else {
+                // Ghost mode - wrap around edges
+                if (head.x < 0) head.x = canvas.width / gridSize - 1;
+                else if (head.x >= canvas.width / gridSize) head.x = 0;
+
+                if (head.y < 0) head.y = canvas.height / gridSize - 1;
+                else if (head.y >= canvas.height / gridSize) head.y = 0;
+            }
+
+            // Check self collision (skip the head)
+            for (let i = 1; i < snake.length; i++) {
+                if (snake[i].x === head.x && snake[i].y === head.y) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Main game loop
+        function gameLoop() {
+            if (checkGameOver()) {
+                clearInterval(gameInterval);
+                gameRunning = false;
+
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('snakeHighScore', highScore);
+                    document.getElementById('highScoreDisplay').innerText = 'High Score: ' + highScore;
+                    alert(`New High Score! Score: ${score}`);
+                } else {
+                    alert(`Game Over! Score: ${score}`);
+                }
+
+                // Online (ranked) run — report this score, whether or not it
+                // beat the LOCAL/device high score above (Firestore tracks
+                // your best online run independently).
+                if (isOnlineRun && window.submitRunResult) {
+                    window.submitRunResult({ score });
+                }
+                isOnlineRun = false;
+
+                document.getElementById('startButton').style.display = 'none';
+                document.getElementById('restartButton').style.display = 'inline-block';
+                return;
+            }
+
+            // Generate power-ups randomly
+            generatePowerUp();
+
+            // Update power-up indicators
+            updatePowerUpIndicators();
+
+            moveSnake();
+            draw();
+        }
+
+        // Start button handler
+        function startGame() {
+            if (gameRunning) return;
+            gameRunning = true;
+            document.getElementById('startButton').style.display = 'none';
+            document.getElementById('restartButton').style.display = 'inline-block';
+            dx = 1;
+            dy = 0;
+            gameInterval = setInterval(gameLoop, gameSpeed);
+
+            // Start background music when game starts
+            if (!isMuted) {
+                backgroundMusic.play().catch(error => {
+                    console.log("Audio play failed:", error);
+                });
+            }
+        }
+
+        // Restart button handler
+        function restartGame() {
+            clearInterval(gameInterval);
+            // Clear any active power-up timeouts
+            Object.keys(activePowerUps).forEach(powerUpType => {
+                clearTimeout(activePowerUps[powerUpType].timeout);
+            });
+            gameRunning = false;
+            // Restarting after a game over always resumes as a plain,
+            // untracked run — going online again requires an explicit
+            // choice from the mode select screen, same as the other games,
+            // so a play slot is never consumed by accident.
+            isOnlineRun = false;
+            document.getElementById('run-status').textContent = '';
+            initializeGame();
+        }
+
+        // Toggle mute function
+        function toggleMute() {
+            isMuted = !isMuted;
+            backgroundMusic.muted = isMuted;
+            document.getElementById('muteButton').innerText = isMuted ? 'Unmute' : 'Mute';
+        }
+
+        // Set direction (Keyboard and D-pad)
+        function setDirection(keyCode) {
+            if (!gameRunning || changingDirection) return;
+            changingDirection = true;
+
+            const goingUp = dy === -1;
+            const goingDown = dy === 1;
+            const goingRight = dx === 1;
+            const goingLeft = dx === -1;
+
+            if (keyCode === 37 && !goingRight) { dx = -1; dy = 0; }
+            if (keyCode === 38 && !goingDown) { dx = 0; dy = -1; }
+            if (keyCode === 39 && !goingLeft) { dx = 1; dy = 0; }
+            if (keyCode === 40 && !goingUp) { dx = 0; dy = 1; }
+        }
+
+        // Touch controls for mobile
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        canvas.addEventListener('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            e.preventDefault();
+        }, false);
+
+        canvas.addEventListener('touchmove', function(e) {
+            if (!gameRunning) return;
+
+            const touchX = e.touches[0].clientX;
+            const touchY = e.touches[0].clientY;
+            const dxTouch = touchX - touchStartX;
+            const dyTouch = touchY - touchStartY;
+
+            if (Math.abs(dxTouch) > Math.abs(dyTouch)) {
+                // Horizontal swipe
+                if (dxTouch > 0) {
+                    setDirection(39); // Right
+                } else {
+                    setDirection(37); // Left
+                }
+            } else {
+                // Vertical swipe
+                if (dyTouch > 0) {
+                    setDirection(40); // Down
+                } else {
+                    setDirection(38); // Up
+                }
+            }
+
+            touchStartX = touchX;
+            touchStartY = touchY;
+            e.preventDefault();
+        }, false);
+
+        // Keyboard event listener
+        document.addEventListener('keydown', (event) => {
+            if ((event.keyCode >= 37 && event.keyCode <= 40) || event.keyCode === 32) {
+                event.preventDefault();
+            }
+            if (event.keyCode === 32 && !gameRunning) {
+                startGame();
+            } else {
+                setDirection(event.keyCode);
+            }
+        });
+
+        // Called by the site-chrome module script when starting a run from
+        // mode-select — "online" reserves a daily play slot and marks this
+        // run's eventual score for submission; "offline" is just the plain
+        // game, untracked (same local high score as always).
+        function beginRun(online) {
+            document.getElementById('desertGameWrapper').style.display = 'flex';
+            document.getElementById('site-chrome').style.display = 'none';
+            isOnlineRun = online;
+            document.getElementById('run-status').textContent = online ? '🌐 Online run — your score is being tracked for the leaderboard' : '🎮 Just for fun — nothing is tracked';
+            initializeGame();
+        }
+        window.beginRun = beginRun;
+
+        // Bridges back from the game view into the Town Fuss site chrome
+        // (hub/leaderboard), which lives in a separate `type="module"` script
+        // and isn't reachable from these plain inline onclick handlers
+        // directly — window.onReturnToHub is exposed by that module script.
+        function backToGamesHub() {
+            if (isOnlineRun && score > 0 && window.submitRunResult) {
+                window.submitRunResult({ score });
+            }
+            isOnlineRun = false;
+            clearInterval(gameInterval);
+            gameRunning = false;
+            document.getElementById('desertGameWrapper').style.display = 'none';
+            document.getElementById('site-chrome').style.display = 'block';
+            if (window.onReturnToHub) window.onReturnToHub();
+        }
+        window.backToGamesHub = backToGamesHub;
+
+        // Initialize on load
+        window.onload = function() {
+            initializeGame();
+            createBackgroundTumbleweeds();
+
+            // Ensure the snake sprite is loaded before starting
+            snakeSprite.onload = function() {
+                draw();
+            };
+
+            // Fallback in case sprite fails to load
+            snakeSprite.onerror = function() {
+                console.log("Snake sprite failed to load, using default graphics");
+                draw();
+            };
+        };
+    </script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  showView("hub");
+});
+
+// ============================= VIEW ROUTER =================================
+function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = name === "hub" ? "none" : "inline";
+
+  if (name === "leaderboard") loadLeaderboard();
+}
+window.onReturnToHub = () => showView("hub");
+
+document.getElementById("nav-hub").addEventListener("click", () => { showView("hub"); });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
+document.getElementById("game-tile-desert").addEventListener("click", () => showView("mode-select"));
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.beginRun(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.beginRun(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as the other
+// 8 games, sharing the SAME gamePlayLimits/{uid} counter — starting a
+// ranked Desert Rattler run counts as one of your daily online plays.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("desert-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+// Called from the classic script when an online run ends (a collision, or
+// leaving mid-run). Self-reported, same trust model as every other game's
+// stats on this site — Firestore rules just gate WHO can write, not
+// whether the number is honest. High score only — no time component here.
+window.submitRunResult = async ({ score }) => {
+  if (!currentUid || !score) return;
+  try {
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    if (score > (data.desertHighScore || 0)) {
+      await updateDoc(doc(db, "users", currentUid), { desertHighScore: score });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Desert Rattler run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(collection(db, "users"), where("desertHighScore", ">", 0), orderBy("desertHighScore", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${u.desertHighScore} pts</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
