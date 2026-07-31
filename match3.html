@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match-3 — Town Fuss</title>
+    <link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/Match-3/raw/main/Match-3-Favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                padding: 30px;
+                width: auto;
+            }
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .game-logo {
+            max-width: 100%;
+            width: 100%;
+            height: auto;
+            margin-bottom: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (min-width: 768px) {
+            .game-logo {
+                max-width: 400px;
+                margin-bottom: 20px;
+            }
+        }
+
+        .score {
+            font-size: 1.5em;
+            color: #764ba2;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .level-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .level-box {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .level-box h3 {
+            font-size: 0.75em;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+
+        .level-box .value {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        @media (min-width: 768px) {
+            .level-info {
+                margin-bottom: 20px;
+                gap: 20px;
+            }
+
+            .level-box {
+                padding: 15px 25px;
+                min-width: 100px;
+            }
+
+            .level-box h3 {
+                font-size: 0.9em;
+            }
+
+            .level-box .value {
+                font-size: 1.8em;
+            }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .level-complete {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: white;
+            padding: 30px 20px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            text-align: center;
+            transition: transform 0.3s ease;
+            max-width: 90%;
+            box-sizing: border-box;
+        }
+
+        @media (min-width: 768px) {
+            .level-complete {
+                padding: 40px;
+                max-width: 500px;
+            }
+        }
+
+        .level-complete.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .level-complete h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+
+        .level-complete p {
+            font-size: 1.1em;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        @media (min-width: 768px) {
+            .level-complete h2 {
+                font-size: 2.5em;
+                margin-bottom: 20px;
+            }
+
+            .level-complete p {
+                font-size: 1.3em;
+                margin-bottom: 20px;
+            }
+        }
+
+        .grid {
+            display: inline-grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 2px;
+            background: #f0f0f0;
+            padding: 5px;
+            border-radius: 15px;
+            box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            width: 100%;
+            aspect-ratio: 1;
+            box-sizing: border-box;
+        }
+
+        @media (min-width: 480px) {
+            .grid {
+                gap: 3px;
+                padding: 8px;
+                max-width: 480px;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .grid {
+                gap: 4px;
+                padding: 10px;
+                max-width: 540px;
+            }
+        }
+
+        .tile {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            touch-action: manipulation;
+        }
+
+        @media (min-width: 480px) {
+            .tile {
+                font-size: 1.8em;
+                border-radius: 9px;
+                box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        @media (min-width: 768px) {
+            .tile {
+                font-size: 2em;
+                border-radius: 10px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        .tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .tile.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            border: 3px solid white;
+        }
+
+        .tile.matched {
+            animation: match 0.5s ease-out;
+        }
+
+        @keyframes match {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3) rotate(180deg); opacity: 0.5; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .color-0 { background: linear-gradient(135deg, #ff6b6b, #ee5a6f); }
+        .color-1 { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
+        .color-2 { background: linear-gradient(135deg, #ffd93d, #f6c744); }
+        .color-3 { background: linear-gradient(135deg, #a29bfe, #6c5ce7); }
+        .color-4 { background: linear-gradient(135deg, #fd79a8, #e84393); }
+        .color-5 { background: linear-gradient(135deg, #74b9ff, #0984e3); }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 25px;
+            font-size: 1em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            touch-action: manipulation;
+        }
+
+        @media (min-width: 768px) {
+            button {
+                margin-top: 20px;
+                padding: 12px 30px;
+                font-size: 1.2em;
+            }
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .run-status {
+            font-size: 0.85em;
+            color: #764ba2;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        /* ===========================================================================
+           SITE CHROME — Town Fuss header/hub/leaderboard, matching chess.html/
+           m3game.html. Scoped under #site-chrome so it can never collide with the
+           Match-3 game's own CSS above (which already claims bare `button` and
+           `h1` selectors) — an #id-scoped selector always beats a bare element
+           selector, regardless of source order.
+           =========================================================================== */
+        #site-chrome {
+            --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+            --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+            --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+            --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+            --radius: 14px; --radius-sm: 8px;
+            background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body);
+            min-height: 100vh;
+        }
+        #site-chrome a { color: var(--amber-500); }
+        #site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
+        #site-chrome p { color: var(--text-muted); line-height: 1.6; }
+        #site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        #site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+        #site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+        #site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+        #site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; box-shadow: none; margin-top: 0; }
+        #site-chrome .header-nav button:hover { transform: none; box-shadow: none; }
+        #site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+        #site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+        #site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+        #site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; box-shadow: none; margin-top: 0; }
+        #site-chrome button.site-btn:hover { background: var(--amber-600); transform: none; box-shadow: none; }
+        #site-chrome button.site-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+        #site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+        #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+        #site-chrome .leader-row:last-child { border-bottom: none; }
+        #site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+        #site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+        #site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+        #site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+        #site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+        #site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+        #site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="site-chrome">
+    <header class="header-bar">
+        <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+        <nav class="header-nav">
+            <button id="nav-hub" class="active">Games</button>
+            <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+        </nav>
+    </header>
+
+    <main class="page">
+
+        <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+            <h2>Sign in on Town Fuss first</h2>
+            <p>You need a Town Fuss account to play Match-3 online and appear on the leaderboard.</p>
+            <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+        </div>
+
+        <div id="app-content" style="display:none;">
+
+            <!-- ================= GAMES HUB ================= -->
+            <section id="view-hub">
+                <span class="eyebrow">Town Fuss</span>
+                <h1>Games</h1>
+                <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+                <div class="uicard mode-tile" id="game-tile-match3">
+                    <img src="https://github.com/TitanBusinessPros/Match-3/raw/main/Match-3%20Logo.png" alt="Match-3" style="max-width:180px; width:100%; height:auto; margin:0 auto; border-radius:10px;" />
+                    <h2 style="font-size:1.1rem; margin-top:0.5rem;">Match-3</h2>
+                    <p class="field-hint" style="text-align:center;">Play for fun, or go online to chase the high score and speed-run leaderboards</p>
+                </div>
+                <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+            </section>
+
+            <!-- ================= MODE SELECT ================= -->
+            <section id="view-mode-select" style="display:none;">
+                <button type="button" class="site-btn secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+                <span class="eyebrow">Match-3</span>
+                <h1>How do you want to play?</h1>
+                <p class="field-hint" id="match3-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+                <div class="uicard mode-tile" id="mode-tile-offline">
+                    <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+                    <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+                </div>
+                <div class="uicard mode-tile" id="mode-tile-online">
+                    <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+                    <p class="field-hint" style="text-align:center;">Your best score and fastest full clear get submitted to the leaderboard</p>
+                </div>
+                <div id="mode-select-message" class="site-message" style="display:none;"></div>
+            </section>
+
+            <!-- ================= LEADERBOARD ================= -->
+            <section id="view-leaderboard" style="display:none;">
+                <span class="eyebrow">Match-3</span>
+                <h1>Leaderboard</h1>
+                <p style="text-align:center;">Ranked by score and speed together — being #1 takes a high score AND a fast time, not just one or the other. Only Online (Ranked) runs count.</p>
+                <div class="uicard">
+                    <h2 style="text-align:left;">🏆 Top Players</h2>
+                    <div id="leaderboard-list"></div>
+                    <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked runs yet — be the first!</div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<div id="match3GameWrapper" style="display:none;">
+    <div class="container">
+        <button type="button" onclick="backToGamesHub()" style="margin-bottom:10px;">&larr; Back to Games</button>
+        <div id="run-status" class="run-status"></div>
+        <img src="https://github.com/TitanBusinessPros/Match-3/raw/main/Match-3%20Logo.png" alt="Match-3 Game Logo" class="game-logo">
+        <div class="level-info">
+            <div class="level-box">
+                <h3>Level</h3>
+                <div class="value" id="level">1</div>
+            </div>
+            <div class="level-box">
+                <h3>Score</h3>
+                <div class="value" id="score">0</div>
+            </div>
+            <div class="level-box">
+                <h3>Target</h3>
+                <div class="value" id="target">500</div>
+            </div>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress">0%</div>
+        </div>
+        <div class="grid" id="grid"></div>
+        <button onclick="resetGame()">New Game</button>
+    </div>
+
+    <div class="level-complete" id="levelComplete">
+        <h2>🎉 Level Complete!</h2>
+        <p id="levelCompleteText"></p>
+        <button onclick="nextLevel()">Next Level</button>
+    </div>
+</div>
+
+    <script>
+        const GRID_SIZE = 8;
+        const COLORS = 6;
+        const gemsPerLevel = [
+            ['💎', '🔷', '⭐', '💜', '🌸', '🔵'],           // Level 1
+            ['💎', '🔷', '⭐', '💜', '💚', '🔴'],           // Level 2 - Green heart & Red diamond
+            ['💎', '🔷', '⭐', '💜', '💚', '🔴'],           // Level 3
+            ['🔶', '🔷', '⭐', '💜', '💚', '🔴'],           // Level 4 - Orange diamond
+            ['🔶', '🔷', '⭐', '💜', '💚', '🔴'],           // Level 5
+            ['🔶', '🔷', '⭐', '🧡', '💚', '🔴'],           // Level 6 - Orange heart
+            ['🔶', '🔷', '⭐', '🧡', '💚', '🔴'],           // Level 7
+            ['🔶', '🔷', '✨', '🧡', '💚', '🔴'],           // Level 8 - Sparkles
+            ['🔶', '🔷', '✨', '🧡', '💚', '🔴'],           // Level 9
+            ['🔶', '💠', '✨', '🧡', '💚', '🔴'],           // Level 10 - Diamond with dot
+            ['🔶', '💠', '✨', '🧡', '💚', '🔴'],           // Level 11
+            ['🔶', '💠', '✨', '🧡', '💛', '🔴'],           // Level 12 - Yellow heart
+            ['🔶', '💠', '✨', '🧡', '💛', '🔴'],           // Level 13
+            ['🟠', '💠', '✨', '🧡', '💛', '🔴'],           // Level 14 - Orange circle
+            ['🟠', '💠', '✨', '🧡', '💛', '🔴'],           // Level 15
+            ['🟠', '💠', '✨', '🧡', '💛', '🟥'],           // Level 16 - Red square
+            ['🟠', '💠', '✨', '🧡', '💛', '🟥'],           // Level 17
+            ['🟠', '💠', '🌟', '🧡', '💛', '🟥'],           // Level 18 - Glowing star
+            ['🟠', '💠', '🌟', '🧡', '💛', '🟥'],           // Level 19
+            ['🟠', '🔵', '🌟', '🧡', '💛', '🟥'],           // Level 20 - Blue circle
+            ['🟠', '🔵', '🌟', '🧡', '💛', '🟥'],           // Level 21
+            ['🟠', '🔵', '🌟', '💙', '💛', '🟥'],           // Level 22 - Blue heart
+            ['🟠', '🔵', '🌟', '💙', '💛', '🟥'],           // Level 23
+            ['🟠', '🔵', '🌟', '💙', '🟡', '🟥'],           // Level 24 - Yellow circle
+            ['🟠', '🔵', '🌟', '💙', '🟡', '🟥'],           // Level 25
+            ['🟣', '🔵', '🌟', '💙', '🟡', '🟥'],           // Level 26 - Purple circle
+            ['🟣', '🔵', '🌟', '💙', '🟡', '🟥'],           // Level 27
+            ['🟣', '🔵', '🌟', '💙', '🟡', '🟢'],           // Level 28 - Green circle
+            ['🟣', '🔵', '🌟', '💙', '🟡', '🟢'],           // Level 29
+            ['🟣', '⚡', '🌟', '💙', '🟡', '🟢']            // Level 30 - Lightning bolt!
+        ];
+        const MAX_LEVEL = 30;
+
+        let grid = [];
+        let score = 0;
+        let level = 1;
+        let targetScore = 500;
+        let selectedTile = null;
+        let isAnimating = false;
+        let gems = gemsPerLevel[0]; // Start with level 1 gems
+
+        // Online-run tracking (Town Fuss additions) — totalScore accumulates
+        // across the WHOLE run and never resets per-level (unlike `score`,
+        // which is level-scoped and drives the progress bar/target), so it's
+        // what actually gets submitted as a "high score." runStartTime marks
+        // when an online run began, for the fastest-full-clear leaderboard.
+        let isOnlineRun = false;
+        let totalScore = 0;
+        let runStartTime = 0;
+
+        // Background music
+        const bgMusic = new Audio('https://github.com/TitanBusinessPros/Match-3/raw/main/Shimmer%20and%20Match.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.3;
+
+        let musicStarted = false;
+
+        function startMusic() {
+            if (!musicStarted) {
+                musicStarted = true;
+                bgMusic.play().catch(e => console.log('Music autoplay prevented:', e));
+            }
+        }
+
+        // Sound effect for matches using Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playMatchSound() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.1);
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
+        function createGrid() {
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+            grid = [];
+
+            // Update gems for current level
+            gems = gemsPerLevel[level - 1];
+
+            for (let row = 0; row < GRID_SIZE; row++) {
+                grid[row] = [];
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    let color;
+                    do {
+                        color = Math.floor(Math.random() * COLORS);
+                    } while (wouldCreateMatch(row, col, color));
+
+                    grid[row][col] = color;
+
+                    const tile = document.createElement('div');
+                    tile.className = `tile color-${color}`;
+                    tile.textContent = gems[color];
+                    tile.dataset.row = row;
+                    tile.dataset.col = col;
+                    tile.onclick = () => selectTile(row, col);
+                    gridEl.appendChild(tile);
+                }
+            }
+        }
+
+        function wouldCreateMatch(row, col, color) {
+            // Check horizontal
+            if (col >= 2 && grid[row][col-1] === color && grid[row][col-2] === color) {
+                return true;
+            }
+            // Check vertical
+            if (row >= 2 && grid[row-1][col] === color && grid[row-2][col] === color) {
+                return true;
+            }
+            return false;
+        }
+
+        function selectTile(row, col) {
+            if (isAnimating) return;
+
+            startMusic(); // Start music on first click
+
+            const tile = getTileElement(row, col);
+
+            if (selectedTile === null) {
+                selectedTile = {row, col};
+                tile.classList.add('selected');
+            } else {
+                const prevTile = getTileElement(selectedTile.row, selectedTile.col);
+                prevTile.classList.remove('selected');
+
+                if (areNeighbors(selectedTile.row, selectedTile.col, row, col)) {
+                    swapTiles(selectedTile.row, selectedTile.col, row, col);
+                }
+
+                selectedTile = null;
+            }
+        }
+
+        function areNeighbors(row1, col1, row2, col2) {
+            return (Math.abs(row1 - row2) === 1 && col1 === col2) ||
+                   (Math.abs(col1 - col2) === 1 && row1 === row2);
+        }
+
+        function swapTiles(row1, col1, row2, col2) {
+            [grid[row1][col1], grid[row2][col2]] = [grid[row2][col2], grid[row1][col1]];
+            updateTiles();
+
+            setTimeout(() => {
+                const matches = findMatches();
+                if (matches.length === 0) {
+                    // Swap back if no match
+                    [grid[row1][col1], grid[row2][col2]] = [grid[row2][col2], grid[row1][col1]];
+                    updateTiles();
+                } else {
+                    processMatches();
+                }
+            }, 300);
+        }
+
+        function findMatches() {
+            const matches = new Set();
+
+            // Check horizontal
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE - 2; col++) {
+                    const color = grid[row][col];
+                    if (color === grid[row][col+1] && color === grid[row][col+2]) {
+                        matches.add(`${row},${col}`);
+                        matches.add(`${row},${col+1}`);
+                        matches.add(`${row},${col+2}`);
+                    }
+                }
+            }
+
+            // Check vertical
+            for (let col = 0; col < GRID_SIZE; col++) {
+                for (let row = 0; row < GRID_SIZE - 2; row++) {
+                    const color = grid[row][col];
+                    if (color === grid[row+1][col] && color === grid[row+2][col]) {
+                        matches.add(`${row},${col}`);
+                        matches.add(`${row+1},${col}`);
+                        matches.add(`${row+2},${col}`);
+                    }
+                }
+            }
+
+            return Array.from(matches).map(pos => {
+                const [row, col] = pos.split(',').map(Number);
+                return {row, col};
+            });
+        }
+
+        function processMatches() {
+            isAnimating = true;
+            const matches = findMatches();
+
+            if (matches.length === 0) {
+                isAnimating = false;
+                return;
+            }
+
+            // Play match sound!
+            playMatchSound();
+
+            score += matches.length * 10;
+            totalScore += matches.length * 10;
+            document.getElementById('score').textContent = score;
+            updateProgress();
+
+            // Check if level complete
+            if (score >= targetScore) {
+                setTimeout(() => {
+                    showLevelComplete();
+                }, 1000);
+            }
+
+            // Animate matched tiles
+            matches.forEach(({row, col}) => {
+                const tile = getTileElement(row, col);
+                tile.classList.add('matched');
+            });
+
+            setTimeout(() => {
+                // Clear matched tiles
+                matches.forEach(({row, col}) => {
+                    grid[row][col] = -1;
+                });
+
+                // Drop tiles
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    let emptyRow = GRID_SIZE - 1;
+                    for (let row = GRID_SIZE - 1; row >= 0; row--) {
+                        if (grid[row][col] !== -1) {
+                            grid[emptyRow][col] = grid[row][col];
+                            if (emptyRow !== row) {
+                                grid[row][col] = -1;
+                            }
+                            emptyRow--;
+                        }
+                    }
+
+                    // Fill empty spaces
+                    for (let row = emptyRow; row >= 0; row--) {
+                        grid[row][col] = Math.floor(Math.random() * COLORS);
+                    }
+                }
+
+                updateTiles();
+
+                setTimeout(() => {
+                    processMatches(); // Check for cascading matches
+                }, 300);
+            }, 500);
+        }
+
+        function getTileElement(row, col) {
+            return document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        }
+
+        function updateTiles() {
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const tile = getTileElement(row, col);
+                    const color = grid[row][col];
+                    if (color !== -1) {
+                        tile.className = `tile color-${color}`;
+                        tile.textContent = gems[color];
+                    }
+                }
+            }
+        }
+
+        function updateProgress() {
+            const progress = Math.min((score / targetScore) * 100, 100);
+            const progressEl = document.getElementById('progress');
+            progressEl.style.width = progress + '%';
+            progressEl.textContent = Math.floor(progress) + '%';
+        }
+
+        function showLevelComplete() {
+            isAnimating = true;
+            const modal = document.getElementById('levelComplete');
+            const text = document.getElementById('levelCompleteText');
+
+            if (level >= MAX_LEVEL) {
+                text.textContent = `🎊 Congratulations! You've completed all ${MAX_LEVEL} levels! 🎊`;
+                modal.querySelector('button').textContent = 'Play Again';
+                // Full clear — submit this run's score+time pair, if this was
+                // an online (ranked) run.
+                if (isOnlineRun && window.submitRunResult) {
+                    window.submitRunResult({ totalScore, elapsedMs: Date.now() - runStartTime });
+                }
+            } else {
+                text.textContent = `You reached ${score} points! Moving to Level ${level + 1}`;
+            }
+
+            modal.classList.add('show');
+        }
+
+        function nextLevel() {
+            const modal = document.getElementById('levelComplete');
+            modal.classList.remove('show');
+
+            if (level >= MAX_LEVEL) {
+                resetGame();
+                return;
+            }
+
+            level++;
+            targetScore = level * 500;
+            score = 0;
+
+            document.getElementById('level').textContent = level;
+            document.getElementById('target').textContent = targetScore;
+            document.getElementById('score').textContent = score;
+            updateProgress();
+
+            selectedTile = null;
+            isAnimating = false;
+            createGrid();
+        }
+
+        function resetGame() {
+            // Leaving an online run early still submits whatever score+time
+            // pair this run has so far — it only actually becomes your new
+            // best if its points-per-second beats your current best.
+            if (isOnlineRun && totalScore > 0 && window.submitRunResult) {
+                window.submitRunResult({ totalScore, elapsedMs: Date.now() - runStartTime });
+            }
+            isOnlineRun = false;
+            totalScore = 0;
+            score = 0;
+            level = 1;
+            targetScore = 500;
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('target').textContent = targetScore;
+            document.getElementById('run-status').textContent = '';
+            updateProgress();
+            selectedTile = null;
+            isAnimating = false;
+            createGrid();
+        }
+
+        // Called by the site-chrome module script when starting a run —
+        // "online" reserves a daily play slot and begins tracking score/time
+        // for the leaderboard; "offline" is just the plain game, untracked.
+        function beginRun(online) {
+            isOnlineRun = online;
+            totalScore = 0;
+            runStartTime = Date.now();
+            score = 0;
+            level = 1;
+            targetScore = 500;
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('target').textContent = targetScore;
+            document.getElementById('run-status').textContent = online ? '🌐 Online run — your best score and fastest clear are being tracked' : '🎮 Just for fun — nothing is tracked';
+            updateProgress();
+            selectedTile = null;
+            isAnimating = false;
+            document.getElementById('match3GameWrapper').style.display = 'block';
+            document.getElementById('site-chrome').style.display = 'none';
+            createGrid();
+        }
+        window.beginRun = beginRun;
+
+        // Bridges back from the game view into the Town Fuss site chrome
+        // (hub/leaderboard), which lives in a separate `type="module"` script
+        // and isn't reachable from these plain inline onclick handlers
+        // directly — window.onReturnToHub is exposed by that module script.
+        function backToGamesHub() {
+            if (isOnlineRun && totalScore > 0 && window.submitRunResult) {
+                window.submitRunResult({ totalScore, elapsedMs: Date.now() - runStartTime });
+            }
+            isOnlineRun = false;
+            document.getElementById('match3GameWrapper').style.display = 'none';
+            document.getElementById('site-chrome').style.display = 'block';
+            if (window.onReturnToHub) window.onReturnToHub();
+        }
+        window.backToGamesHub = backToGamesHub;
+
+        createGrid();
+        updateProgress();
+    </script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  showView("hub");
+});
+
+// ============================= VIEW ROUTER =================================
+function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = name === "hub" ? "none" : "inline";
+
+  if (name === "leaderboard") loadLeaderboards();
+}
+window.onReturnToHub = () => showView("hub");
+
+document.getElementById("nav-hub").addEventListener("click", () => { showView("hub"); });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
+document.getElementById("game-tile-match3").addEventListener("click", () => showView("mode-select"));
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.beginRun(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.beginRun(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as the other
+// 6 games, sharing the SAME gamePlayLimits/{uid} counter — starting a
+// ranked Match-3 run counts as one of your daily online plays, same as
+// creating/joining a table in any other game.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("match3-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+// Called from the classic script when an online run ends (full clear, New
+// Game mid-run, or navigating back to the hub). Self-reported, same trust
+// model as every other game's stats on this site (chessWins, golfPoints,
+// etc.) — Firestore rules just gate WHO can write, not whether the number
+// is honest.
+//
+// Score and time are NOT independent bests — "top of the leaderboard"
+// means having the highest score AND the fastest play TOGETHER, from the
+// SAME run, not your best-ever score from one run paired with your
+// best-ever time from a different one. Ranked by points-per-second
+// (match3BestEfficiency): to be #1 you have to score well AND do it fast —
+// either alone isn't enough. All three fields only ever update together,
+// from whichever single run has the best efficiency so far.
+window.submitRunResult = async ({ totalScore, elapsedMs }) => {
+  if (!currentUid || !totalScore || !elapsedMs) return;
+  try {
+    const efficiency = totalScore / (elapsedMs / 1000);
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    if (efficiency > (data.match3BestEfficiency || 0)) {
+      await updateDoc(doc(db, "users", currentUid), {
+        match3BestScore: totalScore,
+        match3BestTimeMs: elapsedMs,
+        match3BestEfficiency: efficiency,
+      });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Match-3 run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+function formatClearTime(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}m ${secs}s`;
+}
+
+async function loadLeaderboards() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(collection(db, "users"), where("match3BestEfficiency", ">", 0), orderBy("match3BestEfficiency", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${u.match3BestScore} pts in ${formatClearTime(u.match3BestTimeMs)}</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
