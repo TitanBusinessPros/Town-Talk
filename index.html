@@ -87,7 +87,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .brand { font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; letter-spacing: 0.01em; color: var(--paper-050); text-decoration: none; background: none; border: none; cursor: pointer; padding: 0; }
 .brand-mark { color: var(--amber-500); }
-.nav-links { display: flex; gap: 1.5rem; align-items: center; font-size: 0.95rem; flex-wrap: wrap; }
+.nav-links { display: flex; gap: 1.5rem; align-items: center; justify-content: flex-end; font-size: 0.95rem; flex-wrap: wrap; }
 .nav-links a, .nav-links button { color: var(--text-muted); text-decoration: none; background: none; border: none; font-family: var(--font-body); font-size: 0.95rem; cursor: pointer; padding: 0; }
 .nav-links a:hover, .nav-links button:hover { color: var(--paper-050); }
 .nav-links a.has-unread { color: var(--amber-500); font-weight: 600; text-shadow: 0 0 12px rgba(193, 80, 46, 0.35); }
@@ -442,6 +442,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <span id="install-banner-text"></span>
   <button type="button" id="install-banner-action" class="install-banner-action" style="display:none">Install Town Fuss</button>
   <button type="button" id="install-banner-dismiss" class="install-banner-dismiss" aria-label="Dismiss">✕</button>
+</div>
+
+<div id="beta-banner" class="install-banner" style="background: var(--paper-050);">
+  <span>🚧 Town Fuss is in Beta Testing — things may be rough around the edges. Please report anything that looks or feels wrong using the 🐞 Report Issue button above.</span>
+  <button type="button" id="beta-banner-dismiss" class="install-banner-dismiss" aria-label="Dismiss">✕</button>
 </div>
 
 <main class="page">
@@ -1485,7 +1490,28 @@ function updateProtectedNavVisibility(user) {
   document.getElementById("nav-pricing").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-report-issue").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("notif-bell-wrap").style.display = canSeeFullNav ? "inline-block" : "none";
+  // Unlike everything else here, "Why Town Fuss" is meant for prospective
+  // members (it's the only nav link visible before sign-in) — once someone
+  // has full access, it's just adding clutter to an already-long nav, so
+  // hide it instead of piling on an ever-growing 13th item.
+  document.getElementById("nav-about").style.display = canSeeFullNav ? "none" : "inline";
+
+  // Beta banner — only makes sense once the Report Issue button it points
+  // at is actually visible. Dismissal is per-BROWSER-SESSION (sessionStorage,
+  // not localStorage) on purpose: while we're actively in beta, someone
+  // closing and reopening the site later should see the reminder again,
+  // rather than it being gone forever after the first dismiss.
+  const betaBanner = document.getElementById("beta-banner");
+  if (canSeeFullNav && sessionStorage.getItem("townfuss_beta_banner_dismissed") !== "true") {
+    betaBanner.style.display = "flex";
+  } else {
+    betaBanner.style.display = "none";
+  }
 }
+document.getElementById("beta-banner-dismiss").addEventListener("click", () => {
+  sessionStorage.setItem("townfuss_beta_banner_dismissed", "true");
+  document.getElementById("beta-banner").style.display = "none";
+});
 
 onAuthStateChanged(auth, async (user) => {
   document.getElementById("nav-dashboard").style.display = user ? "inline" : "none";

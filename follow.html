@@ -504,13 +504,15 @@
         }
 
         async function startGame() {
-            // Starting another game after finishing one (without going back
-            // through the hub) always resumes as a plain, untracked run —
-            // going online again requires an explicit choice from the mode
-            // select screen, same as match3.html, so a play slot is never
-            // consumed by accident.
-            isOnlineRun = false;
-            document.getElementById('run-status').textContent = '';
+            // NOTE: isOnlineRun is intentionally NOT reset here. beginRun()
+            // sets it once when the player enters from mode-select, and the
+            // game-over/leave-hub paths below reset it back to false right
+            // after submitting — so by the time startGame() runs again for
+            // an extra round without returning to the hub, it's already
+            // false. Resetting it here too used to wipe out a fresh `true`
+            // from beginRun() before the very first round even ran, which
+            // silently broke online score submission entirely.
+            document.getElementById('run-status').textContent = isOnlineRun ? '🌐 Online run — your furthest round and pace are being tracked' : '';
             resetGame();
             startBtn.disabled = true;
             message.textContent = "Get ready...";
