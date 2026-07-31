@@ -1283,7 +1283,10 @@ function showView(name) {
 }
 window.onReturnToHub = () => showView("hub");
 
-document.getElementById("nav-hub").addEventListener("click", () => { showView("hub"); });
+// Matches checkers.html/golf.html/fg.html/m3game.html's convention: the
+// top-nav "Games" button always leaves for chess.html, the one canonical
+// cross-game hub listing all games — it is NOT duplicated locally here.
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
 document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
 document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("game-tile-desert").addEventListener("click", () => showView("mode-select"));
