@@ -79,6 +79,7 @@ const { defineSecret } = require("firebase-functions/params");
 const Stripe = require("stripe");
 const admin = require("firebase-admin");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -672,5 +673,52 @@ exports.expireMemberships = onSchedule(
     diamondSnap.forEach((docSnap) => { batch.update(docSnap.ref, { isDiamondMember: false }); any = true; });
 
     if (any) await batch.commit();
+  }
+);
+
+// -----------------------------------------------------------------------
+// 8. Firebase Auth account backup (backupAuthAccounts):
+//      Firestore's own scheduled backups (set up separately via
+//      `firebase firestore:backups:schedules:create`) do NOT cover Auth —
+//      accounts/emails/password hashes live in a completely separate
+//      system. Runs daily at 2am America/Chicago, exports every user
+//      record via listUsers() (paginated, since a single call caps at
+//      1000), and writes the result as a dated JSON file to this
+//      project's default Storage bucket at admin-backups/auth-exports/ —
+//      a path with NO matching rule in storage.rules, so it's completely
+//      unreachable from any client SDK (default-deny for anything not
+//      explicitly matched) and only readable via the Admin SDK or the
+//      Cloud Console. Also deletes any export older than 30 days, to
+//      match the Firestore backup retention window instead of keeping
+//      every daily file forever.
+// -----------------------------------------------------------------------
+exports.backupAuthAccounts = onSchedule(
+  { schedule: "0 2 * * *", timeZone: "America/Chicago" },
+  async () => {
+    const users = [];
+    let pageToken;
+    do {
+      const result = await admin.auth().listUsers(1000, pageToken);
+      result.users.forEach((u) => users.push(u.toJSON()));
+      pageToken = result.pageToken;
+    } while (pageToken);
+
+    const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const bucket = getStorage().bucket();
+    const filePath = `admin-backups/auth-exports/auth-export-${dateStr}.json`;
+    await bucket.file(filePath).save(
+      JSON.stringify({ exportedAt: new Date().toISOString(), userCount: users.length, users }, null, 2),
+      { contentType: "application/json" }
+    );
+
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const [files] = await bucket.getFiles({ prefix: "admin-backups/auth-exports/" });
+    await Promise.all(
+      files.map(async (file) => {
+        const [metadata] = await file.getMetadata();
+        const ageMs = Date.now() - new Date(metadata.timeCreated).getTime();
+        if (ageMs > THIRTY_DAYS_MS) await file.delete();
+      })
+    );
   }
 );
