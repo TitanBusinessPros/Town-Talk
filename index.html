@@ -1843,6 +1843,7 @@ function watchUserDoc(uid) {
 let currentUserData = {};
 
 function editLockInfo(data) {
+  if (isAdminUser) return { locked: false };
   if (!data.everApproved) return { locked: false };
   const editedMs = data.lastEditedAt
     ? (data.lastEditedAt.seconds ? data.lastEditedAt.seconds * 1000 : data.lastEditedAt._seconds * 1000)
@@ -1856,6 +1857,7 @@ function editLockInfo(data) {
 // 30-day lock on profile details/post text — so it's tracked with its own
 // timestamp field (lastImageEditedAt) instead of sharing lastEditedAt.
 function imageLockInfo(data) {
+  if (isAdminUser) return { locked: false };
   if (!data.everApproved) return { locked: false };
   const editedMs = data.lastImageEditedAt
     ? (data.lastImageEditedAt.seconds ? data.lastImageEditedAt.seconds * 1000 : data.lastImageEditedAt._seconds * 1000)

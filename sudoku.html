@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku — Town Fuss</title>
+
+    <!-- Favicon placeholder (base64) -->
+ <link rel="icon" type="image/png"
+      href="https://github.com/TitanBusinessPros/Sudoku-Game/raw/main/New%20Sudoku%20Favocion.png">
+<link rel="shortcut icon"
+      href="https://github.com/TitanBusinessPros/Sudoku-Game/raw/main/New%20Sudoku%20Favocion.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+        /* All previous CSS remains exactly the same, just adding game-over styles */
+
+        .game-over-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease;
+        }
+
+        .game-over-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .game-over-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-over-title {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #e74c3c;
+        }
+
+        .game-over-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+        }
+
+        .game-over-stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #e74c3c;
+        }
+
+        .game-over-stat-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: #666;
+        }
+
+        .game-over-btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            background-color: #e74c3c;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .game-over-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            background-color: #c0392b;
+        }
+
+        /* Title logo styles */
+        .title-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .logo-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+        }
+
+        /* Rest of your existing CSS remains unchanged */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            transition: all 0.5s ease;
+        }
+
+        /* WARM THEME */
+        body.warm-theme {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #5a5a5a;
+        }
+
+        .warm-theme .container {
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 10px 30px rgba(139, 127, 109, 0.1);
+        }
+
+        .warm-theme h1 { color: #8b7f6d; }
+        .warm-theme .subtitle { color: #a89f91; }
+        .warm-theme .keyboard-instruction { color: #a89f91; }
+        .warm-theme footer { color: #a89f91; }
+
+        .warm-theme .stats,
+        .warm-theme .game-info {
+            background-color: #f8f4f0;
+        }
+
+        .warm-theme .stat-value,
+        .warm-theme .info-value { color: #8b7f6d; }
+
+        .warm-theme .stat-label,
+        .warm-theme .info-label { color: #a89f91; }
+
+        .warm-theme .sudoku-board { background-color: #8b7f6d; }
+        .warm-theme .cell { background-color: #f8f4f0; }
+        .warm-theme .cell:hover { background-color: #f0e6d8; }
+        .warm-theme .cell.selected { background-color: #e6d5c3; }
+        .warm-theme .cell.prefilled {
+            background-color: #e8dfd3;
+            color: #8b7f6d;
+        }
+
+        .warm-theme .cell:nth-child(3n),
+        .warm-theme .cell:nth-child(n+19):nth-child(-n+27),
+        .warm-theme .cell:nth-child(n+46):nth-child(-n+54) {
+            border-color: #8b7f6d;
+        }
+
+        .warm-theme .number-btn { background-color: #d4b896; }
+        .warm-theme .action-btn { background-color: #a8caba; }
+        .warm-theme .celebration-btn { background-color: #a8caba; }
+
+        .warm-theme .diff-btn,
+        .warm-theme .theme-btn {
+            background-color: #e8dfd3;
+            color: #8b7f6d;
+        }
+
+        .warm-theme .diff-btn.active,
+        .warm-theme .theme-btn.active {
+            background-color: #8b7f6d;
+            color: white;
+        }
+
+        /* COOL THEME */
+        body.cool-theme {
+            background: linear-gradient(135deg, #e6f7ff 0%, #b3e0ff 100%);
+            color: #4a6b8a;
+        }
+
+        .cool-theme .container {
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 10px 30px rgba(74, 107, 138, 0.1);
+        }
+
+        .cool-theme h1 { color: #4a6b8a; }
+        .cool-theme .subtitle { color: #6b8aab; }
+        .cool-theme .keyboard-instruction { color: #6b8aab; }
+        .cool-theme footer { color: #6b8aab; }
+
+        .cool-theme .stats,
+        .cool-theme .game-info {
+            background-color: #e6f2ff;
+        }
+
+        .cool-theme .stat-value,
+        .cool-theme .info-value { color: #4a6b8a; }
+
+        .cool-theme .stat-label,
+        .cool-theme .info-label { color: #6b8aab; }
+
+        .cool-theme .sudoku-board { background-color: #6b8aab; }
+        .cool-theme .cell { background-color: #f0f8ff; }
+        .cool-theme .cell:hover { background-color: #e1f0ff; }
+        .cool-theme .cell.selected { background-color: #d1e7ff; }
+        .cool-theme .cell.prefilled {
+            background-color: #e1f0ff;
+            color: #4a6b8a;
+        }
+
+        .cool-theme .cell:nth-child(3n),
+        .cool-theme .cell:nth-child(n+19):nth-child(-n+27),
+        .cool-theme .cell:nth-child(n+46):nth-child(-n+54) {
+            border-color: #6b8aab;
+        }
+
+        .cool-theme .number-btn { background-color: #8bb3d6; }
+        .cool-theme .action-btn { background-color: #6b8aab; }
+        .cool-theme .celebration-btn { background-color: #6b8aab; }
+
+        .cool-theme .diff-btn,
+        .cool-theme .theme-btn {
+            background-color: #d1e7ff;
+            color: #4a6b8a;
+        }
+
+        .cool-theme .diff-btn.active,
+        .cool-theme .theme-btn.active {
+            background-color: #4a6b8a;
+            color: white;
+        }
+
+        /* B&W THEME */
+        body.bw-theme {
+            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+            color: #333;
+        }
+
+        .bw-theme .container {
+            background-color: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .bw-theme h1 { color: #333; }
+        .bw-theme .subtitle { color: #666; }
+        .bw-theme .keyboard-instruction { color: #666; }
+        .bw-theme footer { color: #666; }
+
+        .bw-theme .stats,
+        .bw-theme .game-info {
+            background-color: #f0f0f0;
+        }
+
+        .bw-theme .stat-value,
+        .bw-theme .info-value { color: #333; }
+
+        .bw-theme .stat-label,
+        .bw-theme .info-label { color: #666; }
+
+        .bw-theme .sudoku-board { background-color: #555; }
+        .bw-theme .cell { background-color: #fff; }
+        .bw-theme .cell:hover { background-color: #f5f5f5; }
+        .bw-theme .cell.selected { background-color: #e8e8e8; }
+        .bw-theme .cell.prefilled {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+
+        .bw-theme .cell:nth-child(3n),
+        .bw-theme .cell:nth-child(n+19):nth-child(-n+27),
+        .bw-theme .cell:nth-child(n+46):nth-child(-n+54) {
+            border-color: #555;
+        }
+
+        .bw-theme .number-btn { background-color: #888; }
+        .bw-theme .action-btn { background-color: #666; }
+        .bw-theme .celebration-btn { background-color: #666; }
+
+        .bw-theme .diff-btn,
+        .bw-theme .theme-btn {
+            background-color: #e8e8e8;
+            color: #333;
+        }
+
+        .bw-theme .diff-btn.active,
+        .bw-theme .theme-btn.active {
+            background-color: #333;
+            color: white;
+        }
+
+        /* COMMON STYLES */
+        .container {
+            max-width: 800px;
+            width: 100%;
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 20px;
+            transition: all 0.5s ease;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+
+        .theme-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+
+        .theme-btn, .diff-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .music-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .music-toggle {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 50px;
+            background-color: #e8dfd3;
+            color: #8b7f6d;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .warm-theme .music-toggle {
+            background-color: #e8dfd3;
+            color: #8b7f6d;
+        }
+
+        .cool-theme .music-toggle {
+            background-color: #d1e7ff;
+            color: #4a6b8a;
+        }
+
+        .bw-theme .music-toggle {
+            background-color: #e8e8e8;
+            color: #333;
+        }
+
+        .music-toggle:hover {
+            transform: translateY(-2px);
+        }
+
+        .music-info {
+            font-size: 0.8rem;
+            color: #a89f91;
+            font-style: italic;
+        }
+
+        .warm-theme .music-info { color: #a89f91; }
+        .cool-theme .music-info { color: #6b8aab; }
+        .bw-theme .music-info { color: #666; }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-item, .info-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .info-label {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .wrong-count {
+            color: #e74c3c;
+        }
+
+        .wrong-count.warning {
+            color: #e67e22;
+        }
+
+        .wrong-count.danger {
+            color: #e74c3c;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .difficulty {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .keyboard-instruction {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .sudoku-board {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 2px;
+            padding: 5px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .cell.selected {
+            box-shadow: inset 0 0 0 2px;
+        }
+
+        .warm-theme .cell.selected { box-shadow: inset 0 0 0 2px #8b7f6d; }
+        .cool-theme .cell.selected { box-shadow: inset 0 0 0 2px #4a6b8a; }
+        .bw-theme .cell.selected { box-shadow: inset 0 0 0 2px #333; }
+
+        .cell.prefilled {
+            font-weight: bold;
+        }
+
+        .cell.error {
+            background-color: #f8d7da !important;
+            color: #721c24;
+            cursor: pointer;
+        }
+
+        .cell.error:hover {
+            background-color: #f5c6cb !important;
+        }
+
+        .cell.correct {
+            animation: correctGlow 1.5s ease;
+        }
+
+        .cell.wrong {
+            animation: wrongGlow 1.5s ease;
+        }
+
+        @keyframes correctGlow {
+            0% {
+                background-color: #d4edda;
+                color: #155724;
+                box-shadow: 0 0 10px #28a745;
+            }
+            70% {
+                background-color: #d4edda;
+                color: #155724;
+                box-shadow: 0 0 20px #28a745;
+            }
+            100% {
+                box-shadow: none;
+            }
+        }
+
+        @keyframes wrongGlow {
+            0% {
+                background-color: #f8d7da;
+                color: #721c24;
+                box-shadow: 0 0 10px #e74c3c;
+            }
+            25% {
+                background-color: #f8d7da;
+                color: #721c24;
+                box-shadow: 0 0 20px #e74c3c;
+            }
+            50% {
+                background-color: #f8d7da;
+                color: #721c24;
+                box-shadow: 0 0 10px #e74c3c;
+            }
+            75% {
+                background-color: #f8d7da;
+                color: #721c24;
+                box-shadow: 0 0 20px #e74c3c;
+            }
+            100% {
+                box-shadow: none;
+            }
+        }
+
+        .cell:nth-child(3n) {
+            border-right: 3px solid;
+        }
+
+        .cell:nth-child(n+19):nth-child(-n+27),
+        .cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 3px solid;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .number-btn {
+            width: 45px;
+            height: 45px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .number-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-btn, .celebration-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .action-btn:hover, .celebration-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .message {
+            font-size: 1.1rem;
+            margin-top: 15px;
+            padding: 10px 20px;
+            border-radius: 50px;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-align: center;
+        }
+
+        .message.show {
+            opacity: 1;
+        }
+
+        .message.success { background-color: #28a745; }
+        .message.error { background-color: #e74c3c; }
+        .message.info { background-color: #17a2b8; }
+
+        .victory-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.5s ease;
+        }
+
+        .victory-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .victory-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .victory-title {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .warm-theme .victory-title { color: #8b7f6d; }
+        .cool-theme .victory-title { color: #4a6b8a; }
+        .bw-theme .victory-title { color: #333; }
+
+        .victory-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+        }
+
+        .victory-stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .warm-theme .victory-stat-value { color: #8b7f6d; }
+        .cool-theme .victory-stat-value { color: #4a6b8a; }
+        .bw-theme .victory-stat-value { color: #333; }
+
+        .victory-stat-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .warm-theme .victory-stat-label { color: #a89f91; }
+        .cool-theme .victory-stat-label { color: #6b8aab; }
+        .bw-theme .victory-stat-label { color: #666; }
+
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .cell {
+                width: 35px;
+                height: 35px;
+                font-size: 1.2rem;
+            }
+            .number-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 1.1rem;
+            }
+            .action-btn {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+        }
+
+        #run-status {
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        #back-to-hub-game-btn {
+            background-color: #8b7f6d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            margin-bottom: 8px;
+        }
+
+        /* ===========================================================================
+           SITE CHROME — Town Fuss header/hub/leaderboard, matching match3.html/
+           follow.html/desert.html. Scoped under #site-chrome so it can never
+           collide with the game's own CSS above (which already claims bare `h1`,
+           `header`, `footer`, `button`, and a universal `*` selector that even sets
+           font-family) — an #id-scoped selector always beats those, regardless of
+           source order.
+           =========================================================================== */
+        #site-chrome, #site-chrome * {
+            font-family: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+        }
+        #site-chrome {
+            --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+            --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+            --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+            --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+            --radius: 14px; --radius-sm: 8px;
+            background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body);
+            width: 100%; max-width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #site-chrome a { color: var(--amber-500); }
+        #site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); text-shadow: none; }
+        #site-chrome p { color: var(--text-muted); line-height: 1.6; }
+        #site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        #site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+        #site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+        #site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+        #site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; box-shadow: none; }
+        #site-chrome .header-nav button:hover { transform: none; }
+        #site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+        #site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+        #site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+        #site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; box-shadow: none; }
+        #site-chrome button.site-btn:hover { background: var(--amber-600); transform: none; }
+        #site-chrome button.site-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+        #site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+        #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+        #site-chrome .leader-row:last-child { border-bottom: none; }
+        #site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+        #site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+        #site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+        #site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+        #site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+        #site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+        #site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+        /* Body normally provides flex centering directly to the game's own
+           header/container/footer; now that they're wrapped in
+           #sudokuGameWrapper alongside sibling #site-chrome, the wrapper
+           reproduces that same centering itself. */
+        #sudokuGameWrapper {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="warm-theme">
+
+<div id="site-chrome">
+    <header class="header-bar">
+        <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+        <nav class="header-nav">
+            <button id="nav-hub" class="active">Games</button>
+            <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+        </nav>
+    </header>
+
+    <main class="page">
+
+        <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+            <h2>Sign in on Town Fuss first</h2>
+            <p>You need a Town Fuss account to play Sudoku online and appear on the leaderboard.</p>
+            <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+        </div>
+
+        <div id="app-content" style="display:none;">
+
+            <!-- ================= GAMES HUB ================= -->
+            <section id="view-hub">
+                <span class="eyebrow">Town Fuss</span>
+                <h1>Games</h1>
+                <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+                <div class="uicard mode-tile" id="game-tile-sudoku">
+                    <img src="https://github.com/TitanBusinessPros/Sudoku-Game/raw/main/Sudoku-Logo.png" alt="Sudoku" style="max-width:180px; width:100%; height:auto; margin:0 auto; border-radius:10px;" />
+                    <h2 style="font-size:1.1rem; margin-top:0.5rem;">Sudoku</h2>
+                    <p class="field-hint" style="text-align:center;">Play for fun, or go online to chase the leaderboard</p>
+                </div>
+                <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+            </section>
+
+            <!-- ================= MODE SELECT ================= -->
+            <section id="view-mode-select" style="display:none;">
+                <button type="button" class="site-btn secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+                <span class="eyebrow">Sudoku</span>
+                <h1>How do you want to play?</h1>
+                <p class="field-hint" id="sudoku-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+                <div class="uicard mode-tile" id="mode-tile-offline">
+                    <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+                    <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+                </div>
+                <div class="uicard mode-tile" id="mode-tile-online">
+                    <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+                    <p class="field-hint" style="text-align:center;">Your hardest solved difficulty and fewest wrong guesses get submitted to the leaderboard</p>
+                </div>
+                <div id="mode-select-message" class="site-message" style="display:none;"></div>
+            </section>
+
+            <!-- ================= LEADERBOARD ================= -->
+            <section id="view-leaderboard" style="display:none;">
+                <span class="eyebrow">Sudoku</span>
+                <h1>Leaderboard</h1>
+                <p style="text-align:center;">Ranked by hardest difficulty solved first, then fewest wrong guesses. Only Online (Ranked) wins count.</p>
+                <div class="uicard">
+                    <h2 style="text-align:left;">🏆 Top Players</h2>
+                    <div id="leaderboard-list"></div>
+                    <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked wins yet — be the first!</div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<div id="sudokuGameWrapper">
+    <header>
+        <div class="title-logo">
+            <img
+                src="https://github.com/TitanBusinessPros/Sudoku-Game/raw/main/Sudoku-Logo.png"
+                alt="Sudoku Logo"
+                class="logo-img"
+            >
+            <h1>Cozy Sudoku</h1>
+        </div>
+        <p class="subtitle">Relax and enjoy the puzzle</p>
+    </header>
+
+    <div class="container">
+        <button type="button" id="back-to-hub-game-btn" onclick="backToGamesHub()">&larr; Back to Games</button>
+        <div id="run-status"></div>
+
+        <div class="theme-selector">
+            <button class="theme-btn active" data-theme="warm">Warm Theme</button>
+            <button class="theme-btn" data-theme="cool">Cool Theme</button>
+            <button class="theme-btn" data-theme="bw">B&W Theme</button>
+        </div>
+
+        <div class="music-controls">
+            <button class="music-toggle" id="musicToggle">🎵 Enable Music</button>
+            <span class="music-info" id="musicInfo">Cozy Piano</span>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalWins">0</div>
+                <div class="stat-label">Games Won</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="currentStreak">0</div>
+                <div class="stat-label">Current Streak</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="maxStreak">0</div>
+                <div class="stat-label">Max Streak</div>
+            </div>
+        </div>
+
+        <div class="game-info">
+            <div class="info-item">
+                <div class="info-label">Wrong Guesses</div>
+                <div class="info-value wrong-count" id="wrongCount">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Max Wrong</div>
+                <div class="info-value" id="maxWrong">10</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Difficulty</div>
+                <div class="info-value" id="difficultyDisplay">Easy</div>
+            </div>
+        </div>
+
+        <div class="difficulty">
+            <button class="diff-btn active" data-diff="easy">Easy</button>
+            <button class="diff-btn" data-diff="medium">Medium</button>
+            <button class="diff-btn" data-diff="hard">Hard</button>
+        </div>
+
+        <div class="game-container">
+            <p class="keyboard-instruction">Click a cell and type a number (1-9) or use the buttons below. Click wrong answers to clear them.</p>
+
+            <div class="sudoku-board" id="sudokuBoard">
+                <!-- The board will be generated here -->
+            </div>
+
+            <div class="controls">
+                <button class="number-btn" data-number="1">1</button>
+                <button class="number-btn" data-number="2">2</button>
+                <button class="number-btn" data-number="3">3</button>
+                <button class="number-btn" data-number="4">4</button>
+                <button class="number-btn" data-number="5">5</button>
+                <button class="number-btn" data-number="6">6</button>
+                <button class="number-btn" data-number="7">7</button>
+                <button class="number-btn" data-number="8">8</button>
+                <button class="number-btn" data-number="9">9</button>
+                <button class="number-btn" data-number="0">Clear</button>
+            </div>
+
+            <div class="controls">
+                <button class="action-btn" id="newGameBtn">New Game</button>
+                <button class="action-btn" id="checkBtn">Check Solution</button>
+                <button class="action-btn" id="hintBtn">Get Hint</button>
+            </div>
+
+            <div class="message" id="message"></div>
+        </div>
+    </div>
+
+    <!-- Victory Overlay -->
+    <div class="victory-overlay" id="victoryOverlay">
+        <div class="victory-modal">
+            <h2 class="victory-title">Puzzle Solved!</h2>
+            <p>Congratulations on your victory!</p>
+            <div class="victory-stats">
+                <div class="victory-stat">
+                    <div class="victory-stat-value" id="celebrationWrongCount">0</div>
+                    <div class="victory-stat-label">Wrong Guesses</div>
+                </div>
+                <div class="victory-stat">
+                    <div class="victory-stat-value" id="celebrationDifficulty">Easy</div>
+                    <div class="victory-stat-label">Difficulty</div>
+                </div>
+            </div>
+            <button class="celebration-btn" id="celebrationNewGame">Play Again</button>
+        </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div class="game-over-overlay" id="gameOverOverlay">
+        <div class="game-over-modal">
+            <h2 class="game-over-title">Game Over!</h2>
+            <p>You've reached the maximum wrong guesses.</p>
+            <div class="game-over-stats">
+                <div class="game-over-stat">
+                    <div class="game-over-stat-value" id="gameOverWrongCount">0</div>
+                    <div class="game-over-stat-label">Wrong Guesses</div>
+                </div>
+                <div class="game-over-stat">
+                    <div class="game-over-stat-value" id="gameOverDifficulty">Easy</div>
+                    <div class="game-over-stat-label">Difficulty</div>
+                </div>
+            </div>
+            <button class="game-over-btn" id="gameOverNewGame">Try Again</button>
+        </div>
+    </div>
+
+    <footer>
+        <p>Take a deep breath and enjoy your cozy Sudoku experience</p>
+    </footer>
+
+    <!-- Single audio element for all themes -->
+    <audio id="themeMusic" loop>
+  <source src="https://github.com/TitanBusinessPros/Sudoku-Game/raw/main/Sudoku-Song.mp3" type="audio/mpeg">
+  Your browser does not support the audio element.
+</audio>
+</div>
+
+    <script>
+            // This script runs at the end of <body>, so the DOM is already
+            // parsed — no DOMContentLoaded wrapper needed. Kept as plain
+            // top-level classic-script scope (matching match3.html/
+            // follow.html/desert.html) so these `let` bindings stay directly
+            // reachable from a Playwright page.evaluate()'s bare-identifier
+            // eval() the same way theirs are, instead of being sealed inside
+            // a closure only the DOM-event handlers below can see.
+            // Game state
+            let difficulty = 'easy';
+            let selectedCell = null;
+            let wrongCount = 0;
+            let maxWrong = 10;
+            let board = [];
+            let solution = [];
+            let initialBoard = [];
+            let gameActive = true;
+            let musicEnabled = false;
+
+            // Online-run tracking (Town Fuss additions) — isOnlineRun marks a
+            // ranked attempt; a win submits {difficultyRank, wrongCount}
+            // together as one connected pair, same trust model as the other
+            // games (see submitRunResult in the module script below).
+            let isOnlineRun = false;
+
+            // Statistics
+            let totalWins = 0;
+            let currentStreak = 0;
+            let maxStreak = 0;
+
+            // DOM elements
+            const sudokuBoard = document.getElementById('sudokuBoard');
+            const wrongCountElement = document.getElementById('wrongCount');
+            const maxWrongElement = document.getElementById('maxWrong');
+            const difficultyDisplay = document.getElementById('difficultyDisplay');
+            const totalWinsElement = document.getElementById('totalWins');
+            const currentStreakElement = document.getElementById('currentStreak');
+            const maxStreakElement = document.getElementById('maxStreak');
+            const newGameBtn = document.getElementById('newGameBtn');
+            const checkBtn = document.getElementById('checkBtn');
+            const hintBtn = document.getElementById('hintBtn');
+            const messageElement = document.getElementById('message');
+            const numberButtons = document.querySelectorAll('.number-btn');
+            const diffButtons = document.querySelectorAll('.diff-btn');
+            const themeButtons = document.querySelectorAll('.theme-btn');
+            const musicToggle = document.getElementById('musicToggle');
+            const musicInfo = document.getElementById('musicInfo');
+
+            // Single audio element for all themes
+            const themeMusic = document.getElementById('themeMusic');
+
+            // Victory celebration elements
+            const victoryOverlay = document.getElementById('victoryOverlay');
+            const celebrationWrongCount = document.getElementById('celebrationWrongCount');
+            const celebrationDifficulty = document.getElementById('celebrationDifficulty');
+            const celebrationNewGameBtn = document.getElementById('celebrationNewGame');
+
+            // Game over elements
+            const gameOverOverlay = document.getElementById('gameOverOverlay');
+            const gameOverWrongCount = document.getElementById('gameOverWrongCount');
+            const gameOverDifficulty = document.getElementById('gameOverDifficulty');
+            const gameOverNewGameBtn = document.getElementById('gameOverNewGame');
+
+            // PROPER SUDOKU GENERATOR - Creates unlimited puzzles
+            function generateSudoku(difficultyLevel) {
+                // Start with empty board
+                let grid = Array(9).fill().map(() => Array(9).fill(0));
+
+                // Generate a complete solution
+                solveSudoku(grid);
+
+                // Store the solution
+                let solutionGrid = grid.map(row => [...row]);
+
+                // Create puzzle by removing numbers based on difficulty
+                let cellsToRemove;
+                switch(difficultyLevel) {
+                    case 'easy': cellsToRemove = 40; break;   // Lots of clues
+                    case 'medium': cellsToRemove = 50; break; // Moderate clues
+                    case 'hard': cellsToRemove = 60; break;   // Few clues
+                }
+
+                removeNumbers(grid, cellsToRemove);
+
+                return {
+                    puzzle: grid,
+                    solution: solutionGrid
+                };
+            }
+
+            function solveSudoku(grid) {
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        if (grid[row][col] === 0) {
+                            let numbers = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+                            for (let num of numbers) {
+                                if (isValid(grid, row, col, num)) {
+                                    grid[row][col] = num;
+                                    if (solveSudoku(grid)) {
+                                        return true;
+                                    }
+                                    grid[row][col] = 0;
+                                }
+                            }
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            function removeNumbers(grid, count) {
+                let removed = 0;
+                let attempts = 0;
+                while (removed < count && attempts < 100) {
+                    let row = Math.floor(Math.random() * 9);
+                    let col = Math.floor(Math.random() * 9);
+
+                    if (grid[row][col] !== 0) {
+                        // Store the value
+                        let backup = grid[row][col];
+                        grid[row][col] = 0;
+
+                        // For demo purposes, we'll assume it's valid
+                        // In a full implementation, you'd check for unique solution
+                        removed++;
+                    }
+                    attempts++;
+                }
+            }
+
+            function isValid(grid, row, col, num) {
+                // Check row
+                for (let x = 0; x < 9; x++) {
+                    if (grid[row][x] === num) return false;
+                }
+
+                // Check column
+                for (let y = 0; y < 9; y++) {
+                    if (grid[y][col] === num) return false;
+                }
+
+                // Check 3x3 box
+                let boxRow = Math.floor(row / 3) * 3;
+                let boxCol = Math.floor(col / 3) * 3;
+                for (let y = 0; y < 3; y++) {
+                    for (let x = 0; x < 3; x++) {
+                        if (grid[boxRow + y][boxCol + x] === num) return false;
+                    }
+                }
+
+                return true;
+            }
+
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            // Ranks difficulty for the leaderboard: solving a harder puzzle
+            // always outranks an easier one, regardless of wrong-guess count —
+            // wrong guesses only ever break a tie between two wins at the SAME
+            // difficulty (mirrors follow.html's rounds-primary/time-tiebreak
+            // leaderboard design).
+            function difficultyRank(d) {
+                if (d === 'hard') return 3;
+                if (d === 'medium') return 2;
+                return 1;
+            }
+
+            function recordWinIfOnline() {
+                if (isOnlineRun && window.submitRunResult) {
+                    window.submitRunResult({ difficultyRank: difficultyRank(difficulty), wrongCount });
+                }
+            }
+
+            // Called by the site-chrome module script when starting a run from
+            // mode-select — "online" reserves a daily play slot and marks this
+            // run's eventual win for submission; "offline" is just the plain
+            // game, untracked.
+            function beginRun(online) {
+                isOnlineRun = online;
+                document.getElementById('run-status').textContent = online ? '🌐 Online run — your hardest solved difficulty and fewest wrong guesses are being tracked' : '🎮 Just for fun — nothing is tracked';
+                document.getElementById('sudokuGameWrapper').style.display = 'flex';
+                document.getElementById('site-chrome').style.display = 'none';
+                initializeBoard();
+                startNewGame();
+            }
+            window.beginRun = beginRun;
+
+            // Bridges back from the game view into the Town Fuss site chrome
+            // (hub/leaderboard), which lives in a separate `type="module"`
+            // script and isn't reachable from these plain inline onclick
+            // handlers directly — window.onReturnToHub is exposed by that
+            // module script.
+            function backToGamesHub() {
+                isOnlineRun = false;
+                document.getElementById('sudokuGameWrapper').style.display = 'none';
+                document.getElementById('site-chrome').style.display = 'block';
+                if (window.onReturnToHub) window.onReturnToHub();
+            }
+            window.backToGamesHub = backToGamesHub;
+
+            // Event listeners
+            newGameBtn.addEventListener('click', startNewGame);
+            checkBtn.addEventListener('click', checkSolution);
+            hintBtn.addEventListener('click', provideHint);
+            celebrationNewGameBtn.addEventListener('click', startNewGameFromCelebration);
+            gameOverNewGameBtn.addEventListener('click', startNewGameFromGameOver);
+            musicToggle.addEventListener('click', toggleMusic);
+
+            // Theme selection
+            themeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const theme = this.getAttribute('data-theme');
+                    setTheme(theme);
+                });
+            });
+
+            // Keyboard input
+            document.addEventListener('keydown', handleKeyDown);
+
+            numberButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const number = parseInt(this.getAttribute('data-number'));
+                    if (selectedCell && gameActive) {
+                        fillCell(selectedCell, number);
+                    }
+                });
+            });
+
+            diffButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    diffButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    difficulty = this.getAttribute('data-diff');
+                    difficultyDisplay.textContent = this.textContent;
+                    updateMaxWrong();
+                    startNewGame();
+                });
+            });
+
+            function toggleMusic() {
+                musicEnabled = !musicEnabled;
+
+                if (musicEnabled) {
+                    musicToggle.textContent = '🔇 Disable Music';
+                    playThemeMusic();
+                    showMessage('Music enabled - ' + getCurrentThemeMusicName(), 'info');
+                } else {
+                    musicToggle.textContent = '🎵 Enable Music';
+                    stopMusic();
+                    showMessage('Music disabled', 'info');
+                }
+            }
+
+            function playThemeMusic() {
+                if (!musicEnabled) return;
+
+                // Get current theme and set appropriate music
+                const currentTheme = document.body.className;
+
+                // Note: In a real implementation, you would:
+                // 1. Have a single audio file with all three themes combined
+                // 2. Set the currentTime to start at different points for each theme
+                // 3. For now, we'll just simulate this behavior
+
+                themeMusic.play().catch(e => console.log('Audio play failed:', e));
+
+                // Update music info
+                if (currentTheme.includes('warm-theme')) {
+                    musicInfo.textContent = 'Cozy Piano';
+                    // themeMusic.currentTime = 0; // Start at beginning for warm theme
+                } else if (currentTheme.includes('cool-theme')) {
+                    musicInfo.textContent = 'Cozy Piano';
+                    // themeMusic.currentTime = 120; // Start at 2 minutes for cool theme
+                } else if (currentTheme.includes('bw-theme')) {
+                    musicInfo.textContent = 'Cozy Piano';
+                    // themeMusic.currentTime = 240; // Start at 4 minutes for B&W theme
+                }
+            }
+
+            function stopMusic() {
+                themeMusic.pause();
+                themeMusic.currentTime = 0;
+            }
+
+            function getCurrentThemeMusicName() {
+                const currentTheme = document.body.className;
+                if (currentTheme.includes('warm-theme')) return 'Cozy Piano';
+                if (currentTheme.includes('cool-theme')) return 'Cozy Piano';
+                if (currentTheme.includes('bw-theme')) return 'Cozy Piano';
+                return 'Unknown';
+            }
+
+            function setTheme(theme) {
+                document.body.className = `${theme}-theme`;
+                themeButtons.forEach(btn => {
+                    btn.classList.toggle('active', btn.getAttribute('data-theme') === theme);
+                });
+                localStorage.setItem('cozySudokuTheme', theme);
+
+                // Update music if enabled
+                if (musicEnabled) {
+                    playThemeMusic();
+                }
+
+                // Update music info text
+                musicInfo.textContent = `${theme.charAt(0).toUpperCase() + theme.slice(1)}: ${getCurrentThemeMusicName()}`;
+            }
+
+            function updateMaxWrong() {
+                switch(difficulty) {
+                    case 'easy': maxWrong = 10; break;
+                    case 'medium': maxWrong = 5; break;
+                    case 'hard': maxWrong = 2; break;
+                }
+                maxWrongElement.textContent = maxWrong;
+            }
+
+            function initializeBoard() {
+                sudokuBoard.innerHTML = '';
+                for (let i = 0; i < 81; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.setAttribute('data-index', i);
+                    cell.addEventListener('click', function() {
+                        handleCellClick(this);
+                    });
+                    sudokuBoard.appendChild(cell);
+                }
+            }
+
+            function handleCellClick(cell) {
+                if (!gameActive) return;
+
+                // If it's a wrong answer (error class), clear it immediately
+                if (cell.classList.contains('error')) {
+                    clearWrongAnswer(cell);
+                    return;
+                }
+
+                // Otherwise, proceed with normal cell selection
+                if (selectedCell) {
+                    selectedCell.classList.remove('selected');
+                }
+                if (!cell.classList.contains('prefilled')) {
+                    cell.classList.add('selected');
+                    selectedCell = cell;
+                } else {
+                    selectedCell = null;
+                }
+            }
+
+            function clearWrongAnswer(cell) {
+                const index = parseInt(cell.getAttribute('data-index'));
+                const row = Math.floor(index / 9);
+                const col = index % 9;
+
+                // Clear the cell
+                cell.textContent = '';
+                board[row][col] = 0;
+                cell.classList.remove('error');
+
+                // Show feedback message
+                showMessage('Wrong answer cleared!', 'info');
+            }
+
+            function handleKeyDown(e) {
+                if (!selectedCell || !gameActive) return;
+                if (e.key >= '1' && e.key <= '9') {
+                    fillCell(selectedCell, parseInt(e.key));
+                } else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
+                    fillCell(selectedCell, 0);
+                }
+            }
+
+            function startNewGame() {
+                wrongCount = 0;
+                wrongCountElement.textContent = wrongCount;
+                updateWrongCountDisplay();
+                gameActive = true;
+                updateMaxWrong();
+                generatePuzzle();
+                if (selectedCell) {
+                    selectedCell.classList.remove('selected');
+                    selectedCell = null;
+                }
+                messageElement.classList.remove('show');
+                victoryOverlay.classList.remove('active');
+                gameOverOverlay.classList.remove('active');
+                showMessage('New puzzle generated!', 'info');
+            }
+
+            function startNewGameFromCelebration() {
+                victoryOverlay.classList.remove('active');
+                startNewGame();
+            }
+
+            function startNewGameFromGameOver() {
+                gameOverOverlay.classList.remove('active');
+                startNewGame();
+            }
+
+            function generatePuzzle() {
+                // Generate a brand new puzzle using the proper generator
+                const newPuzzle = generateSudoku(difficulty);
+                initialBoard = newPuzzle.puzzle.map(row => [...row]);
+                solution = newPuzzle.solution.map(row => [...row]);
+                updateBoardDisplay();
+            }
+
+            function updateBoardDisplay() {
+                const cells = document.querySelectorAll('.cell');
+                for (let i = 0; i < 9; i++) {
+                    for (let j = 0; j < 9; j++) {
+                        const index = i * 9 + j;
+                        const cell = cells[index];
+                        const value = initialBoard[i][j];
+
+                        cell.textContent = value !== 0 ? value : '';
+                        cell.className = 'cell';
+
+                        if (value !== 0) {
+                            cell.classList.add('prefilled');
+                        }
+                    }
+                }
+                board = initialBoard.map(row => [...row]);
+            }
+
+            function fillCell(cell, number) {
+                if (!cell || cell.classList.contains('prefilled') || !gameActive) return;
+
+                const index = parseInt(cell.getAttribute('data-index'));
+                const row = Math.floor(index / 9);
+                const col = index % 9;
+
+                if (number === 0) {
+                    cell.textContent = '';
+                    board[row][col] = 0;
+                    cell.classList.remove('error');
+                    return;
+                }
+
+                // Simple validation - just check if it matches the solution
+                if (number === solution[row][col]) {
+                    cell.textContent = number;
+                    board[row][col] = number;
+                    cell.classList.remove('error');
+                    cell.classList.add('correct');
+                    setTimeout(() => cell.classList.remove('correct'), 1500);
+
+                    if (isPuzzleComplete()) {
+                        gameActive = false;
+                        totalWins++;
+                        currentStreak++;
+                        if (currentStreak > maxStreak) maxStreak = currentStreak;
+
+                        totalWinsElement.textContent = totalWins;
+                        currentStreakElement.textContent = currentStreak;
+                        maxStreakElement.textContent = maxStreak;
+
+                        recordWinIfOnline();
+                        showVictoryCelebration();
+                    }
+                } else {
+                    if (wrongCount >= maxWrong) {
+                        gameActive = false;
+                        currentStreak = 0;
+                        currentStreakElement.textContent = currentStreak;
+                        showGameOver();
+                        return;
+                    }
+
+                    cell.textContent = number;
+                    board[row][col] = number;
+                    cell.classList.remove('error');
+                    cell.classList.add('wrong');
+                    wrongCount++;
+                    wrongCountElement.textContent = wrongCount;
+                    updateWrongCountDisplay();
+
+                    setTimeout(() => {
+                        cell.classList.remove('wrong');
+                        cell.classList.add('error');
+                    }, 1500);
+                }
+            }
+
+            function updateWrongCountDisplay() {
+                wrongCountElement.className = 'info-value wrong-count';
+                if (wrongCount >= maxWrong * 0.7) {
+                    wrongCountElement.classList.add('danger');
+                } else if (wrongCount >= maxWrong * 0.5) {
+                    wrongCountElement.classList.add('warning');
+                }
+            }
+
+            function isPuzzleComplete() {
+                for (let i = 0; i < 9; i++) {
+                    for (let j = 0; j < 9; j++) {
+                        if (board[i][j] !== solution[i][j]) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            function checkSolution() {
+                if (isPuzzleComplete()) {
+                    showMessage('Correct! Well done!', 'success');
+                } else {
+                    showMessage('Not quite right. Keep trying!', 'error');
+                }
+            }
+
+            function provideHint() {
+                const emptyCells = [];
+                for (let i = 0; i < 9; i++) {
+                    for (let j = 0; j < 9; j++) {
+                        if (board[i][j] === 0) {
+                            emptyCells.push({row: i, col: j});
+                        }
+                    }
+                }
+
+                if (emptyCells.length === 0) {
+                    showMessage('No empty cells to hint!', 'info');
+                    return;
+                }
+
+                const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                const {row, col} = randomCell;
+                board[row][col] = solution[row][col];
+
+                const index = row * 9 + col;
+                const cell = document.querySelector(`.cell[data-index="${index}"]`);
+                cell.textContent = solution[row][col];
+                cell.classList.add('prefilled');
+
+                if (isPuzzleComplete()) {
+                    gameActive = false;
+                    totalWins++;
+                    currentStreak++;
+                    if (currentStreak > maxStreak) maxStreak = currentStreak;
+
+                    totalWinsElement.textContent = totalWins;
+                    currentStreakElement.textContent = currentStreak;
+                    maxStreakElement.textContent = maxStreak;
+
+                    recordWinIfOnline();
+                    showVictoryCelebration();
+                }
+
+                showMessage('Hint provided!', 'info');
+            }
+
+            function showVictoryCelebration() {
+                celebrationWrongCount.textContent = wrongCount;
+                celebrationDifficulty.textContent = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+                victoryOverlay.classList.add('active');
+            }
+
+            function showGameOver() {
+                gameOverWrongCount.textContent = wrongCount;
+                gameOverDifficulty.textContent = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+                gameOverOverlay.classList.add('active');
+            }
+
+            function showMessage(text, type) {
+                messageElement.textContent = text;
+                messageElement.className = `message ${type}`;
+                messageElement.classList.add('show');
+                setTimeout(() => {
+                    messageElement.classList.remove('show');
+                }, 3000);
+            }
+
+            // Load saved theme
+            const savedTheme = localStorage.getItem('cozySudokuTheme');
+            if (savedTheme) {
+                setTheme(savedTheme);
+            }
+
+            // Load music preference
+            const savedMusicPreference = localStorage.getItem('cozySudokuMusic');
+            if (savedMusicPreference === 'enabled') {
+                musicEnabled = true;
+                musicToggle.textContent = '🔇 Disable Music';
+                playThemeMusic();
+            }
+
+            // Save music preference when toggled
+            musicToggle.addEventListener('click', function() {
+                localStorage.setItem('cozySudokuMusic', musicEnabled ? 'enabled' : 'disabled');
+            });
+    </script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+function difficultyName(rank) {
+  if (rank === 3) return "Hard";
+  if (rank === 2) return "Medium";
+  return "Easy";
+}
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  showView("hub");
+});
+
+// ============================= VIEW ROUTER =================================
+function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = name === "hub" ? "none" : "inline";
+
+  if (name === "leaderboard") loadLeaderboard();
+}
+window.onReturnToHub = () => showView("hub");
+
+// Matches checkers.html/golf.html/fg.html/m3game.html/match3.html/follow.html/
+// desert.html's convention: the top-nav "Games" button always leaves for
+// chess.html, the one canonical cross-game hub listing all games — it is
+// NOT duplicated locally here.
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
+document.getElementById("game-tile-sudoku").addEventListener("click", () => showView("mode-select"));
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.beginRun(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.beginRun(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as the other
+// games, sharing the SAME gamePlayLimits/{uid} counter — starting a ranked
+// Sudoku run counts as one of your daily online plays.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("sudoku-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+// Called from the classic script when an online run's puzzle is solved
+// (normal fill or a hint that completes it). Self-reported, same trust model
+// as every other game's stats on this site — Firestore rules just gate WHO
+// can write, not whether the number is honest.
+//
+// Difficulty and wrong-guess count are NOT independent bests — solving a
+// harder puzzle always outranks an easier one, regardless of wrong guesses;
+// wrong-guess count only breaks a tie between two wins at the SAME
+// difficulty. Both fields only ever update together, from whichever single
+// win ranks best so far.
+window.submitRunResult = async ({ difficultyRank, wrongCount }) => {
+  if (!currentUid || !difficultyRank) return;
+  try {
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    const storedRank = data.sudokuBestDifficultyRank || 0;
+    const storedWrong = data.sudokuBestWrongCount ?? Infinity;
+    const isBetter = difficultyRank > storedRank || (difficultyRank === storedRank && wrongCount < storedWrong);
+    if (isBetter) {
+      await updateDoc(doc(db, "users", currentUid), {
+        sudokuBestDifficultyRank: difficultyRank,
+        sudokuBestWrongCount: wrongCount,
+      });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Sudoku run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(
+      collection(db, "users"),
+      where("sudokuBestDifficultyRank", ">", 0),
+      orderBy("sudokuBestDifficultyRank", "desc"),
+      orderBy("sudokuBestWrongCount", "asc"),
+      limit(10)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${difficultyName(u.sudokuBestDifficultyRank)} · ${u.sudokuBestWrongCount} wrong</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
