@@ -37,10 +37,15 @@ async function signUp(page, account) {
 
 // Skips the profile-form/admin-approval UI entirely (already covered by
 // full-platform.spec.js) — just need an approved, named profile so
-// Directory search and the game pages' full nav both work.
+// Directory search and the game pages' full nav both work. agreedToTerms
+// matters here too: index.html's canSeeFullNav (which gates #nav-directory,
+// among others) requires BOTH agreedToTerms and emailVerified — without it,
+// a click on #nav-directory just times out waiting on a link that never
+// becomes visible, since the account is permanently stuck behind the
+// terms-gate screen it never clicked through.
 async function approveWithProfile(uid, name, extraFields = {}) {
   await admin.firestore().collection("users").doc(uid).set(
-    { approved: true, profile: { name, neighborhood: "Pauls Valley" }, ...extraFields },
+    { approved: true, agreedToTerms: true, profile: { name, neighborhood: "Pauls Valley" }, ...extraFields },
     { merge: true }
   );
 }
