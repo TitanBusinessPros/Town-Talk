@@ -3748,7 +3748,7 @@ document.getElementById("bug-report-modal-form").addEventListener("submit", asyn
 //   $hash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($plain))) -replace '-',''
 //   $hash.ToLower()
 // then paste ONLY the resulting hash in as the value below.
-const ADMIN_PIN_HASH = "REPLACE_WITH_YOUR_PIN_HASH";
+const ADMIN_PIN_HASH = "e565d2001a7d9e93b814177e3b0acd0d37e3e49dc22ead424eba7aa5da62a944";
 
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
