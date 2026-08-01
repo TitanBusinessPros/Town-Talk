@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide The Fly — Town Fuss</title>
+    <link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/Guide-The-Fly/raw/main/Guide%20The%20Fly%20Sprite-1.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px;
+            margin: 0;
+        }
+
+        .game-container {
+            background: rgba(20, 20, 40, 0.8);
+            border-radius: 20px;
+            padding: 15px;
+            box-shadow: 0 20px 60px rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(0, 255, 255, 0.2);
+            width: 100%;
+            max-width: 860px;
+            margin: auto;
+        }
+
+        @media (min-width: 768px) {
+            .game-container {
+                padding: 30px;
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .game-logo {
+            max-width: 400px;
+            width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.5));
+        }
+
+        @media (max-width: 768px) {
+            .game-logo {
+                max-width: 280px;
+            }
+        }
+
+        h1 {
+            color: #00ffff;
+            font-size: 2.5em;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .stats {
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+        }
+
+        .stat-box {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            flex: 1;
+            min-width: 80px;
+        }
+
+        @media (max-width: 768px) {
+            .stat-box {
+                padding: 8px 12px;
+                min-width: 70px;
+            }
+        }
+
+        .stat-label {
+            color: #00ffff;
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            .stat-label {
+                font-size: 0.75em;
+            }
+        }
+
+        .stat-value {
+            color: #ffffff;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .stat-value {
+                font-size: 1.2em;
+            }
+        }
+
+        #gameCanvas {
+            border: 3px solid #00ffff;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
+            display: block;
+            background: #0a0a1a;
+            width: 100%;
+            height: auto;
+            max-width: 800px;
+            touch-action: none;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #00ffff 0%, #0080ff 100%);
+            color: #0a0a1a;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+            white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+            button {
+                padding: 10px 20px;
+                font-size: 0.9em;
+            }
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 255, 0.5);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .audio-control {
+            background: linear-gradient(135deg, #ff00ff 0%, #ff0080 100%);
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 0, 255, 0.3);
+        }
+
+        .audio-control:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 0, 255, 0.5);
+        }
+
+        .back-control {
+            background: transparent;
+            color: #00ffff;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            padding: 10px 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .back-control:hover {
+            background: rgba(0, 255, 255, 0.1);
+            transform: none;
+            box-shadow: none;
+        }
+
+        #run-status {
+            color: #ff00ff;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.6);
+            text-align: center;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+            min-height: 1.2em;
+        }
+
+        .instructions {
+            color: #00ffff;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .instructions {
+                font-size: 0.75em;
+                margin-top: 10px;
+            }
+        }
+
+        .level-info {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .level-info {
+                padding: 12px;
+                margin-bottom: 15px;
+            }
+        }
+
+        .level-title {
+            color: #00ffff;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .level-title {
+                font-size: 1em;
+            }
+        }
+
+        .level-description {
+            font-size: 0.95em;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .level-description {
+                font-size: 0.85em;
+            }
+        }
+
+        .level-complete {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #00ffff;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.6);
+            display: none;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .level-complete h2 {
+            color: #00ffff;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .level-complete p {
+            color: #ffffff;
+            margin: 10px 0;
+            font-size: 1.2em;
+        }
+
+        /* ===========================================================================
+           SITE CHROME — Town Fuss header/hub/leaderboard, matching the other
+           integrated games. Scoped under #site-chrome so it can never
+           collide with the game's own CSS above.
+           =========================================================================== */
+        #site-chrome {
+            --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+            --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+            --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+            --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+            --radius: 14px; --radius-sm: 8px;
+            background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body);
+            width: 100%; max-width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #site-chrome a { color: var(--amber-500); }
+        #site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); text-shadow: none; display: block; }
+        #site-chrome p { color: var(--text-muted); line-height: 1.6; }
+        #site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        #site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+        #site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+        #site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+        #site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; box-shadow: none; }
+        #site-chrome .header-nav button:hover { transform: none; }
+        #site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+        #site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+        #site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+        #site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; box-shadow: none; }
+        #site-chrome button.site-btn:hover { background: var(--amber-600); transform: none; }
+        #site-chrome button.site-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+        #site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+        #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+        #site-chrome .leader-row:last-child { border-bottom: none; }
+        #site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+        #site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+        #site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+        #site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+        #site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+        #site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+        #site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+        #gtfGameWrapper {
+            display: none;
+            width: 100%;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="site-chrome">
+    <header class="header-bar">
+        <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+        <nav class="header-nav">
+            <button id="nav-hub" class="active">Games</button>
+            <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+        </nav>
+    </header>
+
+    <main class="page">
+
+        <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+            <h2>Sign in on Town Fuss first</h2>
+            <p>You need a Town Fuss account to play Guide The Fly online and appear on the leaderboard.</p>
+            <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+        </div>
+
+        <div id="app-content" style="display:none;">
+
+            <!-- ================= GAMES HUB ================= -->
+            <section id="view-hub">
+                <span class="eyebrow">Town Fuss</span>
+                <h1>Games</h1>
+                <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+                <div class="uicard mode-tile" id="game-tile-gtf">
+                    <img src="https://github.com/TitanBusinessPros/Guide-The-Fly/raw/main/Guide%20The%20Fly%20Logo.png" alt="Guide The Fly" style="max-width:180px; width:100%; height:auto; margin:0 auto; border-radius:10px;" />
+                    <h2 style="font-size:1.1rem; margin-top:0.5rem;">Guide The Fly</h2>
+                    <p class="field-hint" style="text-align:center;">Play for fun, or go online for the fastest full-clear leaderboard</p>
+                </div>
+                <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+            </section>
+
+            <!-- ================= MODE SELECT ================= -->
+            <section id="view-mode-select" style="display:none;">
+                <button type="button" class="site-btn secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+                <span class="eyebrow">Guide The Fly</span>
+                <h1>How do you want to play?</h1>
+                <p class="field-hint" id="gtf-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+                <div class="uicard mode-tile" id="mode-tile-offline">
+                    <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+                    <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+                </div>
+                <div class="uicard mode-tile" id="mode-tile-online">
+                    <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+                    <p class="field-hint" style="text-align:center;">Clear all 12 levels and your total time gets submitted to the leaderboard — faster is better</p>
+                </div>
+                <div id="mode-select-message" class="site-message" style="display:none;"></div>
+            </section>
+
+            <!-- ================= LEADERBOARD ================= -->
+            <section id="view-leaderboard" style="display:none;">
+                <span class="eyebrow">Guide The Fly</span>
+                <h1>Leaderboard</h1>
+                <p style="text-align:center;">Fastest total time across all 12 levels wins. Only a full Online (Ranked) clear counts.</p>
+                <div class="uicard">
+                    <h2 style="text-align:left;">🏆 Top Players</h2>
+                    <div id="leaderboard-list"></div>
+                    <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked clears yet — be the first!</div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<div id="gtfGameWrapper">
+    <div class="game-container">
+        <div class="header">
+            <img src="https://github.com/TitanBusinessPros/Guide-The-Fly/raw/main/Guide%20The%20Fly%20Logo.png" alt="Guide The Fly" class="game-logo">
+            <h1>⚛️ QUANTUM DRIFT</h1>
+        </div>
+        <div id="run-status"></div>
+        <div class="level-info" id="levelInfo">
+            <div class="level-title" id="levelTitle">Level 1: Getting Started</div>
+            <div class="level-description" id="levelDescription">Click to place gravity wells that pull the particle. Guide it to the green goal!</div>
+        </div>
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">LEVEL</div>
+                <div class="stat-value" id="levelDisplay">1</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">TIME</div>
+                <div class="stat-value" id="timeDisplay">0.0s</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">BEST TIME</div>
+                <div class="stat-value" id="bestTimeDisplay">--</div>
+            </div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="controls">
+            <button type="button" class="back-control" id="back-to-hub-game-btn" onclick="backToGamesHub()">&larr; Games</button>
+            <button id="restartBtn">↻ RESTART LEVEL</button>
+            <button id="nextBtn" style="display:none;">→ NEXT LEVEL</button>
+            <button id="audioToggle" class="audio-control">🔊 MUTE</button>
+        </div>
+        <div class="instructions">
+            🖱️ CLICK to place gravity wells • DRAG to create repulsion fields • Guide the particle to the goal!
+        </div>
+    </div>
+
+    <div class="level-complete" id="levelComplete">
+        <h2>✨ LEVEL COMPLETE! ✨</h2>
+        <p id="completionTime"></p>
+        <p id="bestTimeMsg"></p>
+    </div>
+</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Background music
+        const bgMusic = new Audio('https://github.com/TitanBusinessPros/Air-Hockey/raw/main/Guide%20The%20Fly.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.5;
+        let musicPlaying = false;
+
+        // Start music on first user interaction
+        function startMusic() {
+            if (!musicPlaying) {
+                bgMusic.play().catch(e => console.log('Audio play failed:', e));
+                musicPlaying = true;
+            }
+        }
+
+        // Online-run tracking (Town Fuss additions) — isOnlineRun marks a
+        // ranked attempt; runTotalMs accumulates each COMPLETED level's own
+        // time as you clear it (a level you restart before clearing never
+        // counts) and only actually submits once level 12 completes — "the
+        // total is calculated on the last stage," per spec. gameLoopStarted
+        // guards against the render loop being started twice (e.g. Play for
+        // Fun, then Play Online, in the same page load), which would
+        // otherwise run two concurrent requestAnimationFrame chains against
+        // the same shared gameState and double the effective physics speed.
+        let isOnlineRun = false;
+        let runTotalMs = 0;
+        let gameLoopStarted = false;
+
+        // Game state (in-memory storage)
+        let gameState = {
+            currentLevel: 1,
+            levelTimes: {},
+            particle: null,
+            gravityWells: [],
+            repulsionFields: [],
+            obstacles: [],
+            goal: null,
+            startTime: null,
+            isComplete: false,
+            isPaused: false,
+            dragStart: null,
+            particleImage: null,
+            goalImage: null,
+            imagesLoaded: false
+        };
+
+        // Load images
+        const particleImg = new Image();
+        particleImg.src = 'https://github.com/TitanBusinessPros/Guide-The-Fly/raw/main/Guide%20The%20Fly%20Sprite-1.png';
+        particleImg.onload = () => {
+            gameState.particleImage = particleImg;
+            checkImagesLoaded();
+        };
+
+        const goalImg = new Image();
+        goalImg.src = 'https://github.com/TitanBusinessPros/Guide-The-Fly/raw/main/Guide%20The%20Fly%20Sprite-2.png';
+        goalImg.onload = () => {
+            gameState.goalImage = goalImg;
+            checkImagesLoaded();
+        };
+
+        function checkImagesLoaded() {
+            if (gameState.particleImage && gameState.goalImage) {
+                gameState.imagesLoaded = true;
+            }
+        }
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.radius = 8;
+                this.trail = [];
+                this.maxTrail = 30;
+            }
+
+            update() {
+                this.trail.push({x: this.x, y: this.y});
+                if (this.trail.length > this.maxTrail) this.trail.shift();
+
+                // Apply gravity wells
+                gameState.gravityWells.forEach(well => {
+                    const dx = well.x - this.x;
+                    const dy = well.y - this.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 5) {
+                        const force = well.strength / (dist * dist) * 100;
+                        this.vx += (dx / dist) * force;
+                        this.vy += (dy / dist) * force;
+                    }
+                });
+
+                // Apply repulsion fields
+                gameState.repulsionFields.forEach(field => {
+                    const dx = this.x - field.x;
+                    const dy = this.y - field.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < field.radius && dist > 5) {
+                        const force = field.strength / (dist * 0.5);
+                        this.vx += (dx / dist) * force;
+                        this.vy += (dy / dist) * force;
+                    }
+                });
+
+                // Damping
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Wall collision
+                if (this.x < this.radius || this.x > canvas.width - this.radius) {
+                    this.vx *= -0.5;
+                    this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+                }
+                if (this.y < this.radius || this.y > canvas.height - this.radius) {
+                    this.vy *= -0.5;
+                    this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+                }
+
+                // Obstacle collision
+                gameState.obstacles.forEach(obs => {
+                    if (this.x > obs.x && this.x < obs.x + obs.width &&
+                        this.y > obs.y && this.y < obs.y + obs.height) {
+                        // Simple bounce back
+                        this.vx *= -0.7;
+                        this.vy *= -0.7;
+                        // Push out of obstacle
+                        const centerX = obs.x + obs.width / 2;
+                        const centerY = obs.y + obs.height / 2;
+                        this.x += (this.x - centerX) * 0.1;
+                        this.y += (this.y - centerY) * 0.1;
+                    }
+                });
+
+                // Goal check
+                const dx = this.x - gameState.goal.x;
+                const dy = this.y - gameState.goal.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < gameState.goal.radius) {
+                    completeLevel();
+                }
+            }
+
+            draw() {
+                // Draw trail
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                this.trail.forEach((point, i) => {
+                    if (i === 0) ctx.moveTo(point.x, point.y);
+                    else ctx.lineTo(point.x, point.y);
+                });
+                ctx.stroke();
+
+                // Draw particle image if loaded, otherwise draw circle
+                if (gameState.particleImage && gameState.particleImage.complete) {
+                    const size = this.radius * 3;
+                    ctx.save();
+                    ctx.shadowColor = '#00ffff';
+                    ctx.shadowBlur = 20;
+                    ctx.drawImage(gameState.particleImage, this.x - size, this.y - size, size * 2, size * 2);
+                    ctx.restore();
+                } else {
+                    // Fallback to original circle
+                    const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+                    gradient.addColorStop(0, '#ffffff');
+                    gradient.addColorStop(0.5, '#00ffff');
+                    gradient.addColorStop(1, '#0080ff');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Glow effect
+                    ctx.shadowColor = '#00ffff';
+                    ctx.shadowBlur = 20;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+        }
+
+        // Level designs with descriptions
+        const levels = {
+            1: {
+                title: "Level 1: Getting Started",
+                description: "Click to place gravity wells that pull the particle. Guide it to the green goal!",
+                particle: {x: 50, y: 300},
+                goal: {x: 750, y: 300, radius: 30},
+                obstacles: [
+                    {x: 350, y: 200, width: 100, height: 200}
+                ]
+            },
+            2: {
+                title: "Level 2: The Maze",
+                description: "Navigate through vertical barriers. Use multiple gravity wells to change direction!",
+                particle: {x: 50, y: 50},
+                goal: {x: 750, y: 550, radius: 30},
+                obstacles: [
+                    {x: 200, y: 0, width: 20, height: 400},
+                    {x: 400, y: 200, width: 20, height: 400},
+                    {x: 600, y: 0, width: 20, height: 400}
+                ]
+            },
+            3: {
+                title: "Level 3: Horizontal Challenge",
+                description: "Thread the needle! Click and drag to create repulsion fields that push the particle away.",
+                particle: {x: 400, y: 300},
+                goal: {x: 750, y: 50, radius: 30},
+                obstacles: [
+                    {x: 300, y: 150, width: 200, height: 20},
+                    {x: 300, y: 430, width: 200, height: 20},
+                    {x: 100, y: 250, width: 150, height: 20},
+                    {x: 550, y: 350, width: 150, height: 20}
+                ]
+            },
+            4: {
+                title: "Level 4: The Corridor",
+                description: "Long narrow passage. Use gravity wells to maintain momentum through the tunnel!",
+                particle: {x: 50, y: 300},
+                goal: {x: 750, y: 300, radius: 30},
+                obstacles: [
+                    {x: 200, y: 0, width: 400, height: 220},
+                    {x: 200, y: 380, width: 400, height: 220}
+                ]
+            },
+            5: {
+                title: "Level 5: Spiral Descent",
+                description: "Follow the spiral path down. Balance gravity wells and repulsion fields!",
+                particle: {x: 50, y: 50},
+                goal: {x: 400, y: 550, radius: 30},
+                obstacles: [
+                    {x: 150, y: 0, width: 500, height: 30},
+                    {x: 150, y: 150, width: 30, height: 300},
+                    {x: 150, y: 420, width: 400, height: 30},
+                    {x: 520, y: 200, width: 30, height: 250}
+                ]
+            },
+            6: {
+                title: "Level 6: Zigzag",
+                description: "Sharp turns ahead! Master momentum control to navigate the zigzag pattern.",
+                particle: {x: 50, y: 100},
+                goal: {x: 750, y: 500, radius: 30},
+                obstacles: [
+                    {x: 200, y: 0, width: 30, height: 250},
+                    {x: 400, y: 200, width: 30, height: 400},
+                    {x: 600, y: 0, width: 30, height: 350}
+                ]
+            },
+            7: {
+                title: "Level 7: The Chamber",
+                description: "Enclosed space with obstacles. Use repulsion fields to navigate tight spaces!",
+                particle: {x: 400, y: 300},
+                goal: {x: 100, y: 100, radius: 30},
+                obstacles: [
+                    {x: 0, y: 200, width: 300, height: 30},
+                    {x: 500, y: 200, width: 300, height: 30},
+                    {x: 300, y: 0, width: 30, height: 200},
+                    {x: 300, y: 400, width: 30, height: 200},
+                    {x: 350, y: 250, width: 100, height: 100}
+                ]
+            },
+            8: {
+                title: "Level 8: Double Trouble",
+                description: "Two large obstacles block your path. Precision gravity control required!",
+                particle: {x: 50, y: 300},
+                goal: {x: 750, y: 300, radius: 30},
+                obstacles: [
+                    {x: 250, y: 100, width: 120, height: 200},
+                    {x: 450, y: 300, width: 120, height: 200}
+                ]
+            },
+            9: {
+                title: "Level 9: The Cross",
+                description: "Navigate around a cross-shaped barrier. Strategic well placement is key!",
+                particle: {x: 50, y: 50},
+                goal: {x: 750, y: 550, radius: 30},
+                obstacles: [
+                    {x: 350, y: 0, width: 100, height: 250},
+                    {x: 350, y: 350, width: 100, height: 250},
+                    {x: 200, y: 250, width: 400, height: 100}
+                ]
+            },
+            10: {
+                title: "Level 10: Gauntlet Run",
+                description: "Multiple small barriers create a challenging gauntlet. Keep your momentum!",
+                particle: {x: 50, y: 300},
+                goal: {x: 750, y: 300, radius: 30},
+                obstacles: [
+                    {x: 150, y: 150, width: 60, height: 100},
+                    {x: 150, y: 350, width: 60, height: 100},
+                    {x: 300, y: 200, width: 60, height: 100},
+                    {x: 300, y: 300, width: 60, height: 100},
+                    {x: 450, y: 150, width: 60, height: 100},
+                    {x: 450, y: 350, width: 60, height: 100},
+                    {x: 600, y: 200, width: 60, height: 100},
+                    {x: 600, y: 300, width: 60, height: 100}
+                ]
+            },
+            11: {
+                title: "Level 11: The Arena",
+                description: "Central obstacle with tight passages. Combine gravity and repulsion mastery!",
+                particle: {x: 50, y: 300},
+                goal: {x: 750, y: 300, radius: 30},
+                obstacles: [
+                    {x: 300, y: 200, width: 200, height: 200},
+                    {x: 0, y: 0, width: 800, height: 100},
+                    {x: 0, y: 500, width: 800, height: 100}
+                ]
+            },
+            12: {
+                title: "Level 12: Ultimate Challenge",
+                description: "The final test! Complex maze requiring perfect gravity manipulation. Good luck!",
+                particle: {x: 50, y: 550},
+                goal: {x: 750, y: 50, radius: 30},
+                obstacles: [
+                    {x: 150, y: 450, width: 150, height: 30},
+                    {x: 250, y: 300, width: 30, height: 180},
+                    {x: 250, y: 300, width: 200, height: 30},
+                    {x: 420, y: 150, width: 30, height: 180},
+                    {x: 420, y: 150, width: 200, height: 30},
+                    {x: 590, y: 0, width: 30, height: 150},
+                    {x: 100, y: 100, width: 120, height: 30},
+                    {x: 500, y: 400, width: 120, height: 30}
+                ]
+            }
+        };
+
+        function loadLevel(levelNum) {
+            gameState.currentLevel = levelNum;
+            gameState.gravityWells = [];
+            gameState.repulsionFields = [];
+            gameState.isComplete = false;
+            gameState.startTime = Date.now();
+
+            document.getElementById('levelDisplay').textContent = levelNum;
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('levelComplete').style.display = 'none';
+
+            // Load level data
+            const level = levels[levelNum];
+            if (level) {
+                gameState.particle = new Particle(level.particle.x, level.particle.y);
+                gameState.goal = level.goal;
+                gameState.obstacles = level.obstacles;
+
+                document.getElementById('levelTitle').textContent = level.title;
+                document.getElementById('levelDescription').textContent = level.description;
+            } else {
+                // If beyond level 12, loop back to level 1
+                loadLevel(1);
+                return;
+            }
+
+            updateBestTime();
+        }
+
+        function completeLevel() {
+            if (gameState.isComplete) return;
+            gameState.isComplete = true;
+
+            const completionTimeMs = Date.now() - gameState.startTime;
+            const completionTime = (completionTimeMs / 1000).toFixed(2);
+            const levelKey = `level_${gameState.currentLevel}`;
+
+            // Update best time
+            if (!gameState.levelTimes[levelKey] || parseFloat(completionTime) < parseFloat(gameState.levelTimes[levelKey])) {
+                gameState.levelTimes[levelKey] = completionTime;
+                document.getElementById('bestTimeMsg').textContent = '🏆 NEW BEST TIME!';
+            } else {
+                document.getElementById('bestTimeMsg').textContent = `Best: ${gameState.levelTimes[levelKey]}s`;
+            }
+
+            document.getElementById('completionTime').textContent = `Time: ${completionTime}s`;
+
+            // Online run: accumulate THIS completed level's time toward the
+            // run total (a level you restart before clearing never counts —
+            // only time actually spent on a run that got you through
+            // counts). Only the full 12-level clear submits anything.
+            if (isOnlineRun) {
+                runTotalMs += completionTimeMs;
+                if (gameState.currentLevel >= 12) {
+                    document.getElementById('completionTime').textContent =
+                        `Time: ${completionTime}s — Total: ${(runTotalMs / 1000).toFixed(2)}s (submitted to leaderboard!)`;
+                    if (window.submitRunResult) {
+                        window.submitRunResult({ totalMs: runTotalMs });
+                    }
+                    isOnlineRun = false;
+                }
+            }
+
+            document.getElementById('levelComplete').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'inline-block';
+
+            updateBestTime();
+        }
+
+        function updateBestTime() {
+            const levelKey = `level_${gameState.currentLevel}`;
+            const bestTime = gameState.levelTimes[levelKey];
+            document.getElementById('bestTimeDisplay').textContent = bestTime ? `${bestTime}s` : '--';
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw obstacles
+            gameState.obstacles.forEach(obs => {
+                ctx.fillStyle = '#ff0080';
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                ctx.shadowColor = '#ff0080';
+                ctx.shadowBlur = 15;
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                ctx.shadowBlur = 0;
+            });
+
+            // Draw goal
+            if (gameState.goalImage && gameState.goalImage.complete) {
+                const size = gameState.goal.radius * 1.5;
+                ctx.save();
+                ctx.shadowColor = '#00ff00';
+                ctx.shadowBlur = 20;
+                ctx.drawImage(gameState.goalImage, gameState.goal.x - size, gameState.goal.y - size, size * 2, size * 2);
+                ctx.restore();
+            } else {
+                // Fallback to original circle
+                const goalGradient = ctx.createRadialGradient(
+                    gameState.goal.x, gameState.goal.y, 0,
+                    gameState.goal.x, gameState.goal.y, gameState.goal.radius
+                );
+                goalGradient.addColorStop(0, '#00ff00');
+                goalGradient.addColorStop(1, '#008000');
+                ctx.fillStyle = goalGradient;
+                ctx.beginPath();
+                ctx.arc(gameState.goal.x, gameState.goal.y, gameState.goal.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw gravity wells
+            gameState.gravityWells.forEach((well, i) => {
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(well.x, well.y, 15, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+                ctx.fill();
+            });
+
+            // Draw repulsion fields
+            gameState.repulsionFields.forEach(field => {
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(field.x, field.y, field.radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+                ctx.fill();
+            });
+
+            // Draw drag preview
+            if (gameState.dragStart) {
+                const radius = Math.sqrt(
+                    Math.pow(gameState.dragStart.endX - gameState.dragStart.x, 2) +
+                    Math.pow(gameState.dragStart.endY - gameState.dragStart.y, 2)
+                );
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.arc(gameState.dragStart.x, gameState.dragStart.y, radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Draw particle
+            gameState.particle.draw();
+
+            // Update time display
+            if (!gameState.isComplete && gameState.startTime) {
+                const elapsed = ((Date.now() - gameState.startTime) / 1000).toFixed(1);
+                document.getElementById('timeDisplay').textContent = `${elapsed}s`;
+            }
+        }
+
+        function gameLoop() {
+            if (!gameState.isComplete) {
+                gameState.particle.update();
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            startMusic(); // Start music on first interaction
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            gameState.dragStart = {x, y, endX: x, endY: y};
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameState.dragStart) {
+                const rect = canvas.getBoundingClientRect();
+                gameState.dragStart.endX = e.clientX - rect.left;
+                gameState.dragStart.endY = e.clientY - rect.top;
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (gameState.dragStart) {
+                const rect = canvas.getBoundingClientRect();
+                const endX = e.clientX - rect.left;
+                const endY = e.clientY - rect.top;
+                const radius = Math.sqrt(
+                    Math.pow(endX - gameState.dragStart.x, 2) +
+                    Math.pow(endY - gameState.dragStart.y, 2)
+                );
+
+                if (radius < 10) {
+                    // Click - add gravity well
+                    gameState.gravityWells.push({
+                        x: gameState.dragStart.x,
+                        y: gameState.dragStart.y,
+                        strength: 2
+                    });
+                } else {
+                    // Drag - add repulsion field
+                    gameState.repulsionFields.push({
+                        x: gameState.dragStart.x,
+                        y: gameState.dragStart.y,
+                        radius: radius,
+                        strength: 0.8
+                    });
+                }
+
+                gameState.dragStart = null;
+            }
+        });
+
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startMusic();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            gameState.dragStart = {x, y, endX: x, endY: y};
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (gameState.dragStart) {
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                gameState.dragStart.endX = touch.clientX - rect.left;
+                gameState.dragStart.endY = touch.clientY - rect.top;
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (gameState.dragStart) {
+                const radius = Math.sqrt(
+                    Math.pow(gameState.dragStart.endX - gameState.dragStart.x, 2) +
+                    Math.pow(gameState.dragStart.endY - gameState.dragStart.y, 2)
+                );
+
+                if (radius < 10) {
+                    // Tap - add gravity well
+                    gameState.gravityWells.push({
+                        x: gameState.dragStart.x,
+                        y: gameState.dragStart.y,
+                        strength: 2
+                    });
+                } else {
+                    // Drag - add repulsion field
+                    gameState.repulsionFields.push({
+                        x: gameState.dragStart.x,
+                        y: gameState.dragStart.y,
+                        radius: radius,
+                        strength: 0.8
+                    });
+                }
+
+                gameState.dragStart = null;
+            }
+        });
+
+        // Buttons
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            startMusic(); // Start music on button click
+            loadLevel(gameState.currentLevel);
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            startMusic(); // Start music on button click
+            loadLevel(gameState.currentLevel + 1);
+        });
+
+        // Audio toggle button
+        document.getElementById('audioToggle').addEventListener('click', function() {
+            if (bgMusic.paused) {
+                bgMusic.play().catch(e => console.log('Audio play failed:', e));
+                this.textContent = '🔊 MUTE';
+                musicPlaying = true;
+            } else {
+                bgMusic.pause();
+                this.textContent = '🔇 UNMUTE';
+            }
+        });
+
+        // Called by the site-chrome module script when starting a run from
+        // mode-select — "online" reserves a daily play slot and starts a
+        // fresh 12-level run for submission; "offline" is just the plain
+        // game, untracked. Mode-select's own click is already a user
+        // gesture, so music can start right here — no separate "Start Game"
+        // screen needed (the original standalone game's title/start overlay
+        // is redundant once mode-select already serves that purpose, so
+        // it's dropped entirely here — and with it, the original's
+        // timer-runs-silently-behind-the-overlay quirk, since now the
+        // level-1 timer never starts until a run is actually chosen).
+        function beginRun(online) {
+            isOnlineRun = online;
+            runTotalMs = 0;
+            document.getElementById('run-status').textContent = online ? '🌐 Online run — clear all 12 levels for the fastest-total leaderboard' : '🎮 Just for fun — nothing is tracked';
+            document.getElementById('gtfGameWrapper').style.display = 'flex';
+            document.getElementById('site-chrome').style.display = 'none';
+            startMusic();
+            loadLevel(1);
+            if (!gameLoopStarted) {
+                gameLoopStarted = true;
+                gameLoop();
+            }
+        }
+        window.beginRun = beginRun;
+
+        // Bridges back from the game view into the Town Fuss site chrome
+        // (hub/leaderboard), which lives in a separate `type="module"`
+        // script and isn't reachable from these plain inline onclick
+        // handlers directly — window.onReturnToHub is exposed by that
+        // module script.
+        function backToGamesHub() {
+            isOnlineRun = false;
+            document.getElementById('gtfGameWrapper').style.display = 'none';
+            document.getElementById('site-chrome').style.display = 'block';
+            if (window.onReturnToHub) window.onReturnToHub();
+        }
+        window.backToGamesHub = backToGamesHub;
+    </script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+function formatTotal(ms) {
+  const totalSeconds = ms / 1000;
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = (totalSeconds % 60).toFixed(2);
+  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+}
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  showView("hub");
+});
+
+// ============================= VIEW ROUTER =================================
+function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = name === "hub" ? "none" : "inline";
+
+  if (name === "leaderboard") loadLeaderboard();
+}
+window.onReturnToHub = () => showView("hub");
+
+// Matches checkers.html/golf.html/fg.html/m3game.html/match3.html/follow.html/
+// desert.html/sudoku.html/neon-drift.html's convention: the top-nav "Games"
+// button always leaves for chess.html, the one canonical cross-game hub
+// listing all games — it is NOT duplicated locally here.
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
+document.getElementById("game-tile-gtf").addEventListener("click", () => showView("mode-select"));
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.beginRun(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.beginRun(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as the other
+// games, sharing the SAME gamePlayLimits/{uid} counter — starting a ranked
+// Guide The Fly run counts as one of your daily online plays.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("gtf-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+// Called from the classic script only once a full 12-level online run
+// completes, with the accumulated total across all 12 levels. Self-
+// reported, same trust model as every other game's stats on this site —
+// Firestore rules just gate WHO can write, not whether the number is
+// honest. Lower is better (fastest total clear time), the opposite
+// direction from every other game's leaderboard on this site so far.
+window.submitRunResult = async ({ totalMs }) => {
+  if (!currentUid || !totalMs) return;
+  try {
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    if (!data.gtfBestTimeMs || totalMs < data.gtfBestTimeMs) {
+      await updateDoc(doc(db, "users", currentUid), { gtfBestTimeMs: totalMs });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Guide The Fly run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(collection(db, "users"), where("gtfBestTimeMs", ">", 0), orderBy("gtfBestTimeMs", "asc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${formatTotal(u.gtfBestTimeMs)}</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
