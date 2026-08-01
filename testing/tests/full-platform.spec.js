@@ -554,7 +554,17 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await pageA.locator("#nav-messages").click();
     await pageA.locator(".conversation-item", { hasText: "Robot Bob" }).click();
     await expect(pageA.locator("#thread-messages")).toContainText("invited you to play Chess", { timeout: 15_000 });
-    await expect(pageA.locator("#thread-messages a[href='/chess.html'], #thread-messages a[href='chess.html']")).toBeVisible();
+    // .last(), not a bare single-match locator: the EARLIER "Robot A
+    // invites Robot B directly" test also posted a game-invite link into
+    // this SAME conversation (conversationId is direction-independent —
+    // both invites share one thread), and that trigger doesn't always land
+    // before this test runs. Under light load it's usually still pending
+    // (1 link); under the full suite's heavier emulator load it often has
+    // landed by now too (2 links) — asserting "exactly one link ever
+    // existed in this thread" was never actually true or meaningful, since
+    // two neighbors inviting each other to chess more than once is normal.
+    // We only care that THIS invite's own link is present.
+    await expect(pageA.locator("#thread-messages a[href='/chess.html'], #thread-messages a[href='chess.html']").last()).toBeVisible();
 
     // The Messages check above already proves the invite Cloud Function ran
     // (sendPushToUser, which logs the bell entry, runs before
