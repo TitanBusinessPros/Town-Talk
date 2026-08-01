@@ -89,6 +89,11 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     uidA = await verifyEmailByAddress(ROBOT_A.email);
     uidB = await verifyEmailByAddress(ROBOT_B.email);
     await makeAdmin(uidA); // Robot A doubles as our test admin
+    // Bypass the admin PIN popup (added 2026-08-01) for this test run —
+    // never hardcode the real PIN here, since this file is committed to
+    // git; sessionStorage survives the reload below the same way it would
+    // for a real admin who already entered the PIN once this tab.
+    await pageA.evaluate(() => sessionStorage.setItem("adminPinVerified", "true"));
 
     // Reload so each page picks up the now-verified status.
     await pageA.reload();
