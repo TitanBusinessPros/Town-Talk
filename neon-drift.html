@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Drift — Town Fuss</title>
+    <link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/SSG-Image/raw/main/Spaceship%205.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
+            background: linear-gradient(180deg, #0f0520 0%, #1a0a2e 100%);
+            border: 3px solid #ff00ff;
+            box-shadow: 0 0 40px #ff00ff, inset 0 0 60px rgba(255, 0, 255, 0.1);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            font-size: 20px;
+            z-index: 10;
+            font-weight: bold;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #ff00ff;
+            display: none;
+            z-index: 20;
+        }
+
+        #gameOver h1 {
+            font-size: 60px;
+            text-shadow: 0 0 20px #ff00ff;
+            margin-bottom: 20px;
+            animation: pulse 1s infinite;
+        }
+
+        #gameOver p {
+            font-size: 24px;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            margin-bottom: 30px;
+        }
+
+        #restartBtn {
+            background: linear-gradient(135deg, #ff00ff, #00ffff);
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            color: #0a0a0f;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px #ff00ff;
+            transition: all 0.3s;
+        }
+
+        #restartBtn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px #00ffff;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            #gameContainer {
+                height: 100vh;
+                max-height: 100vh;
+                border: none;
+                box-shadow: none;
+            }
+
+            #ui {
+                font-size: 16px;
+            }
+
+            #instructions {
+                font-size: 14px;
+                width: 90%;
+            }
+
+            #gameOver h1 {
+                font-size: 40px;
+            }
+
+            #gameOver p {
+                font-size: 20px;
+            }
+
+            #startScreen img {
+                max-width: 300px;
+            }
+
+            #startScreen h1 {
+                font-size: 36px;
+            }
+        }
+
+        #touchControl {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+        }
+
+        #touchControl.active {
+            display: block;
+        }
+
+        /* Ad Video Screen Styles */
+        #adScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 40;
+            overflow: hidden;
+        }
+
+        .video-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #adVideo {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            background: #000;
+        }
+
+        #countdownTimer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ff00ff;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff00ff;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+            z-index: 41;
+        }
+
+        #skipButton {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #00ffff;
+            border: 2px solid #00ffff;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 41;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        #skipButton:hover {
+            background: rgba(0, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        #run-status {
+            position: absolute;
+            top: 85px;
+            left: 20px;
+            color: #ff00ff;
+            text-shadow: 0 0 10px #ff00ff;
+            font-size: 13px;
+            z-index: 10;
+            max-width: 200px;
+        }
+
+        #back-to-hub-game-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            z-index: 15;
+            border-radius: 5px;
+        }
+        #back-to-hub-game-btn:hover {
+            background: rgba(0, 255, 255, 0.2);
+        }
+
+        /* ===========================================================================
+           SITE CHROME — Town Fuss header/hub/leaderboard, matching match3.html/
+           follow.html/desert.html/sudoku.html. Scoped under #site-chrome so it
+           can never collide with the game's own CSS above.
+           =========================================================================== */
+        #site-chrome {
+            --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+            --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+            --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+            --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+            --radius: 14px; --radius-sm: 8px;
+            background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body);
+            width: 100%; max-width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #site-chrome a { color: var(--amber-500); }
+        #site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); text-shadow: none; }
+        #site-chrome p { color: var(--text-muted); line-height: 1.6; }
+        #site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        #site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+        #site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+        #site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+        #site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+        #site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+        #site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+        #site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+        #site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+        #site-chrome button.site-btn:hover { background: var(--amber-600); }
+        #site-chrome button.site-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+        #site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+        #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+        #site-chrome .leader-row:last-child { border-bottom: none; }
+        #site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+        #site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+        #site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+        #site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+        #site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+        #site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+        #site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+        #neonDriftGameWrapper {
+            display: none;
+            width: 100%;
+            height: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="site-chrome">
+    <header class="header-bar">
+        <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+        <nav class="header-nav">
+            <button id="nav-hub" class="active">Games</button>
+            <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+        </nav>
+    </header>
+
+    <main class="page">
+
+        <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+            <h2>Sign in on Town Fuss first</h2>
+            <p>You need a Town Fuss account to play Neon Drift online and appear on the leaderboard.</p>
+            <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+        </div>
+
+        <div id="app-content" style="display:none;">
+
+            <!-- ================= GAMES HUB ================= -->
+            <section id="view-hub">
+                <span class="eyebrow">Town Fuss</span>
+                <h1>Games</h1>
+                <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+                <div class="uicard mode-tile" id="game-tile-neondrift">
+                    <img src="https://github.com/TitanBusinessPros/SSG-Image/raw/main/Neon%20Drift%20Logo.png" alt="Neon Drift" style="max-width:180px; width:100%; height:auto; margin:0 auto; border-radius:10px;" />
+                    <h2 style="font-size:1.1rem; margin-top:0.5rem;">Neon Drift</h2>
+                    <p class="field-hint" style="text-align:center;">Play for fun, or go online for the high score leaderboard</p>
+                </div>
+                <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+            </section>
+
+            <!-- ================= MODE SELECT ================= -->
+            <section id="view-mode-select" style="display:none;">
+                <button type="button" class="site-btn secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+                <span class="eyebrow">Neon Drift</span>
+                <h1>How do you want to play?</h1>
+                <p class="field-hint" id="neondrift-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+                <div class="uicard mode-tile" id="mode-tile-offline">
+                    <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+                    <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+                </div>
+                <div class="uicard mode-tile" id="mode-tile-online">
+                    <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+                    <p class="field-hint" style="text-align:center;">Your high score gets submitted to the leaderboard</p>
+                </div>
+                <div id="mode-select-message" class="site-message" style="display:none;"></div>
+            </section>
+
+            <!-- ================= LEADERBOARD ================= -->
+            <section id="view-leaderboard" style="display:none;">
+                <span class="eyebrow">Neon Drift</span>
+                <h1>Leaderboard</h1>
+                <p style="text-align:center;">Highest score wins. Only Online (Ranked) runs count.</p>
+                <div class="uicard">
+                    <h2 style="text-align:left;">🏆 Top Players</h2>
+                    <div id="leaderboard-list"></div>
+                    <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked runs yet — be the first!</div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<div id="neonDriftGameWrapper">
+    <div id="gameContainer">
+        <!-- Ad Video Screen -->
+        <div id="adScreen">
+            <div class="video-container">
+                <video id="adVideo" muted playsinline>
+                    <source src="https://github.com/TitanBusinessPros/Zombie-Outbreak-Honolulu/raw/main/Ad-2-Zombie.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <div id="countdownTimer">7</div>
+            <button id="skipButton">Skip Ad</button>
+        </div>
+
+        <canvas id="canvas"></canvas>
+        <div id="run-status"></div>
+        <button type="button" id="back-to-hub-game-btn" onclick="backToGamesHub()">&larr; Games</button>
+        <div id="ui">
+            <div>SCORE: <span id="score">0</span></div>
+            <div>SPEED: <span id="speed">1.0x</span></div>
+        </div>
+        <div id="instructions">
+            TOUCH to move • 🔵Orbs +10 • 🛡️Shield ⭐+50 ⏱️Slowmo ❄️Freeze 🧲Magnet
+        </div>
+        <div id="touchControl">TOUCH CONTROLS ACTIVE</div>
+
+        <!-- Start Screen -->
+        <div id="startScreen" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 15, 0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 30;">
+            <img src="https://github.com/TitanBusinessPros/SSG-Image/raw/main/Neon%20Drift%20Logo.png" alt="Neon Drift Logo" style="max-width: 400px; width: 70%; margin-bottom: 10px; filter: drop-shadow(0 0 30px #00ffff);">
+            <h1 style="font-size: 48px; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 20px;">NEON DRIFT</h1>
+            <button id="startBtn" style="background: linear-gradient(135deg, #ff00ff, #00ffff); border: none; padding: 15px 40px; font-size: 22px; color: #0a0a0f; font-weight: bold; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 20px #ff00ff; transition: all 0.3s;">START GAME</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOver">
+            <h1>GAME OVER</h1>
+            <p>FINAL SCORE: <span id="finalScore">0</span></p>
+            <button id="restartBtn">RESTART</button>
+        </div>
+    </div>
+</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('gameContainer');
+        const touchControl = document.getElementById('touchControl');
+
+        // Ad video elements
+        const adScreen = document.getElementById('adScreen');
+        const adVideo = document.getElementById('adVideo');
+        const countdownTimer = document.getElementById('countdownTimer');
+        const skipButton = document.getElementById('skipButton');
+        const startScreen = document.getElementById('startScreen');
+        const videoContainer = document.querySelector('.video-container');
+
+        // Online-run tracking (Town Fuss additions) — isOnlineRun marks a
+        // ranked attempt; submitted at game-over, same trust model as
+        // desert.html's high-score-only leaderboard.
+        let isOnlineRun = false;
+
+        // Set canvas size to match container
+        function resizeCanvas() {
+            canvas.width = gameContainer.clientWidth;
+            canvas.height = gameContainer.clientHeight;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Load spaceship images
+        const playerShip = new Image();
+        playerShip.src = 'https://github.com/TitanBusinessPros/SSG-Image/raw/main/Space%20Ship%201.png';
+
+        const enemyShip = new Image();
+        enemyShip.src = 'https://github.com/TitanBusinessPros/SSG-Image/raw/main/Spaceship%205.png';
+
+        const enemyShip2 = new Image();
+        enemyShip2.src = 'https://github.com/TitanBusinessPros/SSG-Image/raw/main/Spaceship%207.png';
+
+        // Load background music
+        const bgMusic = new Audio('https://github.com/TitanBusinessPros/SSG-Image/raw/main/Orb%20Collecter%20Song.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.5;
+
+        let imagesLoaded = 0;
+        playerShip.onload = () => {
+            imagesLoaded++;
+            console.log('Player ship loaded');
+        };
+        enemyShip.onload = () => {
+            imagesLoaded++;
+            console.log('Enemy ship loaded');
+        };
+        enemyShip2.onload = () => {
+            imagesLoaded++;
+            console.log('Enemy ship 2 loaded');
+        };
+        playerShip.onerror = () => console.error('Failed to load player ship');
+        enemyShip.onerror = () => console.error('Failed to load enemy ship');
+        enemyShip2.onerror = () => console.error('Failed to load enemy ship 2');
+
+        let musicStarted = false;
+
+        // Shared by the initial load, restart(), AND beginRun() — every one
+        // of those needs a genuinely fresh gameOver:false state. beginRun()
+        // used to skip this (it only showed the ad/start-screen flow),
+        // which meant gameState.gameOver stayed true from a PREVIOUS run for
+        // the rest of the page's life: update() early-returns while
+        // gameOver is true, so a second run (e.g. Play for Fun once, then
+        // Play Online) would show a fully frozen, non-functional game with
+        // no way to tell from the UI alone.
+        function freshGameState() {
+            return {
+                score: 0,
+                speed: 1,
+                gameOver: false,
+                particles: [],
+                orbs: [],
+                obstacles: [],
+                powerups: [],
+                player: {
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    radius: 30,
+                    targetX: canvas.width / 2,
+                    targetY: canvas.height / 2,
+                    shield: false,
+                    shieldTime: 0,
+                    slowmo: false,
+                    slowmoTime: 0,
+                    freeze: false,
+                    freezeTime: 0,
+                    magnet: false,
+                    magnetTime: 0
+                }
+            };
+        }
+
+        let gameState = freshGameState();
+
+        // Touch control variables
+        let isDragging = false;
+        let touchId = null;
+
+        // Countdown timer variables
+        let countdownValue = 7;
+        let countdownInterval;
+
+        // Initialize ad video and countdown
+        function initAdVideo() {
+            countdownValue = 7;
+            adScreen.style.display = 'flex';
+            countdownTimer.textContent = countdownValue;
+
+            // Get video dimensions and adjust container
+            adVideo.addEventListener('loadedmetadata', function() {
+                const videoRatio = adVideo.videoWidth / adVideo.videoHeight;
+                const containerRatio = videoContainer.clientWidth / videoContainer.clientHeight;
+
+                if (videoRatio > containerRatio) {
+                    // Video is wider than container
+                    adVideo.style.width = '100%';
+                    adVideo.style.height = 'auto';
+                } else {
+                    // Video is taller than container
+                    adVideo.style.width = 'auto';
+                    adVideo.style.height = '100%';
+                }
+            });
+
+            // Start the ad video
+            adVideo.play().catch(e => {
+                console.log('Video autoplay prevented, trying with user interaction');
+                // If autoplay is blocked, show a play button
+                adVideo.controls = true;
+                skipButton.textContent = 'Play & Skip';
+            });
+
+            // Start countdown
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(updateCountdown, 1000);
+
+            // Video ended event
+            adVideo.addEventListener('ended', showStartScreen);
+
+            // Skip button event
+            skipButton.addEventListener('click', showStartScreen);
+        }
+
+        function updateCountdown() {
+            countdownValue--;
+            countdownTimer.textContent = countdownValue;
+
+            if (countdownValue <= 0) {
+                clearInterval(countdownInterval);
+                showStartScreen();
+            }
+        }
+
+        function showStartScreen() {
+            clearInterval(countdownInterval);
+            adScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+            adVideo.pause();
+            adVideo.currentTime = 0;
+        }
+
+        // Touch event handlers
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameState.gameOver) return;
+
+            const touch = e.touches[0];
+            touchId = touch.identifier;
+
+            const rect = canvas.getBoundingClientRect();
+            gameState.player.targetX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+            gameState.player.targetY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+
+            isDragging = true;
+            touchControl.classList.add('active');
+
+            // Start music on first interaction
+            if (!musicStarted) {
+                bgMusic.play().catch(e => console.log('Audio autoplay prevented'));
+                musicStarted = true;
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!isDragging || gameState.gameOver) return;
+
+            // Find our touch
+            for (let i = 0; i < e.touches.length; i++) {
+                if (e.touches[i].identifier === touchId) {
+                    const touch = e.touches[i];
+                    const rect = canvas.getBoundingClientRect();
+                    gameState.player.targetX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+                    gameState.player.targetY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+                    break;
+                }
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            // Check if our touch ended
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === touchId) {
+                    isDragging = false;
+                    touchControl.classList.remove('active');
+                    break;
+                }
+            }
+        });
+
+        canvas.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            isDragging = false;
+            touchControl.classList.remove('active');
+        });
+
+        // Mouse controls (for desktop)
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameState.gameOver) return;
+
+            const rect = canvas.getBoundingClientRect();
+            gameState.player.targetX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            gameState.player.targetY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Start music on first interaction
+            if (!musicStarted) {
+                bgMusic.play().catch(e => console.log('Audio autoplay prevented'));
+                musicStarted = true;
+            }
+        });
+
+        document.getElementById('restartBtn').addEventListener('click', restart);
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            bgMusic.play().catch(e => console.log('Audio play prevented'));
+            musicStarted = true;
+            gameLoop();
+        });
+
+        function restart() {
+            // Restarting after a game over always resumes as a plain,
+            // untracked run — going online again requires an explicit
+            // choice from the mode select screen, same as every other
+            // game, so a play slot is never consumed by accident.
+            isOnlineRun = false;
+            document.getElementById('run-status').textContent = '';
+            gameState = freshGameState();
+            document.getElementById('gameOver').style.display = 'none';
+
+            // Restart music
+            bgMusic.currentTime = 0;
+            bgMusic.play().catch(e => console.log('Audio play prevented'));
+            musicStarted = true;
+
+            gameLoop();
+        }
+
+        function createOrb() {
+            return {
+                x: Math.random() * canvas.width,
+                y: -20,
+                radius: 10,
+                speed: 2 * gameState.speed,
+                pulse: Math.random() * Math.PI * 2
+            };
+        }
+
+        function createObstacle() {
+            const size = 50 + Math.random() * 20;
+            const enemyType = Math.random() > 0.5 ? 1 : 2; // Randomly choose between two enemy types
+            return {
+                x: Math.random() * canvas.width,
+                y: -50,
+                width: size,
+                height: size,
+                speed: 3 * gameState.speed,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.05,
+                type: enemyType
+            };
+        }
+
+        function createPowerup() {
+            const types = ['shield', 'slowmo', 'scoreBoost', 'freeze', 'magnet'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const colors = {
+                shield: '#00ff00',
+                slowmo: '#ffff00',
+                scoreBoost: '#ff8800',
+                freeze: '#00ddff',
+                magnet: '#ff00ff'
+            };
+            return {
+                x: Math.random() * canvas.width,
+                y: -20,
+                radius: 15,
+                speed: 2 * gameState.speed,
+                type: type,
+                color: colors[type],
+                pulse: Math.random() * Math.PI * 2
+            };
+        }
+
+        function createParticle(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                gameState.particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 1,
+                    color: color
+                });
+            }
+        }
+
+        function update() {
+            if (gameState.gameOver) return;
+
+            gameState.player.x += (gameState.player.targetX - gameState.player.x) * 0.15;
+            gameState.player.y += (gameState.player.targetY - gameState.player.y) * 0.15;
+
+            // Update power-up timers
+            if (gameState.player.shield) {
+                gameState.player.shieldTime--;
+                if (gameState.player.shieldTime <= 0) gameState.player.shield = false;
+            }
+            if (gameState.player.slowmo) {
+                gameState.player.slowmoTime--;
+                if (gameState.player.slowmoTime <= 0) gameState.player.slowmo = false;
+            }
+            if (gameState.player.freeze) {
+                gameState.player.freezeTime--;
+                if (gameState.player.freezeTime <= 0) gameState.player.freeze = false;
+            }
+            if (gameState.player.magnet) {
+                gameState.player.magnetTime--;
+                if (gameState.player.magnetTime <= 0) gameState.player.magnet = false;
+            }
+
+            if (Math.random() < 0.02) gameState.orbs.push(createOrb());
+            if (Math.random() < 0.015) gameState.obstacles.push(createObstacle());
+            if (Math.random() < 0.025) gameState.powerups.push(createPowerup());
+
+            // Update orbs
+            gameState.orbs.forEach((orb, i) => {
+                // Magnet effect - pull orbs towards player
+                if (gameState.player.magnet) {
+                    const dx = gameState.player.x - orb.x;
+                    const dy = gameState.player.y - orb.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const magnetStrength = 0.3;
+
+                    if (dist > 0) {
+                        orb.x += (dx / dist) * magnetStrength * 10;
+                        orb.y += (dy / dist) * magnetStrength * 10;
+                    }
+                }
+
+                if (!gameState.player.freeze) {
+                    orb.y += orb.speed * (gameState.player.slowmo ? 0.5 : 1);
+                }
+                orb.pulse += 0.1;
+
+                const dx = gameState.player.x - orb.x;
+                const dy = gameState.player.y - orb.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < gameState.player.radius + orb.radius) {
+                    gameState.score += 10;
+                    gameState.speed = 1 + gameState.score * 0.001;
+                    createParticle(orb.x, orb.y, '#00ffff');
+                    gameState.orbs.splice(i, 1);
+                }
+
+                if (orb.y > canvas.height + 20) {
+                    gameState.orbs.splice(i, 1);
+                }
+            });
+
+            // Update power-ups
+            gameState.powerups.forEach((powerup, i) => {
+                if (!gameState.player.freeze) {
+                    powerup.y += powerup.speed * (gameState.player.slowmo ? 0.5 : 1);
+                }
+                powerup.pulse += 0.1;
+
+                const dx = gameState.player.x - powerup.x;
+                const dy = gameState.player.y - powerup.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < gameState.player.radius + powerup.radius) {
+                    createParticle(powerup.x, powerup.y, powerup.color);
+
+                    if (powerup.type === 'shield') {
+                        gameState.player.shield = true;
+                        gameState.player.shieldTime = 300; // 5 seconds at 60fps
+                    } else if (powerup.type === 'slowmo') {
+                        gameState.player.slowmo = true;
+                        gameState.player.slowmoTime = 240; // 4 seconds
+                    } else if (powerup.type === 'scoreBoost') {
+                        gameState.score += 50;
+                    } else if (powerup.type === 'freeze') {
+                        gameState.player.freeze = true;
+                        gameState.player.freezeTime = 180; // 3 seconds
+                    } else if (powerup.type === 'magnet') {
+                        gameState.player.magnet = true;
+                        gameState.player.magnetTime = 300; // 5 seconds
+                    }
+
+                    gameState.powerups.splice(i, 1);
+                }
+
+                if (powerup.y > canvas.height + 20) {
+                    gameState.powerups.splice(i, 1);
+                }
+            });
+
+            // Update obstacles
+            gameState.obstacles.forEach((obs, i) => {
+                if (!gameState.player.freeze) {
+                    obs.y += obs.speed * (gameState.player.slowmo ? 0.5 : 1);
+                    obs.rotation += obs.rotationSpeed;
+                }
+
+                const dx = gameState.player.x - obs.x;
+                const dy = gameState.player.y - obs.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < gameState.player.radius + obs.width / 3) {
+                    if (!gameState.player.shield) {
+                        gameState.gameOver = true;
+                        createParticle(gameState.player.x, gameState.player.y, '#ff00ff');
+                        document.getElementById('gameOver').style.display = 'block';
+                        document.getElementById('finalScore').textContent = gameState.score;
+                        if (isOnlineRun && window.submitRunResult) {
+                            window.submitRunResult({ score: gameState.score });
+                        }
+                        isOnlineRun = false;
+                    } else {
+                        // Shield absorbed hit
+                        createParticle(obs.x, obs.y, '#00ff00');
+                        gameState.obstacles.splice(i, 1);
+                        gameState.player.shield = false;
+                    }
+                }
+
+                if (obs.y > canvas.height + 50) {
+                    gameState.obstacles.splice(i, 1);
+                }
+            });
+
+            // Update particles
+            gameState.particles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+                p.vy += 0.2;
+
+                if (p.life <= 0) {
+                    gameState.particles.splice(i, 1);
+                }
+            });
+
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('speed').textContent = gameState.speed.toFixed(1) + 'x';
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(10, 10, 15, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid background
+            ctx.strokeStyle = 'rgba(255, 0, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+
+            // Draw particles
+            gameState.particles.forEach(p => {
+                ctx.fillStyle = p.color + Math.floor(p.life * 255).toString(16).padStart(2, '0');
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw orbs
+            gameState.orbs.forEach(orb => {
+                const pulseSize = Math.sin(orb.pulse) * 3;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#00ffff';
+                ctx.fillStyle = '#00ffff';
+                ctx.beginPath();
+                ctx.arc(orb.x, orb.y, orb.radius + pulseSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+
+            // Draw power-ups
+            gameState.powerups.forEach(powerup => {
+                const pulseSize = Math.sin(powerup.pulse) * 4;
+                ctx.shadowBlur = 25;
+                ctx.shadowColor = powerup.color;
+                ctx.fillStyle = powerup.color;
+                ctx.beginPath();
+                ctx.arc(powerup.x, powerup.y, powerup.radius + pulseSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw power-up icon
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                if (powerup.type === 'shield') ctx.fillText('🛡️', powerup.x, powerup.y);
+                else if (powerup.type === 'slowmo') ctx.fillText('⏱️', powerup.x, powerup.y);
+                else if (powerup.type === 'scoreBoost') ctx.fillText('⭐', powerup.x, powerup.y);
+                else if (powerup.type === 'freeze') ctx.fillText('❄️', powerup.x, powerup.y);
+                else if (powerup.type === 'magnet') ctx.fillText('🧲', powerup.x, powerup.y);
+
+                ctx.shadowBlur = 0;
+            });
+
+            // Draw enemy ships (obstacles)
+            gameState.obstacles.forEach(obs => {
+                ctx.save();
+                ctx.translate(obs.x, obs.y);
+                ctx.rotate(obs.rotation);
+
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#ff00ff';
+
+                // Draw the correct enemy ship based on type
+                if (obs.type === 1) {
+                    ctx.drawImage(enemyShip, -obs.width / 2, -obs.height / 2, obs.width, obs.height);
+                } else {
+                    ctx.drawImage(enemyShip2, -obs.width / 2, -obs.height / 2, obs.width, obs.height);
+                }
+
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            });
+
+            // Draw player ship
+            if (!gameState.gameOver) {
+                ctx.save();
+                ctx.translate(gameState.player.x, gameState.player.y);
+
+                // Draw shield if active
+                if (gameState.player.shield) {
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.lineWidth = 4;
+                    ctx.shadowBlur = 30;
+                    ctx.shadowColor = '#00ff00';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, gameState.player.radius + 15, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Draw magnet field if active
+                if (gameState.player.magnet) {
+                    ctx.strokeStyle = '#ff00ff';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 25;
+                    ctx.shadowColor = '#ff00ff';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, gameState.player.radius + 20, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Draw freeze effect if active
+                if (gameState.player.freeze) {
+                    ctx.strokeStyle = '#00ddff';
+                    ctx.lineWidth = 2;
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#00ddff';
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (i / 6) * Math.PI * 2;
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(Math.cos(angle) * 40, Math.sin(angle) * 40);
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = '#00ffff';
+
+                const shipSize = gameState.player.radius * 2;
+                // Draw the player ship image
+                ctx.drawImage(playerShip, -shipSize / 2, -shipSize / 2, shipSize, shipSize);
+
+                ctx.shadowBlur = 0;
+
+                // Glow trail
+                ctx.strokeStyle = gameState.player.slowmo ? 'rgba(255, 255, 0, 0.5)' : 'rgba(0, 255, 255, 0.3)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, gameState.player.radius + 8, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            if (!gameState.gameOver) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Called by the site-chrome module script when starting a run from
+        // mode-select — "online" reserves a daily play slot and marks this
+        // run's eventual game-over score for submission; "offline" is just
+        // the plain game, untracked. Kicks off the same ad-video-then-
+        // start-screen intro either way; canvas is re-sized here since it
+        // was hidden (display:none) at page load, when its container would
+        // have reported 0x0 dimensions.
+        function beginRun(online) {
+            isOnlineRun = online;
+            document.getElementById('run-status').textContent = online ? '🌐 Online run — your score is being tracked for the leaderboard' : '🎮 Just for fun — nothing is tracked';
+            document.getElementById('neonDriftGameWrapper').style.display = 'flex';
+            document.getElementById('site-chrome').style.display = 'none';
+            resizeCanvas();
+            gameState = freshGameState();
+            document.getElementById('gameOver').style.display = 'none';
+            initAdVideo();
+        }
+        window.beginRun = beginRun;
+
+        // Bridges back from the game view into the Town Fuss site chrome
+        // (hub/leaderboard), which lives in a separate `type="module"`
+        // script and isn't reachable from these plain inline onclick
+        // handlers directly — window.onReturnToHub is exposed by that
+        // module script.
+        function backToGamesHub() {
+            if (isOnlineRun && gameState.score > 0 && window.submitRunResult) {
+                window.submitRunResult({ score: gameState.score });
+            }
+            isOnlineRun = false;
+            // Stop the requestAnimationFrame loop if leaving mid-run —
+            // gameLoop() only stops recursing once gameOver is true.
+            gameState.gameOver = true;
+            clearInterval(countdownInterval);
+            bgMusic.pause();
+            document.getElementById('neonDriftGameWrapper').style.display = 'none';
+            document.getElementById('site-chrome').style.display = 'block';
+            if (window.onReturnToHub) window.onReturnToHub();
+        }
+        window.backToGamesHub = backToGamesHub;
+    </script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  showView("hub");
+});
+
+// ============================= VIEW ROUTER =================================
+function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = name === "hub" ? "none" : "inline";
+
+  if (name === "leaderboard") loadLeaderboard();
+}
+window.onReturnToHub = () => showView("hub");
+
+// Matches checkers.html/golf.html/fg.html/m3game.html/match3.html/follow.html/
+// desert.html/sudoku.html's convention: the top-nav "Games" button always
+// leaves for chess.html, the one canonical cross-game hub listing all
+// games — it is NOT duplicated locally here.
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
+document.getElementById("game-tile-neondrift").addEventListener("click", () => showView("mode-select"));
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.beginRun(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.beginRun(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as the other
+// games, sharing the SAME gamePlayLimits/{uid} counter — starting a ranked
+// Neon Drift run counts as one of your daily online plays.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("neondrift-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+// Called from the classic script when an online run ends (a collision, or
+// leaving mid-run). Self-reported, same trust model as every other game's
+// stats on this site — Firestore rules just gate WHO can write, not
+// whether the number is honest. High score only — no time component here.
+window.submitRunResult = async ({ score }) => {
+  if (!currentUid || !score) return;
+  try {
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    if (score > (data.neonDriftHighScore || 0)) {
+      await updateDoc(doc(db, "users", currentUid), { neonDriftHighScore: score });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Neon Drift run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(collection(db, "users"), where("neonDriftHighScore", ">", 0), orderBy("neonDriftHighScore", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${u.neonDriftHighScore} pts</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
