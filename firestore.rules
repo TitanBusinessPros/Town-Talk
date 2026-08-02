@@ -119,7 +119,7 @@ service cloud.firestore {
                     || (isOwner(uid)
                         && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'notificationsEnabled', 'fcmTokens']));
+                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'notificationsEnabled', 'fcmTokens']));
       allow delete: if isOwner(uid) || isAdmin();
     }
 

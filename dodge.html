@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dodge — Town Fuss</title>
+    <link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/Dodge-Game/raw/main/Dodge-Favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            padding: 0;
+            margin: 0;
+            touch-action: none;
+        }
+
+        #logo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            max-width: 150px;
+            width: 150px;
+            filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
+            z-index: 100;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            border: 3px solid #00ffff;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5), inset 0 0 30px rgba(0, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        #player {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: url('https://github.com/TitanBusinessPros/Dodge-Game/raw/main/Dodge%20Sprite-1.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            border-radius: 50%;
+            bottom: 50px;
+            left: 180px;
+            box-shadow: 0 0 20px rgba(255, 0, 110, 0.8);
+            transition: left 0.1s;
+        }
+
+        .obstacle {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: url('https://github.com/TitanBusinessPros/Dodge-Game/raw/main/Dodge%20Sprite-2.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+        }
+
+        .particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: #00ffff;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #00ffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            z-index: 10;
+        }
+
+        #run-status {
+            position: absolute;
+            top: 55px;
+            right: 15px;
+            color: #ffd700;
+            font-size: 10px;
+            text-align: right;
+            max-width: 150px;
+            z-index: 10;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.6);
+        }
+
+        #back-to-hub-game-btn {
+            position: absolute;
+            top: 85px;
+            right: 15px;
+            padding: 6px 12px;
+            font-size: 11px;
+            background: rgba(0, 255, 255, 0.15);
+            border: 1px solid #00ffff;
+            border-radius: 6px;
+            color: #00ffff;
+            cursor: pointer;
+            z-index: 10;
+            touch-action: manipulation;
+            font-family: 'Courier New', monospace;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #ff006e;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(255, 0, 110, 0.8);
+            display: none;
+            z-index: 20;
+        }
+
+        #restartBtn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 18px;
+            background: linear-gradient(135deg, #8338ec, #ff006e);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(131, 56, 236, 0.6);
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        #restartBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(131, 56, 236, 0.8);
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ffff;
+            font-size: 12px;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.6);
+            text-align: center;
+            width: 90%;
+        }
+
+        #touchControls {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 20px;
+            z-index: 15;
+        }
+
+        .touchBtn {
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #00ffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .touchBtn:active {
+            background: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+        }
+
+        @media (max-width: 480px) {
+            #logo {
+                max-width: 120px;
+                width: 120px;
+                top: 8px;
+                left: 8px;
+            }
+
+            #gameContainer {
+                height: 100vh;
+                border-left: none;
+                border-right: none;
+                max-width: 100%;
+            }
+
+            .touchBtn {
+                width: 65px;
+                height: 65px;
+                font-size: 26px;
+            }
+
+            #score {
+                font-size: 18px;
+                top: 15px;
+                right: 15px;
+            }
+
+            #run-status {
+                top: 40px;
+                right: 12px;
+                font-size: 9px;
+            }
+
+            #back-to-hub-game-btn {
+                top: 65px;
+                right: 12px;
+                padding: 5px 10px;
+                font-size: 10px;
+            }
+
+            #gameOver {
+                font-size: 28px;
+            }
+
+            #instructions {
+                font-size: 11px;
+                bottom: 110px;
+            }
+
+            #touchControls {
+                bottom: 30px;
+            }
+        }
+
+        @media (max-height: 700px) {
+            #logo {
+                max-width: 100px;
+                width: 100px;
+                top: 5px;
+                left: 5px;
+            }
+
+            .touchBtn {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+
+            #instructions {
+                bottom: 100px;
+            }
+
+            #touchControls {
+                bottom: 20px;
+            }
+        }
+
+        @media (max-height: 600px) {
+            #instructions {
+                bottom: 90px;
+                font-size: 10px;
+            }
+
+            #touchControls {
+                bottom: 15px;
+            }
+        }
+
+        /* ===========================================================================
+           SITE CHROME — Town Fuss header/hub/leaderboard, matching the other
+           integrated games. Scoped under #site-chrome so it can never
+           collide with the game's own CSS above.
+           =========================================================================== */
+        #site-chrome {
+            --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+            --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+            --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+            --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+            --radius: 14px; --radius-sm: 8px;
+            background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body);
+            width: 100%; max-width: 100%;
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #site-chrome a { color: var(--amber-500); }
+        #site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); text-shadow: none; }
+        #site-chrome p { color: var(--text-muted); line-height: 1.6; }
+        #site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+        #site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+        #site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+        #site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+        #site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+        #site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+        #site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+        #site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+        #site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+        #site-chrome button.site-btn:hover { background: var(--amber-600); }
+        #site-chrome button.site-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+        #site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+        #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+        #site-chrome .leader-row:last-child { border-bottom: none; }
+        #site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+        #site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+        #site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+        #site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+        #site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+        #site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+        #site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+        /* Body used to provide flex centering directly to the game elements
+           (they were all direct children of body); now that they're wrapped
+           in #dodgeGameWrapper alongside sibling #site-chrome, the wrapper
+           needs to reproduce that same centering itself. */
+        #dodgeGameWrapper {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="site-chrome">
+    <header class="header-bar">
+        <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+        <nav class="header-nav">
+            <button id="nav-hub" class="active">Games</button>
+            <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+        </nav>
+    </header>
+
+    <main class="page">
+
+        <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+            <h2>Sign in on Town Fuss first</h2>
+            <p>You need a Town Fuss account to play Dodge online and appear on the leaderboard.</p>
+            <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+        </div>
+
+        <div id="app-content" style="display:none;">
+
+            <!-- ================= GAMES HUB ================= -->
+            <section id="view-hub">
+                <span class="eyebrow">Town Fuss</span>
+                <h1>Games</h1>
+                <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+                <div class="uicard mode-tile" id="game-tile-dodge">
+                    <img src="https://github.com/TitanBusinessPros/Dodge-Game/raw/main/Dodge-Logo.png" alt="Dodge" style="max-width:180px; width:100%; height:auto; margin:0 auto; border-radius:10px;" />
+                    <h2 style="font-size:1.1rem; margin-top:0.5rem;">Dodge</h2>
+                    <p class="field-hint" style="text-align:center;">Play for fun, or go online to chase the high score leaderboard</p>
+                </div>
+                <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
+            </section>
+
+            <!-- ================= MODE SELECT ================= -->
+            <section id="view-mode-select" style="display:none;">
+                <button type="button" class="site-btn secondary small" id="mode-select-back-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+                <span class="eyebrow">Dodge</span>
+                <h1>How do you want to play?</h1>
+                <p class="field-hint" id="dodge-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+                <div class="uicard mode-tile" id="mode-tile-offline">
+                    <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+                    <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+                </div>
+                <div class="uicard mode-tile" id="mode-tile-online">
+                    <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+                    <p class="field-hint" style="text-align:center;">Your high score gets submitted to the leaderboard</p>
+                </div>
+                <div id="mode-select-message" class="site-message" style="display:none;"></div>
+            </section>
+
+            <!-- ================= LEADERBOARD ================= -->
+            <section id="view-leaderboard" style="display:none;">
+                <span class="eyebrow">Dodge</span>
+                <h1>Leaderboard</h1>
+                <p style="text-align:center;">Highest score wins. Only Online (Ranked) runs count.</p>
+                <div class="uicard">
+                    <h2 style="text-align:left;">🏆 Top Players</h2>
+                    <div id="leaderboard-list"></div>
+                    <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked runs yet — be the first!</div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<div id="dodgeGameWrapper">
+    <img id="logo" src="https://github.com/TitanBusinessPros/Dodge-Game/raw/main/Dodge-Logo.png" alt="Dodge Game Logo">
+    <div id="gameContainer">
+        <div id="score">Score: 0</div>
+        <div id="run-status"></div>
+        <button type="button" id="back-to-hub-game-btn" onclick="backToGamesHub()">&larr; Games</button>
+        <div id="player"></div>
+        <div id="gameOver">
+            <div>GAME OVER</div>
+            <div id="finalScore" style="font-size: 24px; margin-top: 10px;"></div>
+            <button id="restartBtn">RESTART</button>
+        </div>
+        <div id="instructions">← → Arrow Keys, A/D, or Touch Buttons to Move</div>
+        <div id="touchControls">
+            <div class="touchBtn" id="leftBtn">←</div>
+            <div class="touchBtn" id="rightBtn">→</div>
+        </div>
+    </div>
+
+    <audio id="bgMusic" loop preload="auto">
+        <source src="https://raw.githubusercontent.com/TitanBusinessPros/Dodge-Game/main/Dodge%20Theme%20Song.mp3" type="audio/mpeg">
+    </audio>
+</div>
+
+    <script>
+        const gameContainer = document.getElementById('gameContainer');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverDisplay = document.getElementById('gameOver');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const restartBtn = document.getElementById('restartBtn');
+        const bgMusic = document.getElementById('bgMusic');
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+
+        let playerPos = 180;
+        let score = 0;
+        let gameActive = false;
+        let obstacles = [];
+        let gameLoop;
+        let obstacleSpeed = 3;
+        let spawnRate = 1500;
+        let lastSpawn = 0;
+        let containerWidth = gameContainer.offsetWidth;
+
+        const keys = {};
+        let touchingLeft = false;
+        let touchingRight = false;
+        let musicStarted = false;
+
+        // Online-run tracking (Town Fuss addition) — this game only has ONE
+        // metric (high score, no time/level component), so submission is
+        // simple: report the score whenever an online run ends, whether by
+        // collision (endGame) or by quitting early (backToGamesHub).
+        let isOnlineRun = false;
+
+        bgMusic.volume = 0.5;
+
+        function tryPlayMusic() {
+            // Guarded on gameActive so the global click/touch listeners below
+            // (which fire on ANY click anywhere on the page, including the
+            // site-chrome hub/mode-select screens before a run even starts)
+            // don't start the game's music while just browsing the hub.
+            if (!musicStarted && gameActive) {
+                const playPromise = bgMusic.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        musicStarted = true;
+                        console.log('Music started successfully');
+                    }).catch(error => {
+                        console.log('Music play failed:', error);
+                    });
+                }
+            }
+        }
+
+        document.addEventListener('click', tryPlayMusic);
+        document.addEventListener('touchstart', tryPlayMusic);
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            tryPlayMusic();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        leftBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchingLeft = true;
+            tryPlayMusic();
+        });
+
+        leftBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            touchingLeft = false;
+        });
+
+        leftBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            touchingLeft = true;
+            tryPlayMusic();
+        });
+
+        leftBtn.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            touchingLeft = false;
+        });
+
+        rightBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchingRight = true;
+            tryPlayMusic();
+        });
+
+        rightBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            touchingRight = false;
+        });
+
+        rightBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            touchingRight = true;
+            tryPlayMusic();
+        });
+
+        rightBtn.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            touchingRight = false;
+        });
+
+        window.addEventListener('resize', () => {
+            containerWidth = gameContainer.offsetWidth;
+            playerPos = Math.min(playerPos, containerWidth - 40);
+            player.style.left = playerPos + 'px';
+        });
+
+        function movePlayer() {
+            if (keys['ArrowLeft'] || keys['a'] || keys['A'] || touchingLeft) {
+                playerPos = Math.max(0, playerPos - 8);
+            }
+            if (keys['ArrowRight'] || keys['d'] || keys['D'] || touchingRight) {
+                playerPos = Math.min(containerWidth - 40, playerPos + 8);
+            }
+            player.style.left = playerPos + 'px';
+        }
+
+        function createObstacle() {
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            obstacle.style.left = Math.random() * (containerWidth - 60) + 'px';
+            obstacle.style.top = '-60px';
+            gameContainer.appendChild(obstacle);
+            obstacles.push({
+                element: obstacle,
+                y: -60
+            });
+        }
+
+        function createParticles(x, y) {
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                gameContainer.appendChild(particle);
+
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 5 + 2;
+                const vx = Math.cos(angle) * velocity;
+                const vy = Math.sin(angle) * velocity;
+
+                let px = x, py = y;
+                const particleAnim = setInterval(() => {
+                    px += vx;
+                    py += vy;
+                    particle.style.left = px + 'px';
+                    particle.style.top = py + 'px';
+                    particle.style.opacity = parseFloat(particle.style.opacity || 1) - 0.05;
+
+                    if (parseFloat(particle.style.opacity) <= 0) {
+                        clearInterval(particleAnim);
+                        particle.remove();
+                    }
+                }, 30);
+            }
+        }
+
+        function checkCollision(obstacle) {
+            const playerRect = player.getBoundingClientRect();
+            const obstacleRect = obstacle.element.getBoundingClientRect();
+
+            return !(playerRect.right < obstacleRect.left ||
+                     playerRect.left > obstacleRect.right ||
+                     playerRect.bottom < obstacleRect.top ||
+                     playerRect.top > obstacleRect.bottom);
+        }
+
+        function updateGame(timestamp) {
+            if (!gameActive) return;
+
+            movePlayer();
+
+            if (timestamp - lastSpawn > spawnRate) {
+                createObstacle();
+                lastSpawn = timestamp;
+                spawnRate = Math.max(600, spawnRate - 10);
+                obstacleSpeed = Math.min(8, obstacleSpeed + 0.05);
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.y += obstacleSpeed;
+                obs.element.style.top = obs.y + 'px';
+
+                if (checkCollision(obs)) {
+                    endGame();
+                    createParticles(
+                        parseInt(obs.element.style.left) + 30,
+                        obs.y + 30
+                    );
+                    return;
+                }
+
+                if (obs.y > gameContainer.offsetHeight) {
+                    obs.element.remove();
+                    obstacles.splice(i, 1);
+                    score++;
+                    scoreDisplay.textContent = 'Score: ' + score;
+                }
+            }
+
+            gameLoop = requestAnimationFrame(updateGame);
+        }
+
+        function startGame() {
+            tryPlayMusic();
+
+            gameActive = true;
+            score = 0;
+            containerWidth = gameContainer.offsetWidth;
+            playerPos = (containerWidth - 40) / 2;
+            obstacleSpeed = 3;
+            spawnRate = 1500;
+            lastSpawn = 0;
+            obstacles.forEach(obs => obs.element.remove());
+            obstacles = [];
+            scoreDisplay.textContent = 'Score: 0';
+            gameOverDisplay.style.display = 'none';
+            player.style.left = playerPos + 'px';
+            gameLoop = requestAnimationFrame(updateGame);
+        }
+
+        function endGame() {
+            gameActive = false;
+            cancelAnimationFrame(gameLoop);
+            finalScoreDisplay.textContent = 'Final Score: ' + score;
+            gameOverDisplay.style.display = 'block';
+
+            // Online (ranked) run — report this score. Whether it beats the
+            // recorded best is decided by submitRunResult, not here.
+            if (isOnlineRun && window.submitRunResult) {
+                window.submitRunResult({ score });
+            }
+            isOnlineRun = false;
+        }
+
+        // Restarting after a game over always resumes as a plain, untracked
+        // run — going online again requires an explicit choice from the
+        // mode select screen, same as every other game, so a play slot is
+        // never consumed by accident.
+        restartBtn.addEventListener('click', () => {
+            isOnlineRun = false;
+            document.getElementById('run-status').textContent = '';
+            startGame();
+        });
+
+        // Called by the site-chrome module script when starting a run from
+        // mode-select — "online" reserves a daily play slot and marks this
+        // run's eventual score for submission; "offline" is just the plain
+        // game, untracked.
+        function beginRun(online) {
+            document.getElementById('dodgeGameWrapper').style.display = 'flex';
+            document.getElementById('site-chrome').style.display = 'none';
+            isOnlineRun = online;
+            document.getElementById('run-status').textContent = online ? '🌐 Online run — your score is being tracked' : '🎮 Just for fun — nothing is tracked';
+            startGame();
+        }
+        window.beginRun = beginRun;
+
+        // Bridges back from the game view into the Town Fuss site chrome
+        // (hub/leaderboard), which lives in a separate `type="module"`
+        // script and isn't reachable from these plain inline onclick
+        // handlers directly — window.onReturnToHub is exposed by that
+        // module script. Leaving an online run early still submits
+        // whatever score it has so far.
+        function backToGamesHub() {
+            if (isOnlineRun && score > 0 && window.submitRunResult) {
+                window.submitRunResult({ score });
+            }
+            isOnlineRun = false;
+            gameActive = false;
+            cancelAnimationFrame(gameLoop);
+            bgMusic.pause();
+            document.getElementById('dodgeGameWrapper').style.display = 'none';
+            document.getElementById('site-chrome').style.display = 'block';
+            if (window.onReturnToHub) window.onReturnToHub();
+        }
+        window.backToGamesHub = backToGamesHub;
+    </script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Local testing only — never runs against the real production site, which
+// is served from www.townfuss.com, not localhost.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  showView("hub");
+});
+
+// ============================= VIEW ROUTER =================================
+function showView(name) {
+  document.getElementById("view-hub").style.display = name === "hub" ? "block" : "none";
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-hub").classList.toggle("active", name === "hub");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = name === "hub" ? "none" : "inline";
+
+  if (name === "leaderboard") loadLeaderboard();
+}
+window.onReturnToHub = () => showView("hub");
+
+// Matches checkers.html/golf.html/fg.html/m3game.html/match3.html/follow.html/
+// desert.html/sudoku.html/neon-drift.html/gtf.html/gravity-sling.html's
+// convention: the top-nav "Games" button always leaves for chess.html, the
+// one canonical cross-game hub listing all games — it is NOT duplicated
+// locally here.
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
+document.getElementById("game-tile-dodge").addEventListener("click", () => showView("mode-select"));
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.beginRun(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.beginRun(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as the other
+// games, sharing the SAME gamePlayLimits/{uid} counter — starting a ranked
+// Dodge run counts as one of your daily online plays.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("dodge-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+// Called from the classic script when an online run ends (a collision, or
+// leaving mid-run). Self-reported, same trust model as every other game's
+// stats on this site — Firestore rules just gate WHO can write, not
+// whether the number is honest. High score only — no time component here.
+window.submitRunResult = async ({ score }) => {
+  if (!currentUid || !score) return;
+  try {
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    if (score > (data.dodgeHighScore || 0)) {
+      await updateDoc(doc(db, "users", currentUid), { dodgeHighScore: score });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Dodge run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(collection(db, "users"), where("dodgeHighScore", ">", 0), orderBy("dodgeHighScore", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${u.dodgeHighScore} pts</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
