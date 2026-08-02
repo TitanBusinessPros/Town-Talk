@@ -119,7 +119,7 @@ service cloud.firestore {
                     || (isOwner(uid)
                         && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'notificationsEnabled', 'fcmTokens']));
+                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'notificationsEnabled', 'fcmTokens']));
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -446,6 +446,44 @@ service cloud.firestore {
                       || (resource.data.status == 'open'
                           && resource.data.player2Uid == null
                           && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
+                    );
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.status == 'open' && (
+                          request.auth.uid == resource.data.player1Uid
+                          || request.auth.uid == resource.data.inviteTo
+                        ));
+    }
+
+    // War seats 2-4 players in one doc (players/participants are arrays,
+    // not fixed player1Uid/player2Uid slots like every other game here) —
+    // a direct invite (inviteTo set) is authorized only for the creator and
+    // that one named invitee, which naturally caps it at 2 seats without
+    // needing a separate size check; an open table (inviteTo == null) can
+    // grow up to 4 via the size() < 4 branch below. Move/deal/battle
+    // content isn't validated, same trust model as every other game.
+    match /warGames/{gameId} {
+      allow read: if isSignedIn() && (
+        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
+        (resource.data.inviteTo == request.auth.uid) ||
+        (request.auth.uid in resource.data.participants)
+      );
+      allow create: if isSignedIn()
+                    && request.resource.data.player1Uid == request.auth.uid
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.participants == [request.auth.uid]
+                    && (
+                         request.resource.data.inviteTo == null
+                         || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_warGames_' + request.resource.data.inviteTo))
+                         || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_warGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
+                       );
+      allow update: if isSignedIn()
+                    && (
+                      request.auth.uid in resource.data.participants
+                      || request.auth.uid == resource.data.player1Uid
+                      || request.auth.uid == resource.data.inviteTo
+                      || (resource.data.status == 'open'
+                          && resource.data.inviteTo == null
+                          && resource.data.participants.size() < 4)
                     );
       allow delete: if isAdmin()
                     || (isSignedIn() && resource.data.status == 'open' && (

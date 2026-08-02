@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>War — Town Fuss</title>
+<link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/War-Card-Game/raw/main/War%20Logo.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --sage-500: #74875a;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); }
+body { min-height: 100vh; }
+a { color: var(--amber-500); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; }
+p { color: var(--text-muted); line-height: 1.6; }
+.page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+.header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+.header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+.header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+.header-nav button.active { color: var(--amber-500); font-weight: 600; }
+
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+
+button { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+button:hover { background: var(--amber-600); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+.table-row, .invite-row, .friend-row, .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+.table-row > span:first-child, .invite-row > span:first-child, .friend-row > span:first-child, .leader-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+.table-row > span:last-child, .invite-row > span:last-child, .friend-row > span:last-child, .leader-row > span:last-child { flex: 0 0 auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.table-row:last-child, .invite-row:last-child, .friend-row:last-child, .leader-row:last-child { border-bottom: none; }
+.leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+
+.empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+.message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+.message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+.field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+.mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+/* ===========================================================================
+   WAR BATTLEFIELD — the original Army War game's own visuals, prefixed
+   with war- throughout so nothing collides with the site's own .card
+   (generic content container) or .message (banner) classes above. Shared
+   by BOTH the local (vs Computer / same-device 2P) and online battlefields.
+   =========================================================================== */
+.war-ai-count { text-align: center; margin-bottom: 1rem; }
+.war-ai-count label { font-size: 1rem; margin-right: 0.75rem; color: var(--amber-500); font-weight: 600; }
+.war-ai-count button { padding: 0.4rem 0.9rem; }
+.war-ai-count .war-count { font-size: 1.4em; color: var(--amber-500); font-weight: bold; margin: 0 0.75rem; }
+
+.war-battlefield { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.war-player-area { background: var(--ink-700); border: 2px solid var(--line); border-radius: var(--radius-sm); padding: 1rem; text-align: center; }
+.war-player-area.eliminated { opacity: 0.4; }
+.war-player-name { color: var(--amber-500); font-weight: 700; margin-bottom: 0.25rem; font-size: 0.95em; }
+.war-cards-left { color: var(--paper-050); font-size: 0.85em; margin-bottom: 0.6rem; }
+
+.war-card { width: 72px; height: 100px; background: linear-gradient(135deg, #2c3e50, #34495e); border: 3px solid #ffd700; border-radius: 8px; margin: 0.4rem auto; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 1.2em; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.4); transition: all 0.3s; }
+.war-card.winner { border-color: #4CAF50; box-shadow: 0 0 20px rgba(76, 175, 80, 0.8); transform: scale(1.08); }
+.war-card-rank { font-size: 1.3em; font-weight: bold; }
+.war-card-suit { font-size: 1.6em; margin-top: 3px; }
+.war-card.hearts { color: #ff4444; }
+.war-card.clubs { color: #ffffff; }
+
+.war-battle-btn { background: linear-gradient(135deg, #e74c3c, #c0392b); padding: 0.9rem 2.2rem; font-size: 1.1em; display: block; margin: 0 auto; }
+.war-battle-btn:hover { background: linear-gradient(135deg, #e74c3c, #c0392b); transform: scale(1.03); }
+.war-round-message { text-align: center; color: var(--amber-500); font-weight: 600; font-size: 1.1em; margin: 1rem 0; min-height: 1.4em; }
+.war-game-over { text-align: center; padding: 1.5rem; }
+.war-game-over h2 { color: var(--amber-500); font-size: 2em; }
+.war-game-over .war-winner-name { color: #2e8b1f; font-size: 1.4em; margin: 0.75rem 0 1.25rem; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header class="header-bar">
+  <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+  <nav class="header-nav">
+    <button id="nav-hub" class="active">Games</button>
+    <button id="nav-waiting" style="display:none;">Waiting Room</button>
+    <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+  </nav>
+</header>
+
+<main class="page">
+
+  <div id="signed-out-notice" class="card" style="display:none; text-align:center;">
+    <h2>Sign in on Town Fuss first</h2>
+    <p>You need a Town Fuss account to play War with other members.</p>
+    <a href="index.html"><button type="button">Go to Town Fuss</button></a>
+  </div>
+
+  <div id="app-content" style="display:none;">
+
+    <!-- ================= MODE SELECT ================= -->
+    <section id="view-mode-select">
+      <span class="eyebrow">War</span>
+      <h1>⭐ How do you want to play? ⭐</h1>
+      <div class="card mode-tile" id="mode-tile-ai">
+        <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
+        <p class="field-hint" style="text-align:center;">Same device, choose 1-3 AI opponents</p>
+      </div>
+      <div class="card mode-tile" id="mode-tile-2p">
+        <h2 style="font-size:1.05rem;">👥 Two Player</h2>
+        <p class="field-hint" style="text-align:center;">Take turns on this same device</p>
+      </div>
+      <div class="card mode-tile" id="mode-tile-online">
+        <h2 style="font-size:1.05rem;">🌐 Play Online</h2>
+        <p class="field-hint" style="text-align:center;">Up to 4 players — waiting room, invites, and the leaderboard</p>
+      </div>
+    </section>
+
+    <!-- ================= LOCAL GAME (AI or same-device 2P) ================= -->
+    <section id="view-local-game" style="display:none;">
+      <button type="button" class="secondary small" id="local-back-btn" style="margin-bottom:1rem;">&larr; Back</button>
+      <span class="eyebrow">War</span>
+      <h1 id="local-mode-title">Play vs Computer</h1>
+      <div class="card">
+        <div class="war-ai-count" id="local-ai-count-row">
+          <label>AI Opponents:</label>
+          <button type="button" id="local-ai-minus">-</button>
+          <span class="war-count" id="local-ai-count-display">1</span>
+          <button type="button" id="local-ai-plus">+</button>
+        </div>
+        <button type="button" id="local-start-btn" style="display:block; margin:0 auto 1rem;">START BATTLE!</button>
+        <div class="war-round-message" id="local-war-message"></div>
+        <div class="war-battlefield" id="local-war-battlefield"></div>
+        <button type="button" class="war-battle-btn" id="local-war-battle-btn" style="display:none;">BATTLE!</button>
+        <div id="local-war-gameover"></div>
+      </div>
+    </section>
+
+    <!-- ================= WAITING ROOM ================= -->
+    <section id="view-waiting" style="display:none;">
+      <button type="button" class="secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+      <span class="eyebrow">War</span>
+      <h1>Waiting Room</h1>
+      <p style="text-align:center;">Join an open table, invite a friend, or wait for someone to challenge you. Tables can seat 2-4 players.</p>
+      <p class="field-hint" id="war-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+
+      <div class="card">
+        <h2 style="text-align:left;">Open tables</h2>
+        <p style="text-align:left;">Anyone can join one of these until it fills up (max 4).</p>
+        <button type="button" id="create-table-btn">+ Create a table</button>
+        <div id="my-open-table-wrap" style="display:none; margin-top:1rem;">
+          <div class="table-row">
+            <span id="my-open-table-label">Your table — waiting for players</span>
+            <button type="button" class="secondary small" id="cancel-my-table-btn">Cancel</button>
+          </div>
+        </div>
+        <div id="open-tables-list" style="margin-top:1rem;"></div>
+        <div id="open-tables-empty" class="empty-state" style="display:none;">No open tables right now — create one!</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invites waiting on you</h2>
+        <div id="my-invites-list"></div>
+        <div id="my-invites-empty" class="empty-state" style="display:none;">No pending invites.</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invite a friend</h2>
+        <p style="text-align:left;">Only shows people you're already friends with on Town Fuss. A direct invite is just the two of you.</p>
+        <div id="friends-invite-list"></div>
+        <div id="friends-invite-empty" class="empty-state" style="display:none;">Add some friends on Town Fuss first.</div>
+      </div>
+
+      <div id="waiting-message" class="message" style="display:none;"></div>
+    </section>
+
+    <!-- ================= LEADERBOARD ================= -->
+    <section id="view-leaderboard" style="display:none;">
+      <span class="eyebrow">War</span>
+      <h1>Leaderboard</h1>
+      <p style="text-align:center;">Win a completed online game = 3 points. Top 10 get bragging rights.</p>
+      <div class="card">
+        <div id="leaderboard-list"></div>
+        <div id="leaderboard-empty" class="empty-state" style="display:none;">No games played yet — be the first!</div>
+      </div>
+    </section>
+
+    <!-- ================= ONLINE GAME TABLE ================= -->
+    <section id="view-game" style="display:none;">
+      <button type="button" class="secondary small" id="leave-table-btn" style="margin-bottom:1rem;">&larr; Back to Waiting Room</button>
+      <div class="card">
+        <div class="war-round-message" id="online-war-message">Waiting for the table to fill up...</div>
+        <div class="war-battlefield" id="online-war-battlefield"></div>
+        <button type="button" id="online-start-btn" style="display:none; margin:0 auto 1rem;">START BATTLE! (host only)</button>
+        <button type="button" class="war-battle-btn" id="online-war-battle-btn" style="display:none;">BATTLE!</button>
+        <div id="online-war-gameover"></div>
+        <div class="game-controls" style="display:flex; justify-content:center; margin-top:1rem;">
+          <button type="button" class="secondary small" id="online-resign-btn" style="display:none;">Resign</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<audio id="warBgMusic" loop preload="auto">
+  <source src="https://github.com/TitanBusinessPros/War-Card-Game/raw/main/War%20Theme%20Song.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+// ===========================================================================
+// CLASSIC (non-module) script — the local vs-Computer / same-device 2-Player
+// game, adapted from the original standalone Army War Card Game. Kept as a
+// plain classic script (not part of the module below) so its state stays on
+// real global `window`-scope variables, matching every other game's testing
+// convention. The ONLINE multiplayer game (Firestore-synced, up to 4 real
+// players) is a separate, parallel implementation in the module script below
+// — it does not share state with this local game.
+// ===========================================================================
+let gameMode = 'ai';
+let aiCount = 1;
+let players = [];
+let currentCards = [];
+let warPot = [];
+let musicStarted = false;
+let audioContext;
+
+function playCannonSound() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const now = audioContext.currentTime;
+    const osc = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+    gainNode.gain.setValueAtTime(0.8, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+    osc.start(now);
+    osc.stop(now + 0.5);
+
+    const bufferSize = audioContext.sampleRate * 0.3;
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const output = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize / 3));
+    }
+    const noise = audioContext.createBufferSource();
+    const noiseGain = audioContext.createGain();
+    noise.buffer = buffer;
+    noise.connect(noiseGain);
+    noiseGain.connect(audioContext.destination);
+    noiseGain.gain.setValueAtTime(0.3, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    noise.start(now);
+}
+
+function startBackgroundMusic() {
+    if (musicStarted) return;
+    musicStarted = true;
+    const bgMusic = document.getElementById('warBgMusic');
+    bgMusic.volume = 0.3;
+    bgMusic.play().catch(e => console.log('Audio autoplay prevented'));
+}
+
+function changeAI(delta) {
+    aiCount = Math.max(1, Math.min(3, aiCount + delta));
+    document.getElementById('local-ai-count-display').textContent = aiCount;
+}
+
+function createDeck() {
+    const suits = ['♠', '♥', '♦', '♣'];
+    const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    const deck = [];
+    for (let suit of suits) {
+        for (let i = 0; i < ranks.length; i++) {
+            deck.push({ rank: ranks[i], suit: suit, value: i + 2 });
+        }
+    }
+    return shuffle(deck);
+}
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+// Exposed so the online multiplayer module script can deal from the exact
+// same deck/shuffle logic without duplicating it in a second scope.
+window.createWarDeck = createDeck;
+window.shuffleWarDeck = shuffle;
+
+function startGame() {
+    startBackgroundMusic();
+    document.getElementById('local-ai-count-row').style.display = gameMode === 'ai' ? 'block' : 'none';
+    document.getElementById('local-start-btn').style.display = 'none';
+    document.getElementById('local-war-gameover').innerHTML = '';
+
+    const deck = createDeck();
+    const numPlayers = gameMode === 'pvp' ? 2 : aiCount + 1;
+    players = [];
+
+    for (let i = 0; i < numPlayers; i++) {
+        const isAI = gameMode === 'ai' && i > 0;
+        players.push({
+            name: isAI ? `AI Soldier ${i}` : `Player ${i + 1}`,
+            cards: [],
+            isAI: isAI
+        });
+    }
+
+    deck.forEach((card, i) => {
+        players[i % numPlayers].cards.push(card);
+    });
+
+    document.getElementById('local-war-battle-btn').style.display = 'inline-flex';
+    document.getElementById('local-war-message').textContent = 'Press BATTLE to begin!';
+    renderBattlefield();
+}
+window.startGame = startGame;
+
+function renderBattlefield() {
+    const battlefield = document.getElementById('local-war-battlefield');
+    battlefield.innerHTML = '';
+    players.forEach((player, index) => {
+        const area = document.createElement('div');
+        area.className = 'war-player-area' + (player.cards.length === 0 ? ' eliminated' : '');
+        area.innerHTML = `
+            <div class="war-player-name">${player.name}</div>
+            <div class="war-cards-left">Cards: ${player.cards.length}</div>
+            <div class="war-card" id="local-card-${index}">
+                <div style="font-size: 0.7em;">Ready</div>
+            </div>
+        `;
+        battlefield.appendChild(area);
+    });
+}
+
+function battleLocal() {
+    if (players.some(p => p.cards.length === 0)) {
+        endGameLocal();
+        return;
+    }
+
+    document.getElementById('local-war-battle-btn').disabled = true;
+    currentCards = [];
+
+    players.forEach((player, i) => {
+        if (player.cards.length > 0) {
+            const card = player.cards.shift();
+            currentCards.push({ card, playerIndex: i });
+            displayCardLocal(i, card);
+        }
+    });
+
+    setTimeout(() => {
+        resolveRoundLocal();
+    }, 1000);
+}
+
+function displayCardLocal(playerIndex, card) {
+    const cardEl = document.getElementById(`local-card-${playerIndex}`);
+    cardEl.className = `war-card ${card.suit === '♥' || card.suit === '♦' ? 'hearts' : 'clubs'}`;
+    cardEl.innerHTML = `
+        <div class="war-card-rank">${card.rank}</div>
+        <div class="war-card-suit">${card.suit}</div>
+    `;
+}
+
+function resolveRoundLocal() {
+    const maxValue = Math.max(...currentCards.map(c => c.card.value));
+    const winners = currentCards.filter(c => c.card.value === maxValue);
+
+    if (winners.length === 1) {
+        const winner = winners[0];
+        const allCards = [...currentCards.map(c => c.card), ...warPot];
+        players[winner.playerIndex].cards.push(...shuffle(allCards));
+        warPot = [];
+
+        document.getElementById(`local-card-${winner.playerIndex}`).classList.add('winner');
+        document.getElementById('local-war-message').textContent = `${players[winner.playerIndex].name} wins this battle!`;
+
+        setTimeout(() => {
+            document.querySelectorAll('#local-war-battlefield .war-card').forEach(c => c.classList.remove('winner'));
+            renderBattlefield();
+            checkGameOverLocal();
+        }, 1500);
+    } else {
+        playCannonSound();
+        document.getElementById('local-war-message').textContent = '⚔️ WAR! ⚔️';
+        warPot.push(...currentCards.map(c => c.card));
+
+        winners.forEach(w => {
+            const player = players[w.playerIndex];
+            const cardsToAdd = Math.min(3, player.cards.length);
+            warPot.push(...player.cards.splice(0, cardsToAdd));
+        });
+
+        setTimeout(() => {
+            currentCards = [];
+            winners.forEach(w => {
+                if (players[w.playerIndex].cards.length > 0) {
+                    const card = players[w.playerIndex].cards.shift();
+                    currentCards.push({ card, playerIndex: w.playerIndex });
+                    displayCardLocal(w.playerIndex, card);
+                }
+            });
+
+            setTimeout(() => {
+                resolveRoundLocal();
+            }, 1000);
+        }, 1500);
+    }
+}
+
+function checkGameOverLocal() {
+    const activePlayers = players.filter(p => p.cards.length > 0);
+    if (activePlayers.length === 1) {
+        endGameLocal();
+    } else {
+        document.getElementById('local-war-battle-btn').disabled = false;
+    }
+}
+
+function endGameLocal() {
+    const winner = players.reduce((max, p) => p.cards.length > max.cards.length ? p : max);
+    document.getElementById('local-war-battle-btn').style.display = 'none';
+    document.getElementById('local-war-message').textContent = '';
+    document.getElementById('local-war-battlefield').innerHTML = '';
+    document.getElementById('local-war-gameover').innerHTML = `
+        <div class="war-game-over">
+            <h2>🎖️ VICTORY! 🎖️</h2>
+            <div class="war-winner-name">${winner.name} Wins!</div>
+            <p style="text-align:center; margin-bottom:1rem;">Final Cards: ${winner.cards.length}</p>
+            <button type="button" id="local-restart-btn" style="display:block; margin:0 auto;">NEW BATTLE</button>
+        </div>
+    `;
+    document.getElementById('local-restart-btn').addEventListener('click', () => {
+        document.getElementById('local-start-btn').style.display = 'block';
+        document.getElementById('local-war-battlefield').innerHTML = '';
+        document.getElementById('local-war-gameover').innerHTML = '';
+        document.getElementById('local-war-message').textContent = '';
+    });
+}
+
+document.getElementById('local-war-battle-btn').addEventListener('click', battleLocal);
+document.getElementById('local-ai-minus').addEventListener('click', () => changeAI(-1));
+document.getElementById('local-ai-plus').addEventListener('click', () => changeAI(1));
+document.getElementById('local-start-btn').addEventListener('click', startGame);
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, runTransaction, writeBatch, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+  isTokenAutoRefreshEnabled: true,
+});
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+function nameFor(playersArr, uid) {
+  const p = (playersArr || []).find((pl) => pl.uid === uid);
+  return p ? p.name : "A soldier";
+}
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  watchGamePlayLimit(currentUid);
+  await reconcileFinishedGames();
+  const jumpedIntoGame = await checkForActiveGame();
+  if (!jumpedIntoGame) showView("mode-select");
+});
+
+// ============================= VIEW ROUTER =================================
+let unsubscribeOpenTables = null;
+let unsubscribeMyInvites = null;
+let unsubscribeMyActiveGame = null;
+let unsubscribeGame = null;
+
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-local-game").style.display = name === "local-game" ? "block" : "none";
+  document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+  document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
+
+  document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  const insideOnlineMultiplayer = name === "waiting" || name === "leaderboard" || name === "game";
+  document.getElementById("nav-waiting").style.display = insideOnlineMultiplayer ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = insideOnlineMultiplayer ? "inline" : "none";
+
+  if (name === "waiting") watchWaitingRoom();
+  else {
+    if (unsubscribeOpenTables) unsubscribeOpenTables();
+    if (unsubscribeMyInvites) unsubscribeMyInvites();
+    if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+  }
+  if (name === "leaderboard") loadLeaderboard();
+  if (name !== "game" && unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+}
+
+// Matches every other game's convention: the top-nav "Games" button always
+// leaves for chess.html, the one canonical cross-game hub.
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("local-back-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
+
+document.getElementById("mode-tile-ai").addEventListener("click", () => {
+  gameMode = "ai";
+  document.getElementById("local-mode-title").textContent = "Play vs Computer";
+  document.getElementById("local-ai-count-row").style.display = "block";
+  document.getElementById("local-start-btn").style.display = "block";
+  document.getElementById("local-war-battlefield").innerHTML = "";
+  document.getElementById("local-war-gameover").innerHTML = "";
+  document.getElementById("local-war-message").textContent = "";
+  document.getElementById("local-war-battle-btn").style.display = "none";
+  showView("local-game");
+});
+document.getElementById("mode-tile-2p").addEventListener("click", () => {
+  gameMode = "pvp";
+  document.getElementById("local-mode-title").textContent = "Two Player (same device)";
+  document.getElementById("local-ai-count-row").style.display = "none";
+  document.getElementById("local-start-btn").style.display = "block";
+  document.getElementById("local-war-battlefield").innerHTML = "";
+  document.getElementById("local-war-gameover").innerHTML = "";
+  document.getElementById("local-war-message").textContent = "";
+  document.getElementById("local-war-battle-btn").style.display = "none";
+  showView("local-game");
+});
+document.getElementById("mode-tile-online").addEventListener("click", () => showView("waiting"));
+
+// If you're already mid-game (e.g. you refreshed the page), jump straight
+// back into it instead of showing mode-select.
+async function checkForActiveGame() {
+  const q = query(
+    collection(db, "warGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "active")
+  );
+  const snap = await getDocs(q).catch(() => null);
+  if (snap && !snap.empty) {
+    openGame(snap.docs[0].id);
+    return true;
+  }
+  return false;
+}
+
+// ============================= WAITING ROOM =================================
+function watchWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+  if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+
+  // Covers anyone ALREADY seated at a table (not just the creator): once a
+  // table transitions to "active" (host started it), every seated player's
+  // client needs to jump into the game view on its own — joinTable()/
+  // openGame() only ever runs for whoever is clicking at that moment.
+  const myActiveQ = query(
+    collection(db, "warGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "active")
+  );
+  unsubscribeMyActiveGame = onSnapshot(myActiveQ, (snap) => {
+    if (!snap.empty && !activeGameId) openGame(snap.docs[0].id);
+  }, (err) => console.error("My active game watch failed:", err));
+
+  const openQ = query(collection(db, "warGames"), where("status", "==", "open"), where("inviteTo", "==", null));
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("open-tables-list");
+    const empty = document.getElementById("open-tables-empty");
+    const myTableWrap = document.getElementById("my-open-table-wrap");
+    list.innerHTML = "";
+    let shown = 0;
+    myOpenTableId = null;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.player1Uid === currentUid) {
+        myOpenTableId = docSnap.id;
+        document.getElementById("my-open-table-label").textContent =
+          `Your table — ${g.players.length}/4 joined, waiting for more players`;
+        return;
+      }
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table (${g.players.length}/4 players)</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => joinTable(docSnap.id));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    myTableWrap.style.display = myOpenTableId ? "block" : "none";
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "warGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("my-invites-list");
+    const empty = document.getElementById("my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play War</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button";
+      acceptBtn.className = "small";
+      acceptBtn.textContent = "Accept";
+      acceptBtn.addEventListener("click", () => joinTable(docSnap.id));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button";
+      declineBtn.className = "secondary small";
+      declineBtn.textContent = "Decline";
+      declineBtn.style.marginLeft = "0.5rem";
+      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "warGames", docSnap.id)).catch(() => {}));
+      actions.appendChild(acceptBtn);
+      actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadFriendsToInvite();
+}
+
+async function loadFriendsToInvite() {
+  const list = document.getElementById("friends-invite-list");
+  const empty = document.getElementById("friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    for (const docSnap of snap.docs) {
+      const d = docSnap.data();
+      if (d.status !== "accepted") continue;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Invite to War";
+      btn.addEventListener("click", () => createTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+
+let myOpenTableId = null;
+document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenTableId) return;
+  try {
+    await deleteDoc(doc(db, "warGames", myOpenTableId));
+  } catch (err) {
+    alert(`Couldn't cancel table: ${err.message}`);
+  }
+});
+
+const INVITE_COOLDOWN_MS = 60 * 60 * 1000;
+async function checkInviteCooldown(inviteToUid, inviteToName, msg) {
+  const limitRef = doc(db, "gameInviteLimits", `${currentUid}_warGames_${inviteToUid}`);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  if (!limitSnap || !limitSnap.exists()) return true;
+  const last = limitSnap.data().lastInvitedAt;
+  const lastMs = last?.seconds ? last.seconds * 1000 : 0;
+  const elapsedMs = Date.now() - lastMs;
+  if (elapsedMs >= INVITE_COOLDOWN_MS) return true;
+  const minsLeft = Math.max(1, Math.ceil((INVITE_COOLDOWN_MS - elapsedMs) / 60000));
+  showMessage(msg, `You can invite ${inviteToName} again in about ${minsLeft} minute(s).`, "error");
+  return false;
+}
+
+// ============================= GAME PLAY LIMIT (online games only) =========
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("war-play-remaining");
+  if (!el) return;
+  const limit = myDailyTierLimit();
+  if (limit === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limit - currentGamePlayLimit.count) : limit;
+  el.textContent = `${remaining} / ${limit} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limit = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limit - data.count : limit;
+  if (remaining <= 0) {
+    showMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, limitRef, count: newCount };
+}
+
+function showMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= CREATE / JOIN =================================
+// inviteTo set: a private table for exactly the two of you (the Firestore
+// rules only ever authorize the creator or that one named invitee to touch
+// an invite-only table, so it can never grow past 2). inviteTo null: an
+// open table anyone can join up to a max of 4 (enforced both by rules and,
+// for the actual append, a transaction below to avoid two people racing
+// into the same last open seat).
+async function createTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    if (inviteToUid && !(await checkInviteCooldown(inviteToUid, inviteToName, msg))) return;
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const gameRef = doc(collection(db, "warGames"));
+    const batch = writeBatch(db);
+    batch.set(gameRef, {
+      player1Uid: currentUid,
+      player1Name: currentUserName,
+      players: [{ uid: currentUid, name: currentUserName }],
+      participants: [currentUid],
+      inviteTo: inviteToUid || null,
+      inviteToName: inviteToName || null,
+      status: "open",
+      hands: {},
+      message: "",
+      lastReveal: [],
+      winner: null,
+      statsRecorded: {},
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_warGames_${inviteToUid}`);
+      batch.set(limitRef, { inviterUid: currentUid, game: "warGames", inviteeUid: inviteToUid, lastInvitedAt: serverTimestamp() });
+    }
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    await batch.commit();
+    if (inviteToUid) {
+      showMessage(msg, `Invite sent to ${inviteToName}.`, "success");
+    } else {
+      openGame(gameRef.id);
+    }
+  } catch (err) {
+    if (inviteToUid && err.code === "permission-denied") {
+      showMessage(msg, `You can invite ${inviteToName} again in about an hour, or you've reached your daily game limit.`, "error");
+      return;
+    }
+    if (err.code === "permission-denied") {
+      showMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+      return;
+    }
+    showMessage(msg, err.message, "error");
+  }
+}
+
+async function joinTable(gameId) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const gameRef = doc(db, "warGames", gameId);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) throw new Error("That table no longer exists.");
+      const g = snap.data();
+      if (g.status !== "open") throw new Error("That table already started.");
+      if (g.participants.includes(currentUid)) throw new Error("You're already seated at that table.");
+      const maxSeats = g.inviteTo ? 2 : 4;
+      if (g.participants.length >= maxSeats) throw new Error("That table is full.");
+      tx.update(gameRef, {
+        players: [...g.players, { uid: currentUid, name: currentUserName }],
+        participants: [...g.participants, currentUid],
+        updatedAt: serverTimestamp(),
+      });
+    });
+    await setDoc(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    openGame(gameId);
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+// ============================= ONLINE GAME TABLE ============================
+let activeGameId = null;
+let activeGameData = null;
+
+function openGame(gameId) {
+  activeGameId = gameId;
+  showView("game");
+
+  if (unsubscribeGame) unsubscribeGame();
+  unsubscribeGame = onSnapshot(doc(db, "warGames", gameId), (snap) => {
+    if (!snap.exists()) { showView("waiting"); return; }
+    activeGameData = snap.data();
+    renderOnlineBattlefield(activeGameData);
+    maybeRecordStats();
+  }, (err) => console.error("Game watch failed:", err));
+}
+
+function renderOnlineBattlefield(g) {
+  const battlefield = document.getElementById("online-war-battlefield");
+  const messageEl = document.getElementById("online-war-message");
+  const startBtn = document.getElementById("online-start-btn");
+  const battleBtn = document.getElementById("online-war-battle-btn");
+  const resignBtn = document.getElementById("online-resign-btn");
+  const gameOverEl = document.getElementById("online-war-gameover");
+
+  battlefield.innerHTML = "";
+  (g.players || []).forEach((p) => {
+    const cardCount = g.hands && g.hands[p.uid] ? g.hands[p.uid].length : 0;
+    const revealed = (g.lastReveal || []).find((r) => r.uid === p.uid);
+    const area = document.createElement("div");
+    area.className = "war-player-area" + (g.status === "active" && cardCount === 0 ? " eliminated" : "");
+    area.innerHTML = `
+      <div class="war-player-name">${escapeHtml(p.name)}${p.uid === currentUid ? " (you)" : ""}</div>
+      <div class="war-cards-left">Cards: ${g.status === "open" ? "—" : cardCount}</div>
+      <div class="war-card ${revealed ? (revealed.suit === "♥" || revealed.suit === "♦" ? "hearts" : "clubs") : ""}">
+        ${revealed
+          ? `<div class="war-card-rank">${revealed.rank}</div><div class="war-card-suit">${revealed.suit}</div>`
+          : `<div style="font-size:0.7em;">${g.status === "open" ? "Seated" : "Ready"}</div>`}
+      </div>
+    `;
+    battlefield.appendChild(area);
+  });
+
+  if (g.status === "open") {
+    messageEl.textContent = `${g.players.length}/4 players seated. ${g.player1Uid === currentUid ? "Start when you have at least 2." : "Waiting for the host to start..."}`;
+    startBtn.style.display = g.player1Uid === currentUid && g.players.length >= 2 ? "block" : "none";
+    battleBtn.style.display = "none";
+    resignBtn.style.display = "none";
+    gameOverEl.innerHTML = "";
+  } else if (g.status === "active") {
+    messageEl.textContent = g.message || "Press BATTLE to begin!";
+    startBtn.style.display = "none";
+    battleBtn.style.display = "inline-flex";
+    resignBtn.style.display = "inline-flex";
+    gameOverEl.innerHTML = "";
+  } else if (g.status === "finished") {
+    messageEl.textContent = "";
+    startBtn.style.display = "none";
+    battleBtn.style.display = "none";
+    resignBtn.style.display = "none";
+    const won = g.winner === currentUid;
+    gameOverEl.innerHTML = `
+      <div class="war-game-over">
+        <h2>🎖️ VICTORY! 🎖️</h2>
+        <div class="war-winner-name">${g.winner ? escapeHtml(nameFor(g.players, g.winner)) + " Wins!" : "The war ended in a stalemate."}</div>
+        <p style="text-align:center;">${won ? "You won! +3 points." : g.winner ? "Better luck next time." : ""}</p>
+      </div>
+    `;
+  }
+}
+
+async function startWarGame() {
+  if (!activeGameData || activeGameData.player1Uid !== currentUid || activeGameData.players.length < 2) return;
+  const deck = window.shuffleWarDeck(window.createWarDeck());
+  const hands = {};
+  activeGameData.players.forEach((p) => { hands[p.uid] = []; });
+  deck.forEach((card, i) => {
+    const p = activeGameData.players[i % activeGameData.players.length];
+    hands[p.uid].push(card);
+  });
+  try {
+    await updateDoc(doc(db, "warGames", activeGameId), {
+      hands,
+      status: "active",
+      message: `${activeGameData.players.length} soldiers ready. Battle when you are!`,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+}
+document.getElementById("online-start-btn").addEventListener("click", startWarGame);
+
+// Resolves ONE full round (including any chained wars) atomically in a
+// single transaction, rather than choreographing a multi-step animated
+// reveal across up to 4 separate clients — far simpler and safer for
+// real-time multiplayer than trying to keep 2-4 browsers in lockstep
+// through a "reveal, wait, resolve" sequence. Any seated player can click
+// Battle; Firestore's transaction retry (built into the SDK) makes
+// simultaneous clicks from different players resolve as separate
+// sequential rounds rather than corrupting each other.
+async function battleOnline() {
+  const battleBtn = document.getElementById("online-war-battle-btn");
+  battleBtn.disabled = true;
+  const gameRef = doc(db, "warGames", activeGameId);
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) return;
+      const g = snap.data();
+      if (g.status !== "active") return;
+
+      const hands = {};
+      Object.keys(g.hands || {}).forEach((uid) => { hands[uid] = [...g.hands[uid]]; });
+
+      let active = g.players.map((p) => p.uid).filter((uid) => (hands[uid] || []).length > 0);
+      if (active.length <= 1) {
+        tx.update(gameRef, {
+          status: "finished",
+          winner: active[0] || null,
+          updatedAt: serverTimestamp(),
+        });
+        return;
+      }
+
+      playCannonSound();
+      const pot = [];
+      let warring = active;
+      let warHappened = false;
+      let lastReveal = [];
+      let guard = 0;
+
+      while (guard++ < 500) {
+        const reveal = warring.filter((uid) => hands[uid].length > 0).map((uid) => ({ uid, card: hands[uid].shift() }));
+        pot.push(...reveal.map((r) => r.card));
+        lastReveal = reveal.map((r) => ({ uid: r.uid, rank: r.card.rank, suit: r.card.suit }));
+        if (reveal.length === 0) { warring = []; break; } // everyone warring ran out simultaneously — extremely rare; pot is discarded
+        const maxVal = Math.max(...reveal.map((r) => r.card.value));
+        const tied = reveal.filter((r) => r.card.value === maxVal).map((r) => r.uid);
+        if (tied.length === 1) { warring = tied; break; }
+        warHappened = true;
+        tied.forEach((uid) => {
+          const ante = hands[uid].splice(0, Math.min(3, hands[uid].length));
+          pot.push(...ante);
+        });
+        warring = tied;
+      }
+
+      const winnerUid = warring[0] || null;
+      if (winnerUid) hands[winnerUid].push(...window.shuffleWarDeck(pot));
+
+      const stillActive = g.players.map((p) => p.uid).filter((uid) => (hands[uid] || []).length > 0);
+      const update = {
+        hands,
+        message: winnerUid
+          ? `${nameFor(g.players, winnerUid)} wins ${warHappened ? "the WAR" : "this battle"} and takes ${pot.length} card(s)!`
+          : "That round ended in an unresolved tie — cards discarded.",
+        lastReveal,
+        updatedAt: serverTimestamp(),
+      };
+      if (stillActive.length <= 1) {
+        update.status = "finished";
+        update.winner = stillActive[0] || null;
+      }
+      tx.update(gameRef, update);
+    });
+  } catch (err) {
+    alert(`Couldn't resolve battle: ${err.message}`);
+  } finally {
+    battleBtn.disabled = false;
+  }
+}
+document.getElementById("online-war-battle-btn").addEventListener("click", battleOnline);
+
+// Resigning discards your remaining cards (they leave the game entirely,
+// not redistributed) — simplest fair-enough behavior for a casual social
+// game with no existing "quit mid-game" precedent to model War's on.
+document.getElementById("online-resign-btn").addEventListener("click", async () => {
+  if (!activeGameData || activeGameData.status !== "active") return;
+  if (!confirm("Resign this game? Your remaining cards are forfeited.")) return;
+  const gameRef = doc(db, "warGames", activeGameId);
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) return;
+      const g = snap.data();
+      if (g.status !== "active") return;
+      const hands = { ...g.hands, [currentUid]: [] };
+      const stillActive = g.players.map((p) => p.uid).filter((uid) => (hands[uid] || []).length > 0);
+      const update = { hands, updatedAt: serverTimestamp() };
+      if (stillActive.length <= 1) {
+        update.status = "finished";
+        update.winner = stillActive[0] || null;
+        update.message = "";
+      } else {
+        update.message = `${nameFor(g.players, currentUid)} resigned.`;
+      }
+      tx.update(gameRef, update);
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+// ============================= POINTS/STATS ==================================
+// Each player records their OWN stats once, guarded by their own key in the
+// statsRecorded map on the game doc, so a finished game only ever gets
+// counted once per player even if this listener fires again later.
+async function recordStatsForGame(gameId, gameData) {
+  if (gameData.statsRecorded && gameData.statsRecorded[currentUid]) return;
+  const won = gameData.winner === currentUid;
+  const wasParticipant = (gameData.participants || []).includes(currentUid);
+  if (!wasParticipant) return;
+
+  try {
+    await updateDoc(doc(db, "warGames", gameId), { [`statsRecorded.${currentUid}`]: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      warPoints: (data.warPoints || 0) + (won ? 3 : 0),
+      warWins: (data.warWins || 0) + (won ? 1 : 0),
+      warLosses: (data.warLosses || 0) + (won ? 0 : 1),
+    });
+  } catch (err) {
+    console.error("Couldn't record War stats:", err);
+  }
+}
+
+async function maybeRecordStats() {
+  if (!activeGameData || activeGameData.status !== "finished") return;
+  await recordStatsForGame(activeGameId, activeGameData);
+}
+
+async function reconcileFinishedGames() {
+  try {
+    const q = query(collection(db, "warGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status !== "finished") continue;
+      if (!(g.statsRecorded && g.statsRecorded[currentUid])) await recordStatsForGame(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished War games:", err);
+  }
+}
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const ranked = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      const points = d.warPoints || 0;
+      const wins = d.warWins || 0;
+      const losses = d.warLosses || 0;
+      if (points > 0 || wins > 0 || losses > 0) {
+        ranked.push({ name: d.profile?.name || "Neighbor", points, wins, losses });
+      }
+    });
+    ranked.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (ranked.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    ranked.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `
+        <span class="leader-rank">#${i + 1}</span>
+        <span style="flex:1;">${escapeHtml(p.name)}</span>
+        <span class="field-hint">${p.wins}W-${p.losses}L</span>
+        <span style="font-weight:600;">${p.points} pts</span>
+      `;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
