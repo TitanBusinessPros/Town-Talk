@@ -534,8 +534,22 @@ onAuthStateChanged(auth, async (user) => {
   watchGamePlayLimit(currentUid);
   await reconcileFinishedGames();
   const jumpedIntoGame = await checkForActiveGame();
-  if (!jumpedIntoGame) showView("mode-select");
+  // reconcileFinishedGames()/checkForActiveGame() are both real Firestore
+  // round-trips, so this whole chain can take long enough that the user
+  // has already clicked into a view (e.g. "Play vs Computer") before it
+  // resolves — falling back to mode-select here unconditionally would
+  // silently undo that navigation. Only apply the default if nothing else
+  // is already showing. (Found and fixed while building Hearts, which
+  // shares this exact pattern — same latent race here too.)
+  if (!jumpedIntoGame && !isAnyViewAlreadyShown()) showView("mode-select");
 });
+
+function isAnyViewAlreadyShown() {
+  return document.getElementById("view-local-game").style.display === "block"
+      || document.getElementById("view-waiting").style.display === "block"
+      || document.getElementById("view-game").style.display === "block"
+      || document.getElementById("view-leaderboard").style.display === "block";
+}
 
 // ============================= VIEW ROUTER =================================
 let unsubscribeOpenTables = null;
