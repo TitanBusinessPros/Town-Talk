@@ -170,6 +170,7 @@ const GAME_LABELS = {
   warGames: { label: "War", page: "/war.html" },
   heartsGames: { label: "Hearts", page: "/hearts.html" },
   blackjackGames: { label: "Blackjack", page: "/blackjack.html" },
+  airHockeyGames: { label: "Air Hockey", page: "/airhockey.html" },
 };
 
 function makeGameInviteTrigger(collectionName) {
@@ -244,6 +245,7 @@ exports.onFrisbeeGolfInvite = makeGameInviteTrigger("fgGames");
 exports.onWarInvite = makeGameInviteTrigger("warGames");
 exports.onHeartsInvite = makeGameInviteTrigger("heartsGames");
 exports.onBlackjackInvite = makeGameInviteTrigger("blackjackGames");
+exports.onAirHockeyInvite = makeGameInviteTrigger("airHockeyGames");
 
 // -----------------------------------------------------------------------
 // 2. First-time message notification.

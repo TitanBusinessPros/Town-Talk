@@ -119,7 +119,7 @@ service cloud.firestore {
                     || (isOwner(uid)
                         && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'heartsPoints', 'heartsWins', 'heartsLosses', 'blackjackPoints', 'blackjackWins', 'blackjackLosses', 'blackjackDraws', 'notificationsEnabled', 'fcmTokens']));
+                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'heartsPoints', 'heartsWins', 'heartsLosses', 'blackjackPoints', 'blackjackWins', 'blackjackLosses', 'blackjackDraws', 'airHockeyPoints', 'airHockeyWins', 'airHockeyLosses', 'notificationsEnabled', 'fcmTokens']));
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -573,6 +573,51 @@ service cloud.firestore {
                       || (resource.data.status == 'open'
                           && resource.data.inviteTo == null
                           && resource.data.participants.size() < 4)
+                    );
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.status == 'open' && (
+                          request.auth.uid == resource.data.player1Uid
+                          || request.auth.uid == resource.data.inviteTo
+                        ));
+    }
+
+    // Strictly 2 players, same player1Uid/player2Uid schema as chessGames
+    // (not War/Hearts' array-based seating — Air Hockey never needs more
+    // than 2). Real-time match: `puck`/`paddle1`/`paddle2` are written at a
+    // throttled ~20Hz by the host (puck+paddle1) and guest (paddle2 only)
+    // while status=='playing' — plain updateDoc, not a transaction, since
+    // each field is only ever written by one specific player, so there's no
+    // write race to resolve.
+    match /airHockeyGames/{gameId} {
+      // .get(field, default) here, not direct resource.data.field access —
+      // a `list` (collection query) rule that references fields outside the
+      // query's own filter can throw a spurious "Property X is undefined"
+      // permission-denied error on some Firestore emulator versions, even
+      // with well-formed data (see blackjackGames' identical comment/fix,
+      // confirmed via isolated reproduction against warGames' rule).
+      allow read: if isSignedIn() && (
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
+      );
+      allow create: if isSignedIn()
+                    && request.resource.data.player1Uid == request.auth.uid
+                    && request.resource.data.player2Uid == null
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.participants == [request.auth.uid]
+                    && (
+                         request.resource.data.inviteTo == null
+                         || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_airHockeyGames_' + request.resource.data.inviteTo))
+                         || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_airHockeyGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
+                       );
+      allow update: if isSignedIn()
+                    && (
+                      request.auth.uid in resource.data.participants
+                      || request.auth.uid == resource.data.player1Uid
+                      || request.auth.uid == resource.data.inviteTo
+                      || (resource.data.status == 'open'
+                          && resource.data.player2Uid == null
+                          && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
                     );
       allow delete: if isAdmin()
                     || (isSignedIn() && resource.data.status == 'open' && (
