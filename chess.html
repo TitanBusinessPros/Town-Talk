@@ -191,6 +191,11 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
           <h2 style="font-size:1.1rem; margin-top:0.5rem;">War</h2>
           <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or up to 4 online</p>
         </div>
+        <div class="card" style="max-width:280px; text-align:center; cursor:pointer;" id="game-tile-hearts">
+          <div style="font-size:2.5rem;">♥</div>
+          <h2 style="font-size:1.1rem; margin-top:0.5rem;">Hearts</h2>
+          <p class="field-hint" style="text-align:center;">Play vs computer, or online with exactly 4 real players</p>
+        </div>
       </div>
       <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
     </section>
@@ -454,6 +459,7 @@ document.getElementById("game-tile-gtf").addEventListener("click", () => { locat
 document.getElementById("game-tile-gravitysling").addEventListener("click", () => { location.href = "gravity-sling.html"; });
 document.getElementById("game-tile-dodge").addEventListener("click", () => { location.href = "dodge.html"; });
 document.getElementById("game-tile-war").addEventListener("click", () => { location.href = "war.html"; });
+document.getElementById("game-tile-hearts").addEventListener("click", () => { location.href = "hearts.html"; });
 document.getElementById("game-tile-follow").addEventListener("click", () => { location.href = "follow.html"; });
 document.getElementById("game-tile-desert").addEventListener("click", () => { location.href = "desert.html"; });
 document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));

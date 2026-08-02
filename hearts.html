@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Hearts — Town Fuss</title>
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); }
+body { min-height: 100vh; }
+a { color: var(--amber-500); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; }
+p { color: var(--text-muted); line-height: 1.6; }
+.page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+.header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+.header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+.header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+.header-nav button.active { color: var(--amber-500); font-weight: 600; }
+
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+
+button { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+button:hover { background: var(--amber-600); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+.table-row, .invite-row, .friend-row, .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+.table-row > span:first-child, .invite-row > span:first-child, .friend-row > span:first-child, .leader-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+.table-row > span:last-child, .invite-row > span:last-child, .friend-row > span:last-child, .leader-row > span:last-child { flex: 0 0 auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.table-row:last-child, .invite-row:last-child, .friend-row:last-child, .leader-row:last-child { border-bottom: none; }
+.leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+
+.empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+.message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+.message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+.field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+.mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+/* ===========================================================================
+   HEARTS TABLE — the original standalone game's own visuals, prefixed with
+   hearts- throughout so nothing collides with the site's own .card
+   (generic content container) or .message (banner) classes above. Shared
+   by both the local vs-Computer table and the online table.
+   =========================================================================== */
+.hearts-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; }
+.hearts-player-score { background: var(--ink-700); border: 2px solid var(--line); padding: 0.6rem; border-radius: var(--radius-sm); text-align: center; font-size: 0.8em; }
+.hearts-player-score.current-player { border-color: var(--amber-500); background: rgba(193,80,46,0.1); }
+.hearts-player-score .hearts-name { font-weight: 700; margin-bottom: 0.2rem; }
+.hearts-player-score .hearts-points { font-size: 1.3em; }
+.hearts-game-info { text-align: center; margin-bottom: 0.75rem; font-size: 0.9em; background: var(--ink-700); padding: 0.6rem; border-radius: var(--radius-sm); }
+.hearts-message { text-align: center; margin: 0.75rem 0; font-size: 0.95em; min-height: 2.5em; font-weight: 600; background: var(--ink-700); padding: 0.9rem; border-radius: var(--radius-sm); white-space: pre-line; color: var(--paper-050); }
+
+.hearts-table { position: relative; width: 100%; max-width: 320px; height: 320px; margin: 0 auto 1.25rem; background: rgba(116,135,90,0.2); border-radius: 50%; border: 3px solid var(--line); }
+.hearts-played-cards { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70%; height: 70%; }
+.hearts-played-card { position: absolute; width: 44px; height: 62px; background: white; border: 2px solid var(--paper-050); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; color: var(--paper-050); }
+.hearts-played-card.seat0 { bottom: -30px; left: 50%; transform: translateX(-50%); }
+.hearts-played-card.seat1 { left: -20px; top: 50%; transform: translateY(-50%); }
+.hearts-played-card.seat2 { top: -30px; left: 50%; transform: translateX(-50%); }
+.hearts-played-card.seat3 { right: -20px; top: 50%; transform: translateY(-50%); }
+.hearts-played-card .hearts-rank { font-size: 15px; }
+.hearts-played-card .hearts-suit { font-size: 17px; }
+.hearts-played-card.red { color: #d32f2f; }
+
+.hearts-hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; margin: 1rem 0; padding: 0.75rem; background: rgba(0,0,0,0.06); border-radius: var(--radius-sm); min-height: 100px; }
+.hearts-card { width: 54px; height: 76px; background: white; border: 2px solid var(--paper-050); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; color: var(--paper-050); cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+.hearts-card.red { color: #d32f2f; }
+.hearts-card.disabled { opacity: 0.4; cursor: not-allowed; }
+.hearts-card.selected { transform: translateY(-12px); border-color: #2e8b1f; box-shadow: 0 0 12px rgba(46,139,31,0.6); }
+.hearts-card .hearts-rank { font-size: 18px; }
+.hearts-card .hearts-suit { font-size: 21px; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<header class="header-bar">
+  <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+  <nav class="header-nav">
+    <button id="nav-hub" class="active">Games</button>
+    <button id="nav-waiting" style="display:none;">Waiting Room</button>
+    <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+  </nav>
+</header>
+
+<main class="page">
+
+  <div id="signed-out-notice" class="card" style="display:none; text-align:center;">
+    <h2>Sign in on Town Fuss first</h2>
+    <p>You need a Town Fuss account to play Hearts with other members.</p>
+    <a href="index.html"><button type="button">Go to Town Fuss</button></a>
+  </div>
+
+  <div id="app-content" style="display:none;">
+
+    <!-- ================= MODE SELECT ================= -->
+    <section id="view-mode-select">
+      <span class="eyebrow">Hearts</span>
+      <h1>♥ How do you want to play? ♥</h1>
+      <div class="card mode-tile" id="mode-tile-ai">
+        <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
+        <p class="field-hint" style="text-align:center;">You + 3 computer opponents, same device</p>
+      </div>
+      <div class="card mode-tile" id="mode-tile-online">
+        <h2 style="font-size:1.05rem;">🌐 Play Online</h2>
+        <p class="field-hint" style="text-align:center;">Exactly 4 real players — waiting room, invites, and the leaderboard</p>
+      </div>
+    </section>
+
+    <!-- ================= LOCAL GAME (vs Computer) ================= -->
+    <section id="view-local-game" style="display:none;">
+      <button type="button" class="secondary small" id="local-back-btn" style="margin-bottom:1rem;">&larr; Back</button>
+      <span class="eyebrow">Hearts</span>
+      <h1>Play vs Computer</h1>
+      <div class="card">
+        <div class="hearts-scores" id="local-hearts-scores"></div>
+        <div class="hearts-game-info" id="local-hearts-info">Round <span id="local-round-num">1</span> · Trick <span id="local-trick-num">1</span></div>
+        <div class="hearts-message" id="local-hearts-message">Press Start to begin!</div>
+        <div class="hearts-table"><div class="hearts-played-cards" id="local-hearts-played"></div></div>
+        <div class="hearts-hand" id="local-hearts-hand"></div>
+        <div style="text-align:center;">
+          <button type="button" id="local-start-btn">Start Game</button>
+          <button type="button" id="local-pass-btn" style="display:none;" disabled>Pass Cards</button>
+          <button type="button" id="local-new-round-btn" style="display:none;">Next Round</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= WAITING ROOM ================= -->
+    <section id="view-waiting" style="display:none;">
+      <button type="button" class="secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+      <span class="eyebrow">Hearts</span>
+      <h1>Waiting Room</h1>
+      <p style="text-align:center;">Hearts needs exactly 4 players. Join an open table, invite a friend, or wait for someone to challenge you — an invite just reserves you a seat, anyone else can still fill the rest.</p>
+      <p class="field-hint" id="hearts-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+
+      <div class="card">
+        <h2 style="text-align:left;">Open tables</h2>
+        <button type="button" id="create-table-btn">+ Create a table</button>
+        <div id="my-open-table-wrap" style="display:none; margin-top:1rem;">
+          <div class="table-row">
+            <span id="my-open-table-label">Your table — waiting for players</span>
+            <button type="button" class="secondary small" id="cancel-my-table-btn">Cancel</button>
+          </div>
+        </div>
+        <div id="open-tables-list" style="margin-top:1rem;"></div>
+        <div id="open-tables-empty" class="empty-state" style="display:none">No open tables right now — create one!</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invites waiting on you</h2>
+        <div id="my-invites-list"></div>
+        <div id="my-invites-empty" class="empty-state" style="display:none">No pending invites.</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invite a friend</h2>
+        <p style="text-align:left;">Only shows people you're already friends with on Town Fuss.</p>
+        <div id="friends-invite-list"></div>
+        <div id="friends-invite-empty" class="empty-state" style="display:none">Add some friends on Town Fuss first.</div>
+      </div>
+
+      <div id="waiting-message" class="message" style="display:none"></div>
+    </section>
+
+    <!-- ================= LEADERBOARD ================= -->
+    <section id="view-leaderboard" style="display:none;">
+      <span class="eyebrow">Hearts</span>
+      <h1>Leaderboard</h1>
+      <p style="text-align:center;">Win a completed online game (lowest score when someone hits 100) = 3 points.</p>
+      <div class="card">
+        <div id="leaderboard-list"></div>
+        <div id="leaderboard-empty" class="empty-state" style="display:none">No games played yet — be the first!</div>
+      </div>
+    </section>
+
+    <!-- ================= ONLINE GAME TABLE ================= -->
+    <section id="view-game" style="display:none;">
+      <button type="button" class="secondary small" id="leave-table-btn" style="margin-bottom:1rem;">&larr; Back to Waiting Room</button>
+      <div class="card">
+        <div class="hearts-scores" id="online-hearts-scores"></div>
+        <div class="hearts-game-info" id="online-hearts-info"></div>
+        <div class="hearts-message" id="online-hearts-message">Waiting for the table to fill up...</div>
+        <div class="hearts-table"><div class="hearts-played-cards" id="online-hearts-played"></div></div>
+        <div class="hearts-hand" id="online-hearts-hand"></div>
+        <div style="text-align:center;">
+          <button type="button" id="online-start-btn" style="display:none;">Start Game (host only)</button>
+          <button type="button" id="online-pass-btn" style="display:none;" disabled>Pass 3 Cards</button>
+          <button type="button" class="secondary" id="online-resign-btn" style="display:none;">Resign</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+// ===========================================================================
+// CLASSIC (non-module) script — the local vs-Computer game, adapted from
+// the original standalone Hearts Card Game. Kept as a plain classic script
+// so its state stays on real global `window`-scope variables, matching
+// every other game's testing convention. The ONLINE multiplayer game
+// (turn-based, Firestore-synced, exactly 4 real players) is a separate,
+// parallel implementation in the module script below — it does not share
+// state with this local game.
+// ===========================================================================
+const suits = ['♠', '♣', '♦', '♥'];
+const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+const players = ['south', 'west', 'north', 'east'];
+
+let deck = [];
+let hands = { south: [], west: [], north: [], east: [] };
+let scores = { south: 0, west: 0, north: 0, east: 0 };
+let currentTrick = [];
+let currentPlayer = 'south';
+let leadSuit = null;
+let heartsBroken = false;
+let trickCount = 0;
+let roundCount = 1;
+let firstTrick = true;
+let passingPhase = false;
+let selectedCards = [];
+let passDirection = 'left';
+
+function createDeck() {
+    const d = [];
+    for (let suit of suits) {
+        for (let rank of ranks) {
+            d.push({ suit, rank });
+        }
+    }
+    return d;
+}
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+// Exposed so the online multiplayer module script can deal from the exact
+// same deck/shuffle logic without duplicating it in a second scope.
+window.createHeartsDeck = createDeck;
+window.shuffleHearts = shuffle;
+window.HEARTS_RANKS = ranks;
+
+function dealCards() {
+    deck = shuffle(createDeck());
+    hands = { south: [], west: [], north: [], east: [] };
+    players.forEach((player, i) => {
+        hands[player] = deck.slice(i * 13, (i + 1) * 13);
+    });
+}
+
+function getPassDirection(round) {
+    const cycle = (round - 1) % 4;
+    return ['left', 'right', 'across', 'none'][cycle];
+}
+window.getHeartsPassDirection = getPassDirection;
+
+function startGame() {
+    document.getElementById('local-start-btn').style.display = 'none';
+    scores = { south: 0, west: 0, north: 0, east: 0 };
+    roundCount = 1;
+    updateScores();
+    newRound();
+}
+window.startGame = startGame;
+
+function newRound() {
+    document.getElementById('local-new-round-btn').style.display = 'none';
+    dealCards();
+    currentTrick = [];
+    leadSuit = null;
+    heartsBroken = false;
+    trickCount = 0;
+    firstTrick = true;
+    selectedCards = [];
+    passDirection = getPassDirection(roundCount);
+
+    document.getElementById('local-round-num').textContent = roundCount;
+    document.getElementById('local-trick-num').textContent = 1;
+
+    if (passDirection === 'none') {
+        document.getElementById('local-hearts-message').textContent = 'No passing this round!';
+        setTimeout(() => startPlayingPhase(), 1500);
+    } else {
+        passingPhase = true;
+        document.getElementById('local-hearts-message').textContent = `Select 3 cards to pass ${passDirection}`;
+        document.getElementById('local-pass-btn').style.display = 'inline-block';
+        document.getElementById('local-pass-btn').disabled = true;
+        renderHand();
+        renderPlayedCards();
+        updateScores();
+    }
+}
+window.newRound = newRound;
+
+function selectCardForPassing(card) {
+    if (!passingPhase) return;
+    const index = selectedCards.indexOf(card);
+    if (index > -1) {
+        selectedCards.splice(index, 1);
+    } else if (selectedCards.length < 3) {
+        selectedCards.push(card);
+    }
+    document.getElementById('local-pass-btn').disabled = selectedCards.length !== 3;
+    renderHand();
+}
+
+function confirmPass() {
+    if (selectedCards.length !== 3) return;
+    passingPhase = false;
+    document.getElementById('local-pass-btn').style.display = 'none';
+    document.getElementById('local-hearts-message').textContent = 'Passing cards...';
+
+    const passedCards = { south: selectedCards };
+    ['west', 'north', 'east'].forEach(player => {
+        const sorted = [...hands[player]].sort((a, b) => {
+            if (a.suit === '♠' && a.rank === 'Q') return -1;
+            if (b.suit === '♠' && b.rank === 'Q') return 1;
+            if (a.suit === '♥' && b.suit !== '♥') return -1;
+            if (b.suit === '♥' && a.suit !== '♥') return 1;
+            return ranks.indexOf(b.rank) - ranks.indexOf(a.rank);
+        });
+        passedCards[player] = sorted.slice(0, 3);
+    });
+
+    players.forEach(player => {
+        passedCards[player].forEach(card => {
+            hands[player] = hands[player].filter(c => c !== card);
+        });
+    });
+
+    const passMap = {
+        left: { south: 'west', west: 'north', north: 'east', east: 'south' },
+        right: { south: 'east', east: 'north', north: 'west', west: 'south' },
+        across: { south: 'north', north: 'south', west: 'east', east: 'west' }
+    };
+    const dirMap = passMap[passDirection];
+    players.forEach(player => {
+        hands[dirMap[player]].push(...passedCards[player]);
+    });
+
+    selectedCards = [];
+    setTimeout(() => { startPlayingPhase(); }, 1000);
+}
+
+function startPlayingPhase() {
+    for (let player of players) {
+        if (hands[player].some(card => card.rank === '2' && card.suit === '♣')) {
+            currentPlayer = player;
+            break;
+        }
+    }
+    renderHand();
+    renderPlayedCards();
+    updateScores();
+    if (currentPlayer !== 'south') {
+        setTimeout(() => playComputerTurn(), 1000);
+    } else {
+        document.getElementById('local-hearts-message').textContent = 'Your turn! Play the 2 of clubs.';
+    }
+}
+
+function renderHand() {
+    const handEl = document.getElementById('local-hearts-hand');
+    handEl.innerHTML = '';
+    if (!hands.south || hands.south.length === 0) return;
+
+    hands.south.sort((a, b) => {
+        const suitOrder = suits.indexOf(a.suit) - suits.indexOf(b.suit);
+        if (suitOrder !== 0) return suitOrder;
+        return ranks.indexOf(a.rank) - ranks.indexOf(b.rank);
+    });
+
+    hands.south.forEach(card => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'hearts-card ' + (card.suit === '♥' || card.suit === '♦' ? 'red' : '');
+        cardEl.innerHTML = `<div class="hearts-rank">${card.rank}</div><div class="hearts-suit">${card.suit}</div>`;
+
+        if (passingPhase) {
+            if (selectedCards.includes(card)) cardEl.classList.add('selected');
+            cardEl.onclick = () => selectCardForPassing(card);
+        } else {
+            if (!canPlayCard(card)) cardEl.classList.add('disabled');
+            cardEl.onclick = () => { if (canPlayCard(card)) playCard('south', card); };
+        }
+        handEl.appendChild(cardEl);
+    });
+}
+
+function canPlayCard(card) {
+    if (currentPlayer !== 'south' || passingPhase) return false;
+    if (firstTrick && currentTrick.length === 0) return card.rank === '2' && card.suit === '♣';
+    if (leadSuit) {
+        const hasSuit = hands.south.some(c => c.suit === leadSuit);
+        if (hasSuit && card.suit !== leadSuit) return false;
+        if (firstTrick) {
+            if (card.suit === '♥') return false;
+            if (card.suit === '♠' && card.rank === 'Q') return false;
+        }
+        return true;
+    }
+    if (!heartsBroken && card.suit === '♥') return hands.south.every(c => c.suit === '♥');
+    return true;
+}
+
+function playCard(player, card) {
+    if (player === 'south' && !canPlayCard(card)) return;
+    hands[player] = hands[player].filter(c => c !== card);
+    currentTrick.push({ player, card });
+    if (currentTrick.length === 1) leadSuit = card.suit;
+    if (card.suit === '♥') heartsBroken = true;
+
+    renderPlayedCards();
+    renderHand();
+
+    if (currentTrick.length === 4) {
+        setTimeout(endTrick, 1500);
+    } else {
+        currentPlayer = players[(players.indexOf(currentPlayer) + 1) % 4];
+        if (currentPlayer !== 'south') {
+            setTimeout(() => playComputerTurn(), 800);
+        } else {
+            document.getElementById('local-hearts-message').textContent = 'Your turn!';
+        }
+    }
+}
+
+function playComputerTurn() {
+    const availableCards = hands[currentPlayer].filter(card => {
+        if (firstTrick && currentTrick.length === 0) return card.rank === '2' && card.suit === '♣';
+        if (leadSuit) {
+            const hasSuit = hands[currentPlayer].some(c => c.suit === leadSuit);
+            if (hasSuit && card.suit !== leadSuit) return false;
+            if (firstTrick) {
+                if (card.suit === '♥') return false;
+                if (card.suit === '♠' && card.rank === 'Q') return false;
+            }
+            return true;
+        }
+        if (!heartsBroken && card.suit === '♥') return hands[currentPlayer].every(c => c.suit === '♥');
+        return true;
+    });
+    const card = availableCards[Math.floor(Math.random() * availableCards.length)];
+    playCard(currentPlayer, card);
+}
+
+function endTrick() {
+    firstTrick = false;
+    const winner = currentTrick.reduce((highest, current) => {
+        if (current.card.suit !== leadSuit) return highest;
+        if (!highest || ranks.indexOf(current.card.rank) > ranks.indexOf(highest.card.rank)) return current;
+        return highest;
+    }, null);
+
+    const points = currentTrick.reduce((sum, play) => {
+        if (play.card.suit === '♥') return sum + 1;
+        if (play.card.suit === '♠' && play.card.rank === 'Q') return sum + 13;
+        return sum;
+    }, 0);
+
+    scores[winner.player] += points;
+    updateScores();
+    document.getElementById('local-hearts-message').textContent = `${winner.player.toUpperCase()} wins the trick!\n(+${points} points)`;
+
+    currentTrick = [];
+    leadSuit = null;
+    currentPlayer = winner.player;
+    trickCount++;
+    document.getElementById('local-trick-num').textContent = trickCount + 1;
+
+    if (hands.south.length === 0) {
+        endRound();
+    } else {
+        setTimeout(() => {
+            renderPlayedCards();
+            if (currentPlayer !== 'south') {
+                playComputerTurn();
+            } else {
+                document.getElementById('local-hearts-message').textContent = 'Your turn to lead!';
+                renderHand();
+            }
+        }, 1500);
+    }
+}
+
+function endRound() {
+    renderPlayedCards();
+    let message = `Round ${roundCount} complete!\n\n`;
+    players.forEach(p => { message += `${p.toUpperCase()}: ${scores[p]} points\n`; });
+
+    const winner = players.reduce((min, p) => scores[p] < scores[min] ? p : min);
+
+    if (Math.max(...players.map(p => scores[p])) >= 100) {
+        message += `\nGame Over!\n${winner.toUpperCase()} wins with ${scores[winner]} points!`;
+        document.getElementById('local-hearts-message').textContent = message;
+        document.getElementById('local-start-btn').style.display = 'inline-block';
+    } else {
+        roundCount++;
+        document.getElementById('local-hearts-message').textContent = message;
+        document.getElementById('local-new-round-btn').style.display = 'inline-block';
+    }
+}
+
+function renderPlayedCards() {
+    const container = document.getElementById('local-hearts-played');
+    container.innerHTML = '';
+    const seatOf = { south: 0, west: 1, north: 2, east: 3 };
+    currentTrick.forEach(({ player, card }) => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'hearts-played-card seat' + seatOf[player] + ' ' + (card.suit === '♥' || card.suit === '♦' ? 'red' : '');
+        cardEl.innerHTML = `<div class="hearts-rank">${card.rank}</div><div class="hearts-suit">${card.suit}</div>`;
+        container.appendChild(cardEl);
+    });
+}
+
+function updateScores() {
+    const container = document.getElementById('local-hearts-scores');
+    container.innerHTML = '';
+    const labels = { south: 'You (South)', west: 'West', north: 'North', east: 'East' };
+    players.forEach(player => {
+        const box = document.createElement('div');
+        box.className = 'hearts-player-score' + (player === currentPlayer ? ' current-player' : '');
+        box.id = 'score-' + player;
+        box.innerHTML = `<div class="hearts-name">${labels[player]}</div><div class="hearts-points">${scores[player]}</div>`;
+        container.appendChild(box);
+    });
+}
+
+document.getElementById('local-start-btn').addEventListener('click', startGame);
+document.getElementById('local-pass-btn').addEventListener('click', confirmPass);
+document.getElementById('local-new-round-btn').addEventListener('click', newRound);
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, runTransaction, writeBatch, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+// No App Check here at all — every OTHER game on this site initializes it,
+// but this file has no callable-Functions usage that would need it, and
+// skipping it sidesteps a confirmed issue (see project_admin_delete_restore
+// memory / index.html's comment): a real ReCAPTCHA challenge can't
+// complete against 127.0.0.1 in local dev, and while Firestore/Auth
+// tolerate that fine, it's one less moving part to carry into a file that
+// doesn't call any Cloud Function.
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+function nameFor(playersArr, uid) {
+  const p = (playersArr || []).find((pl) => pl.uid === uid);
+  return p ? p.name : "A player";
+}
+function cardsEqual(a, b) { return a.rank === b.rank && a.suit === b.suit; }
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  watchGamePlayLimit(currentUid);
+  await reconcileFinishedGames();
+  const jumpedIntoGame = await checkForActiveGame();
+  // reconcileFinishedGames()/checkForActiveGame() are both real Firestore
+  // round-trips, so this whole chain can take long enough that the user
+  // has already clicked into a view (e.g. "Play vs Computer") before it
+  // resolves — falling back to mode-select here unconditionally would
+  // silently undo that navigation. Only apply the default if nothing else
+  // is already showing.
+  if (!jumpedIntoGame && !isAnyViewAlreadyShown()) showView("mode-select");
+});
+
+function isAnyViewAlreadyShown() {
+  return document.getElementById("view-local-game").style.display === "block"
+      || document.getElementById("view-waiting").style.display === "block"
+      || document.getElementById("view-game").style.display === "block"
+      || document.getElementById("view-leaderboard").style.display === "block";
+}
+
+// ============================= VIEW ROUTER =================================
+let unsubscribeOpenTables = null;
+let unsubscribeMyInvites = null;
+let unsubscribeMyActiveGame = null;
+let unsubscribeGame = null;
+
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-local-game").style.display = name === "local-game" ? "block" : "none";
+  document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+  document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
+
+  document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  const insideOnlineMultiplayer = name === "waiting" || name === "leaderboard" || name === "game";
+  document.getElementById("nav-waiting").style.display = insideOnlineMultiplayer ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = insideOnlineMultiplayer ? "inline" : "none";
+
+  if (name === "waiting") watchWaitingRoom();
+  else {
+    if (unsubscribeOpenTables) unsubscribeOpenTables();
+    if (unsubscribeMyInvites) unsubscribeMyInvites();
+    if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+  }
+  if (name === "leaderboard") loadLeaderboard();
+  if (name !== "game" && unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("local-back-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
+document.getElementById("mode-tile-ai").addEventListener("click", () => showView("local-game"));
+document.getElementById("mode-tile-online").addEventListener("click", () => showView("waiting"));
+
+async function checkForActiveGame() {
+  const q = query(
+    collection(db, "heartsGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "in", ["passing", "playing"])
+  );
+  const snap = await getDocs(q).catch(() => null);
+  if (snap && !snap.empty) {
+    openGame(snap.docs[0].id);
+    return true;
+  }
+  return false;
+}
+
+// ============================= WAITING ROOM =================================
+// Unlike every other game here, an invite-only table is still discoverable
+// by anyone (not private) — Hearts needs exactly 4, so restricting a table
+// to just the creator + one named invitee (the usual convention) would
+// make it permanently unstartable. "Invite a friend" is a courtesy nudge
+// (and reuses the same generic Cloud Function invite trigger as every
+// other game), not an access restriction.
+function watchWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+  if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+
+  const myActiveQ = query(
+    collection(db, "heartsGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "in", ["passing", "playing"])
+  );
+  unsubscribeMyActiveGame = onSnapshot(myActiveQ, (snap) => {
+    if (!snap.empty && !activeGameId) openGame(snap.docs[0].id);
+  }, (err) => console.error("My active game watch failed:", err));
+
+  const openQ = query(collection(db, "heartsGames"), where("status", "==", "open"));
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("open-tables-list");
+    const empty = document.getElementById("open-tables-empty");
+    const myTableWrap = document.getElementById("my-open-table-wrap");
+    list.innerHTML = "";
+    let shown = 0;
+    myOpenTableId = null;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.player1Uid === currentUid) {
+        myOpenTableId = docSnap.id;
+        document.getElementById("my-open-table-label").textContent =
+          `Your table — ${g.players.length}/4 joined, waiting for more players`;
+        return;
+      }
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table (${g.players.length}/4 players)</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => joinTable(docSnap.id));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    myTableWrap.style.display = myOpenTableId ? "block" : "none";
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "heartsGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("my-invites-list");
+    const empty = document.getElementById("my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play Hearts (${g.players.length}/4 seated)</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button";
+      acceptBtn.className = "small";
+      acceptBtn.textContent = "Join";
+      acceptBtn.addEventListener("click", () => joinTable(docSnap.id));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button";
+      declineBtn.className = "secondary small";
+      declineBtn.textContent = "Decline";
+      declineBtn.style.marginLeft = "0.5rem";
+      // Unlike other games' exclusive invites, declining here must NOT
+      // delete the shared table — other people may already be seated. It
+      // just clears this invite so the table becomes a plain open table.
+      declineBtn.addEventListener("click", () =>
+        updateDoc(doc(db, "heartsGames", docSnap.id), { inviteTo: null, inviteToName: null }).catch(() => {})
+      );
+      actions.appendChild(acceptBtn);
+      actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadFriendsToInvite();
+}
+
+async function loadFriendsToInvite() {
+  const list = document.getElementById("friends-invite-list");
+  const empty = document.getElementById("friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    for (const docSnap of snap.docs) {
+      const d = docSnap.data();
+      if (d.status !== "accepted") continue;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Invite to Hearts";
+      btn.addEventListener("click", () => createTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+
+let myOpenTableId = null;
+document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenTableId) return;
+  try {
+    await deleteDoc(doc(db, "heartsGames", myOpenTableId));
+  } catch (err) {
+    alert(`Couldn't cancel table: ${err.message}`);
+  }
+});
+
+const INVITE_COOLDOWN_MS = 60 * 60 * 1000;
+async function checkInviteCooldown(inviteToUid, inviteToName, msg) {
+  const limitRef = doc(db, "gameInviteLimits", `${currentUid}_heartsGames_${inviteToUid}`);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  if (!limitSnap || !limitSnap.exists()) return true;
+  const last = limitSnap.data().lastInvitedAt;
+  const lastMs = last?.seconds ? last.seconds * 1000 : 0;
+  const elapsedMs = Date.now() - lastMs;
+  if (elapsedMs >= INVITE_COOLDOWN_MS) return true;
+  const minsLeft = Math.max(1, Math.ceil((INVITE_COOLDOWN_MS - elapsedMs) / 60000));
+  showMessage(msg, `You can invite ${inviteToName} again in about ${minsLeft} minute(s).`, "error");
+  return false;
+}
+
+// ============================= GAME PLAY LIMIT (online games only) =========
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("hearts-play-remaining");
+  if (!el) return;
+  const limit = myDailyTierLimit();
+  if (limit === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limit - currentGamePlayLimit.count) : limit;
+  el.textContent = `${remaining} / ${limit} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limit = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limit - data.count : limit;
+  if (remaining <= 0) {
+    showMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, limitRef, count: newCount };
+}
+
+function showMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= CREATE / JOIN =================================
+async function createTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    if (inviteToUid && !(await checkInviteCooldown(inviteToUid, inviteToName, msg))) return;
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const gameRef = doc(collection(db, "heartsGames"));
+    const batch = writeBatch(db);
+    batch.set(gameRef, {
+      player1Uid: currentUid,
+      player1Name: currentUserName,
+      players: [{ uid: currentUid, name: currentUserName }],
+      participants: [currentUid],
+      inviteTo: inviteToUid || null,
+      inviteToName: inviteToName || null,
+      status: "open",
+      hands: {},
+      passSelections: {},
+      passDirection: null,
+      currentTrick: [],
+      leadSuit: null,
+      heartsBroken: false,
+      firstTrick: true,
+      currentPlayerUid: null,
+      roundScores: {},
+      roundNumber: 1,
+      trickNumber: 1,
+      message: "",
+      winner: null,
+      statsRecorded: {},
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_heartsGames_${inviteToUid}`);
+      batch.set(limitRef, { inviterUid: currentUid, game: "heartsGames", inviteeUid: inviteToUid, lastInvitedAt: serverTimestamp() });
+    }
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    await batch.commit();
+    if (inviteToUid) {
+      showMessage(msg, `Invite sent to ${inviteToName}.`, "success");
+    } else {
+      openGame(gameRef.id);
+    }
+  } catch (err) {
+    if (inviteToUid && err.code === "permission-denied") {
+      showMessage(msg, `You can invite ${inviteToName} again in about an hour, or you've reached your daily game limit.`, "error");
+      return;
+    }
+    if (err.code === "permission-denied") {
+      showMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+      return;
+    }
+    showMessage(msg, err.message, "error");
+  }
+}
+
+async function joinTable(gameId) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const gameRef = doc(db, "heartsGames", gameId);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) throw new Error("That table no longer exists.");
+      const g = snap.data();
+      if (g.status !== "open") throw new Error("That table already started.");
+      if (g.participants.includes(currentUid)) throw new Error("You're already seated at that table.");
+      if (g.participants.length >= 4) throw new Error("That table is full.");
+      tx.update(gameRef, {
+        players: [...g.players, { uid: currentUid, name: currentUserName }],
+        participants: [...g.participants, currentUid],
+        updatedAt: serverTimestamp(),
+      });
+    });
+    await setDoc(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    openGame(gameId);
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+// ============================= ONLINE GAME TABLE ============================
+let activeGameId = null;
+let activeGameData = null;
+
+function openGame(gameId) {
+  activeGameId = gameId;
+  showView("game");
+
+  if (unsubscribeGame) unsubscribeGame();
+  unsubscribeGame = onSnapshot(doc(db, "heartsGames", gameId), (snap) => {
+    if (!snap.exists()) { showView("waiting"); return; }
+    activeGameData = snap.data();
+    renderOnlineTable(activeGameData);
+    maybeRecordStats();
+  }, (err) => console.error("Game watch failed:", err));
+}
+
+function renderOnlineTable(g) {
+  const scoresEl = document.getElementById("online-hearts-scores");
+  const infoEl = document.getElementById("online-hearts-info");
+  const messageEl = document.getElementById("online-hearts-message");
+  const playedEl = document.getElementById("online-hearts-played");
+  const handEl = document.getElementById("online-hearts-hand");
+  const startBtn = document.getElementById("online-start-btn");
+  const passBtn = document.getElementById("online-pass-btn");
+  const resignBtn = document.getElementById("online-resign-btn");
+
+  scoresEl.innerHTML = "";
+  (g.players || []).forEach((p) => {
+    const box = document.createElement("div");
+    box.className = "hearts-player-score" + (g.currentPlayerUid === p.uid ? " current-player" : "");
+    box.innerHTML = `<div class="hearts-name">${escapeHtml(p.name)}${p.uid === currentUid ? " (you)" : ""}</div><div class="hearts-points">${(g.roundScores && g.roundScores[p.uid]) || 0}</div>`;
+    scoresEl.appendChild(box);
+  });
+
+  playedEl.innerHTML = "";
+  (g.currentTrick || []).forEach(({ uid, card }) => {
+    const seat = (g.players || []).findIndex((p) => p.uid === uid);
+    const cardEl = document.createElement("div");
+    cardEl.className = `hearts-played-card seat${seat} ` + (card.suit === "♥" || card.suit === "♦" ? "red" : "");
+    cardEl.innerHTML = `<div class="hearts-rank">${card.rank}</div><div class="hearts-suit">${card.suit}</div>`;
+    playedEl.appendChild(cardEl);
+  });
+
+  if (g.status === "open") {
+    infoEl.textContent = "";
+    messageEl.textContent = `${g.players.length}/4 players seated. ${g.player1Uid === currentUid ? "Start once all 4 have joined." : "Waiting for more players..."}`;
+    startBtn.style.display = g.player1Uid === currentUid && g.players.length === 4 ? "inline-block" : "none";
+    passBtn.style.display = "none";
+    resignBtn.style.display = "none";
+    handEl.innerHTML = "";
+    return;
+  }
+
+  startBtn.style.display = "none";
+  infoEl.textContent = g.status === "finished" ? "" : `Round ${g.roundNumber} · Trick ${g.trickNumber}`;
+  resignBtn.style.display = g.status === "finished" ? "none" : "inline-block";
+
+  const myHand = (g.hands && g.hands[currentUid]) || [];
+  myHand.sort((a, b) => {
+    const suitOrder = suits.indexOf(a.suit) - suits.indexOf(b.suit);
+    if (suitOrder !== 0) return suitOrder;
+    return ranks.indexOf(a.rank) - ranks.indexOf(b.rank);
+  });
+
+  if (g.status === "passing") {
+    const mySelection = (g.passSelections && g.passSelections[currentUid]) || null;
+    const submittedCount = Object.keys(g.passSelections || {}).length;
+    messageEl.textContent = mySelection
+      ? `Waiting on the other players to pick their cards... (${submittedCount}/4 submitted)`
+      : `Select 3 cards to pass ${g.passDirection} (${submittedCount}/4 submitted)`;
+    passBtn.style.display = mySelection ? "none" : "inline-block";
+    passBtn.disabled = passSelectionInProgress.length !== 3;
+
+    handEl.innerHTML = "";
+    myHand.forEach((card) => {
+      const cardEl = document.createElement("div");
+      cardEl.className = "hearts-card " + (card.suit === "♥" || card.suit === "♦" ? "red" : "");
+      cardEl.innerHTML = `<div class="hearts-rank">${card.rank}</div><div class="hearts-suit">${card.suit}</div>`;
+      if (mySelection) {
+        if (mySelection.some((c) => cardsEqual(c, card))) cardEl.classList.add("selected");
+      } else {
+        if (passSelectionInProgress.some((c) => cardsEqual(c, card))) cardEl.classList.add("selected");
+        cardEl.onclick = () => toggleLocalPassSelection(card);
+      }
+      handEl.appendChild(cardEl);
+    });
+    return;
+  }
+
+  passBtn.style.display = "none";
+
+  if (g.status === "finished") {
+    const won = g.winner === currentUid;
+    messageEl.textContent = g.message || (g.winner ? `${nameFor(g.players, g.winner)} wins with the lowest score!${won ? " That's you! +3 points." : ""}` : "Game over.");
+    handEl.innerHTML = "";
+    return;
+  }
+
+  // status === "playing"
+  messageEl.textContent = g.message || (g.currentPlayerUid === currentUid ? "Your turn!" : `Waiting on ${nameFor(g.players, g.currentPlayerUid)}...`);
+  handEl.innerHTML = "";
+  myHand.forEach((card) => {
+    const cardEl = document.createElement("div");
+    cardEl.className = "hearts-card " + (card.suit === "♥" || card.suit === "♦" ? "red" : "");
+    cardEl.innerHTML = `<div class="hearts-rank">${card.rank}</div><div class="hearts-suit">${card.suit}</div>`;
+    const playable = canPlayCardOnline(g, myHand, card);
+    if (!playable) cardEl.classList.add("disabled");
+    else cardEl.onclick = () => playCardOnline(card);
+    handEl.appendChild(cardEl);
+  });
+}
+
+// ---- Passing (online) ----
+let passSelectionInProgress = [];
+function toggleLocalPassSelection(card) {
+  const idx = passSelectionInProgress.findIndex((c) => cardsEqual(c, card));
+  if (idx > -1) passSelectionInProgress.splice(idx, 1);
+  else if (passSelectionInProgress.length < 3) passSelectionInProgress.push(card);
+  renderOnlineTable(activeGameData);
+}
+
+// Deals a fresh round into an already-open game doc (used both when the
+// host first starts, and when advancing to the next round after one ends).
+function buildFreshRoundHands(playersArr) {
+  const deck = window.shuffleHearts(window.createHeartsDeck());
+  const hands = {};
+  playersArr.forEach((p, i) => { hands[p.uid] = deck.slice(i * 13, (i + 1) * 13); });
+  return hands;
+}
+
+document.getElementById("online-start-btn").addEventListener("click", async () => {
+  if (!activeGameData || activeGameData.player1Uid !== currentUid || activeGameData.players.length !== 4) return;
+  const hands = buildFreshRoundHands(activeGameData.players);
+  const passDirection = window.getHeartsPassDirection(1);
+  const roundScores = {};
+  activeGameData.players.forEach((p) => { roundScores[p.uid] = 0; });
+
+  const update = {
+    hands,
+    passDirection,
+    roundScores,
+    roundNumber: 1,
+    trickNumber: 1,
+    firstTrick: true,
+    heartsBroken: false,
+    currentTrick: [],
+    leadSuit: null,
+    passSelections: {},
+    updatedAt: serverTimestamp(),
+  };
+  if (passDirection === "none") {
+    update.status = "playing";
+    update.currentPlayerUid = activeGameData.players.find((p) => hands[p.uid].some((c) => c.rank === "2" && c.suit === "♣")).uid;
+    update.message = "";
+  } else {
+    update.status = "passing";
+    update.message = "";
+  }
+  try {
+    await updateDoc(doc(db, "heartsGames", activeGameId), update);
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+document.getElementById("online-pass-btn").addEventListener("click", async () => {
+  if (passSelectionInProgress.length !== 3) return;
+  const mySelection = passSelectionInProgress.map((c) => ({ rank: c.rank, suit: c.suit }));
+  passSelectionInProgress = [];
+  const gameRef = doc(db, "heartsGames", activeGameId);
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) return;
+      const g = snap.data();
+      if (g.status !== "passing") return;
+      const passSelections = { ...(g.passSelections || {}), [currentUid]: mySelection };
+
+      if (Object.keys(passSelections).length < g.players.length) {
+        tx.update(gameRef, { passSelections, updatedAt: serverTimestamp() });
+        return;
+      }
+
+      // Everyone has submitted — perform the swap now.
+      const hands = {};
+      Object.keys(g.hands).forEach((uid) => { hands[uid] = [...g.hands[uid]]; });
+      const order = g.players.map((p) => p.uid);
+      const n = order.length;
+
+      order.forEach((uid) => {
+        const chosen = passSelections[uid];
+        hands[uid] = hands[uid].filter((c) => !chosen.some((sel) => cardsEqual(sel, c)));
+      });
+
+      const offset = g.passDirection === "left" ? 1 : g.passDirection === "right" ? n - 1 : 2; // across
+      order.forEach((uid, i) => {
+        const recipientUid = order[(i + offset) % n];
+        hands[recipientUid].push(...passSelections[uid]);
+      });
+
+      const starter = order.find((uid) => hands[uid].some((c) => c.rank === "2" && c.suit === "♣"));
+      tx.update(gameRef, {
+        hands,
+        passSelections: {},
+        status: "playing",
+        currentPlayerUid: starter,
+        message: "",
+        updatedAt: serverTimestamp(),
+      });
+    });
+  } catch (err) {
+    alert(`Couldn't submit your pass: ${err.message}`);
+  }
+});
+
+function canPlayCardOnline(g, myHand, card) {
+  if (g.status !== "playing" || g.currentPlayerUid !== currentUid) return false;
+  if (g.firstTrick && g.currentTrick.length === 0) return card.rank === "2" && card.suit === "♣";
+  if (g.leadSuit) {
+    const hasSuit = myHand.some((c) => c.suit === g.leadSuit);
+    if (hasSuit && card.suit !== g.leadSuit) return false;
+    if (g.firstTrick) {
+      if (card.suit === "♥") return false;
+      if (card.suit === "♠" && card.rank === "Q") return false;
+    }
+    return true;
+  }
+  if (!g.heartsBroken && card.suit === "♥") return myHand.every((c) => c.suit === "♥");
+  return true;
+}
+
+// Resolves one card play, and if it completes a trick (and, in turn, a
+// round), resolves that too — all inside one transaction, same "resolve
+// everything this action triggers atomically" approach already proven out
+// in war.html's battleOnline(), just adapted for a strictly turn-based
+// game instead of a simultaneous-reveal one.
+async function playCardOnline(card) {
+  const gameRef = doc(db, "heartsGames", activeGameId);
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) return;
+      const g = snap.data();
+      if (g.status !== "playing" || g.currentPlayerUid !== currentUid) return;
+
+      const hands = {};
+      Object.keys(g.hands).forEach((uid) => { hands[uid] = [...g.hands[uid]]; });
+      const myHand = hands[currentUid];
+      if (!canPlayCardOnline(g, myHand, card)) return;
+
+      hands[currentUid] = myHand.filter((c) => !cardsEqual(c, card));
+      const currentTrick = [...(g.currentTrick || []), { uid: currentUid, card }];
+      const leadSuit = currentTrick.length === 1 ? card.suit : g.leadSuit;
+      const heartsBroken = g.heartsBroken || card.suit === "♥";
+      const order = g.players.map((p) => p.uid);
+
+      const update = { hands, currentTrick, leadSuit, heartsBroken, updatedAt: serverTimestamp() };
+
+      if (currentTrick.length < order.length) {
+        update.currentPlayerUid = order[(order.indexOf(currentUid) + 1) % order.length];
+        update.message = "";
+        tx.update(gameRef, update);
+        return;
+      }
+
+      // Trick complete — resolve it.
+      const winnerPlay = currentTrick.reduce((highest, play) => {
+        if (play.card.suit !== leadSuit) return highest;
+        if (!highest || window.HEARTS_RANKS.indexOf(play.card.rank) > window.HEARTS_RANKS.indexOf(highest.card.rank)) return play;
+        return highest;
+      }, null);
+      const trickPoints = currentTrick.reduce((sum, play) => {
+        if (play.card.suit === "♥") return sum + 1;
+        if (play.card.suit === "♠" && play.card.rank === "Q") return sum + 13;
+        return sum;
+      }, 0);
+
+      const roundScores = { ...g.roundScores, [winnerPlay.uid]: (g.roundScores[winnerPlay.uid] || 0) + trickPoints };
+      update.roundScores = roundScores;
+      update.currentTrick = [];
+      update.leadSuit = null;
+      update.firstTrick = false;
+      update.currentPlayerUid = winnerPlay.uid;
+      update.trickNumber = (g.trickNumber || 1) + 1;
+      update.message = `${nameFor(g.players, winnerPlay.uid)} wins the trick (+${trickPoints})`;
+
+      const roundOver = order.every((uid) => hands[uid].length === 0);
+      if (!roundOver) {
+        tx.update(gameRef, update);
+        return;
+      }
+
+      // Round complete — tally, and either end the game or deal the next round.
+      const maxScore = Math.max(...order.map((uid) => roundScores[uid] || 0));
+      if (maxScore >= 100) {
+        const winnerUid = order.reduce((min, uid) => (roundScores[uid] || 0) < (roundScores[min] || 0) ? uid : min);
+        update.status = "finished";
+        update.winner = winnerUid;
+        update.message = `Game over! ${nameFor(g.players, winnerUid)} wins with ${roundScores[winnerUid]} points.`;
+        tx.update(gameRef, update);
+        return;
+      }
+
+      const nextRound = (g.roundNumber || 1) + 1;
+      const freshHands = buildFreshRoundHands(g.players);
+      const nextDirection = window.getHeartsPassDirection(nextRound);
+      const nextRoundScores = {};
+      order.forEach((uid) => { nextRoundScores[uid] = roundScores[uid] || 0; });
+
+      update.hands = freshHands;
+      update.roundNumber = nextRound;
+      update.trickNumber = 1;
+      update.firstTrick = true;
+      update.heartsBroken = false;
+      update.roundScores = nextRoundScores;
+      update.passDirection = nextDirection;
+      update.passSelections = {};
+
+      if (nextDirection === "none") {
+        update.status = "playing";
+        update.currentPlayerUid = order.find((uid) => freshHands[uid].some((c) => c.rank === "2" && c.suit === "♣"));
+      } else {
+        update.status = "passing";
+        update.currentPlayerUid = null;
+      }
+      tx.update(gameRef, update);
+    });
+  } catch (err) {
+    alert(`Couldn't play that card: ${err.message}`);
+  }
+}
+
+// Resigning removes you from further play by emptying your hand and
+// skipping you in turn order — same simplest-fair-enough approach already
+// used in war.html (cards forfeited, not redistributed). Unlike War,
+// Hearts can't sensibly continue with fewer than 4, so a resignation ends
+// the game outright; nobody is credited a win.
+document.getElementById("online-resign-btn").addEventListener("click", async () => {
+  if (!activeGameData || activeGameData.status === "open" || activeGameData.status === "finished") return;
+  if (!confirm("Resign this game? It will end for everyone with no winner credited.")) return;
+  try {
+    await updateDoc(doc(db, "heartsGames", activeGameId), {
+      status: "finished",
+      winner: null,
+      message: `${nameFor(activeGameData.players, currentUid)} resigned — game ended.`,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+// ============================= POINTS/STATS ==================================
+async function recordStatsForGame(gameId, gameData) {
+  if (gameData.statsRecorded && gameData.statsRecorded[currentUid]) return;
+  const wasParticipant = (gameData.participants || []).includes(currentUid);
+  if (!wasParticipant) return;
+  if (!gameData.winner) {
+    // A resigned/no-winner game still gets marked recorded so it's not
+    // retried forever, but nobody's points/wins/losses change.
+    await updateDoc(doc(db, "heartsGames", gameId), { [`statsRecorded.${currentUid}`]: true }).catch(() => {});
+    return;
+  }
+
+  const won = gameData.winner === currentUid;
+  try {
+    await updateDoc(doc(db, "heartsGames", gameId), { [`statsRecorded.${currentUid}`]: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      heartsPoints: (data.heartsPoints || 0) + (won ? 3 : 0),
+      heartsWins: (data.heartsWins || 0) + (won ? 1 : 0),
+      heartsLosses: (data.heartsLosses || 0) + (won ? 0 : 1),
+    });
+  } catch (err) {
+    console.error("Couldn't record Hearts stats:", err);
+  }
+}
+
+async function maybeRecordStats() {
+  if (!activeGameData || activeGameData.status !== "finished") return;
+  await recordStatsForGame(activeGameId, activeGameData);
+}
+
+async function reconcileFinishedGames() {
+  try {
+    const q = query(collection(db, "heartsGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status !== "finished") continue;
+      if (!(g.statsRecorded && g.statsRecorded[currentUid])) await recordStatsForGame(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished Hearts games:", err);
+  }
+}
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const ranked = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      const points = d.heartsPoints || 0;
+      const wins = d.heartsWins || 0;
+      const losses = d.heartsLosses || 0;
+      if (points > 0 || wins > 0 || losses > 0) {
+        ranked.push({ name: d.profile?.name || "Neighbor", points, wins, losses });
+      }
+    });
+    ranked.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (ranked.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    ranked.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `
+        <span class="leader-rank">#${i + 1}</span>
+        <span style="flex:1;">${escapeHtml(p.name)}</span>
+        <span class="field-hint">${p.wins}W-${p.losses}L</span>
+        <span style="font-weight:600;">${p.points} pts</span>
+      `;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
