@@ -1250,6 +1250,16 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const functions = getFunctions(app);
 
+// Exposed for Playwright tests to invoke the real callable functions
+// directly, bypassing the admin-PIN modal UI — the PIN is only ever a
+// client-side speed bump (see promptAdminPin() below), the real security
+// boundary is the isAdmin() check inside these Cloud Functions themselves,
+// so exercising them this way is a legitimate functional test, not a
+// bypass of anything that actually matters. This keeps the real PIN out
+// of every committed test file.
+window.adminDeleteProfileCallable = httpsCallable(functions, "adminDeleteProfile");
+window.adminRestoreProfileCallable = httpsCallable(functions, "adminRestoreProfile");
+
 // Local testing only — never runs against the real production site, which
 // is served from www.townfuss.com, not localhost.
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
