@@ -119,10 +119,17 @@ test.describe.serial("Match-3 — deep functional pass", () => {
     await expect(page.locator("#run-status")).toContainText("Online run");
     expect(await readVar(page, "isOnlineRun")).toBe(true);
 
-    // Burn a couple of real seconds before scoring anything, so this run's
-    // points-per-second is guaranteed worse than the near-instant first run.
+    // Burn a couple of real seconds before scoring anything. NOTE: we
+    // deliberately do NOT use forceOneMatch() here — processMatches()'s
+    // tile refill uses Math.random() and can cascade into further matches,
+    // so its resulting score is unbounded and occasionally out-scored the
+    // first run enough to beat the time handicap (a real flake seen in
+    // practice: score 90 here vs. 30 on the first run outweighed 2.5s).
+    // Setting totalScore directly keeps the score side deterministic while
+    // still exercising the real submission code path (backToGamesHub()
+    // reads the live totalScore/runStartTime globals on click).
     await page.waitForTimeout(2500);
-    await forceOneMatch(page);
+    await page.evaluate(() => { totalScore = 10; });
     await page.locator("#match3GameWrapper button", { hasText: "Back to Games" }).click();
     await page.waitForTimeout(1500);
 
