@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Blackjack — Town Fuss</title>
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); }
+body { min-height: 100vh; }
+a { color: var(--amber-500); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; }
+p { color: var(--text-muted); line-height: 1.6; }
+.page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+.header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+.header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+.header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+.header-nav button.active { color: var(--amber-500); font-weight: 600; }
+
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+
+button { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+button:hover { background: var(--amber-600); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+.table-row, .invite-row, .friend-row, .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+.table-row > span:first-child, .invite-row > span:first-child, .friend-row > span:first-child, .leader-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+.table-row > span:last-child, .invite-row > span:last-child, .friend-row > span:last-child, .leader-row > span:last-child { flex: 0 0 auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.table-row:last-child, .invite-row:last-child, .friend-row:last-child, .leader-row:last-child { border-bottom: none; }
+.leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+
+.empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+.message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+.message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+.message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+.field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+.mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+/* ===========================================================================
+   BLACKJACK — prefixed bj- throughout so nothing collides with the site's
+   own .card (generic content container) or .message (banner) classes above.
+   Shared by both the local vs-Dealer table and the online table.
+   =========================================================================== */
+.bj-message { text-align: center; margin: 0.75rem 0; font-size: 0.95em; min-height: 2.5em; font-weight: 600; background: var(--ink-700); padding: 0.9rem; border-radius: var(--radius-sm); white-space: pre-line; color: var(--paper-050); }
+.bj-hand-block { margin-bottom: 1.25rem; }
+.bj-hand-block.current-turn { outline: 2px solid var(--amber-500); outline-offset: 4px; border-radius: var(--radius-sm); }
+.bj-hand-label { display: flex; justify-content: space-between; align-items: center; font-weight: 700; margin-bottom: 0.5rem; }
+.bj-hand-total { font-family: var(--font-mono); color: var(--amber-500); }
+.bj-card-container { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; min-height: 100px; padding: 0.75rem; background: rgba(0,0,0,0.06); border-radius: var(--radius-sm); }
+.bj-card { width: 64px; height: 90px; background: white; border: 2px solid var(--paper-050); border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 6px; font-weight: bold; font-size: 15px; box-shadow: 0 3px 5px rgba(0,0,0,0.15); flex-shrink: 0; }
+.bj-card.red { color: #d32f2f; }
+.bj-card.black { color: var(--paper-050); }
+.bj-card .bj-corner { display: flex; justify-content: space-between; }
+.bj-card .bj-corner.bottom { transform: rotate(180deg); }
+.bj-card .bj-suit-big { text-align: center; font-size: 22px; }
+.bj-card-back { background-color: #a855f7; background-image: linear-gradient(45deg, #a855f7 25%, #8b5cf6 25%, #8b5cf6 50%, #a855f7 50%, #a855f7 75%, #8b5cf6 75%, #8b5cf6 100%); background-size: 20px 20px; border: 3px solid #fef3c7; color: #fef3c7; display: flex; align-items: center; justify-content: center; font-size: 13px; text-align: center; user-select: none; }
+</style>
+</head>
+<body>
+
+<header class="header-bar">
+  <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+  <nav class="header-nav">
+    <button id="nav-hub" class="active">Games</button>
+    <button id="nav-waiting" style="display:none;">Waiting Room</button>
+    <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+  </nav>
+</header>
+
+<main class="page">
+
+  <div id="signed-out-notice" class="card" style="display:none; text-align:center;">
+    <h2>Sign in on Town Fuss first</h2>
+    <p>You need a Town Fuss account to play Blackjack with other members.</p>
+    <a href="index.html"><button type="button">Go to Town Fuss</button></a>
+  </div>
+
+  <div id="app-content" style="display:none;">
+
+    <!-- ================= MODE SELECT ================= -->
+    <section id="view-mode-select">
+      <span class="eyebrow">Blackjack</span>
+      <h1>♠️ How do you want to play? ♠️</h1>
+      <div class="card mode-tile" id="mode-tile-ai">
+        <h2 style="font-size:1.05rem;">🤖 Play vs Dealer</h2>
+        <p class="field-hint" style="text-align:center;">Just you against the house, same device</p>
+      </div>
+      <div class="card mode-tile" id="mode-tile-online">
+        <h2 style="font-size:1.05rem;">🌐 Play Online</h2>
+        <p class="field-hint" style="text-align:center;">2 to 4 real players, each against a shared dealer — waiting room, invites, and the leaderboard</p>
+      </div>
+    </section>
+
+    <!-- ================= LOCAL GAME (vs Dealer) ================= -->
+    <section id="view-local-game" style="display:none;">
+      <button type="button" class="secondary small" id="local-back-btn" style="margin-bottom:1rem;">&larr; Back</button>
+      <span class="eyebrow">Blackjack</span>
+      <h1>Play vs Dealer</h1>
+      <div class="card">
+        <div class="bj-hand-block">
+          <div class="bj-hand-label"><span>Dealer</span><span class="bj-hand-total" id="local-dealer-score">Score: 0</span></div>
+          <div class="bj-card-container" id="local-dealer-cards"></div>
+        </div>
+        <div class="bj-message" id="local-bj-message">Hit or Stand?</div>
+        <div class="bj-hand-block">
+          <div class="bj-hand-label"><span>Your Hand</span><span class="bj-hand-total" id="local-player-score">Score: 0</span></div>
+          <div class="bj-card-container" id="local-player-cards"></div>
+        </div>
+        <div style="text-align:center;">
+          <button type="button" id="local-hit-btn" disabled>HIT</button>
+          <button type="button" id="local-stand-btn" disabled>STAND</button>
+          <button type="button" id="local-new-game-btn">NEW HAND</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= WAITING ROOM ================= -->
+    <section id="view-waiting" style="display:none;">
+      <button type="button" class="secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+      <span class="eyebrow">Blackjack</span>
+      <h1>Waiting Room</h1>
+      <p style="text-align:center;">Blackjack needs 2 to 4 players. Join an open table, invite a friend, or wait for someone to challenge you.</p>
+      <p class="field-hint" id="blackjack-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+
+      <div class="card">
+        <h2 style="text-align:left;">Open tables</h2>
+        <button type="button" id="create-table-btn">+ Create a table</button>
+        <div id="my-open-table-wrap" style="display:none; margin-top:1rem;">
+          <div class="table-row">
+            <span id="my-open-table-label">Your table — waiting for players</span>
+            <button type="button" class="secondary small" id="cancel-my-table-btn">Cancel</button>
+          </div>
+        </div>
+        <div id="open-tables-list" style="margin-top:1rem;"></div>
+        <div id="open-tables-empty" class="empty-state" style="display:none">No open tables right now — create one!</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invites waiting on you</h2>
+        <div id="my-invites-list"></div>
+        <div id="my-invites-empty" class="empty-state" style="display:none">No pending invites.</div>
+      </div>
+
+      <div class="card">
+        <h2 style="text-align:left;">Invite a friend</h2>
+        <p style="text-align:left;">Only shows people you're already friends with on Town Fuss.</p>
+        <div id="friends-invite-list"></div>
+        <div id="friends-invite-empty" class="empty-state" style="display:none">Add some friends on Town Fuss first.</div>
+      </div>
+
+      <div id="waiting-message" class="message" style="display:none"></div>
+    </section>
+
+    <!-- ================= LEADERBOARD ================= -->
+    <section id="view-leaderboard" style="display:none;">
+      <span class="eyebrow">Blackjack</span>
+      <h1>Leaderboard</h1>
+      <p style="text-align:center;">Win a completed online hand = 3 points. Push = 1 point.</p>
+      <div class="card">
+        <div id="leaderboard-list"></div>
+        <div id="leaderboard-empty" class="empty-state" style="display:none">No games played yet — be the first!</div>
+      </div>
+    </section>
+
+    <!-- ================= ONLINE GAME TABLE ================= -->
+    <section id="view-game" style="display:none;">
+      <button type="button" class="secondary small" id="leave-table-btn" style="margin-bottom:1rem;">&larr; Back to Waiting Room</button>
+      <div class="card">
+        <div class="bj-hand-block">
+          <div class="bj-hand-label"><span>Dealer</span><span class="bj-hand-total" id="online-dealer-total"></span></div>
+          <div class="bj-card-container" id="online-dealer-cards"></div>
+        </div>
+        <div class="bj-message" id="online-bj-message">Waiting for the table to fill up...</div>
+        <div id="online-players-area"></div>
+        <div style="text-align:center;">
+          <button type="button" id="online-start-btn" style="display:none;">Start Game (host only)</button>
+          <button type="button" id="online-hit-btn" style="display:none;">Hit</button>
+          <button type="button" id="online-stand-btn" style="display:none;">Stand</button>
+          <button type="button" class="secondary" id="online-resign-btn" style="display:none;">Resign</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+// ===========================================================================
+// CLASSIC (non-module) script — the local vs-Dealer game, adapted from the
+// original standalone Blackjack Trainer. Kept as a plain classic script so
+// its state stays on real global `window`-scope variables, matching every
+// other game's testing convention. The ONLINE multiplayer game (turn-based,
+// Firestore-synced, 2-4 real players sharing one dealer) is a separate,
+// parallel implementation in the module script below — it does not share
+// state with this local game, but reuses its deck/scoring helpers via the
+// `window.*` exports at the bottom of this section.
+// ===========================================================================
+const BJ_SUITS = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
+const BJ_VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+function bjSuitFace(suit) {
+  switch (suit) {
+    case 'Hearts': return '♥';
+    case 'Diamonds': return '♦';
+    case 'Clubs': return '♣';
+    case 'Spades': return '♠';
+    default: return '';
+  }
+}
+function bjSuitColor(suit) {
+  return (suit === 'Hearts' || suit === 'Diamonds') ? 'red' : 'black';
+}
+function createBlackjackDeck() {
+  const d = [];
+  for (const suit of BJ_SUITS) {
+    for (const value of BJ_VALUES) d.push({ value, suit });
+  }
+  return d;
+}
+function shuffleBlackjackDeck(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+function calculateBlackjackScore(hand) {
+  let score = 0;
+  let aceCount = 0;
+  for (const card of hand) {
+    if (card.value === 'A') { aceCount++; score += 11; }
+    else if (['K', 'Q', 'J'].includes(card.value)) score += 10;
+    else score += parseInt(card.value, 10);
+  }
+  while (score > 21 && aceCount > 0) { score -= 10; aceCount--; }
+  return score;
+}
+window.createBlackjackDeck = createBlackjackDeck;
+window.shuffleBlackjackDeck = shuffleBlackjackDeck;
+window.calculateBlackjackScore = calculateBlackjackScore;
+window.bjSuitFace = bjSuitFace;
+window.bjSuitColor = bjSuitColor;
+
+let localDeck = [];
+let localDealerHand = [];
+let localPlayerHand = [];
+let localGameActive = false;
+
+function localCreateCardEl(card, isHidden) {
+  const el = document.createElement('div');
+  el.className = 'bj-card';
+  if (isHidden) {
+    el.classList.add('bj-card-back');
+    el.innerHTML = 'BLACK<br>JACK';
+  } else {
+    el.classList.add(bjSuitColor(card.suit));
+    el.innerHTML = `<div class="bj-corner top">${card.value}</div><div class="bj-suit-big">${bjSuitFace(card.suit)}</div><div class="bj-corner bottom">${card.value}</div>`;
+  }
+  return el;
+}
+
+function localUpdateUI(finalReveal = false) {
+  const dealerCardsEl = document.getElementById('local-dealer-cards');
+  const playerCardsEl = document.getElementById('local-player-cards');
+  const dealerScoreEl = document.getElementById('local-dealer-score');
+  const playerScoreEl = document.getElementById('local-player-score');
+  const hitBtn = document.getElementById('local-hit-btn');
+  const standBtn = document.getElementById('local-stand-btn');
+  const newGameBtn = document.getElementById('local-new-game-btn');
+
+  dealerCardsEl.innerHTML = '';
+  localDealerHand.forEach((card, index) => {
+    const isHidden = !finalReveal && index === 0 && localGameActive;
+    dealerCardsEl.appendChild(localCreateCardEl(card, isHidden));
+  });
+
+  playerCardsEl.innerHTML = '';
+  localPlayerHand.forEach((card) => playerCardsEl.appendChild(localCreateCardEl(card, false)));
+
+  const dealerScore = calculateBlackjackScore(localDealerHand);
+  const playerScore = calculateBlackjackScore(localPlayerHand);
+
+  if (!finalReveal && localGameActive && localDealerHand.length > 0) {
+    let visibleValue = localDealerHand[1].value;
+    if (['K', 'Q', 'J'].includes(visibleValue)) visibleValue = 10;
+    if (visibleValue === 'A') visibleValue = '11/1';
+    dealerScoreEl.textContent = `Visible: ${visibleValue}`;
+  } else {
+    dealerScoreEl.textContent = `Score: ${dealerScore}`;
+  }
+  playerScoreEl.textContent = `Score: ${playerScore}`;
+
+  hitBtn.disabled = !localGameActive;
+  standBtn.disabled = !localGameActive;
+  newGameBtn.disabled = localGameActive;
+}
+
+function localInitGame() {
+  localGameActive = true;
+  localDealerHand = [];
+  localPlayerHand = [];
+  localDeck = shuffleBlackjackDeck(createBlackjackDeck());
+
+  localPlayerHand.push(localDeck.pop());
+  localDealerHand.push(localDeck.pop());
+  localPlayerHand.push(localDeck.pop());
+  localDealerHand.push(localDeck.pop());
+
+  const msgEl = document.getElementById('local-bj-message');
+  if (calculateBlackjackScore(localPlayerHand) === 21) {
+    localGameActive = false;
+    localCheckWinner();
+  } else {
+    localUpdateUI();
+    msgEl.textContent = 'Hit or Stand?';
+  }
+}
+window.startLocalBlackjack = localInitGame;
+
+function localHit() {
+  if (!localGameActive) return;
+  localPlayerHand.push(localDeck.pop());
+  localUpdateUI();
+  const score = calculateBlackjackScore(localPlayerHand);
+  if (score > 21) { localGameActive = false; localCheckWinner(); }
+  else if (score === 21) { localStand(); }
+}
+
+function localStand() {
+  if (!localGameActive) return;
+  localGameActive = false;
+  localUpdateUI(true);
+  setTimeout(localDealerPlay, 1000);
+}
+
+function localDealerPlay() {
+  const dealerCardsEl = document.getElementById('local-dealer-cards');
+  const dealerScoreEl = document.getElementById('local-dealer-score');
+  const drawWithDelay = () => {
+    let dealerScore = calculateBlackjackScore(localDealerHand);
+    if (dealerScore < 17) {
+      localDealerHand.push(localDeck.pop());
+      dealerCardsEl.innerHTML = '';
+      localDealerHand.forEach((card) => dealerCardsEl.appendChild(localCreateCardEl(card, false)));
+      dealerScore = calculateBlackjackScore(localDealerHand);
+      dealerScoreEl.textContent = `Score: ${dealerScore}`;
+      setTimeout(drawWithDelay, 1000);
+    } else {
+      localCheckWinner();
+    }
+  };
+  drawWithDelay();
+}
+
+function localCheckWinner() {
+  const dealerScore = calculateBlackjackScore(localDealerHand);
+  const playerScore = calculateBlackjackScore(localPlayerHand);
+  const msgEl = document.getElementById('local-bj-message');
+  let message = '';
+
+  if (playerScore > 21) message = `BUST! (${playerScore}). You Lose.`;
+  else if (dealerScore > 21) message = `Dealer BUSTS! (${dealerScore}). You Win!`;
+  else if (playerScore === 21 && localPlayerHand.length === 2 && dealerScore !== 21) message = `BLACKJACK! You Win!`;
+  else if (dealerScore > playerScore) message = `Dealer Wins! (${dealerScore} to ${playerScore})`;
+  else if (playerScore > dealerScore) message = `You Win! (${playerScore} to ${dealerScore})`;
+  else message = `Push! (${playerScore}). It's a tie.`;
+
+  msgEl.textContent = message;
+  localGameActive = false;
+  localUpdateUI(true);
+}
+
+document.getElementById('local-hit-btn').addEventListener('click', localHit);
+document.getElementById('local-stand-btn').addEventListener('click', localStand);
+document.getElementById('local-new-game-btn').addEventListener('click', localInitGame);
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, runTransaction, writeBatch, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+// No App Check here — same reasoning as war.html/hearts.html: this file has
+// no callable-Functions usage, and skipping it sidesteps the confirmed
+// local-emulator ReCAPTCHA issue for no real cost.
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+function nameFor(playersArr, uid) {
+  const p = (playersArr || []).find((pl) => pl.uid === uid);
+  return p ? p.name : "A player";
+}
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  watchGamePlayLimit(currentUid);
+  await reconcileFinishedGames();
+  const jumpedIntoGame = await checkForActiveGame();
+  // Same navigation race documented in hearts.html/war.html: this async
+  // init chain can resolve after the user has already clicked into a view,
+  // so only fall back to mode-select if nothing else is already showing.
+  if (!jumpedIntoGame && !isAnyViewAlreadyShown()) showView("mode-select");
+});
+
+function isAnyViewAlreadyShown() {
+  return document.getElementById("view-local-game").style.display === "block"
+      || document.getElementById("view-waiting").style.display === "block"
+      || document.getElementById("view-game").style.display === "block"
+      || document.getElementById("view-leaderboard").style.display === "block";
+}
+
+// ============================= VIEW ROUTER =================================
+let unsubscribeOpenTables = null;
+let unsubscribeMyInvites = null;
+let unsubscribeMyActiveGame = null;
+let unsubscribeGame = null;
+
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-local-game").style.display = name === "local-game" ? "block" : "none";
+  document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+  document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
+
+  document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  const insideOnlineMultiplayer = name === "waiting" || name === "leaderboard" || name === "game";
+  document.getElementById("nav-waiting").style.display = insideOnlineMultiplayer ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = insideOnlineMultiplayer ? "inline" : "none";
+
+  if (name === "waiting") watchWaitingRoom();
+  else {
+    if (unsubscribeOpenTables) unsubscribeOpenTables();
+    if (unsubscribeMyInvites) unsubscribeMyInvites();
+    if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+  }
+  if (name === "leaderboard") loadLeaderboard();
+  if (name !== "game" && unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("local-back-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("leave-table-btn").addEventListener("click", () => showView("waiting"));
+document.getElementById("mode-tile-ai").addEventListener("click", () => { showView("local-game"); window.startLocalBlackjack(); });
+document.getElementById("mode-tile-online").addEventListener("click", () => showView("waiting"));
+
+async function checkForActiveGame() {
+  const q = query(
+    collection(db, "blackjackGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "playing")
+  );
+  const snap = await getDocs(q).catch(() => null);
+  if (snap && !snap.empty) {
+    openGame(snap.docs[0].id);
+    return true;
+  }
+  return false;
+}
+
+// ============================= WAITING ROOM =================================
+// Same 2-4 flexible model as war.html (not Hearts' fixed-4): a direct
+// invite is a private table capped at exactly 2, an open table is capped
+// at 4. Unlike Hearts, Blackjack doesn't structurally need every seat
+// filled to make sense — each player plays their own hand against the
+// shared dealer independently.
+function watchWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+  if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+
+  const myActiveQ = query(
+    collection(db, "blackjackGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "playing")
+  );
+  unsubscribeMyActiveGame = onSnapshot(myActiveQ, (snap) => {
+    if (!snap.empty && !activeGameId) openGame(snap.docs[0].id);
+  }, (err) => console.error("My active game watch failed:", err));
+
+  const openQ = query(collection(db, "blackjackGames"), where("status", "==", "open"));
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("open-tables-list");
+    const empty = document.getElementById("open-tables-empty");
+    const myTableWrap = document.getElementById("my-open-table-wrap");
+    list.innerHTML = "";
+    let shown = 0;
+    myOpenTableId = null;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.inviteTo) return;
+      if (g.player1Uid === currentUid) {
+        myOpenTableId = docSnap.id;
+        document.getElementById("my-open-table-label").textContent =
+          `Your table — ${g.players.length}/4 joined, waiting for more players`;
+        return;
+      }
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table (${g.players.length}/4 players)</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => joinTable(docSnap.id));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    myTableWrap.style.display = myOpenTableId ? "block" : "none";
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "blackjackGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("my-invites-list");
+    const empty = document.getElementById("my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play Blackjack</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button";
+      acceptBtn.className = "small";
+      acceptBtn.textContent = "Join";
+      acceptBtn.addEventListener("click", () => joinTable(docSnap.id));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button";
+      declineBtn.className = "secondary small";
+      declineBtn.textContent = "Decline";
+      declineBtn.style.marginLeft = "0.5rem";
+      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "blackjackGames", docSnap.id)).catch(() => {}));
+      actions.appendChild(acceptBtn);
+      actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadFriendsToInvite();
+}
+
+async function loadFriendsToInvite() {
+  const list = document.getElementById("friends-invite-list");
+  const empty = document.getElementById("friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    for (const docSnap of snap.docs) {
+      const d = docSnap.data();
+      if (d.status !== "accepted") continue;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "small";
+      btn.textContent = "Invite to Blackjack";
+      btn.addEventListener("click", () => createTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+
+let myOpenTableId = null;
+document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenTableId) return;
+  try {
+    await deleteDoc(doc(db, "blackjackGames", myOpenTableId));
+  } catch (err) {
+    alert(`Couldn't cancel table: ${err.message}`);
+  }
+});
+
+const INVITE_COOLDOWN_MS = 60 * 60 * 1000;
+async function checkInviteCooldown(inviteToUid, inviteToName, msg) {
+  const limitRef = doc(db, "gameInviteLimits", `${currentUid}_blackjackGames_${inviteToUid}`);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  if (!limitSnap || !limitSnap.exists()) return true;
+  const last = limitSnap.data().lastInvitedAt;
+  const lastMs = last?.seconds ? last.seconds * 1000 : 0;
+  const elapsedMs = Date.now() - lastMs;
+  if (elapsedMs >= INVITE_COOLDOWN_MS) return true;
+  const minsLeft = Math.max(1, Math.ceil((INVITE_COOLDOWN_MS - elapsedMs) / 60000));
+  showMessage(msg, `You can invite ${inviteToName} again in about ${minsLeft} minute(s).`, "error");
+  return false;
+}
+
+// ============================= GAME PLAY LIMIT (online games only) =========
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("blackjack-play-remaining");
+  if (!el) return;
+  const limit = myDailyTierLimit();
+  if (limit === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limit - currentGamePlayLimit.count) : limit;
+  el.textContent = `${remaining} / ${limit} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limit = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limit - data.count : limit;
+  if (remaining <= 0) {
+    showMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, limitRef, count: newCount };
+}
+
+function showMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= CREATE / JOIN =================================
+async function createTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    if (inviteToUid && !(await checkInviteCooldown(inviteToUid, inviteToName, msg))) return;
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const gameRef = doc(collection(db, "blackjackGames"));
+    const batch = writeBatch(db);
+    batch.set(gameRef, {
+      player1Uid: currentUid,
+      player1Name: currentUserName,
+      players: [{ uid: currentUid, name: currentUserName }],
+      participants: [currentUid],
+      inviteTo: inviteToUid || null,
+      inviteToName: inviteToName || null,
+      status: "open",
+      deck: [],
+      dealerHand: [],
+      hands: {},
+      playerStatus: {},
+      currentPlayerUid: null,
+      results: {},
+      message: "",
+      statsRecorded: {},
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_blackjackGames_${inviteToUid}`);
+      batch.set(limitRef, { inviterUid: currentUid, game: "blackjackGames", inviteeUid: inviteToUid, lastInvitedAt: serverTimestamp() });
+    }
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    await batch.commit();
+    if (inviteToUid) {
+      showMessage(msg, `Invite sent to ${inviteToName}.`, "success");
+    } else {
+      openGame(gameRef.id);
+    }
+  } catch (err) {
+    if (inviteToUid && err.code === "permission-denied") {
+      showMessage(msg, `You can invite ${inviteToName} again in about an hour, or you've reached your daily game limit.`, "error");
+      return;
+    }
+    if (err.code === "permission-denied") {
+      showMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+      return;
+    }
+    showMessage(msg, err.message, "error");
+  }
+}
+
+async function joinTable(gameId) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const gameRef = doc(db, "blackjackGames", gameId);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) throw new Error("That table no longer exists.");
+      const g = snap.data();
+      if (g.status !== "open") throw new Error("That table already started.");
+      if (g.participants.includes(currentUid)) throw new Error("You're already seated at that table.");
+      const maxSeats = g.inviteTo ? 2 : 4;
+      if (g.participants.length >= maxSeats) throw new Error("That table is full.");
+      tx.update(gameRef, {
+        players: [...g.players, { uid: currentUid, name: currentUserName }],
+        participants: [...g.participants, currentUid],
+        updatedAt: serverTimestamp(),
+      });
+    });
+    await setDoc(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    openGame(gameId);
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+}
+
+// ============================= ONLINE GAME TABLE ============================
+let activeGameId = null;
+let activeGameData = null;
+
+function openGame(gameId) {
+  activeGameId = gameId;
+  showView("game");
+
+  if (unsubscribeGame) unsubscribeGame();
+  unsubscribeGame = onSnapshot(doc(db, "blackjackGames", gameId), (snap) => {
+    if (!snap.exists()) { showView("waiting"); return; }
+    activeGameData = snap.data();
+    renderOnlineTable(activeGameData);
+    maybeRecordStats();
+  }, (err) => console.error("Game watch failed:", err));
+}
+
+function bjCardEl(card, isHidden) {
+  const el = document.createElement("div");
+  el.className = "bj-card";
+  if (isHidden) {
+    el.classList.add("bj-card-back");
+    el.innerHTML = "BLACK<br>JACK";
+  } else {
+    el.classList.add(window.bjSuitColor(card.suit));
+    el.innerHTML = `<div class="bj-corner top">${card.value}</div><div class="bj-suit-big">${window.bjSuitFace(card.suit)}</div><div class="bj-corner bottom">${card.value}</div>`;
+  }
+  return el;
+}
+
+function statusLabel(st) {
+  switch (st) {
+    case "playing": return "Playing…";
+    case "stood": return "Stood";
+    case "bust": return "Bust";
+    case "blackjack": return "Blackjack!";
+    case "resigned": return "Resigned";
+    default: return "";
+  }
+}
+function resultLabel(r) {
+  return r === "win" ? "won" : r === "push" ? "pushed" : "lost";
+}
+
+function renderOnlineTable(g) {
+  const dealerCardsEl = document.getElementById("online-dealer-cards");
+  const dealerTotalEl = document.getElementById("online-dealer-total");
+  const messageEl = document.getElementById("online-bj-message");
+  const playersArea = document.getElementById("online-players-area");
+  const startBtn = document.getElementById("online-start-btn");
+  const hitBtn = document.getElementById("online-hit-btn");
+  const standBtn = document.getElementById("online-stand-btn");
+  const resignBtn = document.getElementById("online-resign-btn");
+
+  if (g.status === "open") {
+    dealerCardsEl.innerHTML = "";
+    dealerTotalEl.textContent = "";
+    playersArea.innerHTML = "";
+    messageEl.textContent = `${g.players.length}/4 players seated. ${g.player1Uid === currentUid ? "Start when you have at least 2." : "Waiting for the host to start..."}`;
+    startBtn.style.display = g.player1Uid === currentUid && g.players.length >= 2 ? "inline-block" : "none";
+    hitBtn.style.display = "none";
+    standBtn.style.display = "none";
+    resignBtn.style.display = "none";
+    return;
+  }
+
+  startBtn.style.display = "none";
+
+  const dealerHidden = g.status === "playing";
+  dealerCardsEl.innerHTML = "";
+  (g.dealerHand || []).forEach((card, i) => dealerCardsEl.appendChild(bjCardEl(card, dealerHidden && i === 0)));
+  dealerTotalEl.textContent = dealerHidden ? "?" : `Score: ${window.calculateBlackjackScore(g.dealerHand || [])}`;
+
+  playersArea.innerHTML = "";
+  (g.players || []).forEach((p) => {
+    const hand = (g.hands && g.hands[p.uid]) || [];
+    const st = (g.playerStatus && g.playerStatus[p.uid]) || "playing";
+    const isMe = p.uid === currentUid;
+    const isTurn = g.status === "playing" && g.currentPlayerUid === p.uid;
+
+    const block = document.createElement("div");
+    block.className = "bj-hand-block" + (isTurn ? " current-turn" : "");
+
+    const label = document.createElement("div");
+    label.className = "bj-hand-label";
+    label.innerHTML = `<span>${escapeHtml(p.name)}${isMe ? " (you)" : ""} — ${statusLabel(st)}</span><span class="bj-hand-total">${window.calculateBlackjackScore(hand)}</span>`;
+    block.appendChild(label);
+
+    const container = document.createElement("div");
+    container.className = "bj-card-container";
+    hand.forEach((card) => container.appendChild(bjCardEl(card, false)));
+    block.appendChild(container);
+
+    if (g.status === "finished" && g.results && g.results[p.uid]) {
+      const resultLine = document.createElement("p");
+      resultLine.className = "field-hint";
+      resultLine.style.textAlign = "center";
+      resultLine.textContent = `${isMe ? "You" : p.name} ${resultLabel(g.results[p.uid])}${isMe ? "" : ""} this hand.`;
+      block.appendChild(resultLine);
+    }
+
+    playersArea.appendChild(block);
+  });
+
+  messageEl.textContent = g.message
+    || (g.status === "finished" ? "Hand over."
+        : g.currentPlayerUid === currentUid ? "Your turn — Hit or Stand?"
+        : `Waiting on ${nameFor(g.players, g.currentPlayerUid)}...`);
+
+  const myTurn = g.status === "playing" && g.currentPlayerUid === currentUid;
+  hitBtn.style.display = myTurn ? "inline-block" : "none";
+  standBtn.style.display = myTurn ? "inline-block" : "none";
+  resignBtn.style.display = g.status === "playing" && g.playerStatus && g.playerStatus[currentUid] === "playing" ? "inline-block" : "none";
+}
+
+// ============================= GAME LOGIC (online) ==========================
+// Deals a fresh hand: two rounds of one card per player then one to the
+// dealer (standard casino dealing order), same deck/scoring helpers the
+// local vs-Dealer game uses.
+function buildFreshDeal(playersArr) {
+  const deck = window.shuffleBlackjackDeck(window.createBlackjackDeck());
+  const hands = {};
+  playersArr.forEach((p) => { hands[p.uid] = []; });
+  const dealerHand = [];
+  for (let round = 0; round < 2; round++) {
+    playersArr.forEach((p) => hands[p.uid].push(deck.pop()));
+    dealerHand.push(deck.pop());
+  }
+  const playerStatus = {};
+  playersArr.forEach((p) => {
+    playerStatus[p.uid] = window.calculateBlackjackScore(hands[p.uid]) === 21 ? "blackjack" : "playing";
+  });
+  return { deck, hands, dealerHand, playerStatus };
+}
+
+function nextActingPlayer(order, currentUidValue, playerStatus) {
+  const startIdx = order.indexOf(currentUidValue);
+  for (let i = 1; i <= order.length; i++) {
+    const uid = order[(startIdx + i) % order.length];
+    if (playerStatus[uid] === "playing") return uid;
+  }
+  return null;
+}
+
+// The dealer only plays out (draws to 17+) if at least one player is still
+// in contention (stood or a natural blackjack) — matching the original
+// single-player game's own behavior, where a player bust ends the hand
+// immediately without the dealer drawing further. Every result is resolved
+// here in one pass, same "resolve everything this action triggers
+// atomically" approach already proven out in war.html/hearts.html.
+function settleRound(playersArr, hands, dealerHandIn, playerStatus, deckIn) {
+  let dealerHand = [...dealerHandIn];
+  let deck = [...deckIn];
+  const order = playersArr.map((p) => p.uid);
+  const anyoneStillIn = order.some((uid) => playerStatus[uid] === "stood" || playerStatus[uid] === "blackjack");
+  if (anyoneStillIn) {
+    while (window.calculateBlackjackScore(dealerHand) < 17) {
+      dealerHand.push(deck.pop());
+    }
+  }
+  const dealerScore = window.calculateBlackjackScore(dealerHand);
+  const dealerNatural = dealerHand.length === 2 && dealerScore === 21;
+
+  const results = {};
+  order.forEach((uid) => {
+    const st = playerStatus[uid];
+    if (st === "bust" || st === "resigned") { results[uid] = "lose"; return; }
+    const playerNatural = st === "blackjack";
+    if (dealerNatural && playerNatural) { results[uid] = "push"; return; }
+    if (dealerNatural) { results[uid] = "lose"; return; }
+    if (playerNatural) { results[uid] = "win"; return; }
+    if (dealerScore > 21) { results[uid] = "win"; return; }
+    const playerScore = window.calculateBlackjackScore(hands[uid]);
+    if (playerScore > dealerScore) results[uid] = "win";
+    else if (playerScore < dealerScore) results[uid] = "lose";
+    else results[uid] = "push";
+  });
+
+  const wins = order.filter((uid) => results[uid] === "win").length;
+  const losses = order.filter((uid) => results[uid] === "lose").length;
+  const pushes = order.filter((uid) => results[uid] === "push").length;
+
+  return {
+    dealerHand,
+    deck,
+    results,
+    status: "finished",
+    currentPlayerUid: null,
+    message: `Dealer: ${dealerScore > 21 ? `${dealerScore} (bust)` : dealerScore}. ${wins} win, ${losses} lose, ${pushes} push.`,
+  };
+}
+
+document.getElementById("online-start-btn").addEventListener("click", async () => {
+  if (!activeGameData || activeGameData.player1Uid !== currentUid || activeGameData.players.length < 2) return;
+  const { deck, hands, dealerHand, playerStatus } = buildFreshDeal(activeGameData.players);
+  const order = activeGameData.players.map((p) => p.uid);
+  const update = { deck, hands, dealerHand, playerStatus, results: {}, status: "playing", message: "", updatedAt: serverTimestamp() };
+  const firstToAct = order.find((uid) => playerStatus[uid] === "playing");
+  if (firstToAct) {
+    update.currentPlayerUid = firstToAct;
+  } else {
+    Object.assign(update, settleRound(activeGameData.players, hands, dealerHand, playerStatus, deck));
+  }
+  try {
+    await updateDoc(doc(db, "blackjackGames", activeGameId), update);
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+async function hitOnline() {
+  const gameRef = doc(db, "blackjackGames", activeGameId);
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) return;
+      const g = snap.data();
+      if (g.status !== "playing" || g.currentPlayerUid !== currentUid) return;
+
+      const deck = [...g.deck];
+      const hands = {};
+      Object.keys(g.hands).forEach((uid) => { hands[uid] = [...g.hands[uid]]; });
+      hands[currentUid] = [...hands[currentUid], deck.pop()];
+      const score = window.calculateBlackjackScore(hands[currentUid]);
+      const playerStatus = { ...g.playerStatus };
+      if (score > 21) playerStatus[currentUid] = "bust";
+      else if (score === 21) playerStatus[currentUid] = "stood";
+
+      if (playerStatus[currentUid] === "playing") {
+        tx.update(gameRef, { deck, hands, playerStatus, message: "", updatedAt: serverTimestamp() });
+        return;
+      }
+      const order = g.players.map((p) => p.uid);
+      const nextUid = nextActingPlayer(order, currentUid, playerStatus);
+      if (nextUid) {
+        tx.update(gameRef, { deck, hands, playerStatus, currentPlayerUid: nextUid, message: "", updatedAt: serverTimestamp() });
+        return;
+      }
+      const settled = settleRound(g.players, hands, g.dealerHand, playerStatus, deck);
+      tx.update(gameRef, { ...settled, hands, playerStatus, updatedAt: serverTimestamp() });
+    });
+  } catch (err) {
+    alert(`Couldn't hit: ${err.message}`);
+  }
+}
+
+async function standOnline() {
+  const gameRef = doc(db, "blackjackGames", activeGameId);
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) return;
+      const g = snap.data();
+      if (g.status !== "playing" || g.currentPlayerUid !== currentUid) return;
+
+      const playerStatus = { ...g.playerStatus, [currentUid]: "stood" };
+      const order = g.players.map((p) => p.uid);
+      const nextUid = nextActingPlayer(order, currentUid, playerStatus);
+      if (nextUid) {
+        tx.update(gameRef, { playerStatus, currentPlayerUid: nextUid, message: "", updatedAt: serverTimestamp() });
+        return;
+      }
+      const settled = settleRound(g.players, g.hands, g.dealerHand, playerStatus, g.deck);
+      tx.update(gameRef, { ...settled, playerStatus, updatedAt: serverTimestamp() });
+    });
+  } catch (err) {
+    alert(`Couldn't stand: ${err.message}`);
+  }
+}
+
+document.getElementById("online-hit-btn").addEventListener("click", hitOnline);
+document.getElementById("online-stand-btn").addEventListener("click", standOnline);
+
+// Unlike Hearts (which can't sensibly continue with fewer than 4), a
+// resignation here only forfeits YOUR hand as a loss — matching war.html's
+// "the game keeps going for whoever's left" precedent, since each player's
+// Blackjack outcome is independent of the others' anyway.
+document.getElementById("online-resign-btn").addEventListener("click", async () => {
+  if (!activeGameData || activeGameData.status !== "playing") return;
+  if (!confirm("Resign this hand? You'll be marked as a loss.")) return;
+  const gameRef = doc(db, "blackjackGames", activeGameId);
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) return;
+      const g = snap.data();
+      if (g.status !== "playing" || g.playerStatus[currentUid] !== "playing") return;
+
+      const playerStatus = { ...g.playerStatus, [currentUid]: "resigned" };
+      const update = { playerStatus, updatedAt: serverTimestamp() };
+      if (g.currentPlayerUid === currentUid) {
+        const order = g.players.map((p) => p.uid);
+        const nextUid = nextActingPlayer(order, currentUid, playerStatus);
+        if (nextUid) {
+          update.currentPlayerUid = nextUid;
+          update.message = `${nameFor(g.players, currentUid)} resigned.`;
+        } else {
+          Object.assign(update, settleRound(g.players, g.hands, g.dealerHand, playerStatus, g.deck));
+        }
+      } else {
+        update.message = `${nameFor(g.players, currentUid)} resigned.`;
+      }
+      tx.update(gameRef, update);
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+// ============================= POINTS/STATS ==================================
+// Each player records their OWN stats once, based on their OWN result
+// (results[uid]), guarded by their own key in statsRecorded — same pattern
+// as war.html/hearts.html, but per-player rather than one game-wide winner
+// since each hand's outcome is independent.
+async function recordStatsForGame(gameId, gameData) {
+  if (gameData.statsRecorded && gameData.statsRecorded[currentUid]) return;
+  const wasParticipant = (gameData.participants || []).includes(currentUid);
+  if (!wasParticipant) return;
+  const result = gameData.results ? gameData.results[currentUid] : null;
+  if (!result) {
+    await updateDoc(doc(db, "blackjackGames", gameId), { [`statsRecorded.${currentUid}`]: true }).catch(() => {});
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, "blackjackGames", gameId), { [`statsRecorded.${currentUid}`]: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      blackjackPoints: (data.blackjackPoints || 0) + (result === "win" ? 3 : result === "push" ? 1 : 0),
+      blackjackWins: (data.blackjackWins || 0) + (result === "win" ? 1 : 0),
+      blackjackLosses: (data.blackjackLosses || 0) + (result === "lose" ? 1 : 0),
+      blackjackDraws: (data.blackjackDraws || 0) + (result === "push" ? 1 : 0),
+    });
+  } catch (err) {
+    console.error("Couldn't record Blackjack stats:", err);
+  }
+}
+
+async function maybeRecordStats() {
+  if (!activeGameData || activeGameData.status !== "finished") return;
+  await recordStatsForGame(activeGameId, activeGameData);
+}
+
+async function reconcileFinishedGames() {
+  try {
+    const q = query(collection(db, "blackjackGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status !== "finished") continue;
+      if (!(g.statsRecorded && g.statsRecorded[currentUid])) await recordStatsForGame(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished Blackjack games:", err);
+  }
+}
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const ranked = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      const points = d.blackjackPoints || 0;
+      const wins = d.blackjackWins || 0;
+      const losses = d.blackjackLosses || 0;
+      const draws = d.blackjackDraws || 0;
+      if (points > 0 || wins > 0 || losses > 0 || draws > 0) {
+        ranked.push({ name: d.profile?.name || "Neighbor", points, wins, losses, draws });
+      }
+    });
+    ranked.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (ranked.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    ranked.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `
+        <span class="leader-rank">#${i + 1}</span>
+        <span style="flex:1;">${escapeHtml(p.name)}</span>
+        <span class="field-hint">${p.wins}W-${p.losses}L-${p.draws}P</span>
+        <span style="font-weight:600;">${p.points} pts</span>
+      `;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>

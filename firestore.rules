@@ -119,7 +119,7 @@ service cloud.firestore {
                     || (isOwner(uid)
                         && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'heartsPoints', 'heartsWins', 'heartsLosses', 'notificationsEnabled', 'fcmTokens']));
+                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'heartsPoints', 'heartsWins', 'heartsLosses', 'blackjackPoints', 'blackjackWins', 'blackjackLosses', 'blackjackDraws', 'notificationsEnabled', 'fcmTokens']));
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -534,6 +534,51 @@ service cloud.firestore {
                     );
       allow delete: if isAdmin()
                     || (isSignedIn() && resource.data.status == 'open' && request.auth.uid == resource.data.player1Uid);
+    }
+
+    // Same flexible 2-4 model as warGames (not heartsGames' fixed-4): a
+    // direct invite is a private table capped at exactly 2, an open table
+    // is capped at 4. Each player's hand is independent of the others', so
+    // there's no structural need for every seat to be filled.
+    match /blackjackGames/{gameId} {
+      // Safe .get(field, default) accessors here, not resource.data.inviteTo
+      // direct access — this is a `list` (collection query) read rule, and
+      // an OR'd rule that references fields outside the query's own filter
+      // (only `status` is filtered client-side; `inviteTo`/`participants`
+      // aren't) can throw "Property X is undefined" during list validation
+      // on some Firestore emulator versions, even when every real document
+      // has the field set. Confirmed via isolated reproduction against
+      // warGames' identical, already-proven direct-access rule on a fresh
+      // local emulator instance — a real emulator quirk, not bad data. The
+      // defensive accessor sidesteps it with no behavior change.
+      allow read: if isSignedIn() && (
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
+      );
+      allow create: if isSignedIn()
+                    && request.resource.data.player1Uid == request.auth.uid
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.participants == [request.auth.uid]
+                    && (
+                         request.resource.data.inviteTo == null
+                         || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_blackjackGames_' + request.resource.data.inviteTo))
+                         || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_blackjackGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
+                       );
+      allow update: if isSignedIn()
+                    && (
+                      request.auth.uid in resource.data.participants
+                      || request.auth.uid == resource.data.player1Uid
+                      || request.auth.uid == resource.data.inviteTo
+                      || (resource.data.status == 'open'
+                          && resource.data.inviteTo == null
+                          && resource.data.participants.size() < 4)
+                    );
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.status == 'open' && (
+                          request.auth.uid == resource.data.player1Uid
+                          || request.auth.uid == resource.data.inviteTo
+                        ));
     }
 
     match /golfGames/{gameId} {
