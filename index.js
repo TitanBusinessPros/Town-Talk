@@ -73,7 +73,7 @@
 
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { defineSecret } = require("firebase-functions/params");
 const Stripe = require("stripe");
@@ -722,5 +722,151 @@ exports.backupAuthAccounts = onSchedule(
         if (ageMs > THIRTY_DAYS_MS) await file.delete();
       })
     );
+  }
+);
+
+// -----------------------------------------------------------------------
+// 9. Admin profile deletion, with a 10-day restore window.
+//
+// This needs the Admin SDK (not just a Firestore rule) for two reasons:
+// deleting someone ELSE's Auth account/disabling their login is something
+// only Admin SDK can do, and the rate limit has to be enforced server-side
+// (authoritative) rather than trusted to the client.
+//
+// The delete/restore PIN prompt on the client is the same "are you sure
+// it's really you" speed bump as the admin PIN gate elsewhere on the
+// site — not a real security boundary. The real boundary is the
+// isAdmin() check below (via the admins/{uid} doc, same as every other
+// admin-only action).
+//
+// Why disable the Auth account instead of just deleting the Firestore
+// doc: index.html's watchUserDoc() auto-recreates a blank users/{uid} doc
+// the instant it notices one is missing for a signed-in user (a
+// convenience for legitimate cases, e.g. testing) — so deleting the doc
+// alone while leaving the person able to log in would just have them
+// immediately get a fresh blank profile, undoing the deletion. Disabling
+// the Auth account (and revoking its refresh tokens, so an already-open
+// tab can't keep coasting on a still-valid ID token) prevents that.
+// Restoring re-enables the account and restores the exact archived doc.
+// -----------------------------------------------------------------------
+const DELETE_RATE_LIMIT_WINDOW_MS = 3 * 60 * 1000;
+const DELETE_RATE_LIMIT_MAX = 3;
+const DELETE_COOLDOWN_MS = 30 * 60 * 1000;
+const DELETED_PROFILE_RETENTION_MS = 10 * 24 * 60 * 60 * 1000;
+
+async function requireAdmin(request) {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const adminSnap = await db.collection("admins").doc(callerUid).get();
+  if (!adminSnap.exists) throw new HttpsError("permission-denied", "Admins only.");
+  return callerUid;
+}
+
+exports.adminDeleteProfile = onCall(async (request) => {
+  const callerUid = await requireAdmin(request);
+
+  const targetUid = request.data?.targetUid;
+  if (!targetUid || typeof targetUid !== "string") {
+    throw new HttpsError("invalid-argument", "targetUid is required.");
+  }
+  if (targetUid === callerUid) {
+    throw new HttpsError("failed-precondition", "You can't delete your own profile this way.");
+  }
+
+  const userRef = db.collection("users").doc(targetUid);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "That profile doesn't exist (already deleted?).");
+  }
+
+  // Rate limit — checked and recorded atomically so two rapid deletes
+  // can't both read "2 so far" and both slip through as the 3rd.
+  const limitRef = db.collection("adminDeleteLimits").doc(callerUid);
+  const now = Date.now();
+  await db.runTransaction(async (tx) => {
+    const limitSnap = await tx.get(limitRef);
+    const limitData = limitSnap.exists ? limitSnap.data() : {};
+    const cooldownUntil = limitData.cooldownUntil || 0;
+    if (now < cooldownUntil) {
+      const minsLeft = Math.ceil((cooldownUntil - now) / 60000);
+      throw new HttpsError(
+        "resource-exhausted",
+        `Delete cooldown active — try again in about ${minsLeft} minute(s).`
+      );
+    }
+    const recent = (limitData.recentDeletes || []).filter((ts) => now - ts < DELETE_RATE_LIMIT_WINDOW_MS);
+    if (recent.length >= DELETE_RATE_LIMIT_MAX) {
+      tx.set(limitRef, { recentDeletes: [], cooldownUntil: now + DELETE_COOLDOWN_MS }, { merge: true });
+      throw new HttpsError(
+        "resource-exhausted",
+        `You've deleted ${DELETE_RATE_LIMIT_MAX} profiles in the last 3 minutes — a 30 minute cooldown has started.`
+      );
+    }
+    recent.push(now);
+    tx.set(limitRef, { recentDeletes: recent, cooldownUntil: 0 }, { merge: true });
+  });
+
+  await db.collection("deletedUsers").doc(targetUid).set({
+    profileData: userSnap.data(),
+    deletedAt: Timestamp.now(),
+    deletedBy: callerUid,
+    purgeAt: Timestamp.fromMillis(now + DELETED_PROFILE_RETENTION_MS),
+  });
+  await userRef.delete();
+
+  try {
+    await admin.auth().updateUser(targetUid, { disabled: true });
+    await admin.auth().revokeRefreshTokens(targetUid);
+  } catch (err) {
+    // The profile is already archived and removed either way — losing the
+    // Auth-disable step isn't fatal, just log it for follow-up.
+    console.error(`Couldn't disable Auth account for ${targetUid}:`, err);
+  }
+
+  return { ok: true };
+});
+
+exports.adminRestoreProfile = onCall(async (request) => {
+  await requireAdmin(request);
+
+  const targetUid = request.data?.targetUid;
+  if (!targetUid || typeof targetUid !== "string") {
+    throw new HttpsError("invalid-argument", "targetUid is required.");
+  }
+
+  const archivedRef = db.collection("deletedUsers").doc(targetUid);
+  const archivedSnap = await archivedRef.get();
+  if (!archivedSnap.exists) {
+    throw new HttpsError("not-found", "That deleted profile is no longer available (already purged or restored).");
+  }
+
+  await db.collection("users").doc(targetUid).set(archivedSnap.data().profileData);
+  await archivedRef.delete();
+
+  try {
+    await admin.auth().updateUser(targetUid, { disabled: false });
+  } catch (err) {
+    console.error(`Couldn't re-enable Auth account for ${targetUid}:`, err);
+  }
+
+  return { ok: true };
+});
+
+// Sweeps the 10-day-old archive daily — after this, a deleted profile is
+// gone for good (Auth account included), same as the self-service "Delete
+// my account" flow's end state.
+exports.purgeExpiredDeletedProfiles = onSchedule(
+  { schedule: "30 3 * * *", timeZone: "America/Chicago" },
+  async () => {
+    const now = Timestamp.now();
+    const snap = await db.collection("deletedUsers").where("purgeAt", "<=", now).get();
+    if (snap.empty) return;
+
+    for (const docSnap of snap.docs) {
+      await docSnap.ref.delete();
+      await admin.auth().deleteUser(docSnap.id).catch((err) => {
+        console.error(`Couldn't delete Auth account ${docSnap.id} during purge:`, err);
+      });
+    }
   }
 );

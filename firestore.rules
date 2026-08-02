@@ -123,6 +123,20 @@ service cloud.firestore {
       allow delete: if isOwner(uid) || isAdmin();
     }
 
+    // Archived profiles from admin-initiated deletion (10-day restore
+    // window) and the admin's own per-uid delete-rate-limit counter. Both
+    // are only ever written by the adminDeleteProfile/adminRestoreProfile/
+    // purgeExpiredDeletedProfiles Cloud Functions via the Admin SDK, which
+    // bypasses rules entirely — so these only need a read rule for the
+    // admin page to list the archive, nothing else.
+    match /deletedUsers/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /adminDeleteLimits/{uid} {
+      allow read, write: if false;
+    }
+
     match /reviewQueue/{uid} {
       allow read: if isAdmin();
       allow write: if (isOwner(uid) && request.auth.token.email_verified == true) || isAdmin();
