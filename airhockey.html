@@ -294,16 +294,18 @@ let scaleX = 1, scaleY = 1, radiusScale = 1;
 function updateTransform() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  // The scoreboard bar is a fixed, opaque overlay sitting on top of the
-  // canvas — without reserving its real (responsive, clamp()-sized)
-  // height here, the table was drawn edge-to-edge and its top portion
-  // (the opponent's goal) rendered directly behind the scoreboard,
-  // hiding it from view.
+  // The scoreboard bar (top) and the instructions/controls bars (bottom)
+  // are fixed, opaque overlays sitting on top of the canvas — without
+  // reserving their real (responsive, clamp()-sized) heights here, the
+  // table was drawn edge-to-edge and both the opponent's goal (top) and
+  // the player's own paddle (bottom) rendered directly behind them,
+  // hiding both from view.
   const scoreboardHeight = document.getElementById('scoreboard').offsetHeight;
+  const bottomOverlayHeight = canvas.height - document.getElementById('instructions').getBoundingClientRect().top;
   offsetX = 0;
   offsetY = scoreboardHeight;
   scaleX = canvas.width / VIRTUAL_WIDTH;
-  scaleY = (canvas.height - offsetY) / VIRTUAL_HEIGHT;
+  scaleY = (canvas.height - offsetY - bottomOverlayHeight) / VIRTUAL_HEIGHT;
   radiusScale = Math.min(scaleX, scaleY);
 }
 function toPixelX(vx) { return offsetX + vx * scaleX; }
