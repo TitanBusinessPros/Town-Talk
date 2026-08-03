@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Titan Space Defense — Town Fuss</title>
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; }
+body { font-family: 'Courier New', monospace; color: white; }
+
+/* ===========================================================================
+   SITE-CHROME — same "site-chrome wraps a standalone game" pattern as
+   dodge.html/deepsea.html. Scoped under #site-chrome so it can never
+   collide with the game's own CSS below.
+   =========================================================================== */
+#site-chrome {
+  --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+  --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px; --radius-sm: 8px;
+  background: var(--ink-900); color: var(--paper-050); min-height: 100vh; font-family: var(--font-body);
+}
+#site-chrome a { color: var(--amber-500); }
+#site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
+#site-chrome p { color: var(--text-muted); line-height: 1.6; }
+#site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+#site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+#site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+#site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+#site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+#site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+#site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+#site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+#site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+#site-chrome button.site-btn:hover { background: var(--amber-600); }
+#site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+#site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+#site-chrome .leader-row:last-child { border-bottom: none; }
+#site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+#site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+#site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+#site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+#site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+#site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+#site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+/* ===========================================================================
+   GAME WRAPPER — original Titan Space Defense visuals, adapted from the
+   standalone game. The background-music track (hosted in a generic shared
+   image/asset repo, not a dedicated per-game one) was dropped — no place
+   in Town Fuss. Everything else is a close port, with the difficulty
+   curve rebalanced for endless play (see the classic script below).
+   =========================================================================== */
+#titanSpaceWrapper {
+    display: none;
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background: #000;
+}
+#titanSpaceWrapper canvas { display: block; }
+.hidden { display: none; }
+#levelTransition {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 72px;
+    color: #00ff00;
+    text-shadow: 0 0 30px #00ff00;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s;
+    font-weight: bold;
+    z-index: 1000;
+    white-space: nowrap;
+}
+@media (max-width: 600px) { #levelTransition { font-size: 36px; } }
+#gameTitle {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 48px;
+    font-weight: bold;
+    background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ffff);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    filter: drop-shadow(0 0 10px rgba(255, 0, 255, 0.8)) drop-shadow(0 0 20px rgba(0, 255, 255, 0.6));
+    animation: gradientShift 3s ease infinite;
+    z-index: 1000;
+    pointer-events: none;
+    text-align: center;
+    width: 100%;
+}
+@media (max-width: 600px) { #gameTitle { font-size: 28px; top: 5px; } }
+#pauseScreen {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 2000;
+    color: white;
+    font-size: 48px;
+    text-align: center;
+    cursor: pointer;
+}
+#pauseButton {
+    position: absolute;
+    top: 20px; right: 20px;
+    background: rgba(0, 255, 0, 0.3);
+    border: 2px solid #00ff00;
+    color: #00ff00;
+    padding: 10px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 1500;
+    border-radius: 5px;
+}
+#pauseButton:hover { background: rgba(0, 255, 0, 0.5); }
+.titanspace-back-btn {
+    position: absolute;
+    top: 20px; left: 20px;
+    background: rgba(0, 255, 0, 0.3);
+    border: 2px solid #00ff00;
+    color: #00ff00;
+    padding: 10px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 1500;
+    border-radius: 5px;
+}
+.titanspace-back-btn:hover { background: rgba(0, 255, 0, 0.5); }
+#run-status-titanspace {
+    position: absolute;
+    top: 65px; left: 50%; transform: translateX(-50%);
+    z-index: 1500;
+    font-size: 0.8rem;
+    color: #88ffcc;
+    text-shadow: 0 0 6px #00ff00;
+    pointer-events: none;
+}
+.menu-button {
+    background: rgba(0, 255, 0, 0.3);
+    border: 2px solid #00ff00;
+    color: #00ff00;
+    padding: 15px 30px;
+    font-family: 'Courier New', monospace;
+    font-size: 24px;
+    cursor: pointer;
+    border-radius: 5px;
+    margin-top: 20px;
+    min-width: 200px;
+}
+.menu-button:hover { background: rgba(0, 255, 0, 0.5); }
+@media (max-width: 600px) {
+    #pauseButton, .titanspace-back-btn { top: 10px; padding: 8px 16px; font-size: 16px; }
+    .titanspace-back-btn { left: 10px; }
+    #pauseButton { right: 10px; }
+    #pauseScreen { font-size: 32px; }
+    .menu-button { padding: 12px 24px; font-size: 20px; min-width: 160px; }
+}
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+</style>
+</head>
+<body>
+
+<div id="site-chrome">
+  <header class="header-bar">
+    <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+    <nav class="header-nav">
+      <button id="nav-hub" class="active">Games</button>
+      <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+    </nav>
+  </header>
+
+  <main class="page">
+
+    <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+      <h2>Sign in on Town Fuss first</h2>
+      <p>You need a Town Fuss account to play Titan Space Defense online and appear on the leaderboard.</p>
+      <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+    </div>
+
+    <div id="app-content" style="display:none;">
+
+      <!-- ================= MODE SELECT ================= -->
+      <section id="view-mode-select">
+        <span class="eyebrow">Titan Space Defense</span>
+        <h1>🛸 How do you want to play? 🛸</h1>
+        <p class="field-hint" id="titanspace-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+        <div class="uicard mode-tile" id="mode-tile-offline">
+          <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+          <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+        </div>
+        <div class="uicard mode-tile" id="mode-tile-online">
+          <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+          <p class="field-hint" style="text-align:center;">Your high score gets submitted to the leaderboard</p>
+        </div>
+        <div id="mode-select-message" class="site-message" style="display:none;"></div>
+      </section>
+
+      <!-- ================= LEADERBOARD ================= -->
+      <section id="view-leaderboard" style="display:none;">
+        <span class="eyebrow">Titan Space Defense</span>
+        <h1>Leaderboard</h1>
+        <p style="text-align:center;">Highest score wins. Levels are endless — only Online (Ranked) runs count.</p>
+        <div class="uicard">
+          <h2 style="text-align:left;">🏆 Top Defenders</h2>
+          <div id="leaderboard-list"></div>
+          <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked runs yet — be the first!</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div id="titanSpaceWrapper">
+    <canvas id="game"></canvas>
+    <div id="gameTitle" class="hidden">TITAN SPACE DEFENSE</div>
+    <div id="levelTransition"></div>
+    <button type="button" class="titanspace-back-btn" id="back-to-hub-game-btn">&larr; Games</button>
+    <button id="pauseButton">PAUSE</button>
+    <div id="run-status-titanspace"></div>
+    <div id="pauseScreen">
+        <div>GAME PAUSED</div>
+        <div style="font-size: 24px; margin-top: 20px;">Press P or click anywhere to resume</div>
+        <button class="menu-button">RESUME GAME</button>
+    </div>
+</div>
+
+<script>
+// ===========================================================================
+// CLASSIC (non-module) script — the game itself, adapted from the original
+// standalone Titan Space Defense. Kept as a plain classic script so its
+// state stays on real global `window`-scope variables, matching every
+// other game's testing convention.
+//
+// REBALANCED FOR ENDLESS PLAY (the original was hand-tuned for a fixed
+// 15-level campaign — three formulas assumed that ceiling and would have
+// either broken or become absurd run indefinitely):
+//   - Wave size and enemy health/speed multipliers used to grow LINEARLY
+//     forever, uncapped. At level 100 that meant ~205 enemies per wave and
+//     enemies with 16x their base health — not "hard," just unplayable
+//     and eventually a performance problem (200+ enemies each doing
+//     per-frame collision checks). Wave size now grows smoothly and caps
+//     at a sane maximum; health/speed multipliers now grow on a sqrt
+//     curve — still climbing forever (the game can never be fully
+//     "solved," which matters for a leaderboard), just far more gently
+//     past the levels the original design was actually tuned for.
+//   - The original also had a real discontinuity: wave size INSTANTLY
+//     dropped from 63 enemies (level 11) to 29 (level 12) because two
+//     separate formulas met at an arbitrary boundary. Replaced with one
+//     continuous formula so there's no sudden difficulty cliff.
+//   - The three hardcoded "boss level" messages (8, 12, "FINAL BOSS
+//     LEVEL", "THE FINAL CHALLENGE" at 15) don't make sense once there's
+//     no final level — replaced with a repeating "BOSS LEVEL" callout
+//     every 10 levels.
+//   - The fixed win condition (`maxLevel`, `gameWon`, the VICTORY screen)
+//     is gone entirely — the game now only ends on Game Over, matching
+//     every other endless/leaderboard game on this site.
+//   - The `.hidden` CSS class the title overlay relied on was referenced
+//     but never actually defined in the original stylesheet, so the
+//     "Your Company Name" placeholder was visible from page load instead
+//     of staying hidden until the game started — fixed by actually
+//     defining `.hidden { display: none; }` above.
+// ===========================================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let gameRunning = false;
+let gameStarted = false;
+let gamePaused = false;
+let frame = 0;
+let currentLevel = 1;
+let score = 0;
+let lives = 5;
+let keys = {};
+let mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
+
+// Reports whether this run's eventual score should be submitted — set by
+// window.beginRun() when the module script starts a run from mode-select.
+let isOnlineRun = false;
+
+let player = {
+    x: canvas.width / 2,
+    y: canvas.height - 100,
+    size: 30,
+    speed: 6,
+    angle: 0
+};
+
+let enemies = [];
+let bullets = [];
+let particles = [];
+let stars = [];
+let powerups = [];
+
+let gunLevel = 1;
+let fireMode = false;
+let iceMode = false;
+let fireModeTimer = 0;
+let iceModeTimer = 0;
+
+let waveEnemies = 0;
+let enemiesSpawned = 0;
+let waveClear = false;
+let levelTransitioning = false;
+
+let lastShotTime = 0;
+let shotCooldown = 100;
+
+let gameOver = false;
+
+const enemyTypes = [
+    { name: 'Scout', size: 15, health: 1, speed: 2.5, color: '#ff0000', points: 10, shape: 'triangle' },
+    { name: 'Fighter', size: 18, health: 2, speed: 2, color: '#ff6600', points: 20, shape: 'diamond' },
+    { name: 'Bomber', size: 22, health: 3, speed: 1.5, color: '#ff00ff', points: 30, shape: 'square' },
+    { name: 'Cruiser', size: 28, health: 4, speed: 1.2, color: '#8800ff', points: 50, shape: 'pentagon' },
+    { name: 'Alien Drone', size: 20, health: 2, speed: 2.2, color: '#00ff00', points: 25, shape: 'alien1' },
+    { name: 'Alien Fighter', size: 24, health: 3, speed: 1.8, color: '#00ffff', points: 40, shape: 'alien2' },
+    { name: 'Alien Elite', size: 30, health: 5, speed: 1.5, color: '#ffff00', points: 60, shape: 'alien3' },
+    { name: 'Destroyer', size: 35, health: 6, speed: 1, color: '#ff0088', points: 80, shape: 'hexagon' },
+    { name: 'Carrier', size: 40, health: 8, speed: 0.8, color: '#ff8800', points: 100, shape: 'octagon' },
+    { name: 'Mothership', size: 50, health: 12, speed: 0.6, color: '#ff00ff', points: 150, shape: 'star' },
+    { name: 'Boss Drone', size: 45, health: 15, speed: 1.2, color: '#ff4444', points: 200, shape: 'alien1' },
+    { name: 'Titan', size: 60, health: 20, speed: 0.5, color: '#ff0000', points: 300, shape: 'star' },
+    { name: 'Void Hunter', size: 35, health: 8, speed: 2.5, color: '#6600ff', points: 180, shape: 'alien2' }
+];
+
+window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key.toLowerCase() === 'p' && gameStarted && gameRunning) togglePause();
+});
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+canvas.addEventListener('mousemove', e => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
+canvas.addEventListener('mousedown', () => {
+    mouse.down = true;
+    if (gameRunning && !gamePaused) shootBullet();
+});
+canvas.addEventListener('mouseup', () => mouse.down = false);
+
+document.getElementById('pauseButton').addEventListener('click', togglePause);
+document.querySelector('.menu-button').addEventListener('click', togglePause);
+document.getElementById('pauseScreen').addEventListener('click', function(e) {
+    if (e.target === this) togglePause();
+});
+
+function togglePause() {
+    if (!gameStarted || !gameRunning) return;
+    gamePaused = !gamePaused;
+    const pauseScreen = document.getElementById('pauseScreen');
+    if (gamePaused) {
+        pauseScreen.style.display = 'flex';
+    } else {
+        pauseScreen.style.display = 'none';
+        if (gameRunning && !levelTransitioning) requestAnimationFrame(gameLoop);
+    }
+}
+
+let touching = false;
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    touching = true;
+    const touch = e.touches[0];
+    mouse.x = touch.clientX;
+    mouse.y = touch.clientY;
+    mouse.down = true;
+    if (gameRunning && !gamePaused) shootBullet();
+}, { passive: false });
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (touching) {
+        const touch = e.touches[0];
+        mouse.x = touch.clientX;
+        mouse.y = touch.clientY;
+    }
+}, { passive: false });
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    touching = false;
+    mouse.down = false;
+}, { passive: false });
+
+for (let i = 0; i < 200; i++) {
+    stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2,
+        speed: 0.5 + Math.random() * 1.5,
+        brightness: Math.random()
+    });
+}
+
+function drawShip(x, y, size, angle, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = color;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = color;
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.lineTo(-size * 0.6, size * 0.8);
+    ctx.lineTo(0, size * 0.5);
+    ctx.lineTo(size * 0.6, size * 0.8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#00ffff';
+    ctx.shadowColor = '#00ffff';
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.3, size * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.fillRect(-size * 1.2, size * 0.2, size * 0.5, size * 0.3);
+    ctx.fillRect(size * 0.7, size * 0.2, size * 0.5, size * 0.3);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+}
+
+function drawEnemyShape(enemy) {
+    ctx.save();
+    ctx.translate(enemy.x, enemy.y);
+    ctx.rotate(enemy.rotation || 0);
+    ctx.fillStyle = enemy.color;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = enemy.color;
+    const size = enemy.size;
+
+    switch (enemy.shape) {
+        case 'triangle':
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.lineTo(-size, size);
+            ctx.lineTo(size, size);
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'diamond':
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.lineTo(size, 0);
+            ctx.lineTo(0, size);
+            ctx.lineTo(-size, 0);
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'square':
+            ctx.fillRect(-size, -size, size * 2, size * 2);
+            break;
+        case 'pentagon':
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 2 * Math.PI / 5) - Math.PI / 2;
+                const x = Math.cos(angle) * size, y = Math.sin(angle) * size;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'hexagon':
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * 2 * Math.PI / 6);
+                const x = Math.cos(angle) * size, y = Math.sin(angle) * size;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'octagon':
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                const angle = (i * 2 * Math.PI / 8);
+                const x = Math.cos(angle) * size, y = Math.sin(angle) * size;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'star':
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const angle = (i * 2 * Math.PI / 10) - Math.PI / 2;
+                const radius = i % 2 === 0 ? size : size * 0.5;
+                const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            break;
+        case 'alien1':
+            ctx.beginPath();
+            ctx.ellipse(0, 0, size, size * 0.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(0, -size * 0.2, size * 0.6, size * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+        case 'alien2':
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.quadraticCurveTo(size * 1.5, -size * 0.5, size, size);
+            ctx.quadraticCurveTo(0, size * 0.7, -size, size);
+            ctx.quadraticCurveTo(-size * 1.5, -size * 0.5, 0, -size);
+            ctx.fill();
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(-size * 0.3, -size * 0.3, size * 0.2, 0, Math.PI * 2);
+            ctx.arc(size * 0.3, -size * 0.3, size * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+        case 'alien3':
+            ctx.beginPath();
+            ctx.arc(0, 0, size, 0, Math.PI * 2);
+            ctx.fill();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI * 2 / 6);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(angle) * size * 1.5, Math.sin(angle) * size * 1.5);
+                ctx.lineWidth = size * 0.2;
+                ctx.strokeStyle = enemy.color;
+                ctx.stroke();
+            }
+            break;
+    }
+
+    if (enemy.health < enemy.maxHealth) {
+        const barWidth = size * 2, barHeight = 4;
+        const healthPercent = enemy.health / enemy.maxHealth;
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(-barWidth / 2, size + 10, barWidth, barHeight);
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(-barWidth / 2, size + 10, barWidth * healthPercent, barHeight);
+    }
+    ctx.shadowBlur = 0;
+    ctx.restore();
+}
+
+// ---- Rebalanced difficulty curve (see the file-level comment above) ----
+// Grows fast for the levels the original design was actually tuned for
+// (1-15), then keeps climbing forever, just far more slowly — the game
+// can never be fully "solved," but it also never explodes into
+// unplayable/absurd numbers the way unbounded linear growth would.
+function difficultyFactor(level) {
+    return Math.sqrt(level);
+}
+function healthMultiplierFor(level) {
+    return 1 + difficultyFactor(level) * 0.581; // matches the original's 1+level*0.15 exactly at level 15
+}
+function speedMultiplierFor(level) {
+    return 1 + difficultyFactor(level) * 0.271; // matches the original's 1+level*0.07 exactly at level 15
+}
+function waveEnemiesFor(level) {
+    // One continuous formula (the original had a hard cliff — 63 enemies
+    // at level 11 dropping to 29 at level 12 — because two different
+    // formulas met at an arbitrary boundary) with a sane cap so a wave
+    // can never balloon past what's actually playable/performant.
+    return Math.min(50, 8 + Math.round(level * 2.4));
+}
+function spawnRateFor(level) {
+    // Frames between spawns — smoothly decreasing with a floor, replacing
+    // the original's 3-step function (65 / 60 / 55) which also stopped
+    // scaling past level 12.
+    return Math.max(35, 65 - level);
+}
+
+function spawnEnemy() {
+    if (enemiesSpawned >= waveEnemies) return;
+
+    let availableTypes = enemyTypes;
+    if (currentLevel <= 7) availableTypes = enemyTypes.slice(0, 5);
+    else if (currentLevel <= 12) availableTypes = enemyTypes.slice(0, 9);
+
+    const typeIndex = Math.floor(Math.random() * availableTypes.length);
+    const type = availableTypes[typeIndex];
+
+    const side = Math.floor(Math.random() * 3);
+    let x, y;
+    if (side === 0) { x = Math.random() * canvas.width; y = -50; }
+    else if (side === 1) { x = -50; y = Math.random() * canvas.height * 0.5; }
+    else { x = canvas.width + 50; y = Math.random() * canvas.height * 0.5; }
+
+    const healthMultiplier = healthMultiplierFor(currentLevel);
+    const speedMultiplier = speedMultiplierFor(currentLevel);
+
+    enemies.push({
+        x, y,
+        size: type.size,
+        speed: type.speed * speedMultiplier,
+        health: Math.floor((type.health + Math.floor(currentLevel / 4)) * healthMultiplier),
+        maxHealth: Math.floor((type.health + Math.floor(currentLevel / 4)) * healthMultiplier),
+        color: type.color,
+        points: type.points * currentLevel,
+        shape: type.shape,
+        name: type.name,
+        rotation: 0,
+        rotationSpeed: (Math.random() - 0.5) * 0.05
+    });
+
+    enemiesSpawned++;
+}
+
+function shootBullet() {
+    const dx = mouse.x - player.x;
+    const dy = mouse.y - player.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    let bulletColor = '#ffff00';
+    let bulletDamage = 1;
+    if (fireMode) { bulletColor = '#ff4400'; bulletDamage = 2; }
+    else if (iceMode) { bulletColor = '#00ffff'; bulletDamage = 1.5; }
+
+    const makeBullet = (offsetX) => ({
+        x: player.x + offsetX,
+        y: player.y,
+        vx: (dx / dist) * 20,
+        vy: (dy / dist) * 20,
+        size: 5,
+        damage: bulletDamage,
+        color: bulletColor,
+        ice: iceMode
+    });
+
+    if (gunLevel === 1) {
+        bullets.push(makeBullet(0));
+    } else if (gunLevel === 2) {
+        bullets.push(makeBullet(-15));
+        bullets.push(makeBullet(15));
+    } else if (gunLevel === 3) {
+        bullets.push(makeBullet(0));
+        bullets.push(makeBullet(-20));
+        bullets.push(makeBullet(20));
+    }
+}
+
+function createExplosion(x, y, color, count = 30) {
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 5;
+        particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 60,
+            size: 2 + Math.random() * 4,
+            color
+        });
+    }
+}
+
+function spawnPowerup(x, y) {
+    if (Math.random() < 0.5) {
+        const rand = Math.random();
+        let type;
+        if (rand < 0.15) type = 'health';
+        else if (rand < 0.35) type = 'gun2';
+        else if (rand < 0.55) type = 'gun3';
+        else if (rand < 0.75) type = 'fire';
+        else if (rand < 0.95) type = 'ice';
+        else type = 'score';
+
+        powerups.push({ x, y, vy: 3, size: 20, type, rotation: 0 });
+    }
+}
+
+function showLevelTransition(text) {
+    const el = document.getElementById('levelTransition');
+    el.textContent = text;
+    el.style.opacity = '1';
+    setTimeout(() => { el.style.opacity = '0'; }, 2000);
+}
+
+function startLevel(level) {
+    currentLevel = level;
+    waveEnemies = waveEnemiesFor(level);
+
+    enemiesSpawned = 0;
+    waveClear = false;
+    levelTransitioning = false;
+    enemies = [];
+    bullets = [];
+    particles = [];
+    powerups = [];
+
+    // Endless mode has no final level, so the old one-off "FINAL BOSS
+    // LEVEL"/"THE FINAL CHALLENGE" messages are gone — a "BOSS LEVEL"
+    // callout instead repeats every 10 levels indefinitely.
+    if (level % 10 === 0) {
+        showLevelTransition('BOSS LEVEL ' + level);
+    } else {
+        showLevelTransition('LEVEL ' + level);
+    }
+}
+
+function nextLevel() {
+    levelTransitioning = true;
+
+    if (currentLevel % 3 === 0) {
+        lives++;
+        showLevelTransition('BONUS LIFE! +1');
+        setTimeout(() => { startLevel(currentLevel + 1); }, 2500);
+    } else {
+        setTimeout(() => { startLevel(currentLevel + 1); }, 2000);
+    }
+}
+
+function loseLife() {
+    lives--;
+    createExplosion(player.x, player.y, '#00ff00', 50);
+
+    if (lives <= 0) {
+        gameRunning = false;
+        gameOver = true;
+        showGameOver();
+    } else {
+        player.x = canvas.width / 2;
+        player.y = canvas.height - 100;
+        setTimeout(() => { enemies = []; }, 1000);
+    }
+}
+
+function resetGame() {
+    gameRunning = true;
+    gameStarted = true;
+    gamePaused = false;
+    gameOver = false;
+    // Restarting after a game over always resumes as a plain, untracked
+    // run — going online again requires an explicit choice from
+    // mode-select, same as dodge.html/deepsea.html, so a play slot is
+    // never consumed by accident.
+    isOnlineRun = false;
+    document.getElementById('run-status-titanspace').textContent = '';
+    frame = 0;
+    currentLevel = 1;
+    score = 0;
+    lives = 5;
+
+    player = { x: canvas.width / 2, y: canvas.height - 100, size: 30, speed: 6, angle: 0 };
+
+    enemies = [];
+    bullets = [];
+    particles = [];
+    powerups = [];
+
+    gunLevel = 1;
+    fireMode = false;
+    iceMode = false;
+    fireModeTimer = 0;
+    iceModeTimer = 0;
+
+    waveEnemies = 0;
+    enemiesSpawned = 0;
+    waveClear = false;
+    levelTransitioning = false;
+
+    document.getElementById('pauseScreen').style.display = 'none';
+    startLevel(1);
+}
+
+function showStartScreen() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const isMobile = canvas.width < 600;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = '#00ff00';
+    ctx.shadowBlur = 20;
+    const subtitleSize = isMobile ? 18 : 32;
+    ctx.font = `${subtitleSize}px Courier New`;
+    ctx.fillText('Protect Earth from alien invasion!', centerX, centerY - 30);
+    ctx.fillText('Endless Levels | 5 Lives', centerX, centerY + 10);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowBlur = 10;
+    const instructSize = isMobile ? 14 : 24;
+    ctx.font = `${instructSize}px Courier New`;
+    ctx.fillText('WASD - Move Ship', centerX, centerY + 70);
+    ctx.fillText('TOUCH/MOUSE - Aim & Fire', centerX, centerY + 100);
+    ctx.fillText('P - Pause Game', centerX, centerY + 130);
+
+    ctx.fillStyle = '#ffff00';
+    ctx.shadowColor = '#ffff00';
+    ctx.shadowBlur = 20;
+    const startSize = isMobile ? 24 : 36;
+    ctx.font = `bold ${startSize}px Courier New`;
+    ctx.fillText('TAP TO START', centerX, centerY + 160);
+
+    ctx.shadowBlur = 0;
+    ctx.textBaseline = 'alphabetic';
+}
+
+function showGameOver() {
+    // High score, no time/level component beyond what's already folded
+    // into score — same submission model as dodge.html/deepsea.html:
+    // report whenever an online run ends, and let submitRunResult decide
+    // whether it's actually a new best.
+    if (isOnlineRun && window.submitRunResult) window.submitRunResult({ score });
+    isOnlineRun = false;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const isMobile = canvas.width < 600;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = '#ff0000';
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = '#ff0000';
+    ctx.font = `bold ${isMobile ? 48 : 72}px Courier New`;
+    ctx.fillText('GAME OVER', centerX, centerY - 80);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowBlur = 10;
+    ctx.font = `${isMobile ? 24 : 36}px Courier New`;
+    ctx.fillText('Final Score: ' + score, centerX, centerY + 10);
+    ctx.fillText('Level Reached: ' + currentLevel, centerX, centerY + 60);
+
+    const buttonWidth = 300, buttonHeight = 60;
+    const buttonX = centerX - buttonWidth / 2;
+    const buttonY = centerY + 120;
+
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 3;
+    ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+    ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+
+    ctx.fillStyle = '#00ff00';
+    ctx.font = `bold ${isMobile ? 24 : 32}px Courier New`;
+    ctx.fillText('PLAY AGAIN', centerX, buttonY + buttonHeight / 2 + 5);
+
+    ctx.shadowBlur = 0;
+    ctx.textBaseline = 'alphabetic';
+}
+
+function gameLoop() {
+    if (!gameStarted) {
+        showStartScreen();
+        return;
+    }
+    if (!gameRunning) return;
+    if (gamePaused) { requestAnimationFrame(gameLoop); return; }
+
+    frame++;
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (frame % 2 === 0) {
+        stars.forEach(star => {
+            star.y += star.speed;
+            if (star.y > canvas.height) { star.y = 0; star.x = Math.random() * canvas.width; }
+        });
+    }
+    stars.forEach(star => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness})`;
+        ctx.fillRect(star.x, star.y, star.size, star.size);
+    });
+
+    if (levelTransitioning) { requestAnimationFrame(gameLoop); return; }
+
+    if (keys['w']) player.y -= player.speed;
+    if (keys['s']) player.y += player.speed;
+    if (keys['a']) player.x -= player.speed;
+    if (keys['d']) player.x += player.speed;
+
+    player.x = Math.max(player.size, Math.min(canvas.width - player.size, player.x));
+    player.y = Math.max(player.size, Math.min(canvas.height - player.size, player.y));
+
+    player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x) + Math.PI / 2;
+
+    if (mouse.down) {
+        const currentTime = Date.now();
+        if (currentTime - lastShotTime > shotCooldown) {
+            shootBullet();
+            lastShotTime = currentTime;
+        }
+    }
+
+    if (frame % spawnRateFor(currentLevel) === 0) spawnEnemy();
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        bullets[i].x += bullets[i].vx;
+        bullets[i].y += bullets[i].vy;
+        if (bullets[i].x < 0 || bullets[i].x > canvas.width || bullets[i].y < 0 || bullets[i].y > canvas.height) {
+            bullets.splice(i, 1);
+        }
+    }
+
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        const dx = player.x - enemy.x;
+        const dy = player.y - enemy.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        enemy.x += (dx / dist) * enemy.speed;
+        enemy.y += (dy / dist) * enemy.speed;
+        enemy.rotation += enemy.rotationSpeed;
+
+        if (dist < player.size + enemy.size) {
+            enemies.splice(i, 1);
+            loseLife();
+            continue;
+        }
+
+        for (let j = bullets.length - 1; j >= 0; j--) {
+            const bdx = bullets[j].x - enemy.x;
+            const bdy = bullets[j].y - enemy.y;
+            const bdist = Math.sqrt(bdx * bdx + bdy * bdy);
+
+            if (bdist < enemy.size + bullets[j].size) {
+                enemy.health -= bullets[j].damage;
+                if (bullets[j].ice && enemy.speed > 0.5) enemy.speed *= 0.7;
+                bullets.splice(j, 1);
+                createExplosion(enemy.x, enemy.y, enemy.color, 10);
+
+                if (enemy.health <= 0) {
+                    enemies.splice(i, 1);
+                    score += enemy.points;
+                    createExplosion(enemy.x, enemy.y, enemy.color, 40);
+                    spawnPowerup(enemy.x, enemy.y);
+                }
+                break;
+            }
+        }
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].x += particles[i].vx;
+        particles[i].y += particles[i].vy;
+        particles[i].life--;
+        if (particles[i].life <= 0) particles.splice(i, 1);
+    }
+
+    for (let i = powerups.length - 1; i >= 0; i--) {
+        const p = powerups[i];
+        p.y += p.vy;
+        p.rotation += 0.1;
+
+        if (p.y > canvas.height) { powerups.splice(i, 1); continue; }
+
+        let collected = false;
+        for (let j = bullets.length - 1; j >= 0; j--) {
+            const dx = bullets[j].x - p.x;
+            const dy = bullets[j].y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < p.size + 15) {
+                bullets.splice(j, 1);
+                if (p.type === 'health') { lives = Math.min(lives + 1, 10); createExplosion(p.x, p.y, '#00ff00', 30); }
+                else if (p.type === 'gun2') { gunLevel = Math.max(gunLevel, 2); createExplosion(p.x, p.y, '#00aaff', 30); }
+                else if (p.type === 'gun3') { gunLevel = 3; createExplosion(p.x, p.y, '#0088ff', 30); }
+                else if (p.type === 'fire') { fireMode = true; iceMode = false; fireModeTimer = 1800; createExplosion(p.x, p.y, '#ff4400', 30); }
+                else if (p.type === 'ice') { iceMode = true; fireMode = false; iceModeTimer = 1800; createExplosion(p.x, p.y, '#00ffff', 30); }
+                else if (p.type === 'score') { score += 100 * currentLevel; createExplosion(p.x, p.y, '#ffff00', 30); }
+                collected = true;
+                break;
+            }
+        }
+        if (collected) powerups.splice(i, 1);
+    }
+
+    if (enemies.length === 0 && enemiesSpawned >= waveEnemies && !waveClear && !levelTransitioning) {
+        waveClear = true;
+        nextLevel();
+    }
+
+    if (fireModeTimer > 0) { fireModeTimer--; if (fireModeTimer === 0) fireMode = false; }
+    if (iceModeTimer > 0) { iceModeTimer--; if (iceModeTimer === 0) iceMode = false; }
+
+    particles.forEach(p => {
+        const alpha = p.life / 60;
+        ctx.fillStyle = p.color.replace(')', `, ${alpha})`).replace('rgb', 'rgba').replace('#', 'rgba(');
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.shadowBlur = 0;
+
+    powerups.forEach(p => {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+
+        let color;
+        if (p.type === 'health') color = '#00ff00';
+        else if (p.type === 'gun2') color = '#00aaff';
+        else if (p.type === 'gun3') color = '#0066ff';
+        else if (p.type === 'fire') color = '#ff4400';
+        else if (p.type === 'ice') color = '#00ffff';
+        else color = '#ffff00';
+
+        ctx.fillStyle = color;
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = color;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+
+        if (p.type === 'health') {
+            ctx.fillRect(-p.size * 0.9, -p.size * 0.25, p.size * 1.8, p.size * 0.5);
+            ctx.fillRect(-p.size * 0.25, -p.size * 0.9, p.size * 0.5, p.size * 1.8);
+            ctx.strokeRect(-p.size * 0.9, -p.size * 0.25, p.size * 1.8, p.size * 0.5);
+            ctx.strokeRect(-p.size * 0.25, -p.size * 0.9, p.size * 0.5, p.size * 1.8);
+        } else if (p.type === 'gun2') {
+            ctx.fillRect(-p.size * 0.7, -p.size * 0.9, p.size * 0.5, p.size * 1.8);
+            ctx.fillRect(p.size * 0.2, -p.size * 0.9, p.size * 0.5, p.size * 1.8);
+            ctx.strokeRect(-p.size * 0.7, -p.size * 0.9, p.size * 0.5, p.size * 1.8);
+            ctx.strokeRect(p.size * 0.2, -p.size * 0.9, p.size * 0.5, p.size * 1.8);
+        } else if (p.type === 'gun3') {
+            ctx.fillRect(-p.size * 0.9, -p.size * 0.9, p.size * 0.4, p.size * 1.8);
+            ctx.fillRect(-p.size * 0.2, -p.size * 0.9, p.size * 0.4, p.size * 1.8);
+            ctx.fillRect(p.size * 0.5, -p.size * 0.9, p.size * 0.4, p.size * 1.8);
+            ctx.strokeRect(-p.size * 0.9, -p.size * 0.9, p.size * 0.4, p.size * 1.8);
+            ctx.strokeRect(-p.size * 0.2, -p.size * 0.9, p.size * 0.4, p.size * 1.8);
+            ctx.strokeRect(p.size * 0.5, -p.size * 0.9, p.size * 0.4, p.size * 1.8);
+        } else if (p.type === 'fire') {
+            ctx.beginPath();
+            ctx.moveTo(0, -p.size);
+            ctx.bezierCurveTo(-p.size * 0.8, -p.size * 0.6, -p.size * 0.6, p.size * 0.4, 0, p.size * 0.9);
+            ctx.bezierCurveTo(p.size * 0.6, p.size * 0.4, p.size * 0.8, -p.size * 0.6, 0, -p.size);
+            ctx.fill();
+            ctx.stroke();
+        } else if (p.type === 'ice') {
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI / 3);
+                ctx.save();
+                ctx.rotate(angle);
+                ctx.fillRect(-p.size * 0.15, -p.size, p.size * 0.3, p.size * 2);
+                ctx.strokeRect(-p.size * 0.15, -p.size, p.size * 0.3, p.size * 2);
+                ctx.restore();
+            }
+        } else {
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 2 * Math.PI / 5) - Math.PI / 2;
+                const radius = i % 2 === 0 ? p.size : p.size * 0.5;
+                const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+        ctx.restore();
+    });
+
+    drawShip(player.x, player.y, player.size, player.angle, '#00ff00');
+
+    ctx.shadowBlur = 15;
+    bullets.forEach(b => {
+        ctx.fillStyle = b.color;
+        ctx.shadowColor = b.color;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.shadowBlur = 0;
+
+    enemies.forEach(e => drawEnemyShape(e));
+
+    const isMobile = canvas.width < 600;
+    ctx.fillStyle = '#00ff00';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00ff00';
+    ctx.font = `bold ${isMobile ? 18 : 24}px Courier New`;
+    ctx.textAlign = 'left';
+
+    ctx.fillText('SCORE: ' + score, 20, 40);
+    ctx.fillText('LEVEL: ' + currentLevel, 20, 70);
+
+    ctx.fillStyle = '#ff0000';
+    ctx.shadowColor = '#ff0000';
+    ctx.fillText('LIVES: ' + '♥'.repeat(lives), 20, isMobile ? 95 : 100);
+
+    ctx.fillStyle = '#ffff00';
+    ctx.shadowColor = '#ffff00';
+    ctx.fillText('ENEMIES: ' + enemies.length + '/' + waveEnemies, 20, isMobile ? 120 : 130);
+
+    ctx.fillStyle = '#00aaff';
+    ctx.shadowColor = '#00aaff';
+    ctx.fillText('GUNS: ' + gunLevel, 20, isMobile ? 145 : 160);
+
+    if (fireMode) {
+        ctx.fillStyle = '#ff4400';
+        ctx.shadowColor = '#ff4400';
+        ctx.fillText('FIRE MODE: ' + Math.ceil(fireModeTimer / 60) + 's', 20, isMobile ? 170 : 190);
+    }
+    if (iceMode) {
+        ctx.fillStyle = '#00ffff';
+        ctx.shadowColor = '#00ffff';
+        const yPos = fireMode ? (isMobile ? 195 : 220) : (isMobile ? 170 : 190);
+        ctx.fillText('ICE MODE: ' + Math.ceil(iceModeTimer / 60) + 's', 20, yPos);
+    }
+    ctx.shadowBlur = 0;
+
+    requestAnimationFrame(gameLoop);
+}
+
+function handleRestartClick(x, y) {
+    if (!gameOver) return false;
+    const centerX = canvas.width / 2;
+    const buttonY = canvas.height / 2 + 120;
+    const buttonWidth = 300, buttonHeight = 60;
+    const buttonX = centerX - buttonWidth / 2;
+
+    if (x >= buttonX && x <= buttonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
+        resetGame();
+        requestAnimationFrame(gameLoop);
+        return true;
+    }
+    return false;
+}
+
+canvas.addEventListener('click', (e) => {
+    if (!gameStarted) {
+        gameStarted = true;
+        gameRunning = true;
+        startLevel(1);
+        document.getElementById('gameTitle').classList.remove('hidden');
+        requestAnimationFrame(gameLoop);
+    } else if (gameOver) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        handleRestartClick(x, y);
+    }
+});
+
+let gameStartTouch = false;
+canvas.addEventListener('touchstart', function startGameTouch(e) {
+    if (!gameStarted && !gameStartTouch) {
+        gameStartTouch = true;
+        e.preventDefault();
+        gameStarted = true;
+        gameRunning = true;
+        startLevel(1);
+        document.getElementById('gameTitle').classList.remove('hidden');
+        requestAnimationFrame(gameLoop);
+    } else if (gameOver) {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        handleRestartClick(x, y);
+    }
+}, { passive: false });
+
+// Called by the site-chrome module script when starting a run from
+// mode-select — "online" marks this run's eventual score for submission;
+// "offline" is just the plain game, untracked. The game itself still
+// waits for the player's own "TAP TO START" click/touch, same as the
+// original — this just makes the canvas visible and resets it to that
+// waiting state.
+function beginRun(online) {
+    document.getElementById('titanSpaceWrapper').style.display = 'block';
+    document.getElementById('site-chrome').style.display = 'none';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    isOnlineRun = online;
+    document.getElementById('run-status-titanspace').textContent = online ? '🌐 Online run — your score is being tracked' : '🎮 Just for fun — nothing is tracked';
+    gameStarted = false;
+    gameRunning = false;
+    gameOver = false;
+    document.getElementById('gameTitle').classList.add('hidden');
+    document.getElementById('pauseScreen').style.display = 'none';
+    requestAnimationFrame(gameLoop);
+}
+window.beginRun = beginRun;
+
+// Bridges back into the Town Fuss site chrome, which lives in a separate
+// type="module" script and isn't reachable from these plain handlers
+// directly — window.onReturnToHub is exposed by that module script.
+// Leaving an online run early still submits whatever score it has so far.
+function backToGamesHub() {
+    if (isOnlineRun && score > 0 && window.submitRunResult) window.submitRunResult({ score });
+    isOnlineRun = false;
+    gameRunning = false;
+    gameStarted = false;
+    document.getElementById('pauseScreen').style.display = 'none';
+    document.getElementById('titanSpaceWrapper').style.display = 'none';
+    document.getElementById('site-chrome').style.display = 'block';
+    if (window.onReturnToHub) window.onReturnToHub();
+}
+document.getElementById('back-to-hub-game-btn').addEventListener('click', backToGamesHub);
+
+window.addEventListener('resize', () => {
+    if (document.getElementById('titanSpaceWrapper').style.display === 'block') {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+});
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+// No App Check — same reasoning as every other recently-added game: no
+// callable-Functions usage here, so it's one less moving part to carry.
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  if (!isAnyViewAlreadyShown()) showView("mode-select");
+});
+
+function isAnyViewAlreadyShown() {
+  return document.getElementById("view-leaderboard").style.display === "block"
+      || document.getElementById("titanSpaceWrapper").style.display === "block";
+}
+
+// ============================= VIEW ROUTER =================================
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = "inline";
+
+  if (name === "leaderboard") loadLeaderboard();
+}
+window.onReturnToHub = () => showView("mode-select");
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.beginRun(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.beginRun(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as every
+// other game, sharing the SAME gamePlayLimits/{uid} counter.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("titanspace-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+// Called from the classic script when an online run ends. Self-reported,
+// same trust model as every other game's stats on this site. High score
+// only — levels are endless, so "farthest level" isn't a fixed target,
+// score already reflects both survival depth and kill efficiency.
+window.submitRunResult = async ({ score }) => {
+  if (!currentUid || !score) return;
+  try {
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    if (score > (data.titanSpaceHighScore || 0)) {
+      await updateDoc(doc(db, "users", currentUid), { titanSpaceHighScore: score });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Titan Space Defense run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(collection(db, "users"), where("titanSpaceHighScore", ">", 0), orderBy("titanSpaceHighScore", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${u.titanSpaceHighScore} pts</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
