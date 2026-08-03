@@ -245,7 +245,7 @@ let playerScore = 0;
 let opponentScore = 0;
 let waitingForReset = false;
 
-let scale = 1, offsetX = 0, offsetY = 0;
+let offsetX = 0, offsetY = 0;
 
 const puck = { x: VIRTUAL_WIDTH / 2, y: VIRTUAL_HEIGHT / 2, vx: 0, vy: 0, radius: PUCK_RADIUS };
 // `player` is always MY OWN paddle (bottom half of the table); `opponent` is
@@ -279,17 +279,28 @@ window.applyRemoteOpponentInput = function (x, y) {
   remoteOpponentTarget = { x, y };
 };
 
+// Stretches the virtual table to fill the WHOLE canvas on any screen shape
+// (matching how the original solo game always filled the entire window,
+// with no fixed aspect ratio) rather than letterboxing to a uniform scale —
+// a uniform "fit inside" scale left large black bars on any screen much
+// wider than tall (basically every desktop window), which looked like most
+// of the screen was empty/broken. Positions stretch independently on each
+// axis; circle RADII use the smaller of the two scales (radiusScale) so
+// paddles/puck stay round instead of turning into ellipses.
+let scaleX = 1, scaleY = 1, radiusScale = 1;
 function updateTransform() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  scale = Math.min(canvas.width / VIRTUAL_WIDTH, canvas.height / VIRTUAL_HEIGHT);
-  offsetX = (canvas.width - VIRTUAL_WIDTH * scale) / 2;
-  offsetY = (canvas.height - VIRTUAL_HEIGHT * scale) / 2;
+  scaleX = canvas.width / VIRTUAL_WIDTH;
+  scaleY = canvas.height / VIRTUAL_HEIGHT;
+  radiusScale = Math.min(scaleX, scaleY);
+  offsetX = 0;
+  offsetY = 0;
 }
-function toPixelX(vx) { return offsetX + vx * scale; }
-function toPixelY(vy) { return offsetY + vy * scale; }
-function toVirtualX(px) { return (px - offsetX) / scale; }
-function toVirtualY(py) { return (py - offsetY) / scale; }
+function toPixelX(vx) { return offsetX + vx * scaleX; }
+function toPixelY(vy) { return offsetY + vy * scaleY; }
+function toVirtualX(px) { return (px - offsetX) / scaleX; }
+function toVirtualY(py) { return (py - offsetY) / scaleY; }
 
 function resetTable() {
   puck.x = VIRTUAL_WIDTH / 2; puck.y = VIRTUAL_HEIGHT / 2; puck.vx = 0; puck.vy = 0;
@@ -464,36 +475,37 @@ function draw() {
   ctx.stroke();
   ctx.setLineDash([]);
 
-  const circleRadius = 80 * scale;
+  const circleRadius = 80 * radiusScale;
   ctx.beginPath();
   ctx.arc(toPixelX(VIRTUAL_WIDTH / 2), toPixelY(VIRTUAL_HEIGHT / 2), circleRadius, 0, Math.PI * 2);
   ctx.stroke();
 
   const goalWidth = Math.min(GOAL_WIDTH, VIRTUAL_WIDTH * 0.7);
   const goalX = (VIRTUAL_WIDTH - goalWidth) / 2;
+  const goalThickness = 10 * scaleY;
 
   ctx.fillStyle = 'rgba(255, 50, 50, 0.2)';
-  ctx.fillRect(toPixelX(goalX), toPixelY(0) - 10 * scale, goalWidth * scale, 10 * scale);
+  ctx.fillRect(toPixelX(goalX), toPixelY(0) - goalThickness, goalWidth * scaleX, goalThickness);
   ctx.strokeStyle = '#ff3366';
   ctx.lineWidth = 3;
-  ctx.strokeRect(toPixelX(goalX), toPixelY(0) - 10 * scale, goalWidth * scale, 10 * scale);
+  ctx.strokeRect(toPixelX(goalX), toPixelY(0) - goalThickness, goalWidth * scaleX, goalThickness);
 
   ctx.fillStyle = 'rgba(0, 212, 255, 0.2)';
-  ctx.fillRect(toPixelX(goalX), toPixelY(VIRTUAL_HEIGHT), goalWidth * scale, 10 * scale);
+  ctx.fillRect(toPixelX(goalX), toPixelY(VIRTUAL_HEIGHT), goalWidth * scaleX, goalThickness);
   ctx.strokeStyle = '#00d4ff';
-  ctx.strokeRect(toPixelX(goalX), toPixelY(VIRTUAL_HEIGHT), goalWidth * scale, 10 * scale);
+  ctx.strokeRect(toPixelX(goalX), toPixelY(VIRTUAL_HEIGHT), goalWidth * scaleX, goalThickness);
 
   ctx.fillStyle = '#ffffff';
   ctx.shadowBlur = 20;
   ctx.shadowColor = '#ffffff';
   ctx.beginPath();
-  ctx.arc(toPixelX(puck.x), toPixelY(puck.y), puck.radius * scale, 0, Math.PI * 2);
+  ctx.arc(toPixelX(puck.x), toPixelY(puck.y), puck.radius * radiusScale, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
 
   ctx.fillStyle = '#00d4ff';
   ctx.beginPath();
-  ctx.arc(toPixelX(player.x), toPixelY(player.y), player.radius * scale, 0, Math.PI * 2);
+  ctx.arc(toPixelX(player.x), toPixelY(player.y), player.radius * radiusScale, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 3;
@@ -501,7 +513,7 @@ function draw() {
 
   ctx.fillStyle = '#ff3366';
   ctx.beginPath();
-  ctx.arc(toPixelX(opponent.x), toPixelY(opponent.y), opponent.radius * scale, 0, Math.PI * 2);
+  ctx.arc(toPixelX(opponent.x), toPixelY(opponent.y), opponent.radius * radiusScale, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 3;
@@ -666,6 +678,12 @@ window.getAirHockeyNetState = function () {
   };
 };
 window.getMyPaddlePosition = function () { return { x: player.x, y: player.y }; };
+// Test-only hook (used by testing/tests/airhockey-deep.spec.js to reach a
+// match-end deterministically): nudges the LIVE simulation's own score
+// state so the host's own next network tick naturally detects the win and
+// writes scores+status together through the real code path, rather than
+// a test writing Firestore directly and racing the still-running host loop.
+window.debugSetAirHockeyScore = function (p1, p2) { playerScore = p1; opponentScore = p2; updateScoreDisplay(); };
 </script>
 
 <script type="module">
@@ -1104,6 +1122,13 @@ function openGame(gameId) {
     }
 
     if (activeGameData.status === "finished") {
+      // Always render the LATEST snapshot's data rather than latching onto
+      // whichever one arrived first — real host writes set scores+status
+      // together atomically so there's only ever one true final state, but
+      // showing the most recent read is the correct behavior in general
+      // (an idempotent "only ever show the first result" guard was tried
+      // and reverted — it actively hid a later, correct update behind an
+      // earlier stale one during testing).
       const iWon = activeGameData.winner === currentUid;
       const myScore = amHost ? activeGameData.scores.p1 : activeGameData.scores.p2;
       const oppScore = amHost ? activeGameData.scores.p2 : activeGameData.scores.p1;
