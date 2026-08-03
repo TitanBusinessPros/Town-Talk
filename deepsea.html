@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>Deep Sea Gem Diver — Town Fuss</title>
+<link rel="icon" type="image/png" href="https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; }
+
+/* ===========================================================================
+   SITE-CHROME — same "site-chrome wraps a standalone game" pattern as
+   dodge.html. Scoped under #site-chrome so it can never collide with the
+   game's own CSS below.
+   =========================================================================== */
+#site-chrome {
+  --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+  --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px; --radius-sm: 8px;
+  background: var(--ink-900); color: var(--paper-050); min-height: 100vh;
+}
+#site-chrome a { color: var(--amber-500); }
+#site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
+#site-chrome p { color: var(--text-muted); line-height: 1.6; }
+#site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+#site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+#site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+#site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+#site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+#site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+#site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+#site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+#site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+#site-chrome button.site-btn:hover { background: var(--amber-600); }
+#site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+#site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+#site-chrome .leader-row:last-child { border-bottom: none; }
+#site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+#site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+#site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+#site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+#site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+#site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+#site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+/* ===========================================================================
+   GAME WRAPPER — original Deep Sea Gem Diver visuals, adapted from the
+   standalone game. The background-music player (an unfilled placeholder
+   URL to begin with) and the "watch an ad for an extra life" flow (the
+   same generic ad video already dropped from air hockey's cutscene) were
+   removed — neither belongs in Town Fuss. Everything else, including all
+   of the game's own DeepSeaGems-repo character/creature art, is a close
+   port.
+   =========================================================================== */
+#deepSeaWrapper {
+    display: none;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to bottom, #000428, #004e92);
+    min-height: 100vh;
+    overflow: hidden;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    touch-action: manipulation;
+    padding: 10px;
+}
+
+.game-header {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 0 10px;
+    gap: 15px;
+}
+
+.score-container, .gems-container {
+    padding: 12px 20px;
+    border-radius: 15px;
+    font-weight: bold;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    font-size: 1rem;
+    text-align: center;
+    flex: 1;
+    min-width: 0;
+    background: rgba(0, 100, 200, 0.7);
+    border: 2px solid #00b7ff;
+}
+
+#run-status-deepsea {
+    width: 100%;
+    max-width: 800px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #88ddff;
+    margin-bottom: 10px;
+}
+
+.game-container {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    height: 65vh;
+    min-height: 400px;
+    background: linear-gradient(to bottom, #001a33, #003366);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    border: 3px solid #00b7ff;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 20, 40, 0.95);
+    z-index: 20;
+    text-align: center;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.screen h2 {
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+    color: #00b7ff;
+}
+
+.screen p {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    max-width: 90%;
+    color: #88ddff;
+    line-height: 1.4;
+}
+
+.btn {
+    background: linear-gradient(to bottom, #00b7ff, #0077cc);
+    color: white;
+    border: none;
+    padding: 14px 35px;
+    font-size: 1.1rem;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s, background 0.3s;
+    margin-top: 15px;
+    border: 2px solid #88ddff;
+    min-width: 180px;
+}
+
+.btn:hover { background: linear-gradient(to bottom, #0099dd, #0055aa); transform: translateY(-2px); }
+.btn:active { transform: translateY(1px); }
+
+.deepsea-back-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 25;
+    background: rgba(0, 50, 100, 0.8);
+    color: white;
+    border: 2px solid #00b7ff;
+    padding: 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.game-area {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.diver { position: absolute; width: 50px; height: 50px; z-index: 5; transition: transform 0.2s; user-select: none; filter: drop-shadow(0 0 5px #00b7ff); }
+.diver img { width: 100%; height: 100%; object-fit: contain; }
+
+.shark { position: absolute; width: 60px; height: 60px; z-index: 6; user-select: none; filter: drop-shadow(0 0 5px #ff4444); }
+.shark img { width: 100%; height: 100%; object-fit: contain; }
+
+.blowfish { position: absolute; width: 45px; height: 45px; z-index: 3; user-select: none; animation: float 3s ease-in-out infinite; filter: drop-shadow(0 0 5px #ffaa00); }
+.blowfish img { width: 100%; height: 100%; object-fit: contain; }
+
+.coral { position: absolute; width: 55px; height: 55px; z-index: 4; user-select: none; filter: drop-shadow(0 0 3px #ff6b6b); }
+.coral-coral { width: 55px; height: 55px; filter: drop-shadow(0 0 5px #ff8844); }
+.coral-coral2 { width: 65px; height: 65px; filter: drop-shadow(0 0 8px #00bbff); }
+.coral-coral3 { width: 45px; height: 45px; filter: drop-shadow(0 0 6px #ff44ff); }
+.coral img { width: 100%; height: 100%; object-fit: contain; }
+
+.seaweed { position: absolute; width: 40px; height: 80px; z-index: 2; }
+.seaweed img { width: 100%; height: 100%; object-fit: contain; }
+
+.gem { position: absolute; width: 35px; height: 35px; z-index: 4; user-select: none; animation: float 2s ease-in-out infinite; filter: drop-shadow(0 0 8px currentColor); }
+.gem img { width: 100%; height: 100%; object-fit: contain; }
+
+.safe-zone { position: absolute; border-radius: 20px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); opacity: 0.9; z-index: 3; display: flex; align-items: center; justify-content: center; }
+.safe-zone img { width: 100%; height: 100%; object-fit: cover; border-radius: 20px; }
+
+@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-5px); } }
+
+.bubble { position: absolute; background: rgba(255, 255, 255, 0.3); border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.5); }
+
+.character-selection { display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap; justify-content: center; max-height: 50vh; overflow-y: auto; padding: 10px; }
+.character-option { display: flex; flex-direction: column; align-items: center; padding: 12px; border-radius: 12px; cursor: pointer; transition: all 0.3s; border: 3px solid transparent; background: rgba(0, 100, 200, 0.3); min-width: 120px; flex-shrink: 0; }
+.character-option:hover { transform: scale(1.05); background: rgba(0, 100, 200, 0.5); }
+.character-option.selected { border-color: #00ff00; background: rgba(0, 255, 0, 0.2); box-shadow: 0 0 15px rgba(0, 255, 0, 0.5); }
+.character-option img { width: 60px; height: 60px; margin-bottom: 8px; object-fit: contain; pointer-events: none; }
+.character-option span { font-size: 0.95rem; color: white; font-weight: bold; pointer-events: none; }
+
+.coral-warning { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 0, 0, 0.9); color: white; padding: 20px 40px; border-radius: 15px; font-size: 1.5rem; font-weight: bold; z-index: 30; display: none; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5); }
+
+@media (max-width: 600px) {
+    .screen h2 { font-size: 1.5rem; }
+    .screen p { font-size: 1rem; }
+    .btn { font-size: 1rem; padding: 12px 28px; min-width: 150px; }
+    .character-option { min-width: 100px; }
+    .character-option img { width: 50px; height: 50px; }
+}
+</style>
+</head>
+<body>
+
+<div id="site-chrome">
+  <header class="header-bar">
+    <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+    <nav class="header-nav">
+      <button id="nav-hub" class="active">Games</button>
+      <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+    </nav>
+  </header>
+
+  <main class="page">
+
+    <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+      <h2>Sign in on Town Fuss first</h2>
+      <p>You need a Town Fuss account to play Deep Sea Gem Diver online and appear on the leaderboard.</p>
+      <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+    </div>
+
+    <div id="app-content" style="display:none;">
+
+      <!-- ================= MODE SELECT ================= -->
+      <section id="view-mode-select">
+        <span class="eyebrow">Deep Sea Gem Diver</span>
+        <h1>🌊 How do you want to play? 🌊</h1>
+        <p class="field-hint" id="deepsea-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+        <div class="uicard mode-tile" id="mode-tile-offline">
+          <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+          <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+        </div>
+        <div class="uicard mode-tile" id="mode-tile-online">
+          <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+          <p class="field-hint" style="text-align:center;">Your high score gets submitted to the leaderboard</p>
+        </div>
+        <div id="mode-select-message" class="site-message" style="display:none;"></div>
+      </section>
+
+      <!-- ================= LEADERBOARD ================= -->
+      <section id="view-leaderboard" style="display:none;">
+        <span class="eyebrow">Deep Sea Gem Diver</span>
+        <h1>Leaderboard</h1>
+        <p style="text-align:center;">Highest score wins. Only Online (Ranked) runs count.</p>
+        <div class="uicard">
+          <h2 style="text-align:left;">🏆 Top Divers</h2>
+          <div id="leaderboard-list"></div>
+          <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked runs yet — be the first!</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div id="deepSeaWrapper">
+    <div class="game-header">
+        <div class="score-container">Score: <span id="score">0</span></div>
+        <div class="gems-container">💎 Gems: <span id="gems">0</span></div>
+    </div>
+    <div id="run-status-deepsea"></div>
+
+    <div class="game-container">
+        <button type="button" class="deepsea-back-btn" id="back-to-hub-game-btn">&larr; Games</button>
+
+        <div id="characterScreen" class="screen">
+            <h2>Choose Your Diver</h2>
+            <div class="character-selection" id="characterSelection">
+                <div class="character-option" data-character="player1">
+                    <img src="https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/SquidMan.png" alt="SquidMan">
+                    <span>SquidMan</span>
+                </div>
+                <div class="character-option" data-character="player2">
+                    <img src="https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/AnglerFish.png" alt="AnglerFish">
+                    <span>AnglerFish</span>
+                </div>
+                <div class="character-option" data-character="player3">
+                    <img src="https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/CoarlMan.png" alt="CoralMan">
+                    <span>CoralMan</span>
+                </div>
+                <div class="character-option" data-character="player4">
+                    <img src="https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/LobsterMan.png" alt="LobsterMan">
+                    <span>LobsterMan</span>
+                </div>
+                <div class="character-option" data-character="player5">
+                    <img src="https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/MahiMan.png" alt="MahiMan">
+                    <span>MahiMan</span>
+                </div>
+                <div class="character-option" data-character="player6">
+                    <img src="https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/PurpleMerman.png" alt="Merman">
+                    <span>Merman</span>
+                </div>
+            </div>
+            <button class="btn" id="startGameBtn">Start Diving!</button>
+        </div>
+
+        <div id="gameOverScreen" class="screen" style="display: none;">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <p>Gems Collected: <span id="finalGems">0</span></p>
+            <button class="btn" id="restartBtn">New Game</button>
+        </div>
+
+        <div class="coral-warning" id="coralWarning">💥 Sharp Coral! 💥</div>
+
+        <div id="gameArea" class="game-area"></div>
+    </div>
+</div>
+
+<script>
+// ===========================================================================
+// CLASSIC (non-module) script — the game itself, adapted from the original
+// standalone Deep Sea Gem Diver. Kept as a plain classic script so its
+// state stays on real global `window`-scope variables, matching every
+// other game's testing convention.
+// ===========================================================================
+const gameArea = document.getElementById('gameArea');
+const scoreElement = document.getElementById('score');
+const gemsElement = document.getElementById('gems');
+const finalScoreElement = document.getElementById('finalScore');
+const finalGemsElement = document.getElementById('finalGems');
+const characterScreen = document.getElementById('characterScreen');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const restartBtn = document.getElementById('restartBtn');
+const startGameBtn = document.getElementById('startGameBtn');
+const characterSelection = document.getElementById('characterSelection');
+const coralWarning = document.getElementById('coralWarning');
+
+let score = 0;
+let gems = 0;
+let gameActive = false;
+let selectedCharacter = 'player1';
+
+const characters = {
+    player1: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/SquidMan.png',
+    player2: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/AnglerFish.png',
+    player3: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/CoarlMan.png',
+    player4: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/LobsterMan.png',
+    player5: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/MahiMan.png',
+    player6: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/PurpleMerman.png'
+};
+
+const gameImages = {
+    shark: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/Shark.png',
+    blowfish: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/BlowFish.png',
+    coral: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/OrangeCoral.png',
+    coral2: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/BlueCoral.png',
+    coral3: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/SmallCluster.png',
+    seaweed: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/Seaweed.png',
+    kelpbed: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/KelpBed.png',
+    gem: 'https://github.com/TitanBusinessPros/DeepSeaGems/raw/main/transparentGem.png'
+};
+
+characterSelection.addEventListener('click', function(e) {
+    const option = e.target.closest('.character-option');
+    if (!option) return;
+    document.querySelectorAll('.character-option').forEach(opt => opt.classList.remove('selected'));
+    option.classList.add('selected');
+    selectedCharacter = option.getAttribute('data-character');
+});
+setTimeout(() => {
+    const firstOption = document.querySelector('.character-option');
+    if (firstOption) {
+        firstOption.classList.add('selected');
+        selectedCharacter = firstOption.getAttribute('data-character');
+    }
+}, 100);
+
+startGameBtn.addEventListener('click', () => {
+    if (selectedCharacter) {
+        characterScreen.style.display = 'none';
+        initGame();
+    }
+});
+
+const diverPosition = { x: 0, y: 0 };
+let diverVelocity = 0;
+let isMovingLeft = false;
+let isMovingRight = false;
+
+let sharks = [];
+let blowfishes = [];
+let corals = [];
+let gemsArray = [];
+let safeZones = [];
+let seaweeds = [];
+
+const GRAVITY = 0.25;
+const SWIM_FORCE = -6;
+const HORIZONTAL_SPEED = 5;
+const OBSTACLE_GAP = 250;
+
+let gameLoopInterval;
+let sharkInterval;
+let blowfishInterval;
+let bubbleInterval;
+
+// Reports whether this run's eventual score should be submitted — set by
+// window.beginRun() when the module script starts a run from mode-select.
+let isOnlineRun = false;
+
+function initGame() {
+    score = 0;
+    gems = 0;
+    gameActive = true;
+    isMovingLeft = false;
+    isMovingRight = false;
+
+    sharks = [];
+    blowfishes = [];
+    corals = [];
+    gemsArray = [];
+    safeZones = [];
+    seaweeds = [];
+
+    gameArea.innerHTML = '';
+
+    const gameWidth = gameArea.offsetWidth;
+    const gameHeight = gameArea.offsetHeight;
+
+    diverPosition.x = gameWidth / 2 - 30;
+    diverPosition.y = gameHeight - 100;
+    diverVelocity = 0;
+
+    createDiver();
+    createSafeZone(diverPosition.x - 35, diverPosition.y + 60, 120, 50);
+    createInitialEnvironment();
+    updateUI();
+
+    clearInterval(gameLoopInterval);
+    clearInterval(sharkInterval);
+    clearInterval(blowfishInterval);
+    clearInterval(bubbleInterval);
+
+    gameLoopInterval = setInterval(gameLoop, 1000 / 60);
+    sharkInterval = setInterval(spawnShark, 3000);
+    blowfishInterval = setInterval(spawnBlowfish, 4000);
+    bubbleInterval = setInterval(createBubble, 500);
+}
+
+function createDiver() {
+    const diverElement = document.createElement('div');
+    diverElement.className = 'diver';
+    diverElement.id = 'diver';
+    const img = document.createElement('img');
+    img.src = characters[selectedCharacter];
+    img.alt = 'Diver';
+    diverElement.appendChild(img);
+    gameArea.appendChild(diverElement);
+}
+
+function createShark(x, y) {
+    const shark = document.createElement('div');
+    shark.className = 'shark';
+    const img = document.createElement('img');
+    img.src = gameImages.shark;
+    img.alt = 'Shark';
+    shark.appendChild(img);
+    shark.style.left = x + 'px';
+    shark.style.top = y + 'px';
+    gameArea.appendChild(shark);
+
+    const direction = x < 0 ? 1 : -1;
+    if (direction === 1) img.style.transform = 'scaleX(-1)';
+
+    const sharkObj = { element: shark, x, y, speed: 2 + Math.random() * 2, direction, active: true };
+    sharks.push(sharkObj);
+    return sharkObj;
+}
+
+function createBlowfish(x, y) {
+    const blowfish = document.createElement('div');
+    blowfish.className = 'blowfish';
+    const img = document.createElement('img');
+    img.src = gameImages.blowfish;
+    img.alt = 'Blowfish';
+    blowfish.appendChild(img);
+    blowfish.style.left = x + 'px';
+    blowfish.style.top = y + 'px';
+    gameArea.appendChild(blowfish);
+
+    const direction = Math.random() > 0.5 ? 1 : -1;
+    if (direction === -1) img.style.transform = 'scaleX(-1)';
+
+    const blowfishObj = { element: blowfish, img, x, y, baseY: y, speed: 1 + Math.random(), direction, active: true, time: 0 };
+    blowfishes.push(blowfishObj);
+    return blowfishObj;
+}
+
+function createCoral(x, y) {
+    const coral = document.createElement('div');
+    const coralTypes = ['coral', 'coral2', 'coral3'];
+    const randomCoral = coralTypes[Math.floor(Math.random() * coralTypes.length)];
+    coral.className = 'coral coral-' + randomCoral;
+
+    const img = document.createElement('img');
+    img.src = gameImages[randomCoral];
+    img.alt = 'Coral';
+    coral.appendChild(img);
+    coral.style.left = x + 'px';
+    coral.style.top = y + 'px';
+    gameArea.appendChild(coral);
+
+    corals.push({ element: coral, x, y });
+}
+
+function createGem(x, y) {
+    const gem = document.createElement('div');
+    gem.className = 'gem';
+    const img = document.createElement('img');
+    img.src = gameImages.gem;
+    img.alt = 'Gem';
+    gem.appendChild(img);
+    gem.style.left = x + 'px';
+    gem.style.top = y + 'px';
+    gameArea.appendChild(gem);
+
+    const colors = ['#ff1493', '#00ffff', '#ffd700', '#9370db', '#00ff00'];
+    gem.style.color = colors[Math.floor(Math.random() * colors.length)];
+
+    gemsArray.push({ element: gem, x, y, collected: false });
+}
+
+function createSafeZone(x, y, width, height) {
+    const zone = document.createElement('div');
+    zone.className = 'safe-zone';
+    const img = document.createElement('img');
+    img.src = gameImages.kelpbed;
+    img.alt = 'Kelp Bed';
+    zone.appendChild(img);
+    zone.style.left = x + 'px';
+    zone.style.top = y + 'px';
+    zone.style.width = width + 'px';
+    zone.style.height = height + 'px';
+    gameArea.appendChild(zone);
+
+    safeZones.push({ element: zone, x, y, width, height });
+}
+
+function createBubble() {
+    if (!gameActive) return;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    const size = 5 + Math.random() * 15;
+    bubble.style.width = size + 'px';
+    bubble.style.height = size + 'px';
+    bubble.style.left = Math.random() * gameArea.offsetWidth + 'px';
+    bubble.style.bottom = '0';
+    gameArea.appendChild(bubble);
+
+    const speed = 1 + Math.random() * 2;
+    let currentBottom = 0;
+    const interval = setInterval(() => {
+        currentBottom += speed;
+        bubble.style.bottom = currentBottom + 'px';
+        if (currentBottom > gameArea.offsetHeight) {
+            clearInterval(interval);
+            bubble.remove();
+        }
+    }, 20);
+}
+
+function createInitialEnvironment() {
+    const gameWidth = gameArea.offsetWidth;
+    const gameHeight = gameArea.offsetHeight;
+    for (let i = 0; i < 8; i++) {
+        const x = 30 + Math.random() * (gameWidth - 160);
+        const y = gameHeight - 150 - (i * OBSTACLE_GAP);
+        if (Math.random() > 0.5) createCoral(x, y);
+        else createSafeZone(x, y, 100 + Math.random() * 60, 50);
+        createGem(x + 30, y - 60);
+    }
+}
+
+function spawnShark() {
+    if (!gameActive) return;
+    const gameWidth = gameArea.offsetWidth;
+    const gameHeight = gameArea.offsetHeight;
+    const side = Math.random() > 0.5 ? 'left' : 'right';
+    const x = side === 'left' ? -60 : gameWidth + 10;
+
+    let y;
+    let attempts = 0;
+    do {
+        y = Math.random() * (gameHeight - 150);
+        attempts++;
+    } while (Math.abs(y - diverPosition.y) < 200 && attempts < 5);
+    if (Math.abs(y - diverPosition.y) < 200) {
+        y = diverPosition.y > gameHeight / 2 ? 50 : gameHeight - 200;
+    }
+    createShark(x, y);
+}
+
+function spawnBlowfish() {
+    if (!gameActive) return;
+    const gameWidth = gameArea.offsetWidth;
+    let x;
+    let attempts = 0;
+    do {
+        x = Math.random() * (gameWidth - 100);
+        attempts++;
+    } while (Math.abs(x - diverPosition.x) < 150 && attempts < 5);
+    if (Math.abs(x - diverPosition.x) < 150) {
+        x = diverPosition.x > gameWidth / 2 ? 50 : gameWidth - 150;
+    }
+    createBlowfish(x, -50);
+}
+
+function makeDiverSwim() {
+    if (gameActive) diverVelocity = SWIM_FORCE;
+}
+
+function gameLoop() {
+    if (!gameActive) return;
+
+    diverVelocity += GRAVITY;
+    diverPosition.y += diverVelocity;
+
+    if (isMovingLeft) diverPosition.x = Math.max(0, diverPosition.x - HORIZONTAL_SPEED);
+    if (isMovingRight) diverPosition.x = Math.min(gameArea.offsetWidth - 60, diverPosition.x + HORIZONTAL_SPEED);
+
+    const diver = document.getElementById('diver');
+    if (diver) {
+        diver.style.left = diverPosition.x + 'px';
+        diver.style.top = diverPosition.y + 'px';
+        diver.style.transform = diverVelocity < 0 ? 'rotate(-10deg)' : 'rotate(10deg)';
+    }
+
+    if (diverPosition.y < 0 || diverPosition.y > gameArea.offsetHeight) {
+        gameOver();
+        return;
+    }
+
+    scrollEnvironment();
+    updateSharks();
+    updateBlowfish();
+    checkGemCollection();
+    checkSafeZone();
+    checkCoralCollision();
+    checkSharkCollisions();
+    checkBlowfishCollisions();
+    createNewEnvironment();
+}
+
+function scrollEnvironment() {
+    if (diverPosition.y < gameArea.offsetHeight * 0.4) {
+        const scrollAmount = (gameArea.offsetHeight * 0.4 - diverPosition.y) * 0.1;
+        diverPosition.y += scrollAmount;
+
+        corals.forEach(c => { c.y += scrollAmount; c.element.style.top = c.y + 'px'; });
+        safeZones.forEach(z => { z.y += scrollAmount; z.element.style.top = z.y + 'px'; });
+        gemsArray.forEach(g => { g.y += scrollAmount; g.element.style.top = g.y + 'px'; });
+        sharks.forEach(s => { s.y += scrollAmount; s.element.style.top = s.y + 'px'; });
+        blowfishes.forEach(b => { b.y += scrollAmount; b.baseY += scrollAmount; b.element.style.top = b.y + 'px'; });
+
+        score += Math.floor(scrollAmount / 2);
+        updateUI();
+    }
+}
+
+function updateSharks() {
+    sharks.forEach((shark, index) => {
+        if (!shark.active) return;
+        shark.x += shark.direction * shark.speed;
+        shark.element.style.left = shark.x + 'px';
+        if (shark.x < -80 || shark.x > gameArea.offsetWidth + 20 || shark.y > gameArea.offsetHeight + 50) {
+            shark.element.remove();
+            sharks.splice(index, 1);
+        }
+    });
+}
+
+function updateBlowfish() {
+    blowfishes.forEach((blowfish, index) => {
+        if (!blowfish.active) return;
+        blowfish.time += 0.05;
+        blowfish.y = blowfish.baseY + Math.sin(blowfish.time) * 20;
+        blowfish.element.style.top = blowfish.y + 'px';
+        blowfish.x += blowfish.direction * blowfish.speed * 0.5;
+        blowfish.element.style.left = blowfish.x + 'px';
+        if (blowfish.y > gameArea.offsetHeight + 50 || blowfish.x < -80 || blowfish.x > gameArea.offsetWidth + 20) {
+            blowfish.element.remove();
+            blowfishes.splice(index, 1);
+        }
+    });
+}
+
+function checkGemCollection() {
+    gemsArray.forEach((gem, index) => {
+        if (gem.collected) return;
+        const diverBounds = { left: diverPosition.x + 10, right: diverPosition.x + 50, top: diverPosition.y + 10, bottom: diverPosition.y + 50 };
+        const gemBounds = { left: gem.x, right: gem.x + 35, top: gem.y, bottom: gem.y + 35 };
+        if (diverBounds.right > gemBounds.left && diverBounds.left < gemBounds.right && diverBounds.bottom > gemBounds.top && diverBounds.top < gemBounds.bottom) {
+            gem.collected = true;
+            gem.element.remove();
+            gemsArray.splice(index, 1);
+            gems++;
+            score += 50;
+            updateUI();
+        }
+    });
+}
+
+function checkSafeZone() {
+    for (const zone of safeZones) {
+        if (zone.isSeaweed) continue;
+        const diverBounds = { left: diverPosition.x + 15, right: diverPosition.x + 45, top: diverPosition.y + 10, bottom: diverPosition.y + 50 };
+        const zoneBounds = { left: zone.x, right: zone.x + zone.width, top: zone.y, bottom: zone.y + zone.height };
+        if (diverBounds.right > zoneBounds.left && diverBounds.left < zoneBounds.right && diverBounds.bottom > zoneBounds.top && diverBounds.top < zoneBounds.bottom) {
+            if (diverVelocity > 0) {
+                diverVelocity = 0;
+                diverPosition.y = zone.y - 40;
+            }
+            break;
+        }
+    }
+}
+
+function checkCoralCollision() {
+    for (const coral of corals) {
+        const diverBounds = { left: diverPosition.x + 15, right: diverPosition.x + 45, top: diverPosition.y + 10, bottom: diverPosition.y + 35 };
+        const coralBounds = { left: coral.x + 10, right: coral.x + 50, top: coral.y + 10, bottom: coral.y + 50 };
+        if (diverBounds.right > coralBounds.left && diverBounds.left < coralBounds.right && diverBounds.bottom > coralBounds.top && diverBounds.top < coralBounds.bottom) {
+            coralWarning.style.display = 'block';
+            setTimeout(() => { coralWarning.style.display = 'none'; }, 1000);
+            gameOver();
+            break;
+        }
+    }
+}
+
+function checkSharkCollisions() {
+    for (const shark of sharks) {
+        if (!shark.active) continue;
+        const diverBounds = { left: diverPosition.x + 15, right: diverPosition.x + 45, top: diverPosition.y + 10, bottom: diverPosition.y + 35 };
+        const sharkBounds = { left: shark.x + 15, right: shark.x + 45, top: shark.y + 15, bottom: shark.y + 45 };
+        if (diverBounds.right > sharkBounds.left && diverBounds.left < sharkBounds.right && diverBounds.bottom > sharkBounds.top && diverBounds.top < sharkBounds.bottom) {
+            shark.active = false;
+            shark.element.remove();
+            sharks = sharks.filter(s => s !== shark);
+            gameOver();
+            break;
+        }
+    }
+}
+
+function checkBlowfishCollisions() {
+    for (const blowfish of blowfishes) {
+        if (!blowfish.active) continue;
+        const diverBounds = { left: diverPosition.x + 15, right: diverPosition.x + 45, top: diverPosition.y + 10, bottom: diverPosition.y + 35 };
+        const blowfishBounds = { left: blowfish.x + 10, right: blowfish.x + 40, top: blowfish.y + 10, bottom: blowfish.y + 40 };
+        if (diverBounds.right > blowfishBounds.left && diverBounds.left < blowfishBounds.right && diverBounds.bottom > blowfishBounds.top && diverBounds.top < blowfishBounds.bottom) {
+            blowfish.active = false;
+            blowfish.element.remove();
+            blowfishes = blowfishes.filter(b => b !== blowfish);
+            gameOver();
+            break;
+        }
+    }
+}
+
+function createNewEnvironment() {
+    let highestObjectY = Infinity;
+    [...corals, ...safeZones].forEach(obj => { if (obj.y < highestObjectY) highestObjectY = obj.y; });
+
+    if (highestObjectY > -OBSTACLE_GAP) {
+        const gameWidth = gameArea.offsetWidth;
+        const numNewObjects = 2 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < numNewObjects; i++) {
+            const x = 30 + Math.random() * (gameWidth - 160);
+            const y = highestObjectY - OBSTACLE_GAP - (Math.random() * OBSTACLE_GAP * 0.3);
+            if (Math.random() > 0.5) createCoral(x, y);
+            else createSafeZone(x, y, 100 + Math.random() * 60, 50);
+            createGem(x + 30, y - 60);
+        }
+    }
+
+    if (corals.length + safeZones.length > 30) {
+        corals = corals.filter(coral => {
+            if (coral.y > gameArea.offsetHeight + 200) { coral.element.remove(); return false; }
+            return true;
+        });
+        safeZones = safeZones.filter(zone => {
+            if (zone.y > gameArea.offsetHeight + 200) { zone.element.remove(); return false; }
+            return true;
+        });
+    }
+
+    gemsArray = gemsArray.filter(gem => {
+        if (gem.collected) { gem.element.remove(); return false; }
+        if (gem.y > gameArea.offsetHeight + 100) { gem.element.remove(); return false; }
+        return true;
+    });
+}
+
+function startMovingLeft() { isMovingLeft = true; }
+function startMovingRight() { isMovingRight = true; }
+function stopMovingLeft() { isMovingLeft = false; }
+function stopMovingRight() { isMovingRight = false; }
+
+function gameOver() {
+    gameActive = false;
+    clearInterval(gameLoopInterval);
+    clearInterval(sharkInterval);
+    clearInterval(blowfishInterval);
+    clearInterval(bubbleInterval);
+
+    finalScoreElement.textContent = score;
+    finalGemsElement.textContent = gems;
+
+    // High score, no time/level component — same submission model as
+    // dodge.html: report whenever an online run ends, win or lose, and the
+    // recorded best is decided by submitRunResult, not here.
+    if (isOnlineRun && window.submitRunResult) window.submitRunResult({ score });
+    isOnlineRun = false;
+
+    gameOverScreen.style.display = 'flex';
+}
+
+function updateUI() {
+    scoreElement.textContent = score;
+    gemsElement.textContent = gems;
+}
+
+// Restarting after a game over always resumes as a plain, untracked run —
+// going online again requires an explicit choice from mode-select, same
+// as dodge.html, so a play slot is never consumed by accident.
+restartBtn.addEventListener('click', () => {
+    isOnlineRun = false;
+    document.getElementById('run-status-deepsea').textContent = '';
+    gameOverScreen.style.display = 'none';
+    initGame();
+});
+
+// Called by the site-chrome module script when starting a run from
+// mode-select — "online" reserves a daily play slot and marks this run's
+// eventual score for submission; "offline" is just the plain game,
+// untracked.
+function beginRun(online) {
+    document.getElementById('deepSeaWrapper').style.display = 'flex';
+    document.getElementById('site-chrome').style.display = 'none';
+    isOnlineRun = online;
+    document.getElementById('run-status-deepsea').textContent = online ? '🌐 Online run — your score is being tracked' : '🎮 Just for fun — nothing is tracked';
+    gameOverScreen.style.display = 'none';
+    characterScreen.style.display = 'flex';
+}
+window.beginRun = beginRun;
+
+// Bridges back into the Town Fuss site chrome, which lives in a separate
+// type="module" script and isn't reachable from these plain handlers
+// directly — window.onReturnToHub is exposed by that module script.
+// Leaving an online run early still submits whatever score it has so far.
+function backToGamesHub() {
+    if (isOnlineRun && score > 0 && window.submitRunResult) window.submitRunResult({ score });
+    isOnlineRun = false;
+    gameActive = false;
+    clearInterval(gameLoopInterval);
+    clearInterval(sharkInterval);
+    clearInterval(blowfishInterval);
+    clearInterval(bubbleInterval);
+    document.getElementById('deepSeaWrapper').style.display = 'none';
+    document.getElementById('site-chrome').style.display = 'block';
+    if (window.onReturnToHub) window.onReturnToHub();
+}
+document.getElementById('back-to-hub-game-btn').addEventListener('click', backToGamesHub);
+
+document.addEventListener('keydown', (e) => {
+    if (!gameActive) return;
+    if (e.key === 'ArrowLeft') startMovingLeft();
+    else if (e.key === 'ArrowRight') startMovingRight();
+    else if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); makeDiverSwim(); }
+});
+document.addEventListener('keyup', (e) => {
+    if (!gameActive) return;
+    if (e.key === 'ArrowLeft') stopMovingLeft();
+    else if (e.key === 'ArrowRight') stopMovingRight();
+});
+
+gameArea.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (!gameActive) return;
+    const touch = e.touches[0];
+    const x = touch.clientX - gameArea.getBoundingClientRect().left;
+    const width = gameArea.offsetWidth;
+    if (x < width / 3) startMovingLeft();
+    else if (x > width * 2 / 3) startMovingRight();
+    else makeDiverSwim();
+}, { passive: false });
+gameArea.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+gameArea.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (!gameActive) return;
+    stopMovingLeft();
+    stopMovingRight();
+}, { passive: false });
+
+gameArea.addEventListener('mousedown', (e) => {
+    if (!gameActive) return;
+    const x = e.clientX - gameArea.getBoundingClientRect().left;
+    const width = gameArea.offsetWidth;
+    if (x < width / 3) startMovingLeft();
+    else if (x > width * 2 / 3) startMovingRight();
+    else makeDiverSwim();
+});
+gameArea.addEventListener('mouseup', () => {
+    if (!gameActive) return;
+    stopMovingLeft();
+    stopMovingRight();
+});
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+// No App Check — same reasoning as war.html/hearts.html/blackjack.html/
+// airhockey.html: no callable-Functions usage here, so it's one less
+// moving part to carry (dodge.html initializes it, but that's the older
+// convention this file deliberately doesn't follow).
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  if (!isAnyViewAlreadyShown()) showView("mode-select");
+});
+
+// Same navigation race documented in hearts.html/war.html/blackjack.html/
+// airhockey.html: nothing async blocks this handler for long here, but the
+// guard costs nothing and keeps the convention consistent across games.
+function isAnyViewAlreadyShown() {
+  return document.getElementById("view-leaderboard").style.display === "block"
+      || document.getElementById("deepSeaWrapper").style.display === "flex";
+}
+
+// ============================= VIEW ROUTER =================================
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = "inline";
+
+  if (name === "leaderboard") loadLeaderboard();
+}
+window.onReturnToHub = () => showView("mode-select");
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.beginRun(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.beginRun(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as every
+// other game, sharing the SAME gamePlayLimits/{uid} counter.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("deepsea-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+// Called from the classic script when an online run ends (a collision, or
+// leaving mid-run). Self-reported, same trust model as every other game's
+// stats on this site. High score only — no time/level component here.
+window.submitRunResult = async ({ score }) => {
+  if (!currentUid || !score) return;
+  try {
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    if (score > (data.deepSeaHighScore || 0)) {
+      await updateDoc(doc(db, "users", currentUid), { deepSeaHighScore: score });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Deep Sea Gem Diver run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(collection(db, "users"), where("deepSeaHighScore", ">", 0), orderBy("deepSeaHighScore", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${u.deepSeaHighScore} pts</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
