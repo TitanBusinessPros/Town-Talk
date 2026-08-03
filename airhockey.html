@@ -187,6 +187,9 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: whit
   </div>
 
   <div class="instructions" id="instructions">Touch and drag your paddle to control it</div>
+  <audio id="airHockeyBgMusic" loop preload="auto">
+    <source src="https://raw.githubusercontent.com/TitanBusinessPros/Air-Hockey/main/Air%20Hockey%20Song.mp3" type="audio/mpeg">
+  </audio>
 
   <div class="controls" id="controls">
     <button type="button" class="btn secondary" id="resign-btn" style="display:none;">Resign</button>
@@ -547,8 +550,16 @@ function gameLoop(ts) {
 
 // 'ai' mode only — online matches end via finishAirHockeyMatch() below,
 // driven by Firestore's `status` field rather than a local timeout.
+const airHockeyBgMusic = document.getElementById('airHockeyBgMusic');
+airHockeyBgMusic.volume = 0.5;
+function tryPlayAirHockeyMusic() {
+  const playPromise = airHockeyBgMusic.play();
+  if (playPromise !== undefined) playPromise.catch(() => {});
+}
+
 function showGameOver() {
   gameRunning = false;
+  airHockeyBgMusic.pause();
   const won = playerScore >= 7;
   document.getElementById('gameOverTitle').textContent = won ? 'YOU WIN!' : 'YOU LOSE';
   document.getElementById('gameOverScore').textContent = `${playerScore} - ${opponentScore}`;
@@ -561,6 +572,7 @@ function showGameOver() {
 // reliance on each client's own local timing.
 window.finishAirHockeyMatch = function (iWon, myScore, oppScore, reasonText) {
   gameRunning = false;
+  airHockeyBgMusic.pause();
   document.getElementById('gameOverTitle').textContent = iWon ? 'YOU WIN!' : 'YOU LOSE';
   document.getElementById('gameOverScore').textContent = reasonText || `${myScore} - ${oppScore}`;
   document.getElementById('gameOver').style.display = 'flex';
@@ -592,6 +604,7 @@ function startAirHockey(mode, labels) {
   if (mode !== 'guest') servePuck();
   gameRunning = true;
   lastNetworkTick = 0;
+  tryPlayAirHockeyMusic();
   requestAnimationFrame(gameLoop);
 }
 window.startAirHockey = startAirHockey;
@@ -606,6 +619,7 @@ window.hideAirHockeyWaitingOverlay = function () {
 
 function backToHub() {
   gameRunning = false;
+  airHockeyBgMusic.pause();
   document.getElementById('airhockeyWrapper').style.display = 'none';
   document.getElementById('site-chrome').style.display = 'block';
   if (window.onAirHockeyReturnToHub) window.onAirHockeyReturnToHub();

@@ -237,11 +237,14 @@ body { font-family: 'Courier New', monospace; color: white; }
 
 <div id="titanSpaceWrapper">
     <canvas id="game"></canvas>
-    <div id="gameTitle" class="hidden">TITAN SPACE DEFENSE</div>
+    <div id="gameTitle" class="hidden">PUT YOUR LOGO HERE</div>
     <div id="levelTransition"></div>
     <button type="button" class="titanspace-back-btn" id="back-to-hub-game-btn">&larr; Games</button>
     <button id="pauseButton">PAUSE</button>
     <div id="run-status-titanspace"></div>
+    <audio id="titanBgMusic" loop preload="auto">
+        <source src="https://raw.githubusercontent.com/TitanBusinessPros/TBP-Images/main/Galactic%20Drift.mp3" type="audio/mpeg">
+    </audio>
     <div id="pauseScreen">
         <div>GAME PAUSED</div>
         <div style="font-size: 24px; margin-top: 20px;">Press P or click anywhere to resume</div>
@@ -289,6 +292,13 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
+
+const titanBgMusic = document.getElementById('titanBgMusic');
+titanBgMusic.volume = 0.5;
+function tryPlayMusic() {
+    const playPromise = titanBgMusic.play();
+    if (playPromise !== undefined) playPromise.catch(() => {});
+}
 
 let gameRunning = false;
 let gameStarted = false;
@@ -378,8 +388,10 @@ function togglePause() {
     const pauseScreen = document.getElementById('pauseScreen');
     if (gamePaused) {
         pauseScreen.style.display = 'flex';
+        titanBgMusic.pause();
     } else {
         pauseScreen.style.display = 'none';
+        tryPlayMusic();
         if (gameRunning && !levelTransitioning) requestAnimationFrame(gameLoop);
     }
 }
@@ -1160,6 +1172,7 @@ canvas.addEventListener('click', (e) => {
         gameRunning = true;
         startLevel(1);
         document.getElementById('gameTitle').classList.remove('hidden');
+        tryPlayMusic();
         requestAnimationFrame(gameLoop);
     } else if (gameOver) {
         const rect = canvas.getBoundingClientRect();
@@ -1178,6 +1191,7 @@ canvas.addEventListener('touchstart', function startGameTouch(e) {
         gameRunning = true;
         startLevel(1);
         document.getElementById('gameTitle').classList.remove('hidden');
+        tryPlayMusic();
         requestAnimationFrame(gameLoop);
     } else if (gameOver) {
         e.preventDefault();
@@ -1220,6 +1234,7 @@ function backToGamesHub() {
     isOnlineRun = false;
     gameRunning = false;
     gameStarted = false;
+    titanBgMusic.pause();
     document.getElementById('pauseScreen').style.display = 'none';
     document.getElementById('titanSpaceWrapper').style.display = 'none';
     document.getElementById('site-chrome').style.display = 'block';
