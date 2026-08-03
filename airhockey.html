@@ -294,11 +294,17 @@ let scaleX = 1, scaleY = 1, radiusScale = 1;
 function updateTransform() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  scaleX = canvas.width / VIRTUAL_WIDTH;
-  scaleY = canvas.height / VIRTUAL_HEIGHT;
-  radiusScale = Math.min(scaleX, scaleY);
+  // The scoreboard bar is a fixed, opaque overlay sitting on top of the
+  // canvas — without reserving its real (responsive, clamp()-sized)
+  // height here, the table was drawn edge-to-edge and its top portion
+  // (the opponent's goal) rendered directly behind the scoreboard,
+  // hiding it from view.
+  const scoreboardHeight = document.getElementById('scoreboard').offsetHeight;
   offsetX = 0;
-  offsetY = 0;
+  offsetY = scoreboardHeight;
+  scaleX = canvas.width / VIRTUAL_WIDTH;
+  scaleY = (canvas.height - offsetY) / VIRTUAL_HEIGHT;
+  radiusScale = Math.min(scaleX, scaleY);
 }
 function toPixelX(vx) { return offsetX + vx * scaleX; }
 function toPixelY(vy) { return offsetY + vy * scaleY; }
@@ -582,7 +588,6 @@ window.finishAirHockeyMatch = function (iWon, myScore, oppScore, reasonText) {
 // scoreboard names (defaults to YOU/AI for solo play).
 function startAirHockey(mode, labels) {
   gameMode = mode;
-  updateTransform();
   resetTable();
   playerScore = 0;
   opponentScore = 0;
@@ -600,6 +605,11 @@ function startAirHockey(mode, labels) {
 
   document.getElementById('site-chrome').style.display = 'none';
   document.getElementById('airhockeyWrapper').style.display = 'block';
+  // #scoreboard is inside #airhockeyWrapper, so its offsetHeight (used by
+  // updateTransform() to keep the table from drawing behind it) only
+  // reports a real value once the wrapper is actually visible — must run
+  // after the display:block above, not before.
+  updateTransform();
 
   if (mode !== 'guest') servePuck();
   gameRunning = true;
