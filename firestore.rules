@@ -96,7 +96,14 @@ service cloud.firestore {
       allow update: if isAdmin()
                     || (isOwner(uid)
                         && request.resource.data.approved == false
-                        && request.resource.data.get('businessPaidUntil', null) == resource.data.get('businessPaidUntil', null));
+                        && request.resource.data.get('businessPaidUntil', null) == resource.data.get('businessPaidUntil', null)
+                        // Same missing-whitelist gap as users/{uid} above: without
+                        // this, ANY field was writable as long as approved stayed
+                        // false and businessPaidUntil was untouched — restricted to
+                        // just the fields the listing-edit/photo-upload flows
+                        // actually touch.
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['name', 'phone', 'town', 'description', 'lastEditedAt', 'image', 'approved', 'rejected']));
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -123,8 +130,42 @@ service cloud.firestore {
                     && request.resource.data.everApproved == false
                     && membershipFieldsUntouched();
       allow update: if isAdmin()
-                    || (isOwner(uid) && request.resource.data.approved == false && membershipFieldsUnchanged())
+                    // Profile/post/photo edits (the "Basics" form, post submission,
+                    // and photo upload) — covers both a never-yet-approved person
+                    // completing their profile for the first time AND an
+                    // already-approved person editing (which resets them to
+                    // pending). Explicitly whitelisted to just the fields those
+                    // three flows actually touch: without this hasOnly(), ANY
+                    // field write here would pass as long as `approved` stayed
+                    // false in the result — which it trivially always does for an
+                    // unapproved account (nothing lets them flip it to true), so
+                    // this was a wide-open door to every other field including
+                    // game stats/high scores, not just profile/post/photo.
                     || (isOwner(uid)
+                        && request.resource.data.approved == false
+                        && membershipFieldsUnchanged()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['profile', 'lastEditedAt', 'postText', 'postWordCount', 'lastImageEditedAt', 'images', 'approved', 'rejected']))
+                    // Administrative/consent fields — always writable regardless of
+                    // approval status. lastActiveAt is a login heartbeat, and
+                    // agreedToTerms/agreedToTermsAt has to stay writable even before
+                    // approval or an updated Terms of Service could permanently lock
+                    // an unapproved person out of ever re-agreeing (the terms gate on
+                    // the client blocks the whole dashboard, approval status or not,
+                    // until this is set).
+                    || (isOwner(uid)
+                        && membershipFieldsUnchanged()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                             .hasOnly(['lastActiveAt', 'agreedToTerms', 'agreedToTermsAt']))
+                    // Actual platform-usage stats (game points/wins/losses, high
+                    // scores, friend count, notification settings) — gated on
+                    // approval, same "no platform access before approval" policy as
+                    // chat/DMs/game creation above. An unapproved profile shouldn't
+                    // be able to accumulate stats, appear on a leaderboard, or
+                    // configure push notifications any more than it should be able
+                    // to post in a chat room.
+                    || (isOwner(uid)
+                        && isApproved(uid)
                         && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'heartsPoints', 'heartsWins', 'heartsLosses', 'blackjackPoints', 'blackjackWins', 'blackjackLosses', 'blackjackDraws', 'airHockeyPoints', 'airHockeyWins', 'airHockeyLosses', 'deepSeaHighScore', 'titanSpaceHighScore', 'pongWins', 'blocksHighScore', 'notificationsEnabled', 'fcmTokens']));
@@ -222,11 +263,13 @@ service cloud.firestore {
       allow read: if isSignedIn()
                   && (resource == null || request.auth.uid in resource.data.participants);
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.auth.uid in request.resource.data.participants
                     && request.resource.data.participants.size() == 2
                     && request.resource.data.requestedBy == request.auth.uid
                     && request.resource.data.status == 'pending';
       allow update: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.auth.uid in resource.data.participants
                     && request.resource.data.participants == resource.data.participants
                     && resource.data.status == 'pending'
@@ -316,7 +359,7 @@ service cloud.firestore {
                     && request.resource.data.text.size() > 0
                     && request.resource.data.text.size() <= 500
                     && request.resource.data.text.split(' ').size() <= 50;
-      allow update: if isSignedIn() && (
+      allow update: if isSignedIn() && (isApproved(request.auth.uid) || isAdmin()) && (
                       // Toggling a like: only the likes array may change, and it
                       // may only change by adding or removing YOUR OWN uid, one
                       // at a time (the size-delta check blocks tampering with
@@ -356,6 +399,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.participants)
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.player2Uid == null
                     && request.resource.data.status == 'open'
@@ -370,7 +414,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open'
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
                           && resource.data.player2Uid == null
                           && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
                     );
@@ -388,6 +433,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.participants)
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.player2Uid == null
                     && request.resource.data.status == 'open'
@@ -402,7 +448,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open'
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
                           && resource.data.player2Uid == null
                           && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
                     );
@@ -420,6 +467,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.participants)
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.player2Uid == null
                     && request.resource.data.status == 'open'
@@ -434,7 +482,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open'
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
                           && resource.data.player2Uid == null
                           && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
                     );
@@ -452,6 +501,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.participants)
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.player2Uid == null
                     && request.resource.data.status == 'open'
@@ -466,7 +516,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open'
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
                           && resource.data.player2Uid == null
                           && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
                     );
@@ -491,6 +542,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.participants)
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.status == 'open'
                     && request.resource.data.participants == [request.auth.uid]
@@ -504,7 +556,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open'
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
                           && resource.data.inviteTo == null
                           && resource.data.participants.size() < 4)
                     );
@@ -526,6 +579,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.participants)
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.status == 'open'
                     && request.resource.data.participants == [request.auth.uid]
@@ -539,7 +593,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open' && resource.data.participants.size() < 4)
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open' && resource.data.participants.size() < 4)
                     );
       allow delete: if isAdmin()
                     || (isSignedIn() && resource.data.status == 'open' && request.auth.uid == resource.data.player1Uid);
@@ -566,6 +621,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.status == 'open'
                     && request.resource.data.participants == [request.auth.uid]
@@ -579,7 +635,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open'
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
                           && resource.data.inviteTo == null
                           && resource.data.participants.size() < 4)
                     );
@@ -610,6 +667,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.player2Uid == null
                     && request.resource.data.status == 'open'
@@ -624,7 +682,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open'
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
                           && resource.data.player2Uid == null
                           && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
                     );
@@ -642,6 +701,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.participants)
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.player2Uid == null
                     && request.resource.data.status == 'open'
@@ -656,7 +716,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open'
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
                           && resource.data.player2Uid == null
                           && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
                     );
@@ -674,6 +735,7 @@ service cloud.firestore {
         (request.auth.uid in resource.data.participants)
       );
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && request.resource.data.player1Uid == request.auth.uid
                     && request.resource.data.player2Uid == null
                     && request.resource.data.status == 'open'
@@ -688,7 +750,8 @@ service cloud.firestore {
                       request.auth.uid in resource.data.participants
                       || request.auth.uid == resource.data.player1Uid
                       || request.auth.uid == resource.data.inviteTo
-                      || (resource.data.status == 'open'
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
                           && resource.data.player2Uid == null
                           && (resource.data.inviteTo == null || resource.data.inviteTo == request.auth.uid))
                     );
