@@ -187,6 +187,14 @@ textarea { resize: vertical; min-height: 160px; }
 .notif-toast { position: fixed; bottom: 1.25rem; right: 1.25rem; max-width: 320px; background: var(--paper-050); color: var(--ink-900); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; box-shadow: 0 6px 20px rgba(0,0,0,0.25); z-index: 2000; font-size: 0.88rem; line-height: 1.4; cursor: pointer; animation: notif-toast-in 0.2s ease; }
 .notif-toast strong { display: block; margin-bottom: 0.2rem; color: var(--amber-500); }
 @keyframes notif-toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+/* On narrow screens, right:1.25rem + max-width:320px doesn't leave room to
+   shrink (fixed-position elements aren't clipped by the viewport), so the
+   toast's left edge ran off-screen instead of shrinking to fit. Below
+   480px, span the width with equal side margins instead — centers it and
+   keeps the whole box on-screen and readable. */
+@media (max-width: 480px) {
+  .notif-toast { left: 1rem; right: 1rem; max-width: none; }
+}
 
 button, .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: none; border-radius: var(--radius-sm); padding: 0.7rem 1.2rem; font-family: var(--font-body); font-size: 0.95rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: var(--ink-900); }
 button:hover { background: var(--amber-600); }

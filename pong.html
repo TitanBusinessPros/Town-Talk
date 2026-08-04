@@ -75,7 +75,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
   box-shadow: 0 0 15px rgba(26, 26, 90, 0.4); background-color: #0a0a3a;
   overflow: hidden; width: 100%; max-width: 640px; height: 55vh; max-height: 420px;
 }
-#view-game .pong-board canvas { display: block; width: 100%; height: 100%; }
+#view-game .pong-board canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 #view-game .pong-controls { display: flex; justify-content: space-between; margin-top: 15px; gap: 10px; flex-wrap: wrap; }
 #view-game .pong-player-controls {
   background: linear-gradient(to bottom, #b22234, #8b0000); padding: 8px 15px; border-radius: 6px;
@@ -110,7 +110,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 #view-game .pulse { animation: pong-pulse 1.5s infinite; }
 @keyframes pong-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 @media (max-width: 600px) {
-  #view-game .pong-board { height: 45vh; max-height: 320px; }
+  #view-game .pong-board { height: 68vh; max-height: 560px; }
   #view-game .pong-controls { flex-direction: column; align-items: center; }
   #view-game .pong-player-controls { width: 100%; max-width: 260px; }
 }
@@ -202,6 +202,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
           <h3>HOW TO PLAY</h3>
           <p>Use your paddle to hit the ball back to your opponent. Score a point when your opponent fails to return the ball.</p>
           <p>First player to 7 points wins the game!</p>
+          <p id="pong-touch-hint">On a touchscreen: in 2 Player Challenge, drag the left side of the board for Player 1 and the right side for Player 2. Vs Computer, drag anywhere to move your paddle.</p>
         </div>
       </section>
 
@@ -269,6 +270,57 @@ window.addEventListener('resize', () => {
     initPongObjects();
   }
 });
+
+// ---- Touch controls (the source game was keyboard-only — W/S and Arrow
+// keys don't exist on a phone). Drag directly on your paddle's half of the
+// board: left half moves Player 1, right half moves Player 2 (2 Player
+// Challenge only — vs Computer, a touch anywhere moves your own paddle,
+// since the right half is the computer's). Tracked by touch identifier so
+// both paddles can be dragged at once in 2 Player Challenge.
+let p1TouchId = null;
+let p2TouchId = null;
+function pongTouchY(touch) {
+  const rect = pongCanvas.getBoundingClientRect();
+  return touch.clientY - rect.top;
+}
+function movePaddleToTouch(paddle, touch) {
+  const y = pongTouchY(touch) - paddle.height / 2;
+  paddle.y = Math.max(0, Math.min(pongCanvas.height - paddle.height, y));
+}
+pongCanvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const rect = pongCanvas.getBoundingClientRect();
+  for (const touch of e.changedTouches) {
+    const x = touch.clientX - rect.left;
+    if (pongMode === '2p') {
+      if (x < pongCanvas.width / 2 && p1TouchId === null) {
+        p1TouchId = touch.identifier;
+        movePaddleToTouch(player1, touch);
+      } else if (x >= pongCanvas.width / 2 && p2TouchId === null) {
+        p2TouchId = touch.identifier;
+        movePaddleToTouch(player2, touch);
+      }
+    } else if (p1TouchId === null) {
+      p1TouchId = touch.identifier;
+      movePaddleToTouch(player1, touch);
+    }
+  }
+}, { passive: false });
+pongCanvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  for (const touch of e.changedTouches) {
+    if (touch.identifier === p1TouchId) movePaddleToTouch(player1, touch);
+    else if (touch.identifier === p2TouchId) movePaddleToTouch(player2, touch);
+  }
+}, { passive: false });
+function pongTouchEnd(e) {
+  for (const touch of e.changedTouches) {
+    if (touch.identifier === p1TouchId) p1TouchId = null;
+    if (touch.identifier === p2TouchId) p2TouchId = null;
+  }
+}
+pongCanvas.addEventListener('touchend', pongTouchEnd, { passive: false });
+pongCanvas.addEventListener('touchcancel', pongTouchEnd, { passive: false });
 
 function drawPongRect(x, y, width, height, color) {
   pongCtx.fillStyle = color;
@@ -381,6 +433,8 @@ function resetPongGame() {
   resetPongBall();
   player1.y = pongCanvas.height / 2 - player1.height / 2;
   player2.y = pongCanvas.height / 2 - player2.height / 2;
+  p1TouchId = null;
+  p2TouchId = null;
 }
 
 function pongGameLoop() {
