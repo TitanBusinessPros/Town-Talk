@@ -147,6 +147,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   50% { filter: drop-shadow(0 0 6px rgba(193, 80, 46, 0.9)); }
 }
 .notif-bell-panel { position: absolute; top: 100%; right: 0; margin-top: 0.6rem; width: 320px; max-height: 420px; overflow-y: auto; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,0.18); z-index: 100; }
+/* On narrow screens the bell can land anywhere depending on how many
+   lines .nav-links wrapped to, and right:0 + a fixed 320px width was
+   anchored to THAT position, not the viewport — easily running off the
+   left edge. Below 480px, switch to viewport-fixed and centered; the
+   click handler sets `top` inline (computed from the bell's actual
+   position at open time) since a single CSS value can't account for
+   how many nav lines wrapped above it. */
+@media (max-width: 480px) {
+  .notif-bell-panel { position: fixed; left: 1rem; right: 1rem; width: auto; margin-top: 0; }
+}
 .notif-bell-panel-header { font-family: var(--font-display); font-weight: 600; padding: 0.9rem 1rem 0.6rem; border-bottom: 1px solid var(--line); }
 .notif-bell-item { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line); padding: 0.8rem 1rem; cursor: pointer; font-family: var(--font-body); }
 .notif-bell-item:last-child { border-bottom: none; }
@@ -1537,7 +1547,20 @@ document.getElementById("about-cta-signup-btn").addEventListener("click", () => 
 document.getElementById("nav-notifications").addEventListener("click", (e) => {
   e.preventDefault();
   const panel = document.getElementById("notif-bell-panel");
-  panel.style.display = panel.style.display === "block" ? "none" : "block";
+  const opening = panel.style.display !== "block";
+  panel.style.display = opening ? "block" : "none";
+  // Mirrors the @media(max-width:480px) breakpoint above: on mobile the
+  // panel is viewport-fixed and centered (see CSS), so its vertical
+  // position has to be computed from where the bell actually rendered
+  // this time — nav-links can wrap to a different number of lines
+  // depending on sign-in state and screen width, so no single CSS `top`
+  // value works for all of them.
+  if (opening && window.innerWidth <= 480) {
+    const bellRect = document.getElementById("notif-bell-wrap").getBoundingClientRect();
+    panel.style.top = `${bellRect.bottom + 10}px`;
+  } else {
+    panel.style.top = "";
+  }
 });
 document.addEventListener("click", (e) => {
   const panel = document.getElementById("notif-bell-panel");
