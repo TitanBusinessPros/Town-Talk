@@ -1082,7 +1082,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <ul style="text-align:left; color:var(--text-muted); line-height:1.7;">
         <li>Either party may seek injunctive or other equitable relief in a court of competent jurisdiction to prevent the actual or threatened infringement, misappropriation, or violation of intellectual-property rights or confidential information.</li>
         <li>Either party may bring an individual action in small-claims court if the claim qualifies and remains in that court.</li>
-        <li>You may opt out of this arbitration agreement by sending written notice of your decision to opt out to titanbusinesspros@gmail.com within 30 days of first accepting these Terms (or of any material change to this Section 11). Your notice must include your name, the email associated with your account, and a clear statement that you wish to opt out of arbitration. Opting out does not affect any other provision of these Terms.</li>
+        <li>You may opt out of this arbitration agreement by sending written notice of your decision to opt out to info@titanbusinesspros.com within 30 days of first accepting these Terms (or of any material change to this Section 11). Your notice must include your name, the email associated with your account, and a clear statement that you wish to opt out of arbitration. Opting out does not affect any other provision of these Terms.</li>
       </ul>
       <p>11.4 Costs. Payment of filing, administration, and arbitrator fees will be governed by the AAA rules. We will reimburse those fees for claims totaling less than $10,000 unless the arbitrator determines your claims are frivolous. Each party bears its own attorneys' fees unless the arbitrator awards fees under applicable law or the AAA rules.</p>
       <p>11.5 Severability of Arbitration Provisions. If any portion of this Section 11 is found unenforceable, the remainder shall continue in effect, except that if the class-action waiver is found unenforceable, this entire Section 11 shall be null and void (and disputes will be resolved in court under Section 12).</p>
@@ -1099,7 +1099,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <p>13.6 Notices. We may provide notices by email to the address associated with your account, by posting on the Service, or by other reasonable means. Notices to us must be sent to the contact information below.</p>
 
       <h3>14. Contact</h3>
-      <p>Titan Business Pros LLC<br>Oklahoma City, OK<br>Phone: 405-998-7979<br>Email: titanbusinesspros@gmail.com<br>Website: www.oklahoma.marketing</p>
+      <p>Titan Business Pros LLC<br>Oklahoma City, OK<br>Phone: 405-998-7979<br>Email: info@titanbusinesspros.com<br>Website: www.oklahoma.marketing</p>
     </div>
   </section>
 
@@ -1200,7 +1200,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       Facebook
     </a>
   </div>
-  <div>405-998-7979 &nbsp;|&nbsp; <a href="mailto:titanbusinesspros@gmail.com">titanbusinesspros@gmail.com</a></div>
+  <div>405-998-7979 &nbsp;|&nbsp; <a href="mailto:info@titanbusinesspros.com">info@titanbusinesspros.com</a></div>
   <div><a href="https://www.oklahoma.marketing" target="_blank" rel="noopener">www.oklahoma.marketing</a></div>
   <div>Oklahoma City, OK</div>
   <div style="margin-top:0.5rem;"><a href="#" id="footer-terms-link">Terms of Service</a></div>
@@ -1576,6 +1576,12 @@ document.getElementById("nav-logout").addEventListener("click", async (e) => {
 
 let isAdminUser = false;
 let didForceVerifiedTokenRefresh = false;
+// True for the duration of a fresh signup's own account-creation flow —
+// see the form-signup submit handler below for why this exists (a race
+// between that handler's own profile-doc create and two other things
+// onAuthStateChanged fires immediately: updateLastActive() and
+// watchUserDoc()'s self-heal).
+let signupInProgress = false;
 
 function updateProtectedNavVisibility(user) {
   const agreed = !!(currentUserData && currentUserData.agreedToTerms);
@@ -1642,7 +1648,12 @@ onAuthStateChanged(auth, async (user) => {
     watchMyBusiness(user.uid);
     watchNotificationBell(user.uid);
     loadBlockedList();
-    updateLastActive(user.uid);
+    // Skipped mid-signup — see signupInProgress's declaration comment.
+    // The form-signup handler calls watchUserDoc() itself once its own
+    // create succeeds, which is what actually needs the profile doc to
+    // exist; the interval-based heartbeat in startPresenceHeartbeat()
+    // will cover the "last active" ping from then on regardless.
+    if (!signupInProgress) updateLastActive(user.uid);
     startPresenceHeartbeat();
     updateDashboardGates();
 
@@ -1860,6 +1871,16 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
     return;
   }
   let cred;
+  // onAuthStateChanged fires the instant createUserWithEmailAndPassword()
+  // resolves below — well before this handler's own setDoc() (a few lines
+  // down) has actually created the profile doc. Left unguarded, that
+  // listener's updateLastActive() call and watchUserDoc()'s "doc is
+  // missing, self-heal" path both race to write the SAME brand-new
+  // document first, sometimes landing before this handler's create even
+  // reaches the server — which can fail the whole signup outright (or
+  // silently create a broken doc missing agreedToTerms). This flag tells
+  // both of those "give this handler a chance to create the doc first."
+  signupInProgress = true;
   try {
     cred = await createUserWithEmailAndPassword(auth, email, password);
     // NOTE: we intentionally do NOT auto-send the verification email here.
@@ -1883,6 +1904,14 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
       agreedToTerms: true,
       agreedToTermsAt: serverTimestamp(),
     });
+    // The doc now genuinely exists — re-run the listener setup so it picks
+    // up the real state on its next snapshot instead of whatever it may
+    // have skipped (or self-healed into a placeholder) while the flag
+    // above was up. onAuthStateChanged already called watchUserDoc() once
+    // for this same uid earlier, before the doc existed; this replaces
+    // that subscription with a fresh one now that there's something real
+    // to watch.
+    watchUserDoc(cred.user.uid);
   } catch (err) {
     // If the Firestore write got rejected for some reason, don't leave an
     // orphaned Auth account with no profile behind it.
@@ -1891,6 +1920,8 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
       await signOut(auth).catch(() => {});
     }
     showMessage(msg, friendlyAuthError(err), "error");
+  } finally {
+    signupInProgress = false;
   }
 });
 
@@ -1923,6 +1954,11 @@ function watchUserDoc(uid) {
   if (unsubscribeSnapshot) unsubscribeSnapshot();
   unsubscribeSnapshot = onSnapshot(doc(db, "users", uid), async (snap) => {
     if (!snap.exists()) {
+      // A fresh signup's own handler hasn't created the real doc yet —
+      // don't race it with a competing create of our own (see
+      // signupInProgress's declaration comment). It calls watchUserDoc()
+      // again itself once its create succeeds, which is what clears this.
+      if (signupInProgress) return;
       // Doc is missing (e.g. deleted while testing) — recreate a clean
       // default so the dashboard always has something to show.
       await setDoc(doc(db, "users", uid), {
