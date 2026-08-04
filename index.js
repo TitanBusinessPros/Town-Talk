@@ -248,7 +248,38 @@ exports.onBlackjackInvite = makeGameInviteTrigger("blackjackGames");
 exports.onAirHockeyInvite = makeGameInviteTrigger("airHockeyGames");
 
 // -----------------------------------------------------------------------
-// 2. First-time message notification.
+// 2. New signup notification — fires once per new user doc and pushes
+// every admin, so approvals don't sit unnoticed in the queue. Admins are
+// just whoever has a doc in the admins/{uid} collection (same source of
+// truth as isAdmin()/requireAdmin() everywhere else); sendPushToUser
+// already respects each admin's own notificationsEnabled toggle, so an
+// admin who doesn't want pushes simply won't get one.
+// -----------------------------------------------------------------------
+exports.onNewSignup = onDocumentCreated("users/{uid}", async (event) => {
+  const newUser = event.data?.data();
+  if (!newUser) return;
+  const { uid } = event.params;
+
+  const adminsSnap = await db.collection("admins").get();
+  if (adminsSnap.empty) return;
+
+  const name = newUser.profile?.name || "A new user";
+  await Promise.all(
+    adminsSnap.docs
+      .filter((doc) => doc.id !== uid) // don't notify an admin about their own signup
+      .map((doc) =>
+        sendPushToUser(doc.id, {
+          type: "signup",
+          title: "Town Fuss — New Sign-Up",
+          body: `${name} just signed up and is waiting on approval.`,
+          clickAction: "/index.html?admin=pending",
+        })
+      )
+  );
+});
+
+// -----------------------------------------------------------------------
+// 3. First-time message notification.
 // Fires on every new message, but only actually sends a push if this is
 // the FIRST message ever created in that conversation — using a Firestore
 // aggregate count query, which is a single cheap read regardless of how
@@ -291,7 +322,7 @@ exports.onFirstMessageNotify = onDocumentCreated(
 );
 
 // -----------------------------------------------------------------------
-// 3. Like/dislike notification on chat messages.
+// 4. Like/dislike notification on chat messages.
 //
 // Fires on every update to a chat message, but only actually sends a
 // push when the likes or dislikes array just grew by one NEW uid — so
@@ -339,7 +370,7 @@ exports.onChatReaction = onDocumentUpdated(
 );
 
 // -----------------------------------------------------------------------
-// 4. Scheduled leaderboard cache — the cost fix.
+// 5. Scheduled leaderboard cache — the cost fix.
 //
 // Runs twice a day, period — completely decoupled from how many users
 // you have or how often they check the app. Reads the "users" collection
@@ -378,7 +409,7 @@ exports.refreshLeaderboardCache = onSchedule(
 );
 
 // -----------------------------------------------------------------------
-// 5. Neighbor of the Week — most friends gained, and most-liked chat poster.
+// 6. Neighbor of the Week — most friends gained, and most-liked chat poster.
 //
 // Runs once a week, not per-visit — same cost philosophy as the
 // leaderboard cache above. Two winners are picked for the PAST week and
@@ -502,7 +533,7 @@ exports.computeNeighborOfTheWeek = onSchedule(
 );
 
 // -----------------------------------------------------------------------
-// 6. Business listing expiration.
+// 7. Business listing expiration.
 //
 // Runs once a day. Any business account whose paid year (businessPaidUntil)
 // has passed gets taken off the public feed (approved: false) — their
@@ -528,7 +559,7 @@ exports.expireBusinessListings = onSchedule(
 );
 
 // -----------------------------------------------------------------------
-// 7. Stripe payments: Gold membership, Diamond membership, and business
+// 8. Stripe payments: Gold membership, Diamond membership, and business
 // listings all go through the same webhook, distinguished by a prefix on
 // client_reference_id ("gold_<uid>", "diamond_<uid>", "business_<uid>") —
 // set client-side when building each Stripe Payment Link URL.
@@ -685,7 +716,7 @@ exports.expireMemberships = onSchedule(
 );
 
 // -----------------------------------------------------------------------
-// 8. Firebase Auth account backup (backupAuthAccounts):
+// 9. Firebase Auth account backup (backupAuthAccounts):
 //      Firestore's own scheduled backups (set up separately via
 //      `firebase firestore:backups:schedules:create`) do NOT cover Auth —
 //      accounts/emails/password hashes live in a completely separate
@@ -732,7 +763,7 @@ exports.backupAuthAccounts = onSchedule(
 );
 
 // -----------------------------------------------------------------------
-// 9. Admin profile deletion, with a 10-day restore window.
+// 10. Admin profile deletion, with a 10-day restore window.
 //
 // This needs the Admin SDK (not just a Firestore rule) for two reasons:
 // deleting someone ELSE's Auth account/disabling their login is something
