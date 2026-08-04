@@ -11,6 +11,14 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
+    // Broadcast-style writes (chat rooms, DMs) denormalize the sender's own
+    // name/photo onto the message doc at write time, so an unapproved
+    // profile's content can otherwise reach other users before admin review
+    // ever happens. Gate those writes on the SAME approved flag the
+    // Directory/Feed already require to read a profile.
+    function isApproved(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.get('approved', false) == true;
+    }
     function today() {
       return int(request.time.toMillis() / 86400000);
     }
@@ -296,6 +304,7 @@ service cloud.firestore {
     match /chatRooms/{roomId}/messages/{messageId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
                     && roomId in [
                          'wynnewood-chat', 'elmore-city-chat', 'pauls-valley-chat',
                          'davis-chat', 'paoli-chat', 'sulphur-chat', 'singles-chat',
@@ -720,6 +729,7 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if isSignedIn() && request.auth.uid in conversationId.split('_');
         allow create: if isSignedIn()
+                      && (isApproved(request.auth.uid) || isAdmin())
                       && request.resource.data.senderId == request.auth.uid
                       && request.auth.uid in conversationId.split('_')
                       && request.resource.data.text is string

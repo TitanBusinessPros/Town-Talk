@@ -3294,6 +3294,10 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
   const text = input.value.trim();
   if (!text || !activeOtherUid) return;
 
+  if (!currentUserData?.approved && !isAdminUser) {
+    showMessage(msg, "Your profile is still waiting on admin approval — you'll be able to message people once it's approved.", "error");
+    return;
+  }
   if (remainingToday() <= 0) {
     showMessage(msg, "You've used all your messages for today — it resets tomorrow, or upgrade to Gold or Diamond for more.", "error");
     return;
@@ -4325,6 +4329,10 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
   const text = input.value.trim();
   if (!text || !activeChatRoom) return;
 
+  if (!currentUserData?.approved && !isAdminUser) {
+    showMessage(msg, "Your profile is still waiting on admin approval — you'll be able to post here once it's approved.", "error");
+    return;
+  }
   if (chatRemainingToday() <= 0) {
     showMessage(msg, "You've used all 3 chat room messages for today — it resets tomorrow.", "error");
     return;
