@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Classic Pong — Town Fuss</title>
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+/* ===========================================================================
+   SITE-CHROME — hub/mode-select/leaderboard, same "site-chrome wraps a
+   standalone game" pattern as dodge.html/airhockey.html. Scoped under
+   #site-chrome so it can never collide with the game's own CSS below.
+   =========================================================================== */
+#site-chrome {
+  --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+  --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px; --radius-sm: 8px;
+  background: var(--ink-900); color: var(--paper-050); min-height: 100vh;
+}
+#site-chrome a { color: var(--amber-500); }
+#site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
+#site-chrome p { color: var(--text-muted); line-height: 1.6; }
+#site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+#site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+#site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+#site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+#site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+#site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+#site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+#site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+#site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+#site-chrome button.site-btn:hover { background: var(--amber-600); }
+#site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+#site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+#site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+#site-chrome .leader-row:last-child { border-bottom: none; }
+#site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+#site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+#site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+#site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+/* ===========================================================================
+   GAME — Classic Pong, adapted from the standalone version supplied for
+   this platform. Kept as a plain (non-scoped) game view but rendered inside
+   #site-chrome's normal document flow rather than a fullscreen wrapper,
+   since Pong is keyboard-driven (not a full-viewport touch game like Air
+   Hockey). The original's political campaign banner and background-music
+   track were dropped — this is a generic Town Fuss game, not tied to any
+   campaign, and the banner is now an open ad placeholder any advertiser
+   can be dropped into.
+   =========================================================================== */
+#view-game .pong-banner {
+  background: linear-gradient(to right, #b22234, #ffffff, #3c3b6e);
+  padding: 10px; border-radius: 8px; margin-bottom: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+#view-game .pong-banner h1 {
+  font-size: clamp(1.3rem, 4vw, 1.8rem); color: #1a1a5a;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); letter-spacing: 1px; line-height: 1.2;
+}
+#view-game .pong-subtitle {
+  font-size: clamp(1rem, 3vw, 1.4rem); margin-bottom: 15px; text-align: center;
+  color: #3c3b6e; font-weight: 600;
+}
+#view-game .pong-board {
+  position: relative; margin: 0 auto; border: 4px solid #1a1a5a; border-radius: 8px;
+  box-shadow: 0 0 15px rgba(26, 26, 90, 0.4); background-color: #0a0a3a;
+  overflow: hidden; width: 100%; max-width: 640px; height: 55vh; max-height: 420px;
+}
+#view-game .pong-board canvas { display: block; width: 100%; height: 100%; }
+#view-game .pong-controls { display: flex; justify-content: space-between; margin-top: 15px; gap: 10px; flex-wrap: wrap; }
+#view-game .pong-player-controls {
+  background: linear-gradient(to bottom, #b22234, #8b0000); padding: 8px 15px; border-radius: 6px;
+  border: 2px solid #ffffff; flex: 1; min-width: 150px; color: #fff;
+}
+#view-game .pong-player-controls h3 { color: #ffffff; font-size: clamp(1rem, 3vw, 1.2rem); text-align: center; margin-bottom: 5px; }
+#view-game .pong-player-controls p { font-size: clamp(0.8rem, 2vw, 0.95rem); color: #ffffff; margin-bottom: 3px; text-align: center; }
+#view-game .pong-score-display {
+  display: flex; justify-content: center; gap: 30px; margin: 10px 0;
+  font-size: clamp(1.5rem, 4vw, 2.2rem); font-weight: bold; color: #2b2420;
+}
+#view-game .pong-p1-score { color: #b22234; }
+#view-game .pong-p2-score { color: #3c3b6e; }
+#view-game .pong-game-over {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;
+  flex-direction: column; justify-content: center; align-items: center;
+  background-color: rgba(10, 10, 58, 0.92); z-index: 10;
+}
+#view-game .pong-game-over h2 { font-size: clamp(1.8rem, 5vw, 2.8rem); color: #ffffff; text-shadow: 0 0 15px #b22234; text-align: center; padding: 0 10px; margin-bottom: 20px; }
+#view-game .pong-btn {
+  padding: 12px 30px; font-size: clamp(1rem, 3vw, 1.2rem); background: linear-gradient(to bottom, #b22234, #8b0000);
+  color: #ffffff; border: 2px solid #ffffff; border-radius: 30px; cursor: pointer; font-weight: bold;
+  margin-top: 10px; box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+}
+#view-game .pong-btn:hover { background: linear-gradient(to bottom, #ffffff, #dddddd); color: #b22234; }
+#view-game .pong-instructions {
+  margin: 15px auto 0; padding: 15px; background: linear-gradient(to bottom, #3c3b6e, #2a2a5a);
+  border-radius: 8px; border: 2px solid #ffffff; font-size: clamp(0.85rem, 2vw, 1rem); line-height: 1.5; color: #fff;
+}
+#view-game .pong-instructions h3 { color: #ffffff; margin-bottom: 10px; font-size: clamp(1.05rem, 3vw, 1.3rem); text-align: center; }
+#view-game .pong-instructions p { color: #fff; margin-bottom: 8px; }
+#view-game .pulse { animation: pong-pulse 1.5s infinite; }
+@keyframes pong-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+@media (max-width: 600px) {
+  #view-game .pong-board { height: 45vh; max-height: 320px; }
+  #view-game .pong-controls { flex-direction: column; align-items: center; }
+  #view-game .pong-player-controls { width: 100%; max-width: 260px; }
+}
+</style>
+</head>
+<body>
+
+<div id="site-chrome">
+  <header class="header-bar">
+    <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+    <nav class="header-nav">
+      <button id="nav-hub" class="active">Games</button>
+      <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+    </nav>
+  </header>
+
+  <main class="page">
+
+    <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+      <h2>Sign in on Town Fuss first</h2>
+      <p>You need a Town Fuss account to play Classic Pong and appear on the leaderboard.</p>
+      <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+    </div>
+
+    <div id="app-content" style="display:none;">
+
+      <!-- ================= MODE SELECT ================= -->
+      <section id="view-mode-select">
+        <span class="eyebrow">Classic Pong</span>
+        <h1>🏓 How do you want to play? 🏓</h1>
+        <div class="uicard mode-tile" id="mode-tile-ai">
+          <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
+          <p class="field-hint" style="text-align:center;">First to 7, same device — not tracked on the leaderboard</p>
+        </div>
+        <div class="uicard mode-tile" id="mode-tile-2p">
+          <h2 style="font-size:1.05rem;">🎮 2 Player Challenge</h2>
+          <p class="field-hint" style="text-align:center;">First to 7, same device — the winner's account gets a leaderboard point</p>
+        </div>
+      </section>
+
+      <!-- ================= LEADERBOARD ================= -->
+      <section id="view-leaderboard" style="display:none;">
+        <span class="eyebrow">Classic Pong</span>
+        <h1>Leaderboard</h1>
+        <p style="text-align:center;">Wins from 2 Player Challenge matches only — vs Computer games aren't counted.</p>
+        <div class="uicard">
+          <div id="leaderboard-list"></div>
+          <div id="leaderboard-empty" class="empty-state" style="display:none">No matches won yet — be the first!</div>
+        </div>
+      </section>
+
+      <!-- ================= GAME ================= -->
+      <section id="view-game" style="display:none;">
+        <div class="pong-banner">
+          <h1>PUT YOUR BRAND HERE</h1>
+        </div>
+        <div class="pong-subtitle">CLASSIC PONG</div>
+
+        <div class="pong-score-display">
+          <div class="pong-p1-score">P1: <span id="pong-score1">0</span></div>
+          <div class="pong-p2-score"><span id="pong-p2-label">P2</span>: <span id="pong-score2">0</span></div>
+        </div>
+
+        <div class="pong-board">
+          <canvas id="pongCanvas"></canvas>
+          <div class="pong-game-over" id="pongGameOver">
+            <h2 id="pongWinnerText">PLAYER 1 WINS!</h2>
+            <button type="button" class="pong-btn pulse" id="pongRestartBtn">PLAY AGAIN</button>
+            <button type="button" class="pong-btn" id="pongBackBtn" style="background:linear-gradient(to bottom,#444,#222);">&larr; Games</button>
+          </div>
+        </div>
+
+        <div class="pong-controls">
+          <div class="pong-player-controls">
+            <h3>PLAYER 1</h3>
+            <p>W - Move Up</p>
+            <p>S - Move Down</p>
+          </div>
+          <div class="pong-player-controls" id="pong-p2-controls">
+            <h3 id="pong-p2-controls-title">PLAYER 2</h3>
+            <p id="pong-p2-controls-hint1">&uarr; - Move Up</p>
+            <p id="pong-p2-controls-hint2">&darr; - Move Down</p>
+          </div>
+        </div>
+
+        <button type="button" class="site-btn secondary small" id="pong-back-to-hub-btn" style="margin-top:1rem;">&larr; Back to Games</button>
+
+        <div class="pong-instructions">
+          <h3>HOW TO PLAY</h3>
+          <p>Use your paddle to hit the ball back to your opponent. Score a point when your opponent fails to return the ball.</p>
+          <p>First player to 7 points wins the game!</p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ===========================================================================
+// CLASSIC (non-module) script — the game engine itself. Kept as a plain
+// classic script so its state stays on real global `window`-scope
+// variables, matching every other game's testing convention. Physics/
+// visuals are a close port of the supplied standalone Pong; the only
+// gameplay addition is a computer-controlled paddle for 'ai' mode (the
+// original only ever supported two human players on one keyboard).
+// ===========================================================================
+const pongCanvas = document.getElementById('pongCanvas');
+const pongCtx = pongCanvas.getContext('2d');
+const p1ScoreEl = document.getElementById('pong-score1');
+const p2ScoreEl = document.getElementById('pong-score2');
+const pongGameOverEl = document.getElementById('pongGameOver');
+const pongWinnerTextEl = document.getElementById('pongWinnerText');
+
+let pongMode = '2p'; // 'ai' | '2p'
+let player1Score = 0;
+let player2Score = 0;
+const winningScore = 7;
+let pongGameActive = false;
+let pongLoopStarted = false;
+
+const paddleWidth = 15;
+const paddleHeight = 100;
+const paddleSpeed = 15;
+const aiPaddleSpeed = 10; // slightly slower than a human so it's beatable
+
+const player1 = { x: 0, y: 0, width: paddleWidth, height: paddleHeight, color: '#b22234' };
+const player2 = { x: 0, y: 0, width: paddleWidth, height: paddleHeight, color: '#3c3b6e' };
+const ball = { x: 0, y: 0, radius: 12, speed: 12, velocityX: 0, velocityY: 0, color: '#ffffff' };
+
+const pongKeys = { w: false, s: false, ArrowUp: false, ArrowDown: false };
+
+function setPongCanvasSize() {
+  const container = pongCanvas.parentElement;
+  pongCanvas.width = container.clientWidth;
+  pongCanvas.height = container.clientHeight;
+}
+
+function initPongObjects() {
+  player1.x = pongCanvas.width * 0.05;
+  player1.y = pongCanvas.height / 2 - player1.height / 2;
+  player2.x = pongCanvas.width * 0.95 - player2.width;
+  player2.y = pongCanvas.height / 2 - player2.height / 2;
+  resetPongBall();
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key in pongKeys) pongKeys[e.key] = true;
+});
+window.addEventListener('keyup', (e) => {
+  if (e.key in pongKeys) pongKeys[e.key] = false;
+});
+window.addEventListener('resize', () => {
+  if (document.getElementById('view-game').style.display !== 'none') {
+    setPongCanvasSize();
+    initPongObjects();
+  }
+});
+
+function drawPongRect(x, y, width, height, color) {
+  pongCtx.fillStyle = color;
+  pongCtx.shadowColor = color;
+  pongCtx.shadowBlur = 15;
+  pongCtx.fillRect(x, y, width, height);
+  pongCtx.shadowBlur = 0;
+}
+function drawPongCircle(x, y, radius, color) {
+  pongCtx.fillStyle = color;
+  pongCtx.shadowColor = color;
+  pongCtx.shadowBlur = 15;
+  pongCtx.beginPath();
+  pongCtx.arc(x, y, radius, 0, Math.PI * 2);
+  pongCtx.fill();
+  pongCtx.shadowBlur = 0;
+}
+function drawPongNet() {
+  pongCtx.strokeStyle = '#ffffff';
+  pongCtx.lineWidth = 2;
+  pongCtx.setLineDash([10, 15]);
+  pongCtx.beginPath();
+  pongCtx.moveTo(pongCanvas.width / 2, 0);
+  pongCtx.lineTo(pongCanvas.width / 2, pongCanvas.height);
+  pongCtx.stroke();
+  pongCtx.setLineDash([]);
+}
+
+function movePongPaddles() {
+  if (pongKeys.w && player1.y > 0) player1.y -= paddleSpeed;
+  if (pongKeys.s && player1.y < pongCanvas.height - player1.height) player1.y += paddleSpeed;
+
+  if (pongMode === 'ai') {
+    // Track the ball's y position with a capped, slightly-slower-than-human
+    // speed so it's a real opponent but still beatable.
+    const target = ball.y - player2.height / 2;
+    if (Math.abs(target - player2.y) > aiPaddleSpeed) {
+      player2.y += target > player2.y ? aiPaddleSpeed : -aiPaddleSpeed;
+    } else {
+      player2.y = target;
+    }
+    player2.y = Math.max(0, Math.min(pongCanvas.height - player2.height, player2.y));
+  } else {
+    if (pongKeys.ArrowUp && player2.y > 0) player2.y -= paddleSpeed;
+    if (pongKeys.ArrowDown && player2.y < pongCanvas.height - player2.height) player2.y += paddleSpeed;
+  }
+}
+
+function movePongBall() {
+  ball.x += ball.velocityX;
+  ball.y += ball.velocityY;
+
+  if (ball.y + ball.radius > pongCanvas.height || ball.y - ball.radius < 0) {
+    ball.velocityY = -ball.velocityY;
+  }
+
+  const paddle = (ball.x < pongCanvas.width / 2) ? player1 : player2;
+  if (
+    ball.x - ball.radius < paddle.x + paddle.width &&
+    ball.x + ball.radius > paddle.x &&
+    ball.y - ball.radius < paddle.y + paddle.height &&
+    ball.y + ball.radius > paddle.y
+  ) {
+    const collidePoint = (ball.y - (paddle.y + paddle.height / 2)) / (paddle.height / 2);
+    const angleRad = collidePoint * (Math.PI / 4);
+    const direction = (ball.x < pongCanvas.width / 2) ? 1 : -1;
+    ball.velocityX = direction * ball.speed * Math.cos(angleRad);
+    ball.velocityY = ball.speed * Math.sin(angleRad);
+    ball.speed += 0.5;
+  }
+
+  if (ball.x - ball.radius < 0) {
+    player2Score++;
+    p2ScoreEl.textContent = player2Score;
+    resetPongBall();
+    checkPongGameOver();
+  } else if (ball.x + ball.radius > pongCanvas.width) {
+    player1Score++;
+    p1ScoreEl.textContent = player1Score;
+    resetPongBall();
+    checkPongGameOver();
+  }
+}
+
+function resetPongBall() {
+  ball.x = pongCanvas.width / 2;
+  ball.y = pongCanvas.height / 2;
+  ball.speed = 12;
+  ball.velocityX = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+  ball.velocityY = (Math.random() * 2 - 1) * (ball.speed / 2);
+}
+
+function checkPongGameOver() {
+  if (player1Score >= winningScore || player2Score >= winningScore) {
+    pongGameActive = false;
+    const p1Won = player1Score >= winningScore;
+    pongWinnerTextEl.textContent = p1Won ? 'PLAYER 1 WINS!' : (pongMode === 'ai' ? 'COMPUTER WINS!' : 'PLAYER 2 WINS!');
+    pongGameOverEl.style.display = 'flex';
+    if (pongMode === '2p' && window.submitPongWin) window.submitPongWin();
+  }
+}
+
+function resetPongGame() {
+  player1Score = 0;
+  player2Score = 0;
+  p1ScoreEl.textContent = '0';
+  p2ScoreEl.textContent = '0';
+  pongGameActive = true;
+  pongGameOverEl.style.display = 'none';
+  resetPongBall();
+  player1.y = pongCanvas.height / 2 - player1.height / 2;
+  player2.y = pongCanvas.height / 2 - player2.height / 2;
+}
+
+function pongGameLoop() {
+  pongCtx.fillStyle = '#0a0a3a';
+  pongCtx.fillRect(0, 0, pongCanvas.width, pongCanvas.height);
+  drawPongNet();
+  drawPongRect(player1.x, player1.y, player1.width, player1.height, player1.color);
+  drawPongRect(player2.x, player2.y, player2.width, player2.height, player2.color);
+  drawPongCircle(ball.x, ball.y, ball.radius, ball.color);
+
+  if (pongGameActive) {
+    movePongPaddles();
+    movePongBall();
+  }
+  requestAnimationFrame(pongGameLoop);
+}
+
+// Starts a fresh match. mode is 'ai' | '2p'.
+window.startPong = function (mode) {
+  pongMode = mode;
+  document.getElementById('pong-p2-label').textContent = mode === 'ai' ? 'AI' : 'P2';
+  document.getElementById('pong-p2-controls-title').textContent = mode === 'ai' ? 'COMPUTER' : 'PLAYER 2';
+  document.getElementById('pong-p2-controls-hint1').textContent = mode === 'ai' ? 'Controlled automatically' : '↑ - Move Up';
+  document.getElementById('pong-p2-controls-hint2').textContent = mode === 'ai' ? '' : '↓ - Move Down';
+
+  document.getElementById('view-mode-select').style.display = 'none';
+  document.getElementById('view-leaderboard').style.display = 'none';
+  document.getElementById('view-game').style.display = 'block';
+
+  setPongCanvasSize();
+  initPongObjects();
+  resetPongGame();
+
+  if (!pongLoopStarted) {
+    pongLoopStarted = true;
+    requestAnimationFrame(pongGameLoop);
+  }
+};
+
+document.getElementById('pongRestartBtn').addEventListener('click', () => window.startPong(pongMode));
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, updateDoc, increment, collection, getDocs, query, where, orderBy, limit,
+  connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+// No App Check — same reasoning as war.html/hearts.html/blackjack.html/
+// airhockey.html: no callable-Functions usage here.
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+  showView("mode-select");
+});
+
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+  document.getElementById("view-game").style.display = name === "game" ? "block" : "none";
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = "inline";
+  if (name === "leaderboard") loadLeaderboard();
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("mode-tile-ai").addEventListener("click", () => window.startPong("ai"));
+document.getElementById("mode-tile-2p").addEventListener("click", () => window.startPong("2p"));
+document.getElementById("pong-back-to-hub-btn").addEventListener("click", () => showView("mode-select"));
+document.getElementById("pongBackBtn").addEventListener("click", () => showView("mode-select"));
+
+// ============================= SUBMIT RESULTS ===============================
+// Only called from the classic script when a 2-Player Challenge match ends —
+// vs-Computer games are deliberately never submitted. Self-reported, same
+// trust model as every other game's stats on this site. Since both players
+// share one signed-in account/device, a win is simply credited to that
+// account's tally, regardless of which seat (P1/P2) actually won.
+window.submitPongWin = async () => {
+  if (!currentUid) return;
+  try {
+    await updateDoc(doc(db, "users", currentUid), { pongWins: increment(1) });
+  } catch (err) {
+    console.error("Couldn't submit Pong win:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "users"), where("pongWins", ">", 0), orderBy("pongWins", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${u.pongWins} wins</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
