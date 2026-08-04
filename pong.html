@@ -89,6 +89,12 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 }
 #view-game .pong-p1-score { color: #b22234; }
 #view-game .pong-p2-score { color: #3c3b6e; }
+#view-game .pong-countdown {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;
+  align-items: center; justify-content: center; z-index: 8; pointer-events: none;
+  font-size: clamp(3rem, 12vw, 6rem); font-weight: bold; color: #ffffff;
+  text-shadow: 0 0 20px #b22234, 0 0 6px #000;
+}
 #view-game .pong-game-over {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none;
   flex-direction: column; justify-content: center; align-items: center;
@@ -176,6 +182,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
         <div class="pong-board">
           <canvas id="pongCanvas"></canvas>
+          <div class="pong-countdown" id="pongCountdown"></div>
           <div class="pong-game-over" id="pongGameOver">
             <h2 id="pongWinnerText">PLAYER 1 WINS!</h2>
             <button type="button" class="pong-btn pulse" id="pongRestartBtn">PLAY AGAIN</button>
@@ -370,6 +377,7 @@ function movePongPaddles() {
 }
 
 function movePongBall() {
+  if (pongServing) return;
   ball.x += ball.velocityX;
   ball.y += ball.velocityY;
 
@@ -395,14 +403,46 @@ function movePongBall() {
   if (ball.x - ball.radius < 0) {
     player2Score++;
     p2ScoreEl.textContent = player2Score;
-    resetPongBall();
-    checkPongGameOver();
+    if (!checkPongGameOver()) serveWithCountdown();
   } else if (ball.x + ball.radius > pongCanvas.width) {
     player1Score++;
     p1ScoreEl.textContent = player1Score;
-    resetPongBall();
-    checkPongGameOver();
+    if (!checkPongGameOver()) serveWithCountdown();
   }
+}
+
+// Parks the ball dead-center with zero velocity and counts "3, 2, 1" over
+// the countdown element before actually serving — the ball used to fly
+// again the instant a point was scored, which was too fast to react to
+// coming off a goal. Paddles can still be repositioned while this counts
+// down (movePongBall() just no-ops via pongServing), so nobody's stuck
+// standing still, only the ball is paused.
+let pongServing = false;
+let pongServeTimer = null;
+const pongCountdownEl = document.getElementById('pongCountdown');
+function serveWithCountdown() {
+  pongServing = true;
+  ball.velocityX = 0;
+  ball.velocityY = 0;
+  ball.x = pongCanvas.width / 2;
+  ball.y = pongCanvas.height / 2;
+
+  let count = 3;
+  pongCountdownEl.textContent = count;
+  pongCountdownEl.style.display = 'flex';
+  if (pongServeTimer) clearInterval(pongServeTimer);
+  pongServeTimer = setInterval(() => {
+    count--;
+    if (count > 0) {
+      pongCountdownEl.textContent = count;
+      return;
+    }
+    clearInterval(pongServeTimer);
+    pongServeTimer = null;
+    pongCountdownEl.style.display = 'none';
+    pongServing = false;
+    resetPongBall();
+  }, 1000);
 }
 
 function resetPongBall() {
@@ -413,6 +453,7 @@ function resetPongBall() {
   ball.velocityY = (Math.random() * 2 - 1) * (ball.speed / 2);
 }
 
+// Returns true if the match just ended (winningScore reached).
 function checkPongGameOver() {
   if (player1Score >= winningScore || player2Score >= winningScore) {
     pongGameActive = false;
@@ -420,7 +461,9 @@ function checkPongGameOver() {
     pongWinnerTextEl.textContent = p1Won ? 'PLAYER 1 WINS!' : (pongMode === 'ai' ? 'COMPUTER WINS!' : 'PLAYER 2 WINS!');
     pongGameOverEl.style.display = 'flex';
     if (pongMode === '2p' && window.submitPongWin) window.submitPongWin();
+    return true;
   }
+  return false;
 }
 
 function resetPongGame() {
@@ -430,11 +473,13 @@ function resetPongGame() {
   p2ScoreEl.textContent = '0';
   pongGameActive = true;
   pongGameOverEl.style.display = 'none';
-  resetPongBall();
+  if (pongServeTimer) { clearInterval(pongServeTimer); pongServeTimer = null; }
+  pongCountdownEl.style.display = 'none';
   player1.y = pongCanvas.height / 2 - player1.height / 2;
   player2.y = pongCanvas.height / 2 - player2.height / 2;
   p1TouchId = null;
   p2TouchId = null;
+  serveWithCountdown();
 }
 
 function pongGameLoop() {

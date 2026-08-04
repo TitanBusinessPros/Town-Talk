@@ -1964,8 +1964,18 @@ async function flagForReview() {
 function renderDashboard(data) {
   currentUserData = data;
   const profile = data.profile || {};
-  document.getElementById("display-name").value = profile.name ?? "";
-  document.getElementById("neighborhood").value = profile.neighborhood ?? "";
+  // Same "don't stomp on what they're actively typing" guard as post-text
+  // below. renderDashboard() re-runs on every Firestore snapshot — not
+  // just the first one — including the watchUserDoc() self-heal path that
+  // recreates a blank doc if a read ever raced ahead of the just-written
+  // signup doc. Without this guard, that (or any other) mid-typing
+  // snapshot would blank out a name/town the person hadn't saved yet,
+  // which is exactly the "keeps erasing my profile" symptom reported
+  // right after signing up.
+  const nameEl = document.getElementById("display-name");
+  if (document.activeElement !== nameEl) nameEl.value = profile.name ?? "";
+  const neighborhoodEl = document.getElementById("neighborhood");
+  if (document.activeElement !== neighborhoodEl) neighborhoodEl.value = profile.neighborhood ?? "";
 
   const badge = document.getElementById("post-status-badge");
   const lock = editLockInfo(data);
