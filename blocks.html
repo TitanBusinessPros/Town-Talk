@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patriotic Blocks — Town Fuss</title>
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================================================
+   SITE-CHROME — hub/mode-select/leaderboard, same "site-chrome wraps a
+   standalone game" pattern as dodge.html/airhockey.html/deepsea.html.
+   Scoped under #site-chrome so it can never collide with the game's own
+   CSS below (which uses several bare tag selectors like h1/button).
+   =========================================================================== */
+#site-chrome {
+  --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+  --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px; --radius-sm: 8px;
+  background: var(--ink-900); color: var(--paper-050); min-height: 100vh;
+}
+#site-chrome a { color: var(--amber-500); }
+#site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
+#site-chrome p { color: var(--text-muted); line-height: 1.6; }
+#site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+#site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+#site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+#site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+#site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+#site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+#site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+#site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+#site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+#site-chrome button.site-btn:hover { background: var(--amber-600); }
+#site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+#site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+#site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+#site-chrome .leader-row:last-child { border-bottom: none; }
+#site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+#site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+#site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+#site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+#site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+#site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+#site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+
+/* ===========================================================================
+   GAME — Patriotic Blocks, a close port of the standalone build supplied
+   for this platform. #blocksWrapper stands in for the source's own `body`
+   rule (the source assumed it owned the whole page) so it can sit as a
+   sibling of #site-chrome instead of colliding with it; every other
+   selector below is unchanged from the source.
+   =========================================================================== */
+#blocksWrapper {
+    display: none;
+    background-color: #002868;
+    color: white;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 15px;
+    overflow-x: hidden;
+}
+#blocksWrapper, #blocksWrapper * {
+    font-family: 'Arial', sans-serif;
+    touch-action: manipulation;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 15px;
+    width: 100%;
+    background-color: #002868;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.flag-container {
+    position: relative;
+    height: 80px;
+    margin: 10px auto;
+    width: 160px;
+    overflow: hidden;
+    border: 2px solid #BF0A30;
+}
+
+.flag-stripes {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        0deg,
+        #BF0A30,
+        #BF0A30 14.28%,
+        white 14.28%,
+        white 28.56%
+    );
+}
+
+.flag-canton {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 40%;
+    height: 54%;
+    background-color: #002868;
+    display: grid;
+    grid-template-rows: repeat(9, 1fr);
+    grid-template-columns: repeat(11, 1fr);
+    padding: 0;
+}
+
+.flag-star {
+    width: 70%;
+    height: 70%;
+    background-color: white;
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    justify-self: center;
+    align-self: center;
+}
+
+.flag-wind-effect {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    animation: wave 3s infinite linear;
+    transform: skewX(-20deg);
+}
+
+@keyframes wave {
+    0% { transform: translateX(-100%) skewX(-20deg); }
+    100% { transform: translateX(200%) skewX(-20deg); }
+}
+
+#blocksWrapper h1 {
+    color: white;
+    margin: 8px 0;
+    font-size: 1.8rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.campaign-message {
+    color: white;
+    font-size: 1.2rem;
+    margin: 8px 0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.difficulty-badge {
+    background-color: #BF0A30;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    margin-left: 8px;
+    display: inline-block;
+}
+
+.game-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 100%;
+    width: 100%;
+    align-items: center;
+}
+
+.game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.game-board {
+    width: 100%;
+    max-width: 300px;
+    height: 500px;
+    background-color: #002868;
+    border: 3px solid #BF0A30;
+    display: grid;
+    grid-template-rows: repeat(20, 1fr);
+    grid-template-columns: repeat(10, 1fr);
+    gap: 1px;
+    padding: 2px;
+    position: relative;
+}
+
+.cell {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.filled {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.red {
+    background-color: #BF0A30;
+}
+
+.white {
+    background-color: white;
+}
+
+.blue {
+    background-color: #002868;
+    border: 1px solid white;
+}
+
+.game-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.info-panel {
+    background-color: #002868;
+    border: 2px solid #BF0A30;
+    border-radius: 10px;
+    padding: 12px;
+    color: white;
+}
+
+.info-panel h2 {
+    color: white;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #BF0A30;
+    padding-bottom: 4px;
+    font-size: 1.2rem;
+}
+
+.next-piece {
+    width: 100px;
+    height: 100px;
+    display: grid;
+    grid-template-rows: repeat(4, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-top: 8px;
+}
+
+.controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+}
+
+#blocksWrapper button {
+    background-color: #BF0A30;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+    font-size: 0.9rem;
+}
+
+#blocksWrapper button:hover, #blocksWrapper button:active {
+    background-color: #E31C3D;
+}
+
+.instructions {
+    margin-top: 15px;
+    text-align: center;
+    max-width: 100%;
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.instructions p {
+    margin: 4px 0;
+}
+
+.game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 40, 104, 0.95);
+    padding: 20px;
+    border-radius: 10px;
+    border: 3px solid #BF0A30;
+    text-align: center;
+    z-index: 10;
+    display: none;
+    width: 90%;
+    max-width: 300px;
+}
+
+.level-indicator {
+    font-size: 1rem;
+    font-weight: bold;
+    color: white;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 16px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background-color: #BF0A30;
+    width: 0%;
+    transition: width 0.5s;
+}
+
+.difficulty-effects {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.5s;
+}
+
+.screen-shake {
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.warning {
+    color: #BF0A30;
+    font-weight: bold;
+    text-align: center;
+    margin: 8px 0;
+    font-size: 0.9rem;
+}
+
+.audio-notice {
+    background-color: #BF0A30;
+    color: white;
+    padding: 8px;
+    border-radius: 5px;
+    margin-top: 8px;
+    text-align: center;
+    animation: pulse 2s infinite;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.audio-notice:active {
+    transform: scale(0.98);
+}
+
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+/* Mobile Controls */
+.mobile-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.mobile-control-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.mobile-btn {
+    flex: 1;
+    background-color: #BF0A30;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.mobile-btn:active {
+    background-color: #E31C3D;
+    transform: scale(0.95);
+}
+
+.mobile-rotate {
+    background-color: #002868;
+    border: 2px solid white;
+}
+
+.mobile-drop {
+    background-color: #BF0A30;
+}
+
+.mobile-left, .mobile-right {
+    background-color: #002868;
+    border: 2px solid #BF0A30;
+}
+
+.touch-instructions {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    width: 100%;
+}
+
+.back-to-hub-row {
+    margin-top: 15px;
+    text-align: center;
+}
+
+/* Desktop styles */
+@media (min-width: 768px) {
+    .game-container {
+        flex-direction: row;
+        justify-content: center;
+        max-width: 800px;
+    }
+
+    .game-area {
+        flex-direction: row;
+    }
+
+    .mobile-controls {
+        display: none;
+    }
+
+    #blocksWrapper h1 {
+        font-size: 2.5rem;
+    }
+
+    .campaign-message {
+        font-size: 1.5rem;
+    }
+
+    .flag-container {
+        height: 100px;
+        width: 200px;
+    }
+}
+
+/* Show mobile controls on mobile */
+@media (max-width: 767px) {
+    .mobile-controls {
+        display: flex;
+    }
+}
+</style>
+</head>
+<body>
+
+<div id="site-chrome">
+  <header class="header-bar">
+    <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+    <nav class="header-nav">
+      <button id="nav-hub" class="active">Games</button>
+      <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+    </nav>
+  </header>
+
+  <main class="page">
+
+    <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+      <h2>Sign in on Town Fuss first</h2>
+      <p>You need a Town Fuss account to play Patriotic Blocks online and appear on the leaderboard.</p>
+      <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+    </div>
+
+    <div id="app-content" style="display:none;">
+
+      <!-- ================= MODE SELECT ================= -->
+      <section id="view-mode-select">
+        <span class="eyebrow">Patriotic Blocks</span>
+        <h1>🧱 How do you want to play? 🧱</h1>
+        <p class="field-hint" id="blocks-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+        <div class="uicard mode-tile" id="mode-tile-offline">
+          <h2 style="font-size:1.05rem;">🎮 Play for Fun</h2>
+          <p class="field-hint" style="text-align:center;">Just play — nothing is tracked or submitted anywhere</p>
+        </div>
+        <div class="uicard mode-tile" id="mode-tile-online">
+          <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+          <p class="field-hint" style="text-align:center;">Your high score gets submitted to the leaderboard</p>
+        </div>
+        <div id="mode-select-message" class="site-message" style="display:none;"></div>
+      </section>
+
+      <!-- ================= LEADERBOARD ================= -->
+      <section id="view-leaderboard" style="display:none;">
+        <span class="eyebrow">Patriotic Blocks</span>
+        <h1>Leaderboard</h1>
+        <p style="text-align:center;">Highest score wins. The game never ends — only Online (Ranked) runs count.</p>
+        <div class="uicard">
+          <h2 style="text-align:left;">🏆 Top Builders</h2>
+          <div id="leaderboard-list"></div>
+          <div id="leaderboard-empty" class="empty-state" style="display:none;">No ranked runs yet — be the first!</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ================= GAME (close port of the standalone build) ================= -->
+<div id="blocksWrapper">
+    <div class="header">
+        <div class="flag-container">
+            <div class="flag-stripes"></div>
+            <div class="flag-canton" id="flag-canton"></div>
+            <div class="flag-wind-effect"></div>
+        </div>
+        <h1>Patriotic Blocks <span class="difficulty-badge">HARD MODE</span></h1>
+        <div class="campaign-message">PUT YOUR BRAND HERE</div>
+        <div class="audio-notice" id="audio-notice">Tap here to enable audio!</div>
+    </div>
+
+    <div class="game-container">
+        <div class="game-area">
+            <div class="game-board" id="board">
+                <div class="difficulty-effects" id="difficulty-effects"></div>
+            </div>
+
+            <div class="game-info">
+                <div class="info-panel">
+                    <h2>Game Info</h2>
+                    <p>Score: <span id="score">0</span></p>
+                    <p>Level: <span id="level">1</span></p>
+                    <p>Lines: <span id="lines">0</span></p>
+                    <div class="level-indicator">Level Progress</div>
+                    <div class="progress-bar">
+                        <div class="progress" id="level-progress"></div>
+                    </div>
+                    <p class="warning" id="warning-message"></p>
+                </div>
+
+                <div class="info-panel">
+                    <h2>Next Piece</h2>
+                    <div class="next-piece" id="next-piece"></div>
+                </div>
+
+                <div class="info-panel">
+                    <h2>Controls</h2>
+                    <p>&larr; &rarr; : Move Left/Right</p>
+                    <p>&uarr; : Rotate</p>
+                    <p>&darr; : Soft Drop</p>
+                    <p>Space : Hard Drop</p>
+                    <p>P : Pause</p>
+
+                    <div class="controls">
+                        <button id="pause-btn">Pause</button>
+                        <button id="restart-btn">Restart</button>
+                        <button id="sound-btn">Sound: On</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Touch Controls -->
+    <div class="mobile-controls">
+        <div class="mobile-control-row">
+            <div class="mobile-btn mobile-rotate" id="mobile-rotate">ROTATE</div>
+        </div>
+        <div class="mobile-control-row">
+            <div class="mobile-btn mobile-left" id="mobile-left">&larr; LEFT</div>
+            <div class="mobile-btn mobile-drop" id="mobile-drop">DROP</div>
+            <div class="mobile-btn mobile-right" id="mobile-right">RIGHT &rarr;</div>
+        </div>
+    </div>
+
+    <div class="touch-instructions">
+        Tap buttons to control the piece | Tap game board to rotate
+    </div>
+
+    <div class="instructions">
+        <p>Clear lines to score points and keep climbing — there's no final level, so see how far you can get!</p>
+        <p class="warning">WARNING: This is HARD MODE - pieces fall faster and difficulty increases rapidly!</p>
+    </div>
+
+    <div class="game-over" id="game-over">
+        <h2 id="game-over-title">Game Over</h2>
+        <p>Your final score: <span id="final-score">0</span></p>
+        <p>You reached level: <span id="final-level">1</span></p>
+        <button id="play-again-btn">Play Again</button>
+        <button type="button" id="blocks-hub-btn" style="background-color:#444; margin-top:8px;">&larr; Games</button>
+    </div>
+
+    <div class="back-to-hub-row">
+        <button type="button" id="blocks-back-btn" style="background-color:#444;">&larr; Back to Games</button>
+    </div>
+</div>
+
+<script>
+// ===========================================================================
+// CLASSIC (non-module) script — the game engine itself, a close port of the
+// standalone Patriotic Blocks build supplied for this platform. Kept as a
+// plain classic script so its state stays on real global `window`-scope
+// variables, matching every other game's testing convention.
+//
+// Two changes from the source beyond the port itself:
+//   1. Endless: the source silently stopped incrementing the displayed
+//      level (and therefore the score-per-line-clear multiplier) once it
+//      hit 20, even though nothing in the source actually ended the game
+//      at that point — dropInterval was already floored at its minimum by
+//      level 15. Removed that "<= 20" guard so level (and score reward)
+//      keeps climbing for as long as a run lasts.
+//   2. One-time event binding: the source's init() re-registered the
+//      keydown handler, all four button click handlers, and the mobile
+//      touch handlers EVERY time a run (re)started (it was only ever
+//      designed to run once per page load). Wired into this hub, Play
+//      Again / mode-select can restart a run many times in one visit,
+//      which would have stacked duplicate listeners and made every
+//      keypress/tap fire multiple times after a few restarts. Split into
+//      bindEventListenersOnce() (real one-time setup, called once at the
+//      bottom of this script) and init() (just resets/builds a fresh
+//      board+pieces, called on every run start).
+// ===========================================================================
+const COLS = 10;
+const ROWS = 20;
+const EMPTY = 'empty';
+const COLORS = ['red', 'white', 'blue'];
+
+let board = [];
+let currentPiece = null;
+let nextPiece = null;
+let score = 0;
+let level = 1;
+let lines = 0;
+let gameOver = false;
+let isPaused = false;
+let dropInterval = 800;
+let dropStart = Date.now();
+let soundEnabled = true;
+let lastWarningLevel = 0;
+let audioStarted = false;
+let gameStarted = false; // becomes true once a run has actually been started via the hub
+let isOnlineRun = false; // set by window.startBlocksGame() — gates leaderboard submission
+
+const PIECES = [
+    { shape: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], color: 'red' },
+    { shape: [[1,1],[1,1]], color: 'white' },
+    { shape: [[0,1,0],[1,1,1],[0,0,0]], color: 'blue' },
+    { shape: [[1,1,0],[0,1,1],[0,0,0]], color: 'red' },
+    { shape: [[0,1,1],[1,1,0],[0,0,0]], color: 'white' },
+    { shape: [[1,0,0],[1,1,1],[0,0,0]], color: 'blue' },
+    { shape: [[0,0,1],[1,1,1],[0,0,0]], color: 'red' }
+];
+
+const boardElement = document.getElementById('board');
+const nextPieceElement = document.getElementById('next-piece');
+const scoreElement = document.getElementById('score');
+const levelElement = document.getElementById('level');
+const linesElement = document.getElementById('lines');
+const levelProgressElement = document.getElementById('level-progress');
+const pauseBtn = document.getElementById('pause-btn');
+const restartBtn = document.getElementById('restart-btn');
+const soundBtn = document.getElementById('sound-btn');
+const gameOverElement = document.getElementById('game-over');
+const gameOverTitle = document.getElementById('game-over-title');
+const finalScoreElement = document.getElementById('final-score');
+const finalLevelElement = document.getElementById('final-level');
+const playAgainBtn = document.getElementById('play-again-btn');
+const warningMessage = document.getElementById('warning-message');
+const difficultyEffects = document.getElementById('difficulty-effects');
+const flagCanton = document.getElementById('flag-canton');
+const audioNotice = document.getElementById('audio-notice');
+
+const mobileRotateBtn = document.getElementById('mobile-rotate');
+const mobileLeftBtn = document.getElementById('mobile-left');
+const mobileRightBtn = document.getElementById('mobile-right');
+const mobileDropBtn = document.getElementById('mobile-drop');
+
+let campaignSong = null;
+
+// Resets/builds a fresh board+pieces — called on every run start (first
+// start via the hub, and every "Play Again"/Restart after that).
+function init() {
+    createBoard();
+    generatePieces();
+    drawBoard();
+    drawNextPiece();
+    updateStats();
+    createFlagStars();
+}
+
+// Real one-time setup — called exactly once, at the bottom of this script.
+function bindEventListenersOnce() {
+    setupAudioStart();
+    setupMobileControls();
+
+    document.addEventListener('keydown', handleKeyPress);
+    pauseBtn.addEventListener('click', togglePause);
+    restartBtn.addEventListener('click', restartGame);
+    soundBtn.addEventListener('click', toggleSound);
+    playAgainBtn.addEventListener('click', restartGame);
+
+    gameLoop();
+}
+
+function setupAudioStart() {
+    audioNotice.addEventListener('click', function() {
+        startAudio();
+    });
+    document.addEventListener('click', startAudioOnInteraction);
+    document.addEventListener('keydown', startAudioOnInteraction);
+    document.addEventListener('touchstart', startAudioOnInteraction);
+}
+
+function startAudioOnInteraction(event) {
+    if (audioStarted) return;
+    if (event.type === 'keydown') {
+        const key = event.keyCode;
+        if ([37, 38, 39, 40, 32, 80].includes(key)) {
+            return;
+        }
+    }
+    startAudio();
+}
+
+function startAudio() {
+    if (audioStarted) return;
+    audioStarted = true;
+
+    document.removeEventListener('click', startAudioOnInteraction);
+    document.removeEventListener('keydown', startAudioOnInteraction);
+    document.removeEventListener('touchstart', startAudioOnInteraction);
+
+    audioNotice.style.display = 'none';
+
+    if (soundEnabled) {
+        campaignSong = new Audio("https://github.com/Team-America/Patriotic-Blockade/raw/main/Falling%20Blocks.mp3");
+        campaignSong.loop = true;
+
+        campaignSong.play().then(() => {
+            console.log("Audio started successfully");
+        }).catch(error => {
+            console.log("Audio play failed:", error);
+            audioNotice.style.display = 'block';
+            audioNotice.textContent = "Tap to enable audio";
+            audioStarted = false;
+        });
+    }
+}
+
+function setupMobileControls() {
+    let lastActionTime = 0;
+    const actionCooldown = 150;
+
+    function canPerformAction() {
+        const now = Date.now();
+        if (now - lastActionTime < actionCooldown) {
+            return false;
+        }
+        lastActionTime = now;
+        return true;
+    }
+
+    mobileRotateBtn.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        if (!audioStarted) startAudio();
+        if (canPerformAction()) {
+            rotatePiece();
+            drawBoard();
+        }
+    });
+    mobileRotateBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+    });
+
+    mobileLeftBtn.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        if (!audioStarted) startAudio();
+        if (canPerformAction()) {
+            movePiece(0, -1);
+            drawBoard();
+        }
+    });
+    mobileLeftBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+    });
+
+    mobileRightBtn.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        if (!audioStarted) startAudio();
+        if (canPerformAction()) {
+            movePiece(0, 1);
+            drawBoard();
+        }
+    });
+    mobileRightBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+    });
+
+    mobileDropBtn.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        if (!audioStarted) startAudio();
+        if (canPerformAction()) {
+            hardDrop();
+        }
+    });
+    mobileDropBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+    });
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchMoved = false;
+
+    boardElement.addEventListener('touchstart', function(e) {
+        if (!audioStarted) startAudio();
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchMoved = false;
+    });
+
+    boardElement.addEventListener('touchmove', function(e) {
+        const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+        const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+        if (moveX > 10 || moveY > 10) {
+            touchMoved = true;
+        }
+    });
+
+    boardElement.addEventListener('touchend', function(e) {
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+
+        const diffX = touchEndX - touchStartX;
+        const diffY = touchEndY - touchStartY;
+
+        if (touchMoved) {
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 60) {
+                if (diffX > 0) {
+                    movePiece(0, 1);
+                } else {
+                    movePiece(0, -1);
+                }
+                drawBoard();
+            } else if (Math.abs(diffY) > Math.abs(diffX) && diffY < -60) {
+                rotatePiece();
+                drawBoard();
+            }
+        } else {
+            if (canPerformAction() && (e.target === boardElement || e.target.classList.contains('cell'))) {
+                rotatePiece();
+                drawBoard();
+            }
+        }
+
+        e.preventDefault();
+    });
+
+    boardElement.addEventListener('click', function(e) {
+        e.preventDefault();
+    });
+}
+
+function createBoard() {
+    board = [];
+    boardElement.querySelectorAll('.cell').forEach((el) => el.remove());
+    for (let r = 0; r < ROWS; r++) {
+        board[r] = [];
+        for (let c = 0; c < COLS; c++) {
+            board[r][c] = EMPTY;
+
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = `${r}-${c}`;
+            boardElement.appendChild(cell);
+        }
+    }
+}
+
+function createFlagStars() {
+    flagCanton.innerHTML = '';
+
+    for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 11; col++) {
+            let shouldHaveStar = false;
+
+            if (row % 2 === 0) {
+                if (col % 2 === 1) {
+                    shouldHaveStar = true;
+                }
+            } else {
+                if (col % 2 === 0 && col > 0) {
+                    shouldHaveStar = true;
+                }
+            }
+
+            if (shouldHaveStar) {
+                const star = document.createElement('div');
+                star.className = 'flag-star';
+                star.style.gridRow = row + 1;
+                star.style.gridColumn = col + 1;
+                flagCanton.appendChild(star);
+            }
+        }
+    }
+}
+
+function generatePieces() {
+    if (!currentPiece) {
+        currentPiece = getRandomPiece();
+    }
+    if (!nextPiece) {
+        nextPiece = getRandomPiece();
+    }
+}
+
+function getRandomPiece() {
+    const piece = PIECES[Math.floor(Math.random() * PIECES.length)];
+    return {
+        shape: JSON.parse(JSON.stringify(piece.shape)),
+        color: piece.color,
+        row: 0,
+        col: Math.floor(COLS / 2) - Math.floor(piece.shape[0].length / 2)
+    };
+}
+
+function drawBoard() {
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            const cell = document.getElementById(`${r}-${c}`);
+            cell.className = 'cell';
+
+            if (board[r][c] !== EMPTY) {
+                cell.classList.add('filled', board[r][c]);
+            }
+        }
+    }
+
+    if (currentPiece) {
+        drawPiece(currentPiece);
+    }
+}
+
+function drawPiece(piece) {
+    for (let r = 0; r < piece.shape.length; r++) {
+        for (let c = 0; c < piece.shape[r].length; c++) {
+            if (piece.shape[r][c]) {
+                const cellRow = piece.row + r;
+                const cellCol = piece.col + c;
+
+                if (cellRow >= 0 && cellRow < ROWS && cellCol >= 0 && cellCol < COLS) {
+                    const cell = document.getElementById(`${cellRow}-${cellCol}`);
+                    cell.className = 'cell filled ' + piece.color;
+                }
+            }
+        }
+    }
+}
+
+function drawNextPiece() {
+    nextPieceElement.innerHTML = '';
+
+    if (!nextPiece) return;
+
+    for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+
+            if (r < nextPiece.shape.length && c < nextPiece.shape[0].length && nextPiece.shape[r][c]) {
+                cell.classList.add('filled', nextPiece.color);
+            }
+
+            nextPieceElement.appendChild(cell);
+        }
+    }
+}
+
+function movePiece(dRow, dCol) {
+    if (isPaused || gameOver) return false;
+
+    if (!audioStarted) {
+        startAudio();
+    }
+
+    const testPiece = {
+        shape: currentPiece.shape,
+        color: currentPiece.color,
+        row: currentPiece.row + dRow,
+        col: currentPiece.col + dCol
+    };
+
+    if (isValidMove(testPiece)) {
+        currentPiece.row = testPiece.row;
+        currentPiece.col = testPiece.col;
+        return true;
+    } else if (dRow > 0) {
+        lockPiece();
+        return false;
+    }
+
+    return false;
+}
+
+function rotatePiece() {
+    if (isPaused || gameOver) return;
+
+    if (!audioStarted) {
+        startAudio();
+    }
+
+    const rows = currentPiece.shape.length;
+    const cols = currentPiece.shape[0].length;
+    const newShape = [];
+
+    for (let c = 0; c < cols; c++) {
+        newShape[c] = [];
+        for (let r = rows - 1; r >= 0; r--) {
+            newShape[c][rows - 1 - r] = currentPiece.shape[r][c];
+        }
+    }
+
+    const testPiece = {
+        shape: newShape,
+        color: currentPiece.color,
+        row: currentPiece.row,
+        col: currentPiece.col
+    };
+
+    if (isValidMove(testPiece)) {
+        currentPiece.shape = newShape;
+    }
+}
+
+function isValidMove(piece) {
+    for (let r = 0; r < piece.shape.length; r++) {
+        for (let c = 0; c < piece.shape[r].length; c++) {
+            if (piece.shape[r][c]) {
+                const newRow = piece.row + r;
+                const newCol = piece.col + c;
+
+                if (newRow < 0 || newRow >= ROWS || newCol < 0 || newCol >= COLS) {
+                    return false;
+                }
+
+                if (newRow >= 0 && board[newRow][newCol] !== EMPTY) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+function lockPiece() {
+    for (let r = 0; r < currentPiece.shape.length; r++) {
+        for (let c = 0; c < currentPiece.shape[r].length; c++) {
+            if (currentPiece.shape[r][c]) {
+                const boardRow = currentPiece.row + r;
+                const boardCol = currentPiece.col + c;
+
+                if (boardRow >= 0) {
+                    board[boardRow][boardCol] = currentPiece.color;
+                }
+            }
+        }
+    }
+
+    checkLines();
+
+    currentPiece = nextPiece;
+    nextPiece = getRandomPiece();
+    drawNextPiece();
+
+    if (!isValidMove(currentPiece)) {
+        gameOver = true;
+        showGameOver(false);
+    }
+}
+
+function checkLines() {
+    let linesCleared = 0;
+
+    for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r].every(cell => cell !== EMPTY)) {
+            for (let c = 0; c < COLS; c++) {
+                board[r][c] = EMPTY;
+            }
+
+            for (let y = r; y > 0; y--) {
+                for (let c = 0; c < COLS; c++) {
+                    board[y][c] = board[y-1][c];
+                }
+            }
+
+            for (let c = 0; c < COLS; c++) {
+                board[0][c] = EMPTY;
+            }
+
+            linesCleared++;
+            r++;
+        }
+    }
+
+    if (linesCleared > 0) {
+        updateScore(linesCleared);
+        lines += linesCleared;
+
+        // Endless: no upper cap on level (the source stopped incrementing
+        // past 20 here, even though nothing else in the game ever ended a
+        // run at that point).
+        const newLevel = Math.floor(lines / 5) + 1;
+        if (newLevel > level) {
+            level = newLevel;
+            updateLevel();
+        }
+
+        updateStats();
+    }
+}
+
+function updateScore(linesCleared) {
+    const points = [0, 100, 300, 500, 800];
+    score += points[linesCleared] * level;
+}
+
+function updateLevel() {
+    dropInterval = Math.max(100, 800 - (level - 1) * 50);
+
+    if (level >= 10 && lastWarningLevel < 10) {
+        showWarning("EXTREME SPEED! Level 10+");
+        lastWarningLevel = 10;
+    } else if (level >= 15 && lastWarningLevel < 15) {
+        showWarning("INSANE SPEED! Level 15+");
+        lastWarningLevel = 15;
+    } else if (level >= 18 && lastWarningLevel < 18) {
+        showWarning("IMPOSSIBLE SPEED! Level 18+");
+        lastWarningLevel = 18;
+    }
+
+    if (level >= 10) {
+        difficultyEffects.style.opacity = '0.1';
+        difficultyEffects.style.background = 'radial-gradient(circle, rgba(191,10,48,0.3) 0%, rgba(0,40,104,0) 70%)';
+    }
+
+    if (level >= 15) {
+        difficultyEffects.style.opacity = '0.2';
+        boardElement.classList.add('screen-shake');
+        setTimeout(() => {
+            boardElement.classList.remove('screen-shake');
+        }, 500);
+    }
+
+    const progress = ((lines % 5) / 5) * 100;
+    levelProgressElement.style.width = `${progress}%`;
+}
+
+function showWarning(message) {
+    warningMessage.textContent = message;
+    setTimeout(() => {
+        warningMessage.textContent = '';
+    }, 3000);
+}
+
+function updateStats() {
+    scoreElement.textContent = score;
+    levelElement.textContent = level;
+    linesElement.textContent = lines;
+}
+
+function handleKeyPress(event) {
+    if (!gameStarted || gameOver) return;
+
+    switch(event.keyCode) {
+        case 37:
+            event.preventDefault();
+            movePiece(0, -1);
+            break;
+        case 39:
+            event.preventDefault();
+            movePiece(0, 1);
+            break;
+        case 40:
+            event.preventDefault();
+            movePiece(1, 0);
+            score += 1;
+            updateStats();
+            break;
+        case 38:
+            event.preventDefault();
+            rotatePiece();
+            break;
+        case 32:
+            event.preventDefault();
+            hardDrop();
+            break;
+        case 80:
+            togglePause();
+            break;
+    }
+
+    drawBoard();
+}
+
+function hardDrop() {
+    if (isPaused || gameOver) return;
+
+    let dropDistance = 0;
+
+    while (movePiece(1, 0)) {
+        dropDistance++;
+    }
+
+    score += dropDistance * 2;
+    updateStats();
+    drawBoard();
+}
+
+function togglePause() {
+    if (!gameStarted || gameOver) return;
+    isPaused = !isPaused;
+    pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+
+    if (isPaused) {
+        document.getElementById('game-over-title').textContent = 'Game Paused';
+        gameOverElement.style.display = 'block';
+        if (campaignSong) campaignSong.pause();
+    } else {
+        gameOverElement.style.display = 'none';
+        dropStart = Date.now();
+        if (soundEnabled && audioStarted && campaignSong) {
+            campaignSong.play();
+        }
+    }
+}
+
+function toggleSound() {
+    soundEnabled = !soundEnabled;
+    soundBtn.textContent = `Sound: ${soundEnabled ? 'On' : 'Off'}`;
+
+    if (soundEnabled && audioStarted && campaignSong) {
+        campaignSong.play();
+    } else if (campaignSong) {
+        campaignSong.pause();
+    }
+}
+
+// Only ever called with isWin === false in this build (there's no "beat
+// the game" condition — it's endless), but the param is kept for parity
+// with the source.
+function showGameOver(isWin) {
+    gameOverTitle.textContent = isWin ? 'You Win!' : 'Game Over';
+    finalScoreElement.textContent = score;
+    finalLevelElement.textContent = level;
+    gameOverElement.style.display = 'block';
+
+    if (campaignSong) campaignSong.pause();
+    if (isOnlineRun && window.submitBlocksResult) window.submitBlocksResult({ score });
+}
+
+function restartGame() {
+    if (!gameStarted) return;
+    board = [];
+    currentPiece = null;
+    nextPiece = null;
+    score = 0;
+    level = 1;
+    lines = 0;
+    gameOver = false;
+    isPaused = false;
+    dropInterval = 800;
+    dropStart = Date.now();
+    lastWarningLevel = 0;
+    pauseBtn.textContent = 'Pause';
+
+    difficultyEffects.style.opacity = '0';
+
+    if (soundEnabled && audioStarted && campaignSong) {
+        campaignSong.currentTime = 0;
+        campaignSong.play();
+    }
+
+    init();
+
+    gameOverElement.style.display = 'none';
+}
+
+function gameLoop() {
+    if (gameStarted && !isPaused && !gameOver) {
+        const now = Date.now();
+        const delta = now - dropStart;
+
+        if (delta > dropInterval) {
+            movePiece(1, 0);
+            drawBoard();
+            dropStart = now;
+        }
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Called by the module script's mode-select handlers. `isOnline` gates
+// whether a final score gets submitted to the leaderboard in
+// showGameOver() above.
+window.startBlocksGame = function (isOnline) {
+    isOnlineRun = isOnline;
+    gameStarted = true;
+
+    document.getElementById('site-chrome').style.display = 'none';
+    document.getElementById('blocksWrapper').style.display = 'flex';
+
+    dropStart = Date.now();
+    score = 0;
+    level = 1;
+    lines = 0;
+    gameOver = false;
+    isPaused = false;
+    dropInterval = 800;
+    lastWarningLevel = 0;
+    difficultyEffects.style.opacity = '0';
+    pauseBtn.textContent = 'Pause';
+    gameOverElement.style.display = 'none';
+
+    init();
+};
+
+function backToBlocksHub() {
+    gameStarted = false;
+    isPaused = false;
+    if (campaignSong) campaignSong.pause();
+    document.getElementById('blocksWrapper').style.display = 'none';
+    document.getElementById('site-chrome').style.display = 'block';
+    if (window.onBlocksReturnToHub) window.onBlocksReturnToHub();
+}
+document.getElementById('blocks-back-btn').addEventListener('click', backToBlocksHub);
+document.getElementById('blocks-hub-btn').addEventListener('click', backToBlocksHub);
+
+// Real one-time setup — must run exactly once, unlike the source's init()
+// which re-ran this every restart (see the comment block at the top).
+bindEventListenersOnce();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, getDocs, query, where, orderBy, limit,
+  connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+// No App Check — same reasoning as war.html/hearts.html/blackjack.html/
+// pong.html: no callable-Functions usage here.
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) currentUserData = snap.data();
+
+  watchGamePlayLimit(currentUid);
+  showView("mode-select");
+});
+
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  document.getElementById("nav-leaderboard").style.display = "inline";
+  if (name === "leaderboard") loadLeaderboard();
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+
+window.onBlocksReturnToHub = function () {
+  showView("mode-select");
+};
+
+document.getElementById("mode-tile-offline").addEventListener("click", () => {
+  window.startBlocksGame(false);
+});
+document.getElementById("mode-tile-online").addEventListener("click", async () => {
+  const msg = document.getElementById("mode-select-message");
+  const slot = await reserveGamePlaySlot(msg);
+  if (!slot.ok) return;
+  try {
+    await setDoc(doc(db, "gamePlayLimits", currentUid), { day: todayNumber(), count: slot.count });
+  } catch (err) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return;
+  }
+  window.startBlocksGame(true);
+});
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= GAME PLAY LIMIT (online runs only) ==========
+// Same tiered daily cap (3 Free / 10 Gold / unlimited Diamond) as every
+// other endless/leaderboard game, sharing the SAME gamePlayLimits/{uid}
+// counter — Play for Fun is always unlimited.
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("blocks-play-remaining");
+  if (!el) return;
+  const limitVal = myDailyTierLimit();
+  if (limitVal === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limitVal - currentGamePlayLimit.count) : limitVal;
+  el.textContent = `${remaining} / ${limitVal} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limitVal = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limitVal - data.count : limitVal;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, count: newCount };
+}
+
+// ============================= SUBMIT RESULTS ===============================
+window.submitBlocksResult = async ({ score }) => {
+  if (!currentUid || !score) return;
+  try {
+    const snap = await getDoc(doc(db, "users", currentUid));
+    const data = snap.exists() ? snap.data() : {};
+    if (score > (data.blocksHighScore || 0)) {
+      await updateDoc(doc(db, "users", currentUid), { blocksHighScore: score });
+    }
+  } catch (err) {
+    console.error("Couldn't submit Patriotic Blocks run result:", err);
+  }
+};
+
+// ============================= LEADERBOARD ==================================
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+
+  try {
+    const q = query(collection(db, "users"), where("blocksHighScore", ">", 0), orderBy("blocksHighScore", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    let rank = 0;
+    snap.forEach((docSnap) => {
+      rank++;
+      const u = docSnap.data();
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span><span class="leader-rank">#${rank}</span> ${escapeHtml(u.profile?.name || "Neighbor")}</span><span>${u.blocksHighScore} pts</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
