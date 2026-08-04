@@ -119,12 +119,21 @@ async function sendPushToUser(uid, { type, title, body, clickAction }) {
   await logInAppNotification(uid, { type, title, body, clickAction });
 
   const userSnap = await db.collection("users").doc(uid).get();
-  if (!userSnap.exists) return;
+  if (!userSnap.exists) {
+    console.log(`sendPushToUser(${uid}, ${type}): no users doc — in-app only`);
+    return;
+  }
   const userData = userSnap.data();
 
-  if (!userData.notificationsEnabled) return; // respects the toggle
+  if (!userData.notificationsEnabled) {
+    console.log(`sendPushToUser(${uid}, ${type}): notificationsEnabled is false — in-app only`);
+    return;
+  }
   const tokens = Array.isArray(userData.fcmTokens) ? userData.fcmTokens : [];
-  if (tokens.length === 0) return;
+  if (tokens.length === 0) {
+    console.log(`sendPushToUser(${uid}, ${type}): notificationsEnabled but 0 fcmTokens — in-app only`);
+    return;
+  }
 
   const message = {
     notification: { title, body },
@@ -133,6 +142,13 @@ async function sendPushToUser(uid, { type, title, body, clickAction }) {
   };
 
   const response = await messaging.sendEachForMulticast(message);
+  console.log(
+    `sendPushToUser(${uid}, ${type}): sent to ${tokens.length} token(s), ` +
+    `${response.successCount} succeeded, ${response.failureCount} failed` +
+    (response.failureCount > 0
+      ? ` — errors: ${response.responses.filter((r) => !r.success).map((r) => r.error?.code).join(", ")}`
+      : "")
+  );
 
   // Remove any token FCM says is no longer valid, so future sends don't
   // keep wasting a call on a dead device.
@@ -261,6 +277,7 @@ exports.onNewSignup = onDocumentCreated("users/{uid}", async (event) => {
   const { uid } = event.params;
 
   const adminsSnap = await db.collection("admins").get();
+  console.log(`onNewSignup(${uid}): found ${adminsSnap.size} admin doc(s): [${adminsSnap.docs.map((d) => d.id).join(", ")}]`);
   if (adminsSnap.empty) return;
 
   const name = newUser.profile?.name || "A new user";
