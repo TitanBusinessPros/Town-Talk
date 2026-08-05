@@ -485,6 +485,22 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <button class="tab" data-tab="reset">Forgot password</button>
       </div>
 
+      <!-- Outside .auth-form on purpose — stays visible no matter which tab
+           is selected, since one Google click covers both sign-up and
+           login (handleGoogleSignIn below figures out which one applies). -->
+      <div class="form-row" style="justify-content:center; margin-top:0.75rem;">
+        <button type="button" id="google-signin-btn" class="secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18" style="vertical-align:middle; margin-right:0.5rem;" aria-hidden="true">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          Continue with Google
+        </button>
+      </div>
+      <div id="google-signin-message" class="message" style="display:none; text-align:center;"></div>
+
       <form id="form-login" class="auth-form">
         <label for="login-email">Email</label>
         <input id="login-email" type="email" required autocomplete="email" />
@@ -1150,6 +1166,31 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   </div>
 </div>
 
+<!-- Shown once, only the first time a NEW Google account signs in — the
+     Google popup itself has no room for our age/terms checkboxes, so this
+     stands in for the two checkboxes on the email Sign up form. An
+     existing Google user signing back in never sees this (handleGoogleSignIn
+     below only shows it when there's no users/{uid} doc yet). -->
+<div id="google-confirm-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal-box">
+    <h2 style="margin-top:0;">One more thing</h2>
+    <p class="field-hint" style="text-align:left;">Before we create your Town Fuss profile:</p>
+    <label style="display:flex; align-items:flex-start; gap:0.6rem; margin-top:1rem; cursor:pointer;">
+      <input id="google-confirm-age" type="checkbox" style="width:auto; margin-top:0.2rem;" />
+      <span style="font-size:0.85rem; color:var(--text-muted);">I confirm I am at least 18 years old. Town Fuss is for adults only.</span>
+    </label>
+    <label style="display:flex; align-items:flex-start; gap:0.6rem; margin-top:0.75rem; cursor:pointer;">
+      <input id="google-confirm-terms" type="checkbox" style="width:auto; margin-top:0.2rem;" />
+      <span style="font-size:0.85rem; color:var(--text-muted);">I agree to the <a href="#" id="google-confirm-terms-link">Terms of Service</a>.</span>
+    </label>
+    <div class="form-row">
+      <button type="button" id="google-confirm-continue-btn">Create account</button>
+      <button type="button" class="secondary" id="google-confirm-cancel-btn">Cancel</button>
+    </div>
+    <div id="google-confirm-message" class="message" style="display:none"></div>
+  </div>
+</div>
+
 <!-- Admin PIN gate — a lightweight extra confirmation step shown once per
      browser tab when an admin account signs in, before any admin-only
      screens are used. This is a convenience speed-bump, NOT a real security
@@ -1213,6 +1254,7 @@ import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendPasswordResetEmail, onAuthStateChanged, signOut, deleteUser,
   EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification, connectAuthEmulator,
+  GoogleAuthProvider, signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
@@ -1267,6 +1309,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const functions = getFunctions(app);
+const googleProvider = new GoogleAuthProvider();
 
 // Exposed for Playwright tests to invoke the real callable functions
 // directly, bypassing the admin-PIN modal UI — the PIN is only ever a
@@ -1880,6 +1923,8 @@ function friendlyAuthError(err) {
   if (code.includes("weak-password")) return "Please choose a password with at least 6 characters.";
   if (code.includes("invalid-email")) return "That doesn't look like a valid email address.";
   if (code.includes("user-not-found") || code.includes("wrong-password") || code.includes("invalid-credential")) return "Email or password is incorrect.";
+  if (code.includes("account-exists-with-different-credential")) return "An account with that email already exists using a different sign-in method — try logging in with your email and password instead.";
+  if (code.includes("popup-blocked")) return "Your browser blocked the Google sign-in popup — please allow popups for this site and try again.";
   return err.message || "Something went wrong. Please try again.";
 }
 
@@ -1923,6 +1968,11 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
     // sendEmailVerification() call but as a direct user-initiated click —
     // that path has been the reliable one, so we lean on it instead of a
     // background call the person can't see or retry themselves.
+    // merge: true — beforeSignInBlocking (index.js) stamps a lastKnownIp
+    // stub onto this same doc via its own merge write on every sign-in,
+    // including the one that happens immediately after this account is
+    // created; a plain (non-merge) setDoc here would race it and silently
+    // wipe that IP back out the moment it's recorded.
     await setDoc(doc(db, "users", cred.user.uid), {
       createdAt: serverTimestamp(),
       email: email.toLowerCase(),
@@ -1935,7 +1985,7 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
       images: [],
       agreedToTerms: true,
       agreedToTermsAt: serverTimestamp(),
-    });
+    }, { merge: true });
     // The doc now genuinely exists — re-run the listener setup so it picks
     // up the real state on its next snapshot instead of whatever it may
     // have skipped (or self-healed into a placeholder) while the flag
@@ -1978,6 +2028,137 @@ document.getElementById("form-reset").addEventListener("submit", async (e) => {
     showMessage(msg, "Check your email for a reset link.", "success");
   } catch (err) {
     showMessage(msg, friendlyAuthError(err), "error");
+  }
+});
+
+// ============================= GOOGLE SIGN-IN ==============================
+// One button, shared across all three tabs (see the HTML — it lives
+// outside .auth-form so tab-switching never hides it) covers both signup
+// AND login: signInWithPopup succeeds the same way either way, the only
+// question is whether users/{uid} already exists for this uid afterward.
+// A brand-new Google account still needs the same age/terms confirmation
+// the email Sign up form requires — Google's own popup has no room for our
+// checkboxes — so that's gated behind google-confirm-modal-backdrop rather
+// than being silently skipped for Google sign-ups.
+let pendingGoogleConfirmResolve = null;
+
+function promptGoogleNewUserConfirm() {
+  document.getElementById("google-confirm-age").checked = false;
+  document.getElementById("google-confirm-terms").checked = false;
+  document.getElementById("google-confirm-message").style.display = "none";
+  document.getElementById("google-confirm-modal-backdrop").style.display = "flex";
+  return new Promise((resolve) => {
+    pendingGoogleConfirmResolve = resolve;
+  });
+}
+
+document.getElementById("google-confirm-terms-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  showView("terms");
+});
+
+document.getElementById("google-confirm-continue-btn").addEventListener("click", () => {
+  const confirmMsg = document.getElementById("google-confirm-message");
+  if (!document.getElementById("google-confirm-age").checked) {
+    showMessage(confirmMsg, "You must confirm you're 18 or older to create an account.", "error");
+    return;
+  }
+  if (!document.getElementById("google-confirm-terms").checked) {
+    showMessage(confirmMsg, "You must agree to the Terms of Service to create an account.", "error");
+    return;
+  }
+  document.getElementById("google-confirm-modal-backdrop").style.display = "none";
+  if (pendingGoogleConfirmResolve) pendingGoogleConfirmResolve(true);
+  pendingGoogleConfirmResolve = null;
+});
+
+document.getElementById("google-confirm-cancel-btn").addEventListener("click", () => {
+  document.getElementById("google-confirm-modal-backdrop").style.display = "none";
+  if (pendingGoogleConfirmResolve) pendingGoogleConfirmResolve(false);
+  pendingGoogleConfirmResolve = null;
+});
+
+document.getElementById("google-confirm-modal-backdrop").addEventListener("click", (e) => {
+  if (e.target.id === "google-confirm-modal-backdrop") {
+    document.getElementById("google-confirm-modal-backdrop").style.display = "none";
+    if (pendingGoogleConfirmResolve) pendingGoogleConfirmResolve(false);
+    pendingGoogleConfirmResolve = null;
+  }
+});
+
+document.getElementById("google-signin-btn").addEventListener("click", async () => {
+  const msg = document.getElementById("google-signin-message");
+  msg.style.display = "none";
+  let cred;
+  // Same race as the email signup flow above (see signupInProgress's
+  // declaration comment) — set BEFORE the popup, not after, since we don't
+  // yet know whether this will turn out to be a new or a returning account.
+  signupInProgress = true;
+  try {
+    cred = await signInWithPopup(auth, googleProvider);
+
+    const userRef = doc(db, "users", cred.user.uid);
+    const existingSnap = await getDoc(userRef);
+    // NOT existingSnap.exists() alone — beforeSignInBlocking (index.js)
+    // stamps a lastKnownIp-only stub onto users/{uid} via a merge write on
+    // EVERY sign-in, including the very first one right after a brand-new
+    // Google account is created. That stub always lands before this check
+    // runs, so a plain .exists() here would misread every new signup as a
+    // returning user, skipping both the age/terms confirmation below AND
+    // the real profile fields entirely. `approved` is set on every real
+    // profile (by this handler, the email Sign up form, or the self-heal
+    // path below) and never by that stub, so it's what actually tells the
+    // two cases apart.
+    const hasRealProfile = existingSnap.exists() && existingSnap.data().approved !== undefined;
+    if (hasRealProfile) {
+      // Returning account — nothing else to do; onAuthStateChanged's
+      // existing watchUserDoc() subscription takes it from here exactly
+      // like an email/password login.
+      return;
+    }
+
+    const confirmed = await promptGoogleNewUserConfirm();
+    if (!confirmed) {
+      await deleteUser(cred.user).catch(() => {});
+      await signOut(auth).catch(() => {});
+      return;
+    }
+
+    // merge: true — preserves the lastKnownIp stub above instead of
+    // clobbering it, same reasoning as the email Sign up form's setDoc.
+    await setDoc(userRef, {
+      createdAt: serverTimestamp(),
+      email: (cred.user.email || "").toLowerCase(),
+      profile: { name: cred.user.displayName || "", neighborhood: "" },
+      postText: "",
+      postWordCount: 0,
+      approved: false,
+      everApproved: false,
+      lastEditedAt: serverTimestamp(),
+      images: [],
+      agreedToTerms: true,
+      agreedToTermsAt: serverTimestamp(),
+    }, { merge: true });
+    // The doc now genuinely exists — same reason as the email signup flow:
+    // replace the listener set up on the earlier (pre-doc) auth event with
+    // a fresh one now that there's something real to watch.
+    watchUserDoc(cred.user.uid);
+  } catch (err) {
+    if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+      // They just closed the popup themselves — not a real error.
+    } else {
+      // If we got as far as creating the Google-linked Auth account but
+      // something after that failed, don't leave an orphaned Auth account
+      // with no profile behind (same as the email signup flow).
+      if (cred) {
+        await deleteUser(cred.user).catch(() => {});
+        await signOut(auth).catch(() => {});
+      }
+      showMessage(msg, friendlyAuthError(err), "error");
+    }
+  } finally {
+    signupInProgress = false;
   }
 });
 
@@ -2998,11 +3179,14 @@ async function loadAdminReports() {
     });
 
     card.querySelector('[data-action="remove-profile"]').addEventListener("click", async () => {
-      if (!confirm(`Permanently remove ${reportedName}'s profile, post, and photos?`)) return;
+      if (!confirm(`Permanently remove ${reportedName}'s profile and block their device from signing back in? This is for serious violations and can't be undone by them.`)) return;
       try {
-        await deleteDoc(doc(db, "users", report.reportedUid));
+        const result = await httpsCallable(functions, "banUserAndIp")({ targetUid: report.reportedUid });
         await updateDoc(doc(db, "reports", reportDoc.id), { status: "resolved" });
         card.remove();
+        if (!result.data.ipBanned) {
+          alert(`${reportedName}'s profile was removed and their account disabled, but there was no IP address on record to block (they may never have signed in since this feature was added).`);
+        }
       } catch (err) {
         showMessage(msg, err.message, "error");
       }

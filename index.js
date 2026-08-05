@@ -74,6 +74,7 @@
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+const { beforeUserSignedIn, HttpsError: IdentityHttpsError } = require("firebase-functions/v2/identity");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { defineSecret } = require("firebase-functions/params");
 const Stripe = require("stripe");
@@ -862,13 +863,13 @@ exports.ensureMyAdminPerks = onCall(async (request) => {
   return { ok: true };
 });
 
-exports.adminDeleteProfile = onCall(async (request) => {
-  const callerUid = await requireAdmin(request);
-
-  const targetUid = request.data?.targetUid;
-  if (!targetUid || typeof targetUid !== "string") {
-    throw new HttpsError("invalid-argument", "targetUid is required.");
-  }
+// Shared by adminDeleteProfile and banUserAndIp — both end with the exact
+// same outcome (profile archived for the 10-day restore window, doc
+// deleted, Auth account disabled and its refresh tokens revoked); banUserAndIp
+// just does one extra thing (blocking the IP) on top. Returns the deleted
+// profile's data so banUserAndIp can pull lastKnownIp off it without a
+// second read.
+async function performProfileDeletion(callerUid, targetUid) {
   if (targetUid === callerUid) {
     throw new HttpsError("failed-precondition", "You can't delete your own profile this way.");
   }
@@ -906,8 +907,9 @@ exports.adminDeleteProfile = onCall(async (request) => {
     tx.set(limitRef, { recentDeletes: recent, cooldownUntil: 0 }, { merge: true });
   });
 
+  const profileData = userSnap.data();
   await db.collection("deletedUsers").doc(targetUid).set({
-    profileData: userSnap.data(),
+    profileData,
     deletedAt: Timestamp.now(),
     deletedBy: callerUid,
     purgeAt: Timestamp.fromMillis(now + DELETED_PROFILE_RETENTION_MS),
@@ -923,7 +925,53 @@ exports.adminDeleteProfile = onCall(async (request) => {
     console.error(`Couldn't disable Auth account for ${targetUid}:`, err);
   }
 
+  return profileData;
+}
+
+exports.adminDeleteProfile = onCall(async (request) => {
+  const callerUid = await requireAdmin(request);
+
+  const targetUid = request.data?.targetUid;
+  if (!targetUid || typeof targetUid !== "string") {
+    throw new HttpsError("invalid-argument", "targetUid is required.");
+  }
+
+  await performProfileDeletion(callerUid, targetUid);
   return { ok: true };
+});
+
+// Same end state as adminDeleteProfile (archived profile, doc deleted, Auth
+// account disabled) plus a permanent IP block, for serious-violation
+// removals. The IP comes from users/{uid}.lastKnownIp, which
+// beforeSignInBlocking (above) keeps fresh on every sign-in — if that field
+// was never populated (e.g. the account never actually signed in through
+// the Identity-Platform-upgraded project, or was created via some other
+// path), the profile is still fully removed but there's no IP on record to
+// block; that's surfaced back via ipBanned: false rather than failing the
+// whole action, since removing the account is still the more urgent half
+// of "serious violation" handling.
+exports.banUserAndIp = onCall(async (request) => {
+  const callerUid = await requireAdmin(request);
+
+  const targetUid = request.data?.targetUid;
+  if (!targetUid || typeof targetUid !== "string") {
+    throw new HttpsError("invalid-argument", "targetUid is required.");
+  }
+
+  const profileData = await performProfileDeletion(callerUid, targetUid);
+
+  const ip = profileData.lastKnownIp;
+  if (ip) {
+    await db.collection("blockedIPs").doc(ip).set({
+      bannedAt: Timestamp.now(),
+      bannedBy: callerUid,
+      bannedUid: targetUid,
+    });
+  } else {
+    console.error(`banUserAndIp(${targetUid}): no lastKnownIp on record — account disabled and profile removed, but no IP could be blocked.`);
+  }
+
+  return { ok: true, ipBanned: !!ip };
 });
 
 exports.adminRestoreProfile = onCall(async (request) => {
@@ -1007,3 +1055,42 @@ exports.purgeExpiredDeletedProfiles = onSchedule(
     }
   }
 );
+
+// -----------------------------------------------------------------------
+// 11. IP ban enforcement — sign-in side.
+//
+// Requires the project to be upgraded to Firebase Authentication with
+// Identity Platform (plain Firebase Auth has no blocking-function hook at
+// all). Runs on EVERY sign-in, for every account, not just ones an admin
+// has flagged:
+//
+//   1. If the signer's current IP is a doc ID in blockedIPs, the sign-in
+//      is rejected outright with a clear error. This is what makes a ban
+//      actually stick against the device/network itself, not just the one
+//      account that got banned — the usual way someone tries to get back
+//      on after a ban is a brand-new account from the same connection.
+//   2. Otherwise, their current IP is stamped onto users/{uid}.lastKnownIp
+//      (merge, so it works whether the profile doc exists yet or not —
+//      this can fire on the very first sign-in right after signup, before
+//      the client has necessarily created the doc). This keeps the field
+//      fresh on every sign-in, not just at signup, since a ban usually
+//      happens well after signup and banUserAndIp (below) needs whatever
+//      IP the person most recently actually signed in from.
+//
+// A failure to WRITE lastKnownIp never blocks a legitimate sign-in — only
+// an actual blockedIPs match does that.
+// -----------------------------------------------------------------------
+exports.beforeSignInBlocking = beforeUserSignedIn(async (event) => {
+  const ip = event.ipAddress;
+  const uid = event.data?.uid;
+  if (!ip || !uid) return;
+
+  const blockedSnap = await db.collection("blockedIPs").doc(ip).get();
+  if (blockedSnap.exists) {
+    throw new IdentityHttpsError("permission-denied", "This device has been blocked from Town Fuss.");
+  }
+
+  await db.collection("users").doc(uid).set({ lastKnownIp: ip }, { merge: true }).catch((err) => {
+    console.error(`Couldn't record lastKnownIp for ${uid}:`, err);
+  });
+});

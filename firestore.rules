@@ -80,7 +80,13 @@ service cloud.firestore {
     // personal profile — doc ID is the OWNER's uid (one business listing
     // per account), but nothing here ever touches /users/{uid}.
     match /businesses/{uid} {
-      allow read: if (isSignedIn() && resource.data.approved == true) || isOwner(uid) || isAdmin();
+      // The READER must be approved too, not just the listing itself — an
+      // unapproved account (signed in, terms agreed, email verified, but
+      // never reviewed by an admin) could otherwise browse every approved
+      // business/profile in the app via a direct Firestore read, bypassing
+      // index.html's own client-side approval gate entirely (that gate
+      // only hides the UI; it was never the actual security boundary).
+      allow read: if (isSignedIn() && isApproved(request.auth.uid) && resource.data.approved == true) || isOwner(uid) || isAdmin();
       // businessPaidUntil is granted only by the Stripe webhook (Admin SDK,
       // bypasses rules) or an admin's manual "mark paid" — an owner editing
       // their own listing must never be able to change it, even via the
@@ -124,12 +130,32 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if (isSignedIn() && resource.data.approved == true) || isOwner(uid) || isAdmin();
+      // Same reasoning as businesses/{uid} above — the READER must be
+      // approved too, not just the profile being read.
+      allow read: if (isSignedIn() && isApproved(request.auth.uid) && resource.data.approved == true) || isOwner(uid) || isAdmin();
       allow create: if isOwner(uid)
                     && request.resource.data.approved == false
                     && request.resource.data.everApproved == false
                     && membershipFieldsUntouched();
       allow update: if isAdmin()
+                    // Completing a beforeSignInBlocking-created stub (see
+                    // index.js) into a real profile. That blocking function
+                    // stamps lastKnownIp onto users/{uid} via a merge write
+                    // on EVERY sign-in — including the very first one,
+                    // before either signup flow's own setDoc(..., {merge:
+                    // true}) ever runs. By the time the client writes, the
+                    // doc already "exists" (just the stub), so Firestore
+                    // evaluates that write as an update against the create
+                    // rule above, not a create — hasOnly() check below
+                    // scopes this to ONLY that one-time transition (a real,
+                    // already-submitted profile always has far more keys
+                    // than just lastKnownIp), with the same requirements
+                    // the create rule imposes.
+                    || (isOwner(uid)
+                        && resource.data.keys().hasOnly(['lastKnownIp'])
+                        && request.resource.data.approved == false
+                        && request.resource.data.everApproved == false
+                        && membershipFieldsUntouched())
                     // Profile/post/photo edits (the "Basics" form, post submission,
                     // and photo upload) — covers both a never-yet-approved person
                     // completing their profile for the first time AND an
@@ -189,6 +215,16 @@ service cloud.firestore {
     // adminGrantGold(), never touched directly by any client.
     match /adminGoldGrantLimits/{uid} {
       allow read, write: if false;
+    }
+    // IP ban list (doc ID = the IP address itself). Only ever written by
+    // banUserAndIp() and read by beforeSignInBlocking() — both via the
+    // Admin SDK, which bypasses rules entirely — plus read by the admin
+    // Reports panel to show ban history. No client write path at all, ever:
+    // an admin banning someone always goes through banUserAndIp(), never a
+    // direct write, so there's nothing to allow here.
+    match /blockedIPs/{ip} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     match /reviewQueue/{uid} {
@@ -350,7 +386,11 @@ service cloud.firestore {
     }
 
     match /chatRooms/{roomId}/messages/{messageId} {
-      allow read: if isSignedIn();
+      // Same reasoning as users/{uid}/businesses/{uid} above — being
+      // signed in was never enough; an unapproved account could read every
+      // chat room's messages even though posting was already correctly
+      // blocked.
+      allow read: if isSignedIn() && (isApproved(request.auth.uid) || isAdmin());
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
                     // Kept in sync with the CHAT_ROOMS list in index.html — a
