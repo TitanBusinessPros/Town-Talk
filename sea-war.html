@@ -463,6 +463,7 @@
         <div class="game-info">
             <div class="status-message" id="status-message">Place your ships on the board</div>
 
+            <h3 id="ship-status-label" style="font-size:1rem; margin-bottom:0.5rem;">Your Fleet</h3>
             <div class="ship-status" id="ship-status"></div>
 
             <div class="setup-instructions" id="setup-instructions">
@@ -651,6 +652,7 @@ const playerTitleEl = document.getElementById('player-title');
 const opponentTitleEl = document.getElementById('opponent-title');
 const statusMessageEl = document.getElementById('status-message');
 const shipStatusEl = document.getElementById('ship-status');
+const shipStatusLabelEl = document.getElementById('ship-status-label');
 const setupInstructionsEl = document.getElementById('setup-instructions');
 const readyBtn = document.getElementById('ready-btn');
 const randomizeBtn = document.getElementById('randomize-btn');
@@ -723,6 +725,7 @@ function renderSetup() {
   setupInstructionsEl.classList.remove('hidden');
   renderBoard(playerBoardEl, setupBoard, true, handleSetupClick);
   renderShipStatus(setupShips);
+  shipStatusLabelEl.textContent = 'Your Fleet';
   playerTitleEl.textContent = gameMode === '2p' ? `Player ${settingUpPlayer}: Place Your Ships` : 'Your Fleet';
 }
 
@@ -835,13 +838,20 @@ function renderLocalPlaying() {
   const clickable = phase === 'playing' && (gameMode !== 'ai' || currentTurn === 1);
   renderBoard(playerBoardEl, mine.board, true, null);
   renderBoard(opponentBoardEl, theirs.board, false, clickable ? handleLocalAttackClick : null);
-  renderShipStatus(mine.ships);
+  // Track the fleet being ATTACKED, not your own — your own ship damage is
+  // already visible directly on your own board (ships render there with
+  // showShips=true), so mirroring it here told you nothing new. The one
+  // thing you genuinely can't see anywhere else is how much of the enemy's
+  // hidden fleet you've sunk so far, which is what this list is for.
+  renderShipStatus(theirs.ships);
   if (gameMode === '2p') {
     playerTitleEl.textContent = `Player ${currentTurn}'s Fleet`;
     opponentTitleEl.textContent = `Player ${currentTurn === 1 ? 2 : 1}'s Waters`;
+    shipStatusLabelEl.textContent = `Player ${currentTurn === 1 ? 2 : 1}'s Fleet`;
   } else {
     playerTitleEl.textContent = 'Your Fleet';
     opponentTitleEl.textContent = "AI's Fleet";
+    shipStatusLabelEl.textContent = "AI's Fleet";
   }
 }
 
@@ -1398,10 +1408,13 @@ function renderOnlinePlaying() {
   opponentBoardWrap.style.display = '';
   const myBoardFlat = myRole === 'player1' ? activeGameData.player1Board : activeGameData.player2Board;
   const theirBoardFlat = myRole === 'player1' ? activeGameData.player2Board : activeGameData.player1Board;
-  const myShips = (myRole === 'player1' ? activeGameData.player1Ships : activeGameData.player2Ships) || [];
+  const theirShips = (myRole === 'player1' ? activeGameData.player2Ships : activeGameData.player1Ships) || [];
   renderBoard(playerBoardEl, flatToBoard(myBoardFlat), true, null);
   renderBoard(opponentBoardEl, flatToBoard(theirBoardFlat), false, (phase === 'playing' && isMyOnlineTurn()) ? handleOnlineAttackClick : null);
-  renderShipStatus(myShips);
+  // Same reasoning as the local-play path: track the fleet you're
+  // attacking, not your own (already visible directly on your own board).
+  renderShipStatus(theirShips);
+  shipStatusLabelEl.textContent = "Opponent's Fleet";
   playerTitleEl.textContent = 'Your Fleet';
   opponentTitleEl.textContent = "Opponent's Waters";
   if (phase === 'playing') setStatus(isMyOnlineTurn() ? "Your turn! Attack the opponent's fleet." : "Opponent's turn...");
