@@ -130,6 +130,12 @@ test.describe.serial("Frisbee Golf — deep functional pass", () => {
     await signUp(pageB, P2);
     uidA = await verifyEmailByAddress(P1.email);
     uidB = await verifyEmailByAddress(P2.email);
+    // Every game page (including local/practice modes) now gates all play
+    // behind admin approval — see the platform-wide "not-approved-notice"
+    // fix. Set it here, right after signup, matching every other -deep
+    // spec file's convention, instead of only at the leaderboard test.
+    await admin.firestore().collection("users").doc(uidA).set({ approved: true, profile: { name: "FG Robot A" } }, { merge: true });
+    await admin.firestore().collection("users").doc(uidB).set({ approved: true, profile: { name: "FG Robot B" } }, { merge: true });
   });
 
   test("Local play: vs Computer mode loads and accepts a throw", async () => {
