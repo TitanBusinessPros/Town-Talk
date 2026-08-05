@@ -404,10 +404,20 @@ service cloud.firestore {
     }
 
     match /chessGames/{gameId} {
+      // Safe .get(field, default) accessors for inviteTo/participants (not
+      // status, which IS the query's own filter field and always defined)
+      // — a `list` rule that references fields outside the query's own
+      // filter can throw a spurious "Property X is undefined" permission
+      // error during list validation on some Firestore emulator versions,
+      // even with well-formed data. Confirmed on blackjackGames/
+      // airHockeyGames in an earlier pass but never applied to the rest of
+      // the game collections sharing this exact same read rule — caught
+      // via reproducible test failures (hearts/war/golf/frisbee-golf)
+      // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
-        (resource.data.inviteTo == request.auth.uid) ||
-        (request.auth.uid in resource.data.participants)
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
@@ -438,10 +448,20 @@ service cloud.firestore {
     }
 
     match /checkersGames/{gameId} {
+      // Safe .get(field, default) accessors for inviteTo/participants (not
+      // status, which IS the query's own filter field and always defined)
+      // — a `list` rule that references fields outside the query's own
+      // filter can throw a spurious "Property X is undefined" permission
+      // error during list validation on some Firestore emulator versions,
+      // even with well-formed data. Confirmed on blackjackGames/
+      // airHockeyGames in an earlier pass but never applied to the rest of
+      // the game collections sharing this exact same read rule — caught
+      // via reproducible test failures (hearts/war/golf/frisbee-golf)
+      // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
-        (resource.data.inviteTo == request.auth.uid) ||
-        (request.auth.uid in resource.data.participants)
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
@@ -472,10 +492,20 @@ service cloud.firestore {
     }
 
     match /wynneGames/{gameId} {
+      // Safe .get(field, default) accessors for inviteTo/participants (not
+      // status, which IS the query's own filter field and always defined)
+      // — a `list` rule that references fields outside the query's own
+      // filter can throw a spurious "Property X is undefined" permission
+      // error during list validation on some Firestore emulator versions,
+      // even with well-formed data. Confirmed on blackjackGames/
+      // airHockeyGames in an earlier pass but never applied to the rest of
+      // the game collections sharing this exact same read rule — caught
+      // via reproducible test failures (hearts/war/golf/frisbee-golf)
+      // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
-        (resource.data.inviteTo == request.auth.uid) ||
-        (request.auth.uid in resource.data.participants)
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
@@ -506,10 +536,20 @@ service cloud.firestore {
     }
 
     match /fgGames/{gameId} {
+      // Safe .get(field, default) accessors for inviteTo/participants (not
+      // status, which IS the query's own filter field and always defined)
+      // — a `list` rule that references fields outside the query's own
+      // filter can throw a spurious "Property X is undefined" permission
+      // error during list validation on some Firestore emulator versions,
+      // even with well-formed data. Confirmed on blackjackGames/
+      // airHockeyGames in an earlier pass but never applied to the rest of
+      // the game collections sharing this exact same read rule — caught
+      // via reproducible test failures (hearts/war/golf/frisbee-golf)
+      // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
-        (resource.data.inviteTo == request.auth.uid) ||
-        (request.auth.uid in resource.data.participants)
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
@@ -547,10 +587,20 @@ service cloud.firestore {
     // grow up to 4 via the size() < 4 branch below. Move/deal/battle
     // content isn't validated, same trust model as every other game.
     match /warGames/{gameId} {
+      // Safe .get(field, default) accessors for inviteTo/participants (not
+      // status, which IS the query's own filter field and always defined)
+      // — a `list` rule that references fields outside the query's own
+      // filter can throw a spurious "Property X is undefined" permission
+      // error during list validation on some Firestore emulator versions,
+      // even with well-formed data. Confirmed on blackjackGames/
+      // airHockeyGames in an earlier pass but never applied to the rest of
+      // the game collections sharing this exact same read rule — caught
+      // via reproducible test failures (hearts/war/golf/frisbee-golf)
+      // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
-        (resource.data.inviteTo == request.auth.uid) ||
-        (request.auth.uid in resource.data.participants)
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
@@ -585,9 +635,11 @@ service cloud.firestore {
     // Function trigger), not a private-table gate. Any open table with
     // room can be joined by anyone, invited or not.
     match /heartsGames/{gameId} {
+      // Same defensive .get() reasoning as the other game collections above
+      // — participants isn't the query's own filter field, status is.
       allow read: if isSignedIn() && (
         resource.data.status == 'open' ||
-        (request.auth.uid in resource.data.participants)
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
@@ -706,10 +758,20 @@ service cloud.firestore {
     }
 
     match /golfGames/{gameId} {
+      // Safe .get(field, default) accessors for inviteTo/participants (not
+      // status, which IS the query's own filter field and always defined)
+      // — a `list` rule that references fields outside the query's own
+      // filter can throw a spurious "Property X is undefined" permission
+      // error during list validation on some Firestore emulator versions,
+      // even with well-formed data. Confirmed on blackjackGames/
+      // airHockeyGames in an earlier pass but never applied to the rest of
+      // the game collections sharing this exact same read rule — caught
+      // via reproducible test failures (hearts/war/golf/frisbee-golf)
+      // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
-        (resource.data.inviteTo == request.auth.uid) ||
-        (request.auth.uid in resource.data.participants)
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
@@ -740,10 +802,20 @@ service cloud.firestore {
     }
 
     match /cribbageGames/{gameId} {
+      // Safe .get(field, default) accessors for inviteTo/participants (not
+      // status, which IS the query's own filter field and always defined)
+      // — a `list` rule that references fields outside the query's own
+      // filter can throw a spurious "Property X is undefined" permission
+      // error during list validation on some Firestore emulator versions,
+      // even with well-formed data. Confirmed on blackjackGames/
+      // airHockeyGames in an earlier pass but never applied to the rest of
+      // the game collections sharing this exact same read rule — caught
+      // via reproducible test failures (hearts/war/golf/frisbee-golf)
+      // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
-        (resource.data.inviteTo == request.auth.uid) ||
-        (request.auth.uid in resource.data.participants)
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
@@ -795,10 +867,20 @@ service cloud.firestore {
     }
 
     match /stackCheckersGames/{gameId} {
+      // Safe .get(field, default) accessors for inviteTo/participants (not
+      // status, which IS the query's own filter field and always defined)
+      // — a `list` rule that references fields outside the query's own
+      // filter can throw a spurious "Property X is undefined" permission
+      // error during list validation on some Firestore emulator versions,
+      // even with well-formed data. Confirmed on blackjackGames/
+      // airHockeyGames in an earlier pass but never applied to the rest of
+      // the game collections sharing this exact same read rule — caught
+      // via reproducible test failures (hearts/war/golf/frisbee-golf)
+      // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
-        (resource.data.inviteTo == request.auth.uid) ||
-        (request.auth.uid in resource.data.participants)
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
@@ -829,10 +911,20 @@ service cloud.firestore {
     }
 
     match /seaWarGames/{gameId} {
+      // Safe .get(field, default) accessors for inviteTo/participants (not
+      // status, which IS the query's own filter field and always defined)
+      // — a `list` rule that references fields outside the query's own
+      // filter can throw a spurious "Property X is undefined" permission
+      // error during list validation on some Firestore emulator versions,
+      // even with well-formed data. Confirmed on blackjackGames/
+      // airHockeyGames in an earlier pass but never applied to the rest of
+      // the game collections sharing this exact same read rule — caught
+      // via reproducible test failures (hearts/war/golf/frisbee-golf)
+      // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.inviteTo == null) ||
-        (resource.data.inviteTo == request.auth.uid) ||
-        (request.auth.uid in resource.data.participants)
+        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())

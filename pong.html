@@ -141,6 +141,12 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
       <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
     </div>
 
+    <div id="not-approved-notice" class="uicard" style="display:none; text-align:center;">
+      <h2>Waiting on admin approval</h2>
+      <p>Your Town Fuss profile hasn't been approved yet — games, including practice modes, unlock once an admin reviews your profile.</p>
+      <a href="index.html"><button type="button" class="site-btn">Back to Town Fuss</button></a>
+    </div>
+
     <div id="app-content" style="display:none;">
 
       <!-- ================= MODE SELECT ================= -->
@@ -562,10 +568,33 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) {
     document.getElementById("signed-out-notice").style.display = "block";
     document.getElementById("app-content").style.display = "none";
+    document.getElementById("not-approved-notice").style.display = "none";
     return;
   }
   currentUid = user.uid;
   document.getElementById("signed-out-notice").style.display = "none";
+
+  // Being signed in was the only gate here before — the game itself (vs
+  // Computer and 2 Player Challenge) is 100% client-side and never touches
+  // Firestore until the final score submission, so an unapproved account
+  // could fully play both without ever being blocked by anything server-
+  // side. Same "no platform access before approval" policy as chat/DMs/
+  // online games, just enforced here instead of via security rules since
+  // there's nothing for rules to gate until that final write.
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  const approved = !!(snap && snap.exists() && snap.data().approved);
+  let isAdminUser = false;
+  if (!approved) {
+    const adminSnap = await getDoc(doc(db, "admins", currentUid)).catch(() => null);
+    isAdminUser = !!(adminSnap && adminSnap.exists());
+  }
+  if (!approved && !isAdminUser) {
+    document.getElementById("not-approved-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+
+  document.getElementById("not-approved-notice").style.display = "none";
   document.getElementById("app-content").style.display = "block";
   showView("mode-select");
 });
