@@ -1603,19 +1603,17 @@ function updateProtectedNavVisibility(user) {
   document.getElementById("nav-about").style.display = canSeeFullNav ? "none" : "inline";
 
   // Beta banner — only makes sense once the Report Issue button it points
-  // at is actually visible. Dismissal is per-BROWSER-SESSION (sessionStorage,
-  // not localStorage) on purpose: while we're actively in beta, someone
-  // closing and reopening the site later should see the reminder again,
-  // rather than it being gone forever after the first dismiss.
+  // at is actually visible. Dismissal is permanent (localStorage) — once
+  // someone dismisses it, it never needs to come back for them again.
   const betaBanner = document.getElementById("beta-banner");
-  if (canSeeFullNav && sessionStorage.getItem("townfuss_beta_banner_dismissed") !== "true") {
+  if (canSeeFullNav && localStorage.getItem("townfuss_beta_banner_dismissed") !== "true") {
     betaBanner.style.display = "flex";
   } else {
     betaBanner.style.display = "none";
   }
 }
 document.getElementById("beta-banner-dismiss").addEventListener("click", () => {
-  sessionStorage.setItem("townfuss_beta_banner_dismissed", "true");
+  localStorage.setItem("townfuss_beta_banner_dismissed", "true");
   document.getElementById("beta-banner").style.display = "none";
 });
 
