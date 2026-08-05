@@ -197,6 +197,14 @@
     gap: 1px;
     padding: 2px;
     position: relative;
+    /* The global `* { touch-action: manipulation }` reset only suppresses
+       double-tap-zoom — it does NOT stop the browser's own native scroll/
+       pan gesture, which fought with swipe-to-move/swipe-to-rotate here
+       (the touchstart/touchmove handlers below never called
+       preventDefault() either, only touchend did — by then the page had
+       already scrolled). touch-action:none fully hands touch on the board
+       to the game. */
+    touch-action: none;
 }
 
 .cell {
@@ -847,19 +855,26 @@ function setupMobileControls() {
     let touchMoved = false;
 
     boardElement.addEventListener('touchstart', function(e) {
+        // Missing here (and below) was the actual bug behind "the screen
+        // moves" on mobile — only touchend called preventDefault(), which
+        // is too late: the browser's own scroll/pan gesture had already
+        // taken over the drag by then, fighting the swipe-to-move/
+        // swipe-to-rotate gestures instead of the board reacting to them.
+        e.preventDefault();
         if (!audioStarted) startAudio();
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         touchMoved = false;
-    });
+    }, { passive: false });
 
     boardElement.addEventListener('touchmove', function(e) {
+        e.preventDefault();
         const moveX = Math.abs(e.touches[0].clientX - touchStartX);
         const moveY = Math.abs(e.touches[0].clientY - touchStartY);
         if (moveX > 10 || moveY > 10) {
             touchMoved = true;
         }
-    });
+    }, { passive: false });
 
     boardElement.addEventListener('touchend', function(e) {
         const touchEndX = e.changedTouches[0].clientX;
