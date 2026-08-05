@@ -185,6 +185,11 @@ service cloud.firestore {
     match /adminDeleteLimits/{uid} {
       allow read, write: if false;
     }
+    // Same as adminDeleteLimits above — Admin SDK only, via
+    // adminGrantGold(), never touched directly by any client.
+    match /adminGoldGrantLimits/{uid} {
+      allow read, write: if false;
+    }
 
     match /reviewQueue/{uid} {
       allow read: if isAdmin();
@@ -415,7 +420,7 @@ service cloud.firestore {
       // via reproducible test failures (hearts/war/golf/frisbee-golf)
       // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -459,7 +464,7 @@ service cloud.firestore {
       // via reproducible test failures (hearts/war/golf/frisbee-golf)
       // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -503,7 +508,7 @@ service cloud.firestore {
       // via reproducible test failures (hearts/war/golf/frisbee-golf)
       // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -547,7 +552,7 @@ service cloud.firestore {
       // via reproducible test failures (hearts/war/golf/frisbee-golf)
       // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -598,7 +603,7 @@ service cloud.firestore {
       // via reproducible test failures (hearts/war/golf/frisbee-golf)
       // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -636,9 +641,30 @@ service cloud.firestore {
     // room can be joined by anyone, invited or not.
     match /heartsGames/{gameId} {
       // Same defensive .get() reasoning as the other game collections above
-      // — participants isn't the query's own filter field, status is.
+      // — this rule serves multiple DIFFERENT query shapes (some filter by
+      // status, some by participants array-contains, some by inviteTo),
+      // and each one leaves a different field "not the query's own filter
+      // field" and therefore unsafe to direct-access. Learned the hard way:
+      // an earlier pass here left `status` as direct access on the
+      // assumption it was always the filtered field, which broke the
+      // specific "invites waiting on you" query (filters by inviteTo, not
+      // status) the exact same way. Every field this rule touches needs
+      // the defensive accessor, not just the ones a given query happens to
+      // filter on.
+      // Actual root cause of the persisting failure after the .get()-only
+      // pass: this rule never had an inviteTo branch at all (unlike every
+      // other game here), because Hearts' invites are "a courtesy nudge,
+      // not a private-table gate" (see the create/update rules below) —
+      // but the client still runs a where('inviteTo','==',uid) query for
+      // "invites waiting on you", and Firestore's list validator can't
+      // prove a query is safe when NONE of the rule's conditions are tied
+      // to the query's own filter field, denying the whole list outright
+      // regardless of what any individual matching document contains.
+      // Needs a branch referencing inviteTo even though it grants nothing
+      // beyond what status=='open' already would in practice.
       allow read: if isSignedIn() && (
-        resource.data.status == 'open' ||
+        resource.data.get('status', null) == 'open' ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
       allow create: if isSignedIn()
@@ -679,7 +705,7 @@ service cloud.firestore {
       // local emulator instance — a real emulator quirk, not bad data. The
       // defensive accessor sidesteps it with no behavior change.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -725,7 +751,7 @@ service cloud.firestore {
       // with well-formed data (see blackjackGames' identical comment/fix,
       // confirmed via isolated reproduction against warGames' rule).
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -769,7 +795,7 @@ service cloud.firestore {
       // via reproducible test failures (hearts/war/golf/frisbee-golf)
       // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -813,7 +839,7 @@ service cloud.firestore {
       // via reproducible test failures (hearts/war/golf/frisbee-golf)
       // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -878,7 +904,7 @@ service cloud.firestore {
       // via reproducible test failures (hearts/war/golf/frisbee-golf)
       // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );
@@ -922,7 +948,7 @@ service cloud.firestore {
       // via reproducible test failures (hearts/war/golf/frisbee-golf)
       // against a freshly-restarted emulator, not sustained-load flakiness.
       allow read: if isSignedIn() && (
-        (resource.data.status == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
         (resource.data.get('inviteTo', null) == request.auth.uid) ||
         (request.auth.uid in resource.data.get('participants', []))
       );

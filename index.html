@@ -2508,12 +2508,25 @@ function renderCard(uid, data) {
         <div class="friend-action" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}"></div>
         <button type="button" class="secondary small block-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Block</button>
         <button type="button" class="secondary small report-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Report</button>
+        ${isAdminUser && uid !== currentUid ? `<button type="button" class="secondary small admin-grant-gold-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Grant Gold</button>` : ""}
         ${isAdminUser && uid !== currentUid ? `<button type="button" class="secondary small admin-delete-profile-btn" style="border-color:#a3282f; color:#a3282f;" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Delete Profile</button>` : ""}
       </div>
     </div>
   `;
 
   if (isAdminUser && uid !== currentUid) {
+    card.querySelector(".admin-grant-gold-btn").addEventListener("click", async () => {
+      const targetUid = uid;
+      const targetName = profile.name || "Neighbor";
+      if (!confirm(`Grant ${targetName} a Gold membership (1 year)? Admins can grant up to 3 per day.`)) return;
+      try {
+        const result = await httpsCallable(functions, "adminGrantGold")({ targetUid });
+        alert(`${targetName} is now a Gold member. You have ${result.data.remainingToday} grant(s) left today.`);
+      } catch (err) {
+        alert(err.message || "Couldn't grant Gold membership.");
+      }
+    });
+
     card.querySelector(".admin-delete-profile-btn").addEventListener("click", async () => {
       const targetUid = uid;
       const targetName = profile.name || "Neighbor";

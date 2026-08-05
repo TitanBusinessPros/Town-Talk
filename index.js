@@ -722,11 +722,25 @@ exports.expireMemberships = onSchedule(
     const batch = db.batch();
     let any = false;
 
+    // Admins keep their Diamond/Gold perks permanently, regardless of
+    // whatever expiresAt their grant happens to carry — see
+    // ensureAdminDiamondPerks() above for why this exclusion exists.
+    const adminsSnap = await db.collection("admins").get();
+    const adminUids = new Set(adminsSnap.docs.map((d) => d.id));
+
     const goldSnap = await db.collection("users").where("isGoldMember", "==", true).where("goldExpiresAt", "<", now).get();
-    goldSnap.forEach((docSnap) => { batch.update(docSnap.ref, { isGoldMember: false }); any = true; });
+    goldSnap.forEach((docSnap) => {
+      if (adminUids.has(docSnap.id)) return;
+      batch.update(docSnap.ref, { isGoldMember: false });
+      any = true;
+    });
 
     const diamondSnap = await db.collection("users").where("isDiamondMember", "==", true).where("diamondExpiresAt", "<", now).get();
-    diamondSnap.forEach((docSnap) => { batch.update(docSnap.ref, { isDiamondMember: false }); any = true; });
+    diamondSnap.forEach((docSnap) => {
+      if (adminUids.has(docSnap.id)) return;
+      batch.update(docSnap.ref, { isDiamondMember: false });
+      any = true;
+    });
 
     if (any) await batch.commit();
   }
@@ -813,7 +827,27 @@ async function requireAdmin(request) {
   if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
   const adminSnap = await db.collection("admins").doc(callerUid).get();
   if (!adminSnap.exists) throw new HttpsError("permission-denied", "Admins only.");
+  ensureAdminDiamondPerks(callerUid);
   return callerUid;
+}
+
+// Admins get full Diamond-tier perks (unlimited daily online games/
+// messages) permanently — this was previously only ever a plain data
+// field (isDiamondMember/diamondExpiresAt) manually set on an admin's own
+// profile with no code-level tie to admin status at all, in ANY game, old
+// or new. That meant it was fully subject to the nightly expireMemberships
+// sweep below: if the original grant's diamondExpiresAt was ever left in
+// the past (e.g. a normal 1-month grant that was never renewed), the very
+// next 4am run would have silently cleared it — exactly what happened.
+// Self-heals on every admin action instead of relying on a field that can
+// silently expire out from under someone: fire-and-forget (never blocks
+// or fails the actual admin action this ran alongside), idempotent, and
+// belt-and-suspenders with the admin exclusion added to expireMemberships.
+function ensureAdminDiamondPerks(uid) {
+  db.collection("users").doc(uid).update({
+    isDiamondMember: true,
+    diamondExpiresAt: Timestamp.fromDate(new Date(Date.now() + 100 * ONE_YEAR_MS)),
+  }).catch((err) => console.error(`Couldn't refresh admin Diamond perks for ${uid}:`, err));
 }
 
 exports.adminDeleteProfile = onCall(async (request) => {
@@ -904,6 +938,43 @@ exports.adminRestoreProfile = onCall(async (request) => {
   }
 
   return { ok: true };
+});
+
+// Lets an admin gift Gold membership to a member, rate-limited per admin
+// (not platform-wide) to keep this a moderation/reward tool rather than a
+// way to hand out unlimited free memberships. Same calendar-day reset as
+// every other daily limit on this site (game plays, DMs, chat messages),
+// not a rolling 24h window, for consistency with those.
+const ADMIN_GOLD_GRANTS_PER_DAY = 3;
+exports.adminGrantGold = onCall(async (request) => {
+  const callerUid = await requireAdmin(request);
+
+  const targetUid = request.data?.targetUid;
+  if (!targetUid || typeof targetUid !== "string") {
+    throw new HttpsError("invalid-argument", "targetUid is required.");
+  }
+
+  const targetSnap = await db.collection("users").doc(targetUid).get();
+  if (!targetSnap.exists) {
+    throw new HttpsError("not-found", "That profile no longer exists.");
+  }
+
+  const today = Math.floor(Date.now() / 86400000);
+  const limitRef = db.collection("adminGoldGrantLimits").doc(callerUid);
+  const limitSnap = await limitRef.get();
+  const limitData = limitSnap.exists ? limitSnap.data() : { day: today, count: 0 };
+  const usedToday = limitData.day === today ? limitData.count : 0;
+  if (usedToday >= ADMIN_GOLD_GRANTS_PER_DAY) {
+    throw new HttpsError("resource-exhausted", `You've already granted ${ADMIN_GOLD_GRANTS_PER_DAY} Gold memberships today — try again tomorrow.`);
+  }
+
+  await db.collection("users").doc(targetUid).update({
+    isGoldMember: true,
+    goldExpiresAt: Timestamp.fromDate(new Date(Date.now() + ONE_YEAR_MS)),
+  });
+  await limitRef.set({ day: today, count: usedToday + 1 });
+
+  return { ok: true, remainingToday: ADMIN_GOLD_GRANTS_PER_DAY - (usedToday + 1) };
 });
 
 // Sweeps the 10-day-old archive daily — after this, a deleted profile is
