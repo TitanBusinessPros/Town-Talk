@@ -1511,6 +1511,23 @@ function showView(name) {
     && name !== "dashboard"
   ) {
     name = "dashboard";
+  } else if (
+    PROTECTED_VIEWS.includes(name)
+    && auth.currentUser
+    && !isAdminUser
+    && !(currentUserData && currentUserData.approved)
+    && name !== "dashboard"
+  ) {
+    // Signed in, terms agreed, email verified — but not yet admin-approved.
+    // Feed/Directory/Messages/Friends/Chat rooms/Business/Pricing were
+    // never actually gated on approval at all, only on the two checks
+    // above. Firestore rules already correctly blocked an unapproved
+    // account from POSTING/messaging/etc, but nothing ever stopped them
+    // from just BROWSING everyone else's content in the meantime — this is
+    // the real gap the client-side game-play gate never touched, since
+    // that only ever covered the standalone game pages, not this SPA's own
+    // views.
+    name = "dashboard";
   }
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
   document.getElementById(`view-${name}`).classList.add("active");
@@ -1585,7 +1602,11 @@ let signupInProgress = false;
 
 function updateProtectedNavVisibility(user) {
   const agreed = !!(currentUserData && currentUserData.agreedToTerms);
-  const canSeeFullNav = !!user && isAdminUser || (!!user && agreed && user.emailVerified);
+  const approved = !!(currentUserData && currentUserData.approved);
+  // approved is required here too — agreedToTerms/emailVerified alone let
+  // an unapproved account see (and click into) Feed/Directory/Messages/
+  // etc.; see the matching showView() gate above for the full story.
+  const canSeeFullNav = !!user && isAdminUser || (!!user && agreed && user.emailVerified && approved);
   document.getElementById("nav-feed").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-directory").style.display = canSeeFullNav ? "inline" : "none";
   document.getElementById("nav-messages").style.display = canSeeFullNav ? "inline" : "none";
@@ -1664,6 +1685,13 @@ onAuthStateChanged(auth, async (user) => {
     });
     isAdminUser = !!(adminSnap && adminSnap.exists());
     console.log("Signed in uid:", user.uid, "| isAdmin:", isAdminUser);
+    // Self-heals the admin's permanent Diamond-tier perks on every sign-in
+    // (not just when they happen to use Delete Profile/Restore Profile/
+    // Grant Gold) — see ensureAdminDiamondPerks()/requireAdmin() in
+    // index.js for why this needs to run somewhere unconditional like this.
+    if (isAdminUser) {
+      httpsCallable(functions, "ensureMyAdminPerks")({}).catch((err) => console.error("Couldn't refresh admin perks:", err));
+    }
     document.getElementById("nav-admin").style.display = isAdminUser ? "inline" : "none";
     updateProtectedNavVisibility(user);
     maybeShowAdminPinGate();

@@ -850,6 +850,18 @@ function ensureAdminDiamondPerks(uid) {
   }).catch((err) => console.error(`Couldn't refresh admin Diamond perks for ${uid}:`, err));
 }
 
+// Client calls this once right after determining isAdminUser==true on
+// every sign-in (index.html's onAuthStateChanged), not just when an admin
+// happens to use Delete Profile/Restore Profile/Grant Gold — requireAdmin()
+// only self-heals Diamond perks as a SIDE EFFECT of those three specific
+// actions, so an admin who never touches any of them between deploys would
+// never actually get healed. This makes the heal fire on every login
+// instead of waiting on an unrelated action.
+exports.ensureMyAdminPerks = onCall(async (request) => {
+  await requireAdmin(request);
+  return { ok: true };
+});
+
 exports.adminDeleteProfile = onCall(async (request) => {
   const callerUid = await requireAdmin(request);
 
