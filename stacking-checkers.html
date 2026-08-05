@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stacking Checkers — Town Fuss</title>
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================================================
+   SITE-CHROME — hub/mode-select/waiting-room/leaderboard, same pattern as
+   pong.html/blocks.html/checkers.html. Scoped under #site-chrome so it can
+   never collide with the game's own CSS below.
+   =========================================================================== */
+#site-chrome {
+  --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+  --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px; --radius-sm: 8px;
+  background: var(--ink-900); color: var(--paper-050); min-height: 100vh;
+}
+#site-chrome a { color: var(--amber-500); }
+#site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
+#site-chrome p { color: var(--text-muted); line-height: 1.6; }
+#site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+#site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+#site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+#site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+#site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+#site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+#site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+#site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+#site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+#site-chrome button.site-btn:hover { background: var(--amber-600); }
+#site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+#site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+#site-chrome .table-row, #site-chrome .invite-row, #site-chrome .friend-row, #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+#site-chrome .table-row > span:first-child, #site-chrome .invite-row > span:first-child, #site-chrome .friend-row > span:first-child, #site-chrome .leader-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+#site-chrome .table-row > span:last-child, #site-chrome .invite-row > span:last-child, #site-chrome .friend-row > span:last-child, #site-chrome .leader-row > span:last-child { flex: 0 0 auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+#site-chrome .table-row:last-child, #site-chrome .invite-row:last-child, #site-chrome .friend-row:last-child, #site-chrome .leader-row:last-child { border-bottom: none; }
+#site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+#site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+#site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+#site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+#site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+#site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+#site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+/* ===========================================================================
+   GAME — Stacking Checkers, a close port of the standalone build supplied
+   for this platform. #stackWrapper stands in for the source's own `body`
+   rule (the source assumed it owned the whole page) so it can sit as a
+   sibling of #site-chrome instead of colliding with it — same trick used
+   for pong.html/blocks.html. Every other selector below is unchanged from
+   the source except the bare `h1` rule, which needed the same scoping.
+   =========================================================================== */
+#stackWrapper {
+    display: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #1e3a5f;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    flex-direction: column;
+}
+
+.container {
+    max-width: 56rem;
+    width: 100%;
+}
+
+#stackWrapper h1 {
+    font-size: clamp(2rem, 5vw, 2.5rem);
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #fef3c7;
+}
+
+.game-players-row {
+    display: none;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    color: #fef3c7;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.message-box {
+    background-color: #78350f;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.message-box p {
+    font-size: clamp(1rem, 3vw, 1.25rem);
+    font-weight: 600;
+    color: #fef3c7;
+}
+
+.board-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.board {
+    display: inline-block;
+    border: 8px solid #8B4513;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transform: perspective(1200px) rotateX(30deg);
+    transform-style: preserve-3d;
+}
+
+@media (max-width: 640px) {
+    .board {
+        border-width: 4px;
+    }
+}
+
+.board-row {
+    display: flex;
+}
+
+.square {
+    width: clamp(40px, 10vw, 80px);
+    height: clamp(40px, 10vw, 80px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    padding-bottom: clamp(4px, 1vw, 8px);
+}
+
+.square-light {
+    background-color: #DEB887;
+}
+
+.square-dark {
+    background-color: #8B4513;
+}
+
+.square-selected {
+    box-shadow: inset 0 0 0 3px #FFD700;
+}
+
+.valid-move-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: clamp(16px, 3vw, 20px);
+    height: clamp(16px, 3vw, 20px);
+    background-color: #4ade80;
+    border-radius: 50%;
+    opacity: 0.7;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 0.4; }
+}
+
+.piece-container {
+    position: relative;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    perspective: 200px;
+}
+
+.piece {
+    width: clamp(36px, 8vw, 52px);
+    height: clamp(12px, 3vw, 18px);
+    border-radius: 50%;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.5), inset 0 -2px 3px rgba(0,0,0,0.3);
+    border: 2px solid;
+    position: relative;
+    transform: rotateX(65deg);
+    transition: transform 0.2s;
+}
+
+.piece-light {
+    background-color: #F5DEB3;
+    border-color: #D2B48C;
+}
+
+.piece-dark {
+    background-color: #3E2723;
+    border-color: #2C1810;
+}
+
+.crown {
+    position: absolute;
+    top: clamp(-20px, -4vw, -24px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.crown-light {
+    color: #8B4513;
+}
+
+.crown-dark {
+    color: #F5DEB3;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: white;
+}
+
+.btn-new-game {
+    background-color: #92400e;
+}
+.btn-new-game:hover {
+    background-color: #b45309;
+}
+.btn-resign {
+    background-color: #7f1d1d;
+}
+.btn-resign:hover {
+    background-color: #991b1b;
+}
+.btn-hub {
+    background-color: #444;
+}
+.btn-hub:hover {
+    background-color: #666;
+}
+.stack-controls-row {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Desktop styles */
+@media (min-width: 768px) {
+    #stackWrapper h1 {
+        font-size: 2.5rem;
+    }
+}
+</style>
+</head>
+<body>
+
+<div id="site-chrome">
+  <header class="header-bar">
+    <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+    <nav class="header-nav">
+      <button id="nav-hub" class="active">Games</button>
+      <button id="nav-waiting" style="display:none;">Waiting Room</button>
+      <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+    </nav>
+  </header>
+
+  <main class="page">
+
+    <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+      <h2>Sign in on Town Fuss first</h2>
+      <p>You need a Town Fuss account to play Stacking Checkers online and appear on the leaderboard.</p>
+      <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+    </div>
+
+    <div id="app-content" style="display:none;">
+
+      <!-- ================= MODE SELECT ================= -->
+      <section id="view-mode-select">
+        <span class="eyebrow">Stacking Checkers</span>
+        <h1>How do you want to play?</h1>
+        <div class="uicard mode-tile" id="mode-tile-ai">
+          <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
+          <p class="field-hint" style="text-align:center;">Choose a difficulty, same device</p>
+        </div>
+        <div class="uicard mode-tile" id="mode-tile-2p">
+          <h2 style="font-size:1.05rem;">👥 2 Player Challenge</h2>
+          <p class="field-hint" style="text-align:center;">Take turns on this same device</p>
+        </div>
+        <div class="uicard mode-tile" id="mode-tile-online">
+          <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+          <p class="field-hint" style="text-align:center;">Waiting room, invites, and the leaderboard</p>
+        </div>
+      </section>
+
+      <!-- ================= DIFFICULTY (vs Computer only) ================= -->
+      <section id="view-difficulty" style="display:none;">
+        <button type="button" class="site-btn secondary small" id="difficulty-back-btn" style="margin-bottom:1rem;">&larr; Back</button>
+        <span class="eyebrow">Stacking Checkers</span>
+        <h1>Choose a difficulty</h1>
+        <div class="uicard mode-tile" id="difficulty-easy"><h2 style="font-size:1.05rem;">Easy</h2></div>
+        <div class="uicard mode-tile" id="difficulty-medium"><h2 style="font-size:1.05rem;">Medium</h2></div>
+        <div class="uicard mode-tile" id="difficulty-hard"><h2 style="font-size:1.05rem;">Hard</h2></div>
+      </section>
+
+      <!-- ================= WAITING ROOM ================= -->
+      <section id="view-waiting" style="display:none;">
+        <button type="button" class="site-btn secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+        <span class="eyebrow">Stacking Checkers</span>
+        <h1>Waiting Room</h1>
+        <p style="text-align:center;">Join an open table, invite a friend, or wait for someone to challenge you.</p>
+        <p class="field-hint" id="stack-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+
+        <div class="uicard">
+          <h2 style="text-align:left;">Open tables</h2>
+          <p style="text-align:left;">Anyone can join one of these.</p>
+          <button type="button" class="site-btn" id="create-table-btn">+ Create a table</button>
+          <div id="my-open-table-wrap" style="display:none; margin-top:1rem;">
+            <div class="table-row">
+              <span>Your table — waiting for someone to join</span>
+              <button type="button" class="site-btn secondary small" id="cancel-my-table-btn">Cancel</button>
+            </div>
+          </div>
+          <div id="open-tables-list" style="margin-top:1rem;"></div>
+          <div id="open-tables-empty" class="empty-state" style="display:none;">No open tables right now — create one!</div>
+        </div>
+
+        <div class="uicard">
+          <h2 style="text-align:left;">Invites waiting on you</h2>
+          <div id="my-invites-list"></div>
+          <div id="my-invites-empty" class="empty-state" style="display:none;">No pending invites.</div>
+        </div>
+
+        <div class="uicard">
+          <h2 style="text-align:left;">Invite a friend</h2>
+          <p style="text-align:left;">Only shows people you're already friends with on Town Fuss.</p>
+          <div id="friends-invite-list"></div>
+          <div id="friends-invite-empty" class="empty-state" style="display:none;">Add some friends on Town Fuss first.</div>
+        </div>
+
+        <div id="waiting-message" class="site-message" style="display:none;"></div>
+      </section>
+
+      <!-- ================= LEADERBOARD ================= -->
+      <section id="view-leaderboard" style="display:none;">
+        <span class="eyebrow">Stacking Checkers</span>
+        <h1>Leaderboard</h1>
+        <p style="text-align:center;">Win an online match = 3 points. Only Online (Ranked) games count.</p>
+        <div class="uicard">
+          <div id="leaderboard-list"></div>
+          <div id="leaderboard-empty" class="empty-state" style="display:none;">No games played yet — be the first!</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ================= GAME (close port of the standalone build) ================= -->
+<div id="stackWrapper">
+    <div class="container">
+        <h1>Stacking Checkers</h1>
+
+        <div class="game-players-row" id="stack-players-row">
+            <span id="stack-player-light">Light: —</span>
+            <span id="stack-player-dark">Dark: —</span>
+        </div>
+
+        <div class="message-box">
+            <p id="message">Select a mode to start</p>
+        </div>
+
+        <div class="board-container">
+            <div id="board" class="board"></div>
+        </div>
+
+        <div class="stack-controls-row">
+            <button type="button" class="btn btn-new-game" id="stack-new-game-btn">New Game</button>
+            <button type="button" class="btn btn-resign" id="stack-resign-btn" style="display:none;">Resign</button>
+            <button type="button" class="btn btn-hub" id="stack-back-btn">&larr; Back to Games</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, writeBatch, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+// No App Check — same reasoning as war.html/hearts.html/blackjack.html/
+// pong.html/blocks.html: no callable-Functions usage here.
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ===========================================================================
+// GAME ENGINE — a close port of the standalone build supplied for this
+// platform. Functions take the board explicitly (calculateValidMoves,
+// hasAnyCaptures, getOwner) so the exact same logic works for local vs-AI
+// play, local 2-player play, online play, and the AI's own move search.
+//
+// Three things added beyond the source, which only ever supported one
+// human (light) against the built-in AI (dark):
+//   1. gameMode ('ai' | '2p' | 'online') and, for online, myColor — gate
+//      whose turn is allowed to act, instead of the source's hardcoded
+//      "only light can click, dark is always the AI" assumption.
+//   2. playerHasAnyMoves() / a general win check run at the start of
+//      EVERY turn. The source only ever checked this for the AI's own
+//      turn (inside makeAIMove) — 2 Player and Online had no win
+//      condition at all if a HUMAN ran out of moves, since nothing else
+//      in the source's turn-resolution path ever looked.
+//   3. Firestore sync for Online: board state is stored as a flat array
+//      of 64 cells (each null or {stack, isKing}) — Firestore doesn't
+//      allow an array directly containing other arrays, which the
+//      source's Array(8).fill().map(()=>Array(8)...) board shape would
+//      hit directly, same reasoning as chess.html's flat board encoding.
+// ===========================================================================
+const COLORS = ['red', 'white', 'blue']; // unused by the engine itself, kept from the source for parity
+
+let board = [];
+let selectedSquare = null;
+let validMoves = [];
+let currentPlayer = 'light';
+let difficulty = 'medium';
+let gameStarted = false;
+let animating = false;
+let audioContext = null;
+let gameMode = 'ai'; // 'ai' | '2p' | 'online'
+let myColor = 'light'; // online only
+
+function buildInitialBoard() {
+  const b = Array(8).fill(null).map(() => Array(8).fill(null));
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 8; col++) {
+      if ((row + col) % 2 === 1) b[row][col] = { stack: ['light'], isKing: false };
+    }
+  }
+  for (let row = 5; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if ((row + col) % 2 === 1) b[row][col] = { stack: ['dark'], isKing: false };
+    }
+  }
+  return b;
+}
+
+function initializeBoard() {
+  board = buildInitialBoard();
+  selectedSquare = null;
+  validMoves = [];
+  currentPlayer = 'light';
+  animating = false;
+  renderBoard();
+  setMessage(gameMode === '2p' ? "Player 1's turn — Light pieces" : 'Your turn — Light pieces');
+}
+
+function playSound() {
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = 400;
+    oscillator.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+  } catch (e) {
+    // Silently fail if audio doesn't work
+  }
+}
+
+function getOwner(piece) {
+  return piece.stack[piece.stack.length - 1];
+}
+
+function calculateValidMoves(row, col, currentBoard, mustCapture = null) {
+  const piece = currentBoard[row][col];
+  if (!piece) return [];
+
+  const moves = [];
+  const owner = getOwner(piece);
+  const isKing = piece.isKing;
+
+  const captures = [];
+  for (const [dr, dc] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+    const jumpRow = row + dr;
+    const jumpCol = col + dc;
+    const landRow = row + dr * 2;
+    const landCol = col + dc * 2;
+
+    if (landRow >= 0 && landRow < 8 && landCol >= 0 && landCol < 8) {
+      const jumpPiece = currentBoard[jumpRow][jumpCol];
+      const landPiece = currentBoard[landRow][landCol];
+
+      if (jumpPiece && getOwner(jumpPiece) !== owner && !landPiece) {
+        captures.push({ row: landRow, col: landCol, captureRow: jumpRow, captureCol: jumpCol });
+      }
+    }
+  }
+
+  if (mustCapture === true || captures.length > 0) {
+    return captures;
+  }
+
+  if (mustCapture === false) {
+    const directions = isKing
+      ? [[-1, -1], [-1, 1], [1, -1], [1, 1]]
+      : owner === 'light'
+        ? [[1, -1], [1, 1]]
+        : [[-1, -1], [-1, 1]];
+
+    for (const [dr, dc] of directions) {
+      const newRow = row + dr;
+      const newCol = col + dc;
+
+      if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8 && !currentBoard[newRow][newCol]) {
+        moves.push({ row: newRow, col: newCol });
+      }
+    }
+  }
+
+  return moves;
+}
+
+function hasAnyCaptures(player, currentBoard) {
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = currentBoard[row][col];
+      if (piece && getOwner(piece) === player) {
+        const captures = calculateValidMoves(row, col, currentBoard, true);
+        if (captures.length > 0) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Added: generalizes the source's AI-only "no moves left" check (see the
+// top-of-file comment) so 2 Player and Online both get a real win
+// condition too.
+function playerHasAnyMoves(player, currentBoard) {
+  const mustCapture = hasAnyCaptures(player, currentBoard);
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = currentBoard[row][col];
+      if (piece && getOwner(piece) === player) {
+        if (calculateValidMoves(row, col, currentBoard, mustCapture).length > 0) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function handleSquareClick(row, col) {
+  if (animating || !gameStarted) return;
+  if (gameMode === 'ai' && currentPlayer !== 'light') return; // AI's turn
+  if (gameMode === 'online' && currentPlayer !== myColor) return; // opponent's turn
+
+  const piece = board[row][col];
+
+  if (piece && getOwner(piece) === currentPlayer) {
+    const mustCapture = hasAnyCaptures(currentPlayer, board);
+    const moves = calculateValidMoves(row, col, board, mustCapture);
+
+    if (moves.length > 0) {
+      selectedSquare = { row, col };
+      validMoves = moves;
+      playSound();
+      renderBoard();
+    }
+    return;
+  }
+
+  if (selectedSquare) {
+    const move = validMoves.find(m => m.row === row && m.col === col);
+    if (move) {
+      makeMove(selectedSquare.row, selectedSquare.col, row, col, move.captureRow, move.captureCol);
+    }
+  }
+}
+
+async function makeMove(fromRow, fromCol, toRow, toCol, captureRow, captureCol) {
+  animating = true;
+  playSound();
+
+  const newBoard = board.map(row => row.map(cell => cell ? { ...cell, stack: [...cell.stack] } : null));
+  const piece = newBoard[fromRow][fromCol];
+
+  if (captureRow !== undefined) {
+    const capturedPiece = newBoard[captureRow][captureCol];
+    piece.stack = [...capturedPiece.stack, ...piece.stack];
+    newBoard[captureRow][captureCol] = null;
+  }
+
+  newBoard[fromRow][fromCol] = null;
+  newBoard[toRow][toCol] = piece;
+
+  if ((currentPlayer === 'light' && toRow === 7) || (currentPlayer === 'dark' && toRow === 0)) {
+    piece.isKing = true;
+  }
+
+  board = newBoard;
+  selectedSquare = null;
+  validMoves = [];
+  renderBoard();
+
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const canCaptureAgain = calculateValidMoves(toRow, toCol, newBoard, true).length > 0;
+
+  if (captureRow !== undefined && canCaptureAgain) {
+    selectedSquare = { row: toRow, col: toCol };
+    validMoves = calculateValidMoves(toRow, toCol, newBoard, true);
+    animating = false;
+    renderBoard();
+    return;
+  }
+
+  const nextPlayer = currentPlayer === 'light' ? 'dark' : 'light';
+  const winnerIfStuck = currentPlayer; // whoever just moved, if nextPlayer turns out stuck
+  const nextPlayerStuck = !playerHasAnyMoves(nextPlayer, newBoard);
+
+  if (gameMode === 'online') {
+    animating = false;
+    await submitOnlineMove(newBoard, nextPlayer, nextPlayerStuck ? winnerIfStuck : null);
+    return;
+  }
+
+  currentPlayer = nextPlayer;
+  animating = false;
+
+  if (nextPlayerStuck) {
+    endLocalGame(winnerIfStuck);
+    return;
+  }
+
+  if (gameMode === 'ai' && nextPlayer === 'dark') {
+    setMessage('AI is thinking...');
+    setTimeout(() => makeAIMove(newBoard, nextPlayer), 800);
+  } else if (gameMode === '2p') {
+    setMessage(nextPlayer === 'light' ? "Player 1's turn — Light pieces" : "Player 2's turn — Dark pieces");
+  } else {
+    setMessage('Your turn — Light pieces');
+  }
+}
+
+function endLocalGame(winner) {
+  gameStarted = false;
+  if (gameMode === 'ai') {
+    setMessage(winner === 'light' ? 'You win! The computer has no moves left.' : 'The computer wins — you have no moves left.');
+  } else {
+    setMessage(`${winner === 'light' ? 'Player 1 (Light)' : 'Player 2 (Dark)'} wins — the other side has no moves left!`);
+  }
+}
+
+function makeAIMove(currentBoard, player) {
+  if (player !== 'dark') return;
+
+  const aiMoves = [];
+  const mustCapture = hasAnyCaptures('dark', currentBoard);
+
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const piece = currentBoard[row][col];
+      if (piece && getOwner(piece) === 'dark') {
+        const moves = calculateValidMoves(row, col, currentBoard, mustCapture);
+        moves.forEach(move => {
+          aiMoves.push({ fromRow: row, fromCol: col, ...move });
+        });
+      }
+    }
+  }
+
+  // Unreachable in normal play now — playerHasAnyMoves() already caught an
+  // empty-moves 'dark' before ever scheduling this call — kept as a
+  // harmless defensive fallback.
+  if (aiMoves.length === 0) {
+    endLocalGame('light');
+    return;
+  }
+
+  let chosenMove;
+  if (difficulty === 'easy') {
+    chosenMove = aiMoves[Math.floor(Math.random() * aiMoves.length)];
+  } else if (difficulty === 'medium') {
+    const captureMoves = aiMoves.filter(m => m.captureRow !== undefined);
+    if (captureMoves.length > 0) {
+      chosenMove = captureMoves[Math.floor(Math.random() * captureMoves.length)];
+    } else {
+      chosenMove = aiMoves[Math.floor(Math.random() * aiMoves.length)];
+    }
+  } else {
+    const captureMoves = aiMoves.filter(m => m.captureRow !== undefined);
+    if (captureMoves.length > 0) {
+      captureMoves.sort((a, b) => {
+        const stackA = currentBoard[a.captureRow][a.captureCol].stack.length;
+        const stackB = currentBoard[b.captureRow][b.captureCol].stack.length;
+        return stackB - stackA;
+      });
+      chosenMove = captureMoves[0];
+    } else {
+      chosenMove = aiMoves[Math.floor(Math.random() * aiMoves.length)];
+    }
+  }
+
+  executeAIMove(chosenMove, currentBoard);
+}
+
+async function executeAIMove(move, currentBoardState) {
+  animating = true;
+  playSound();
+
+  const newBoard = currentBoardState.map(row => row.map(cell => cell ? { ...cell, stack: [...cell.stack] } : null));
+  const piece = newBoard[move.fromRow][move.fromCol];
+
+  if (move.captureRow !== undefined) {
+    const capturedPiece = newBoard[move.captureRow][move.captureCol];
+    piece.stack = [...capturedPiece.stack, ...piece.stack];
+    newBoard[move.captureRow][move.captureCol] = null;
+  }
+
+  newBoard[move.fromRow][move.fromCol] = null;
+  newBoard[move.row][move.col] = piece;
+
+  if (move.row === 0) {
+    piece.isKing = true;
+  }
+
+  board = newBoard;
+  renderBoard();
+
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  const canCaptureAgain = calculateValidMoves(move.row, move.col, newBoard, true).length > 0;
+
+  if (move.captureRow !== undefined && canCaptureAgain) {
+    const nextMoves = calculateValidMoves(move.row, move.col, newBoard, true);
+    const nextMove = nextMoves[Math.floor(Math.random() * nextMoves.length)];
+    executeAIMove({ fromRow: move.row, fromCol: move.col, ...nextMove }, newBoard);
+    return;
+  }
+
+  if (!playerHasAnyMoves('light', newBoard)) {
+    currentPlayer = 'dark';
+    animating = false;
+    endLocalGame('dark');
+    return;
+  }
+
+  currentPlayer = 'light';
+  animating = false;
+  setMessage('Your turn — Light pieces');
+}
+
+function renderBoard() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+
+  for (let row = 0; row < 8; row++) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'board-row';
+
+    for (let col = 0; col < 8; col++) {
+      const isLight = (row + col) % 2 === 0;
+      const isSelected = selectedSquare?.row === row && selectedSquare?.col === col;
+      const isValidMove = validMoves.some(m => m.row === row && m.col === col);
+
+      const squareEl = document.createElement('div');
+      squareEl.className = `square ${isLight ? 'square-light' : 'square-dark'} ${isSelected ? 'square-selected' : ''}`;
+      squareEl.dataset.row = row;
+      squareEl.dataset.col = col;
+      squareEl.onclick = () => handleSquareClick(row, col);
+
+      if (isValidMove) {
+        const indicator = document.createElement('div');
+        indicator.className = 'valid-move-indicator';
+        squareEl.appendChild(indicator);
+      }
+
+      const cell = board[row][col];
+      if (cell) {
+        const container = document.createElement('div');
+        container.className = 'piece-container';
+
+        cell.stack.forEach((color, idx) => {
+          const piece = document.createElement('div');
+          piece.className = `piece piece-${color}`;
+          if (idx > 0) {
+            piece.style.marginTop = 'clamp(-6px, -1vw, -4px)';
+          }
+          piece.style.zIndex = idx;
+          container.appendChild(piece);
+        });
+
+        if (cell.isKing) {
+          const crown = document.createElement('div');
+          crown.className = `crown crown-${getOwner(cell)}`;
+          crown.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 7 12 3-5 3 5 7-12M3 19h18"/></svg>`;
+          crown.style.zIndex = cell.stack.length + 1;
+          container.appendChild(crown);
+        }
+
+        squareEl.appendChild(container);
+      }
+
+      rowEl.appendChild(squareEl);
+    }
+
+    boardEl.appendChild(rowEl);
+  }
+}
+
+function setMessage(msg) {
+  document.getElementById('message').textContent = msg;
+}
+
+// ===========================================================================
+// MODE SELECT / LOCAL GAME START
+// ===========================================================================
+function startLocalGame(mode, diff) {
+  gameMode = mode; // 'ai' | '2p'
+  difficulty = diff || 'medium';
+  gameStarted = true;
+
+  document.getElementById('site-chrome').style.display = 'none';
+  document.getElementById('stackWrapper').style.display = 'flex';
+  document.getElementById('stack-players-row').style.display = 'none';
+  document.getElementById('stack-new-game-btn').style.display = 'inline-flex';
+  document.getElementById('stack-resign-btn').style.display = 'none';
+
+  initializeBoard();
+}
+
+function restartLocalGame() {
+  if (gameMode === 'online' || !document.getElementById('stackWrapper').style.display || document.getElementById('stackWrapper').style.display === 'none') return;
+  initializeBoard();
+}
+
+function backToStackHub() {
+  gameStarted = false;
+  if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+  activeGameId = null;
+  activeGameData = null;
+  document.getElementById('stackWrapper').style.display = 'none';
+  document.getElementById('site-chrome').style.display = 'block';
+  showView('mode-select');
+}
+
+document.getElementById('mode-tile-ai').addEventListener('click', () => showView('difficulty'));
+document.getElementById('mode-tile-2p').addEventListener('click', () => startLocalGame('2p'));
+document.getElementById('mode-tile-online').addEventListener('click', () => showView('waiting'));
+document.getElementById('difficulty-back-btn').addEventListener('click', () => showView('mode-select'));
+document.getElementById('difficulty-easy').addEventListener('click', () => startLocalGame('ai', 'easy'));
+document.getElementById('difficulty-medium').addEventListener('click', () => startLocalGame('ai', 'medium'));
+document.getElementById('difficulty-hard').addEventListener('click', () => startLocalGame('ai', 'hard'));
+document.getElementById('stack-new-game-btn').addEventListener('click', () => restartLocalGame());
+document.getElementById('stack-back-btn').addEventListener('click', () => backToStackHub());
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  watchGamePlayLimit(currentUid);
+  await reconcileFinishedStackGames();
+  const jumpedIntoGame = await checkForActiveGame();
+  if (!jumpedIntoGame && !isAnyViewAlreadyShown()) showView("mode-select");
+});
+
+function isAnyViewAlreadyShown() {
+  return document.getElementById("stackWrapper").style.display === "flex";
+}
+
+// ============================= VIEW ROUTER =================================
+let unsubscribeOpenTables = null;
+let unsubscribeMyInvites = null;
+let unsubscribeMyActiveGame = null;
+let unsubscribeGame = null;
+let activeGameId = null;
+let activeGameData = null;
+
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-difficulty").style.display = name === "difficulty" ? "block" : "none";
+  document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  const insideOnlineMultiplayer = name === "waiting" || name === "leaderboard";
+  document.getElementById("nav-waiting").style.display = insideOnlineMultiplayer ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = insideOnlineMultiplayer ? "inline" : "none";
+
+  if (name === "waiting") watchWaitingRoom();
+  else {
+    if (unsubscribeOpenTables) unsubscribeOpenTables();
+    if (unsubscribeMyInvites) unsubscribeMyInvites();
+    if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+  }
+  if (name === "leaderboard") loadStackLeaderboard();
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("mode-select"));
+
+async function checkForActiveGame() {
+  const q = query(
+    collection(db, "stackCheckersGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "active")
+  );
+  const snap = await getDocs(q).catch(() => null);
+  if (snap && !snap.empty) {
+    openStackGame(snap.docs[0].id);
+    return true;
+  }
+  return false;
+}
+
+// ============================= WAITING ROOM =================================
+function watchWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+  if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+
+  const myActiveQ = query(
+    collection(db, "stackCheckersGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "==", "active")
+  );
+  unsubscribeMyActiveGame = onSnapshot(myActiveQ, (snap) => {
+    const mine = snap.docs.find((d) => d.data().player1Uid === currentUid || d.data().player2Uid === currentUid);
+    if (mine && !activeGameId) openStackGame(mine.id);
+  }, (err) => console.error("My active game watch failed:", err));
+
+  const openQ = query(collection(db, "stackCheckersGames"), where("status", "==", "open"), where("inviteTo", "==", null));
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("open-tables-list");
+    const empty = document.getElementById("open-tables-empty");
+    const myTableWrap = document.getElementById("my-open-table-wrap");
+    list.innerHTML = "";
+    let shown = 0;
+    myOpenTableId = null;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.player1Uid === currentUid) { myOpenTableId = docSnap.id; return; }
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "site-btn small";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => joinTable(docSnap.id, g));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    myTableWrap.style.display = myOpenTableId ? "block" : "none";
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "stackCheckersGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("my-invites-list");
+    const empty = document.getElementById("my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button";
+      acceptBtn.className = "site-btn small";
+      acceptBtn.textContent = "Accept";
+      acceptBtn.addEventListener("click", () => joinTable(docSnap.id, g));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button";
+      declineBtn.className = "site-btn secondary small";
+      declineBtn.textContent = "Decline";
+      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "stackCheckersGames", docSnap.id)).catch(() => {}));
+      actions.appendChild(acceptBtn);
+      actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadFriendsToInvite();
+}
+
+async function loadFriendsToInvite() {
+  const list = document.getElementById("friends-invite-list");
+  const empty = document.getElementById("friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    for (const docSnap of snap.docs) {
+      const d = docSnap.data();
+      if (d.status !== "accepted") continue;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "site-btn small";
+      btn.textContent = "Invite to play";
+      btn.addEventListener("click", () => createTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+
+let myOpenTableId = null;
+document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenTableId) return;
+  try {
+    await deleteDoc(doc(db, "stackCheckersGames", myOpenTableId));
+  } catch (err) {
+    alert(`Couldn't cancel table: ${err.message}`);
+  }
+});
+
+const INVITE_COOLDOWN_MS = 60 * 60 * 1000;
+async function checkInviteCooldown(inviteToUid, inviteToName, msg) {
+  const limitRef = doc(db, "gameInviteLimits", `${currentUid}_stackCheckersGames_${inviteToUid}`);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  if (!limitSnap || !limitSnap.exists()) return true;
+  const last = limitSnap.data().lastInvitedAt;
+  const lastMs = last?.seconds ? last.seconds * 1000 : 0;
+  const elapsedMs = Date.now() - lastMs;
+  if (elapsedMs >= INVITE_COOLDOWN_MS) return true;
+  const minsLeft = Math.max(1, Math.ceil((INVITE_COOLDOWN_MS - elapsedMs) / 60000));
+  showMessage2(msg, `You can invite ${inviteToName} again in about ${minsLeft} minute(s).`, "error");
+  return false;
+}
+
+// ============================= GAME PLAY LIMIT (online games only) =========
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("stack-play-remaining");
+  if (!el) return;
+  const limit = myDailyTierLimit();
+  if (limit === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limit - currentGamePlayLimit.count) : limit;
+  el.textContent = `${remaining} / ${limit} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limit = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limit - data.count : limit;
+  if (remaining <= 0) {
+    showMessage2(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, limitRef, count: newCount };
+}
+
+function showMessage2(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= CREATE / JOIN =================================
+// Board is serialized as a flat array of 64 cells (row*8+col), each either
+// null or {stack, isKing} — Firestore doesn't allow an array directly
+// containing other arrays, which the engine's Array(8).fill().map(()=>
+// Array(8)) board shape would hit head-on.
+function boardToFirestoreArray(b) {
+  const flat = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const cell = b[r][c];
+      flat.push(cell ? { stack: [...cell.stack], isKing: !!cell.isKing } : null);
+    }
+  }
+  return flat;
+}
+function firestoreArrayToBoard(flat) {
+  const b = [];
+  for (let r = 0; r < 8; r++) {
+    b[r] = [];
+    for (let c = 0; c < 8; c++) {
+      const cell = flat[r * 8 + c];
+      b[r][c] = cell ? { stack: [...cell.stack], isKing: !!cell.isKing } : null;
+    }
+  }
+  return b;
+}
+
+async function createTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    if (inviteToUid && !(await checkInviteCooldown(inviteToUid, inviteToName, msg))) return;
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const gameRef = doc(collection(db, "stackCheckersGames"));
+    const batch = writeBatch(db);
+    batch.set(gameRef, {
+      player1Uid: currentUid,
+      player1Name: currentUserName,
+      player2Uid: null,
+      player2Name: null,
+      inviteTo: inviteToUid || null,
+      inviteToName: inviteToName || null,
+      participants: [currentUid],
+      status: "open",
+      board: boardToFirestoreArray(buildInitialBoard()),
+      turn: "light",
+      winner: null,
+      p1StatsRecorded: false,
+      p2StatsRecorded: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_stackCheckersGames_${inviteToUid}`);
+      batch.set(limitRef, {
+        inviterUid: currentUid,
+        game: "stackCheckersGames",
+        inviteeUid: inviteToUid,
+        lastInvitedAt: serverTimestamp(),
+      });
+    }
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    await batch.commit();
+    if (inviteToUid) {
+      showMessage2(msg, `Invite sent to ${inviteToName}.`, "success");
+    } else {
+      openStackGame(gameRef.id);
+    }
+  } catch (err) {
+    if (inviteToUid && err.code === "permission-denied") {
+      showMessage2(msg, `You can invite ${inviteToName} again in about an hour, or you've reached your daily game limit.`, "error");
+      return;
+    }
+    if (err.code === "permission-denied") {
+      showMessage2(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+      return;
+    }
+    showMessage2(msg, err.message, "error");
+  }
+}
+
+async function joinTable(gameId, gameData) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const batch = writeBatch(db);
+    batch.update(doc(db, "stackCheckersGames", gameId), {
+      player2Uid: currentUid,
+      player2Name: currentUserName,
+      participants: [gameData.player1Uid, currentUid],
+      status: "active",
+      updatedAt: serverTimestamp(),
+    });
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    await batch.commit();
+    openStackGame(gameId);
+  } catch (err) {
+    if (err.code === "permission-denied") {
+      showMessage2(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+      return;
+    }
+    showMessage2(msg, err.message, "error");
+  }
+}
+
+// ============================= ONLINE GAME =================================
+function openStackGame(gameId) {
+  activeGameId = gameId;
+
+  if (unsubscribeGame) unsubscribeGame();
+  unsubscribeGame = onSnapshot(doc(db, "stackCheckersGames", gameId), (snap) => {
+    if (!snap.exists()) { activeGameId = null; showView("waiting"); return; }
+    activeGameData = snap.data();
+    applyOnlineGameState(activeGameData);
+    maybeRecordStackStats();
+  }, (err) => console.error("Game watch failed:", err));
+}
+
+function applyOnlineGameState(gameData) {
+  gameMode = 'online';
+  myColor = gameData.player1Uid === currentUid ? 'light' : 'dark';
+  board = gameData.board ? firestoreArrayToBoard(gameData.board) : buildInitialBoard();
+  currentPlayer = gameData.turn || 'light';
+  selectedSquare = null;
+  validMoves = [];
+  gameStarted = gameData.status === 'active';
+
+  document.getElementById('site-chrome').style.display = 'none';
+  document.getElementById('stackWrapper').style.display = 'flex';
+  document.getElementById('stack-players-row').style.display = 'flex';
+  document.getElementById('stack-new-game-btn').style.display = 'none';
+  document.getElementById('stack-resign-btn').style.display = gameData.status === 'active' ? 'inline-flex' : 'none';
+  document.getElementById('stack-player-light').textContent = `Light: ${gameData.player1Name || '—'}`;
+  document.getElementById('stack-player-dark').textContent = `Dark: ${gameData.player2Name || 'Waiting for opponent...'}`;
+
+  renderBoard();
+
+  if (gameData.status === 'open') {
+    setMessage('Waiting for an opponent to join...');
+  } else if (gameData.status === 'finished') {
+    if (gameData.winner === currentUid) setMessage('You won! 🎉');
+    else setMessage('You lost this one.');
+  } else {
+    setMessage(currentPlayer === myColor ? "Your turn" : "Opponent's turn");
+  }
+}
+
+async function submitOnlineMove(newBoard, nextPlayer, winnerColorIfStuck) {
+  const update = {
+    board: boardToFirestoreArray(newBoard),
+    turn: nextPlayer,
+    updatedAt: serverTimestamp(),
+  };
+  if (winnerColorIfStuck && activeGameData) {
+    update.status = 'finished';
+    update.winner = winnerColorIfStuck === 'light' ? activeGameData.player1Uid : activeGameData.player2Uid;
+  }
+  try {
+    await updateDoc(doc(db, "stackCheckersGames", activeGameId), update);
+  } catch (err) {
+    alert(`Couldn't submit move: ${err.message}`);
+  }
+}
+
+async function resignStackGame() {
+  if (!activeGameData || activeGameData.status !== 'active') return;
+  if (!confirm('Resign this game?')) return;
+  const winnerUid = myColor === 'light' ? activeGameData.player2Uid : activeGameData.player1Uid;
+  try {
+    await updateDoc(doc(db, "stackCheckersGames", activeGameId), {
+      status: 'finished',
+      winner: winnerUid,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    alert(err.message);
+  }
+}
+document.getElementById('stack-resign-btn').addEventListener('click', () => resignStackGame());
+
+// ============================= STATS / LEADERBOARD ==========================
+async function recordStackStatsForGame(gameId, gameData) {
+  const isP1 = gameData.player1Uid === currentUid;
+  const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
+  if (alreadyRecorded) return;
+
+  const won = gameData.winner === currentUid;
+  const pointsEarned = won ? 3 : 0;
+
+  try {
+    await updateDoc(doc(db, "stackCheckersGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      stackCheckersPoints: (data.stackCheckersPoints || 0) + pointsEarned,
+      stackCheckersWins: (data.stackCheckersWins || 0) + (won ? 1 : 0),
+      stackCheckersLosses: (data.stackCheckersLosses || 0) + (won ? 0 : 1),
+    });
+  } catch (err) {
+    console.error("Couldn't record Stacking Checkers stats:", err);
+  }
+}
+
+async function maybeRecordStackStats() {
+  if (!activeGameData || activeGameData.status !== "finished") return;
+  await recordStackStatsForGame(activeGameId, activeGameData);
+}
+
+async function reconcileFinishedStackGames() {
+  try {
+    const q = query(collection(db, "stackCheckersGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status !== "finished") continue;
+      const isP1 = g.player1Uid === currentUid;
+      const alreadyRecorded = isP1 ? g.p1StatsRecorded : g.p2StatsRecorded;
+      if (!alreadyRecorded) await recordStackStatsForGame(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished Stacking Checkers games:", err);
+  }
+}
+
+async function loadStackLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      const points = d.stackCheckersPoints || 0;
+      const wins = d.stackCheckersWins || 0;
+      const losses = d.stackCheckersLosses || 0;
+      if (points > 0 || wins > 0 || losses > 0) {
+        players.push({ name: d.profile?.name || "Neighbor", points, wins, losses });
+      }
+    });
+    players.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (players.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    players.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span class="leader-rank">#${i + 1}</span><span style="flex:1;">${escapeHtml(p.name)}</span><span class="field-hint">${p.wins}W-${p.losses}L</span><span style="font-weight:600;">${p.points} pts</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
