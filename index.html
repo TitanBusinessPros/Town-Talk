@@ -1695,6 +1695,12 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById("nav-admin").style.display = isAdminUser ? "inline" : "none";
     updateProtectedNavVisibility(user);
     maybeShowAdminPinGate();
+    // watchChatMessageLimit() (called earlier in this handler, before
+    // isAdminUser was known) already rendered the chat-remaining count once
+    // using isAdminUser's stale initial false — its onSnapshot listener
+    // only re-fires on a chatMessageLimits doc CHANGE, and an admin's
+    // messages never write one anymore, so nothing else re-triggers this.
+    renderChatRemaining();
 
     showView("dashboard");
   } else {
@@ -4263,6 +4269,10 @@ function watchChatMessageLimit(uid) {
 }
 
 function chatRemainingToday() {
+  // Admins are exempt from this flat cap — it's meant to keep chat rooms
+  // from being spammed by regular members, not to stop an admin from
+  // actually being able to test the platform.
+  if (isAdminUser) return Infinity;
   if (currentChatLimit.day !== todayNumber()) return DAILY_MESSAGE_LIMIT;
   return Math.max(0, DAILY_MESSAGE_LIMIT - currentChatLimit.count);
 }
@@ -4270,7 +4280,7 @@ function chatRemainingToday() {
 function renderChatRemaining() {
   const left = chatRemainingToday();
   const el = document.getElementById("chat-remaining");
-  if (el) el.textContent = `${left} / ${DAILY_MESSAGE_LIMIT} chat room messages left today`;
+  if (el) el.textContent = isAdminUser ? "Unlimited chat room messages (admin)" : `${left} / ${DAILY_MESSAGE_LIMIT} chat room messages left today`;
   const sendBtn = document.getElementById("chatroom-send-btn");
   if (sendBtn) sendBtn.disabled = left <= 0;
 }
@@ -4474,12 +4484,14 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
       const today = todayNumber();
       const sameDay = data.day === today;
       const newCount = sameDay ? data.count + 1 : 1;
-      if (sameDay && data.count >= DAILY_MESSAGE_LIMIT) {
+      if (!isAdminUser && sameDay && data.count >= DAILY_MESSAGE_LIMIT) {
         throw new Error("You've used all 3 chat room messages for today — it resets tomorrow.");
       }
       const msgRef = doc(collection(db, "chatRooms", activeChatRoom.id, "messages"));
       const senderImages = currentUserData.images || [];
-      tx.set(limitRef, { day: today, count: newCount });
+      // Admins never write/increment this at all — the flat cap doesn't
+      // apply to them, so there's nothing meaningful to track here.
+      if (!isAdminUser) tx.set(limitRef, { day: today, count: newCount });
       tx.set(msgRef, {
         senderId: currentUid,
         senderName: currentUserData.profile?.name || "Neighbor",
