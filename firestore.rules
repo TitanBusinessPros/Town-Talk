@@ -348,11 +348,22 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
+                    // Kept in sync with the CHAT_ROOMS list in index.html — a
+                    // room missing here isn't hidden from the UI, it just
+                    // silently rejects every post to it with a permission
+                    // error. Confirmed via a live report that 10 of the 16
+                    // town rooms (everything added after the original 6) and
+                    // both topic rooms added alongside them (Food & Recipes,
+                    // Introduce Yourself) had been missing from this list.
                     && roomId in [
                          'wynnewood-chat', 'elmore-city-chat', 'pauls-valley-chat',
-                         'davis-chat', 'paoli-chat', 'sulphur-chat', 'singles-chat',
-                         'music-chat', 'events-chat', 'rants-raves-chat',
-                         'local-jobs-chat', 'helping-hands-chat'
+                         'davis-chat', 'paoli-chat', 'sulphur-chat',
+                         'whitebead-chat', 'maysville-chat', 'katie-chat',
+                         'stratford-chat', 'lindsay-chat', 'roff-chat',
+                         'wanette-chat', 'wayne-chat', 'purcell-chat', 'marlow-chat',
+                         'singles-chat', 'music-chat', 'events-chat', 'rants-raves-chat',
+                         'local-jobs-chat', 'helping-hands-chat',
+                         'food-recipes-chat', 'introduce-yourself-chat'
                        ]
                     && request.resource.data.senderId == request.auth.uid
                     && request.resource.data.text is string
