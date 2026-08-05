@@ -231,6 +231,11 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
           <h2 style="font-size:1.1rem; margin-top:0.5rem;">Stacking Checkers</h2>
           <p class="field-hint" style="text-align:center;">Play the computer, a friend on this device, or someone online</p>
         </div>
+        <div class="card" style="max-width:280px; text-align:center; cursor:pointer;" id="game-tile-seawar">
+          <div style="font-size:2.5rem;">🚢</div>
+          <h2 style="font-size:1.1rem; margin-top:0.5rem;">Sea War</h2>
+          <p class="field-hint" style="text-align:center;">Place your fleet, then play the computer, a friend on this device, or someone online</p>
+        </div>
       </div>
       <p class="field-hint" style="text-align:center; margin-top:1.5rem;">More games coming soon.</p>
     </section>
@@ -504,6 +509,7 @@ document.getElementById("game-tile-desert").addEventListener("click", () => { lo
 document.getElementById("game-tile-pong").addEventListener("click", () => { location.href = "pong.html"; });
 document.getElementById("game-tile-blocks").addEventListener("click", () => { location.href = "blocks.html"; });
 document.getElementById("game-tile-stackcheckers").addEventListener("click", () => { location.href = "stacking-checkers.html"; });
+document.getElementById("game-tile-seawar").addEventListener("click", () => { location.href = "sea-war.html"; });
 document.getElementById("mode-select-back-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("hub"));
 document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));

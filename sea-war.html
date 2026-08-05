@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sea War — Town Fuss</title>
+<link rel="icon" type="image/x-icon" href="https://github.com/TitanBusinessPros/Sea-War/raw/main/Sea%20War%20Favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================================================
+   SITE-CHROME — hub/mode-select/waiting-room/leaderboard, same pattern as
+   stacking-checkers.html/pong.html/blocks.html.
+   =========================================================================== */
+#site-chrome {
+  --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+  --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px; --radius-sm: 8px;
+  background: var(--ink-900); color: var(--paper-050); min-height: 100vh;
+}
+#site-chrome a { color: var(--amber-500); }
+#site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
+#site-chrome p { color: var(--text-muted); line-height: 1.6; }
+#site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+#site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+#site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+#site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+#site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+#site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+#site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+#site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+#site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+#site-chrome button.site-btn:hover { background: var(--amber-600); }
+#site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+#site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+#site-chrome .table-row, #site-chrome .invite-row, #site-chrome .friend-row, #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+#site-chrome .table-row > span:first-child, #site-chrome .invite-row > span:first-child, #site-chrome .friend-row > span:first-child, #site-chrome .leader-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+#site-chrome .table-row > span:last-child, #site-chrome .invite-row > span:last-child, #site-chrome .friend-row > span:last-child, #site-chrome .leader-row > span:last-child { flex: 0 0 auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+#site-chrome .table-row:last-child, #site-chrome .invite-row:last-child, #site-chrome .friend-row:last-child, #site-chrome .leader-row:last-child { border-bottom: none; }
+#site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+#site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+#site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+#site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+#site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+#site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+#site-chrome .mode-tile { max-width: 320px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+
+/* ===========================================================================
+   GAME — Sea War, a close port of the standalone build supplied for this
+   platform. #seaWarWrapper stands in for the source's own `body` rule so
+   it can sit as a sibling of #site-chrome instead of colliding with it —
+   same trick used for pong.html/blocks.html/stacking-checkers.html. The
+   source's game-mode-selector (Two Player / Play vs AI buttons) is
+   dropped — that job now belongs to #site-chrome's mode-select — every
+   other selector below is unchanged from the source.
+   =========================================================================== */
+#seaWarWrapper {
+    display: none;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+    color: white;
+    min-height: 100vh;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+.logo-container {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.logo {
+    max-width: 400px;
+    width: 100%;
+    height: auto;
+}
+
+.game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+}
+
+.boards-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 40px;
+    width: 100%;
+    max-width: 100%;
+}
+
+.player-board, .opponent-board {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+}
+
+.board-title {
+    font-size: 1.5rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    gap: 2px;
+    width: min(450px, 90vw);
+    height: min(450px, 90vw);
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid white;
+    padding: 5px;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.cell {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: 1 / 1;
+}
+
+.cell:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.cell.ship {
+    background: rgba(0, 100, 200, 0.5);
+}
+
+.cell.hit {
+    background: rgba(255, 0, 0, 0.7);
+}
+
+.cell.hit::after {
+    content: "\2715";
+    color: white;
+    font-size: 1.2rem;
+}
+
+.cell.miss {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.cell.miss::after {
+    content: "\2022";
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 1.2rem;
+}
+
+.game-info {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 15px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 800px;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.status-message {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    min-height: 40px;
+}
+
+.ship-status {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.ship {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    position: relative;
+}
+
+.ship-cell {
+    width: 20px;
+    height: 20px;
+    background: rgba(0, 100, 200, 0.7);
+    border-radius: 2px;
+}
+
+.ship.sunk .ship-cell {
+    background: rgba(255, 0, 0, 0.7);
+}
+
+.ship.sunk::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: red;
+    transform: translateY(-50%);
+    z-index: 1;
+}
+
+.controls {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+#seaWarWrapper button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid white;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#seaWarWrapper button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.setup-instructions {
+    margin-top: 15px;
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.audio-controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+}
+
+.mute-btn {
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mute-btn:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.mute-btn::before {
+    content: "\1F50A";
+    font-size: 1.5rem;
+}
+
+.mute-btn.muted::before {
+    content: "\1F507";
+}
+
+.pass-device-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 20, 0.95);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    z-index: 200;
+    text-align: center;
+    padding: 2rem;
+}
+.pass-device-overlay p {
+    font-size: 1.3rem;
+    max-width: 30rem;
+}
+
+@media (max-width: 768px) {
+    .boards-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .board {
+        width: min(400px, 85vw);
+        height: min(400px, 85vw);
+    }
+
+    .logo {
+        max-width: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .board-title {
+        font-size: 1.2rem;
+    }
+
+    .status-message {
+        font-size: 1.2rem;
+    }
+
+    #seaWarWrapper button {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+
+    .logo {
+        max-width: 250px;
+    }
+
+    .audio-controls {
+        bottom: 10px;
+        right: 10px;
+    }
+}
+</style>
+</head>
+<body>
+
+<div id="site-chrome">
+  <header class="header-bar">
+    <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+    <nav class="header-nav">
+      <button id="nav-hub" class="active">Games</button>
+      <button id="nav-waiting" style="display:none;">Waiting Room</button>
+      <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+    </nav>
+  </header>
+
+  <main class="page">
+
+    <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+      <h2>Sign in on Town Fuss first</h2>
+      <p>You need a Town Fuss account to play Sea War online and appear on the leaderboard.</p>
+      <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+    </div>
+
+    <div id="app-content" style="display:none;">
+
+      <!-- ================= MODE SELECT ================= -->
+      <section id="view-mode-select">
+        <span class="eyebrow">Sea War</span>
+        <h1>How do you want to play?</h1>
+        <div class="uicard mode-tile" id="mode-tile-ai">
+          <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
+          <p class="field-hint" style="text-align:center;">Same device</p>
+        </div>
+        <div class="uicard mode-tile" id="mode-tile-2p">
+          <h2 style="font-size:1.05rem;">👥 2 Player Challenge</h2>
+          <p class="field-hint" style="text-align:center;">Take turns on this same device — pass it back and forth</p>
+        </div>
+        <div class="uicard mode-tile" id="mode-tile-online">
+          <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+          <p class="field-hint" style="text-align:center;">Waiting room, invites, and the leaderboard</p>
+        </div>
+      </section>
+
+      <!-- ================= WAITING ROOM ================= -->
+      <section id="view-waiting" style="display:none;">
+        <button type="button" class="site-btn secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back to Games</button>
+        <span class="eyebrow">Sea War</span>
+        <h1>Waiting Room</h1>
+        <p style="text-align:center;">Join an open table, invite a friend, or wait for someone to challenge you.</p>
+        <p class="field-hint" id="seawar-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+
+        <div class="uicard">
+          <h2 style="text-align:left;">Open tables</h2>
+          <p style="text-align:left;">Anyone can join one of these.</p>
+          <button type="button" class="site-btn" id="create-table-btn">+ Create a table</button>
+          <div id="my-open-table-wrap" style="display:none; margin-top:1rem;">
+            <div class="table-row">
+              <span>Your table — waiting for someone to join</span>
+              <button type="button" class="site-btn secondary small" id="cancel-my-table-btn">Cancel</button>
+            </div>
+          </div>
+          <div id="open-tables-list" style="margin-top:1rem;"></div>
+          <div id="open-tables-empty" class="empty-state" style="display:none;">No open tables right now — create one!</div>
+        </div>
+
+        <div class="uicard">
+          <h2 style="text-align:left;">Invites waiting on you</h2>
+          <div id="my-invites-list"></div>
+          <div id="my-invites-empty" class="empty-state" style="display:none;">No pending invites.</div>
+        </div>
+
+        <div class="uicard">
+          <h2 style="text-align:left;">Invite a friend</h2>
+          <p style="text-align:left;">Only shows people you're already friends with on Town Fuss.</p>
+          <div id="friends-invite-list"></div>
+          <div id="friends-invite-empty" class="empty-state" style="display:none;">Add some friends on Town Fuss first.</div>
+        </div>
+
+        <div id="waiting-message" class="site-message" style="display:none;"></div>
+      </section>
+
+      <!-- ================= LEADERBOARD ================= -->
+      <section id="view-leaderboard" style="display:none;">
+        <span class="eyebrow">Sea War</span>
+        <h1>Leaderboard</h1>
+        <p style="text-align:center;">Win an online match = 3 points. Only Online (Ranked) games count.</p>
+        <div class="uicard">
+          <div id="leaderboard-list"></div>
+          <div id="leaderboard-empty" class="empty-state" style="display:none;">No games played yet — be the first!</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ================= GAME (close port of the standalone build) ================= -->
+<div id="seaWarWrapper">
+    <div class="logo-container">
+        <img src="https://github.com/TitanBusinessPros/Sea-War/raw/main/SEA%20WAR%20Logo.png" alt="Sea War Logo" class="logo">
+    </div>
+
+    <div class="game-container">
+        <div class="boards-container">
+            <div class="player-board">
+                <h2 class="board-title" id="player-title">Your Fleet</h2>
+                <div class="board" id="player-board"></div>
+            </div>
+
+            <div class="opponent-board" id="opponent-board-wrap">
+                <h2 class="board-title" id="opponent-title">Opponent's Fleet</h2>
+                <div class="board" id="opponent-board"></div>
+            </div>
+        </div>
+
+        <div class="game-info">
+            <div class="status-message" id="status-message">Place your ships on the board</div>
+
+            <div class="ship-status" id="ship-status"></div>
+
+            <div class="setup-instructions" id="setup-instructions">
+                Click on your board to place ships. Right-click to rotate ship direction.
+            </div>
+
+            <div class="controls">
+                <button type="button" id="ready-btn" style="display:none;">Start Game</button>
+                <button type="button" id="randomize-btn">Randomize Ships</button>
+                <button type="button" id="seawar-back-btn">&larr; Back to Games</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="audio-controls">
+        <div class="mute-btn" id="mute-btn"></div>
+    </div>
+
+    <audio id="background-music" loop>
+        <source src="https://github.com/TitanBusinessPros/Sea-War/raw/main/Sea%20War%20Theme%20Song.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <div class="pass-device-overlay" id="pass-device-overlay">
+        <p id="pass-device-message">Pass the device to the other player.</p>
+        <button type="button" id="pass-device-continue-btn">Continue</button>
+    </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, query, where, writeBatch, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+
+const app = initializeApp(firebaseConfig);
+// No App Check — same reasoning as war.html/hearts.html/blackjack.html/
+// pong.html/blocks.html/stacking-checkers.html: no callable-Functions
+// usage here.
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ===========================================================================
+// GAME ENGINE — a close port of the standalone build supplied for this
+// platform. Board-manipulation helpers (createEmptyBoard/canPlaceShip/
+// placeShip/getShipPositions/findShipByPosition/checkAllShipsSunk/
+// placeShipsRandomly) are taken essentially unchanged.
+//
+// Two real things fixed/added beyond the source:
+//   1. Two Player mode was non-functional past Player 1's first move: the
+//      attack-click handler was only ever attached to the "opponent
+//      board" element, and only when currentPlayer===1 — there was no
+//      board/mechanism anywhere for Player 2 to ever act. Rebuilt around
+//      two roles (p1/p2) whose boards get swapped into the SAME two
+//      board containers depending on whose turn it is, with a "pass the
+//      device" screen at each handoff (ship placement AND combat turns)
+//      so the other person doesn't see anything until they're ready.
+//   2. Online sync: each 10x10 board serializes to a flat array of 100
+//      cells — Firestore doesn't allow an array directly containing
+//      other arrays, same reasoning as every other board game added to
+//      this site. Ship positions/hit-counts travel as an array of maps
+//      (Firestore's documented workaround), which needs no flattening.
+//      Matching this site's established trust model (move legality
+//      isn't validated server-side anywhere else either), both players'
+//      full board data — including ship positions — lives in the one
+//      shared, both-readable game doc; the client alone is what keeps
+//      an opponent's un-hit ships off screen.
+// ===========================================================================
+const BOARD_SIZE = 10;
+const SHIPS = [
+  { name: "Carrier", size: 5 },
+  { name: "Battleship", size: 4 },
+  { name: "Cruiser", size: 3 },
+  { name: "Submarine", size: 3 },
+  { name: "Destroyer", size: 2 },
+  { name: "Bomber", size: 4 },
+  { name: "Jet", size: 2 },
+];
+
+function createEmptyBoard() {
+  return Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+}
+function canPlaceShip(board, row, col, size, orientation) {
+  if (orientation === 'horizontal') {
+    if (col + size > BOARD_SIZE) return false;
+    for (let i = 0; i < size; i++) if (board[row][col + i] !== null) return false;
+  } else {
+    if (row + size > BOARD_SIZE) return false;
+    for (let i = 0; i < size; i++) if (board[row + i][col] !== null) return false;
+  }
+  return true;
+}
+function placeShip(board, row, col, size, orientation) {
+  if (orientation === 'horizontal') {
+    for (let i = 0; i < size; i++) board[row][col + i] = 'ship';
+  } else {
+    for (let i = 0; i < size; i++) board[row + i][col] = 'ship';
+  }
+}
+function getShipPositions(row, col, size, orientation) {
+  const positions = [];
+  if (orientation === 'horizontal') {
+    for (let i = 0; i < size; i++) positions.push({ row, col: col + i });
+  } else {
+    for (let i = 0; i < size; i++) positions.push({ row: row + i, col });
+  }
+  return positions;
+}
+function findShipByPosition(ships, row, col) {
+  for (const ship of ships) {
+    for (const pos of ship.positions) {
+      if (pos.row === row && pos.col === col) return ship;
+    }
+  }
+  return null;
+}
+function checkAllShipsSunk(ships) {
+  return ships.every((ship) => ship.hits === ship.size);
+}
+function placeShipsRandomly(board, ships) {
+  ships.length = 0;
+  for (const ship of SHIPS) {
+    let placed = false;
+    let attempts = 0;
+    const maxAttempts = 100;
+    while (!placed && attempts < maxAttempts) {
+      const orientation = Math.random() > 0.5 ? 'horizontal' : 'vertical';
+      const row = Math.floor(Math.random() * BOARD_SIZE);
+      const col = Math.floor(Math.random() * BOARD_SIZE);
+      if (canPlaceShip(board, row, col, ship.size, orientation)) {
+        placeShip(board, row, col, ship.size, orientation);
+        ships.push({ name: ship.name, size: ship.size, hits: 0, positions: getShipPositions(row, col, ship.size, orientation) });
+        placed = true;
+      }
+      attempts++;
+    }
+    if (!placed) console.error(`Could not place ${ship.name} after ${maxAttempts} attempts`);
+  }
+}
+function boardToFlat(board) {
+  const flat = [];
+  for (let r = 0; r < BOARD_SIZE; r++) for (let c = 0; c < BOARD_SIZE; c++) flat.push(board[r][c]);
+  return flat;
+}
+function flatToBoard(flat) {
+  const board = [];
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    board[r] = [];
+    for (let c = 0; c < BOARD_SIZE; c++) board[r][c] = flat ? (flat[r * BOARD_SIZE + c] ?? null) : null;
+  }
+  return board;
+}
+
+// ============================= DOM refs =====================================
+const playerBoardEl = document.getElementById('player-board');
+const opponentBoardEl = document.getElementById('opponent-board');
+const opponentBoardWrap = document.getElementById('opponent-board-wrap');
+const playerTitleEl = document.getElementById('player-title');
+const opponentTitleEl = document.getElementById('opponent-title');
+const statusMessageEl = document.getElementById('status-message');
+const shipStatusEl = document.getElementById('ship-status');
+const setupInstructionsEl = document.getElementById('setup-instructions');
+const readyBtn = document.getElementById('ready-btn');
+const randomizeBtn = document.getElementById('randomize-btn');
+const passDeviceOverlay = document.getElementById('pass-device-overlay');
+const passDeviceMessage = document.getElementById('pass-device-message');
+const passDeviceContinueBtn = document.getElementById('pass-device-continue-btn');
+const backgroundMusic = document.getElementById('background-music');
+const muteBtn = document.getElementById('mute-btn');
+
+function setStatus(msg) { statusMessageEl.textContent = msg; }
+
+// ============================= GAME STATE ====================================
+let gameMode = 'ai'; // 'ai' | '2p' | 'online'
+let phase = 'setup'; // 'setup' | 'passDevice' | 'setupWaiting' | 'waitingForOpponent' | 'playing' | 'gameOver'
+let setupBoard = createEmptyBoard();
+let setupShips = [];
+let currentShipIndex = 0;
+let shipOrientation = 'horizontal';
+let settingUpPlayer = 1; // 2p mode only
+let p1 = null, p2 = null; // finalized {board, ships} once placed (local modes)
+let currentTurn = 1; // 1 | 2, local modes
+let winnerLocal = null;
+let passDeviceContinueFn = null;
+
+// Online-specific
+let myRole = null; // 'player1' | 'player2'
+let activeGameId = null;
+let activeGameData = null;
+let unsubscribeGame = null;
+
+function renderBoard(el, boardData, showShips, onClick) {
+  el.innerHTML = '';
+  for (let row = 0; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+      const v = boardData[row][col];
+      if (showShips && v === 'ship') cell.classList.add('ship');
+      if (v === 'hit') cell.classList.add('hit');
+      else if (v === 'miss') cell.classList.add('miss');
+      if (onClick) cell.addEventListener('click', onClick);
+      if (onClick === handleSetupClick) cell.addEventListener('contextmenu', handleSetupRightClick);
+      el.appendChild(cell);
+    }
+  }
+}
+
+function renderShipStatus(ships) {
+  shipStatusEl.innerHTML = '';
+  for (const ship of ships || []) {
+    const shipEl = document.createElement('div');
+    shipEl.className = `ship ${ship.hits === ship.size ? 'sunk' : ''}`;
+    const nameEl = document.createElement('span');
+    nameEl.textContent = ship.name;
+    shipEl.appendChild(nameEl);
+    for (let i = 0; i < ship.size; i++) {
+      const c = document.createElement('div');
+      c.className = 'ship-cell';
+      shipEl.appendChild(c);
+    }
+    shipStatusEl.appendChild(shipEl);
+  }
+}
+
+// ============================= SETUP (ship placement) ========================
+function renderSetup() {
+  opponentBoardWrap.style.display = 'none';
+  setupInstructionsEl.classList.remove('hidden');
+  renderBoard(playerBoardEl, setupBoard, true, handleSetupClick);
+  renderShipStatus(setupShips);
+  playerTitleEl.textContent = gameMode === '2p' ? `Player ${settingUpPlayer}: Place Your Ships` : 'Your Fleet';
+}
+
+function handleSetupClick(e) {
+  if (currentShipIndex >= SHIPS.length) return;
+  const row = parseInt(e.target.dataset.row, 10);
+  const col = parseInt(e.target.dataset.col, 10);
+  const ship = SHIPS[currentShipIndex];
+  if (canPlaceShip(setupBoard, row, col, ship.size, shipOrientation)) {
+    placeShip(setupBoard, row, col, ship.size, shipOrientation);
+    setupShips.push({ name: ship.name, size: ship.size, hits: 0, positions: getShipPositions(row, col, ship.size, shipOrientation) });
+    currentShipIndex++;
+    renderSetup();
+    updateSetupMessage();
+  } else {
+    setStatus("Cannot place ship there. Try another location.");
+  }
+}
+function handleSetupRightClick(e) {
+  e.preventDefault();
+  shipOrientation = shipOrientation === 'horizontal' ? 'vertical' : 'horizontal';
+  setStatus(`Ship orientation: ${shipOrientation}`);
+}
+function updateSetupMessage() {
+  if (currentShipIndex >= SHIPS.length) {
+    setStatus("All ships placed! Click Ready to continue.");
+    setupInstructionsEl.classList.add('hidden');
+    readyBtn.style.display = 'inline-flex';
+    readyBtn.textContent = gameMode === '2p' && settingUpPlayer === 1 ? 'Ready — Pass to Player 2'
+      : gameMode === '2p' ? 'Ready — Begin Battle'
+      : gameMode === 'online' ? 'Ready'
+      : 'Start Game';
+  } else {
+    setStatus(`Place your ${SHIPS[currentShipIndex].name} (${SHIPS[currentShipIndex].size} cells)`);
+    readyBtn.style.display = 'none';
+  }
+}
+randomizeBtn.addEventListener('click', () => {
+  setupBoard = createEmptyBoard();
+  setupShips = [];
+  placeShipsRandomly(setupBoard, setupShips);
+  currentShipIndex = SHIPS.length;
+  renderSetup();
+  updateSetupMessage();
+});
+
+function showPassDevice(message, onContinue) {
+  phase = 'passDevice';
+  passDeviceMessage.textContent = message;
+  passDeviceContinueFn = onContinue;
+  passDeviceOverlay.style.display = 'flex';
+}
+passDeviceContinueBtn.addEventListener('click', () => {
+  passDeviceOverlay.style.display = 'none';
+  if (passDeviceContinueFn) passDeviceContinueFn();
+});
+
+readyBtn.addEventListener('click', async () => {
+  if (currentShipIndex < SHIPS.length) { setStatus("Please place all your ships first!"); return; }
+
+  if (gameMode === 'ai') {
+    p1 = { board: setupBoard, ships: setupShips };
+    p2 = { board: createEmptyBoard(), ships: [] };
+    placeShipsRandomly(p2.board, p2.ships);
+    currentTurn = 1;
+    phase = 'playing';
+    setStatus("Your turn! Attack the opponent's fleet.");
+    renderLocalPlaying();
+  } else if (gameMode === '2p') {
+    if (settingUpPlayer === 1) {
+      p1 = { board: setupBoard, ships: setupShips };
+      setupBoard = createEmptyBoard();
+      setupShips = [];
+      currentShipIndex = 0;
+      shipOrientation = 'horizontal';
+      readyBtn.style.display = 'none';
+      showPassDevice("Player 1 is ready. Pass the device to Player 2 to place their ships.", () => {
+        settingUpPlayer = 2;
+        phase = 'setup';
+        renderSetup();
+        updateSetupMessage();
+      });
+    } else {
+      p2 = { board: setupBoard, ships: setupShips };
+      currentTurn = 1;
+      readyBtn.style.display = 'none';
+      showPassDevice("Both fleets are set. Pass the device to Player 1 to begin the battle.", () => {
+        phase = 'playing';
+        setStatus("Player 1's turn! Attack the opponent's fleet.");
+        renderLocalPlaying();
+      });
+    }
+  } else if (gameMode === 'online') {
+    readyBtn.disabled = true;
+    await submitReady();
+    readyBtn.disabled = false;
+  }
+});
+
+// ============================= LOCAL PLAY (ai / 2p) ==========================
+function renderLocalPlaying() {
+  opponentBoardWrap.style.display = '';
+  // vs Computer: "mine" always stays the human's own board (p1), regardless
+  // of whose turn it is — swapping this during the AI's own turn (like 2P
+  // mode intentionally does, since the device is being physically handed
+  // over) would briefly render the AI's ships, with visible positions, into
+  // the "mine" panel while it's "thinking".
+  const mine = gameMode === '2p' ? (currentTurn === 1 ? p1 : p2) : p1;
+  const theirs = gameMode === '2p' ? (currentTurn === 1 ? p2 : p1) : p2;
+  const clickable = phase === 'playing' && (gameMode !== 'ai' || currentTurn === 1);
+  renderBoard(playerBoardEl, mine.board, true, null);
+  renderBoard(opponentBoardEl, theirs.board, false, clickable ? handleLocalAttackClick : null);
+  renderShipStatus(mine.ships);
+  if (gameMode === '2p') {
+    playerTitleEl.textContent = `Player ${currentTurn}'s Fleet`;
+    opponentTitleEl.textContent = `Player ${currentTurn === 1 ? 2 : 1}'s Waters`;
+  } else {
+    playerTitleEl.textContent = 'Your Fleet';
+    opponentTitleEl.textContent = "AI's Fleet";
+  }
+}
+
+function handleLocalAttackClick(e) {
+  if (phase !== 'playing') return;
+  const row = parseInt(e.target.dataset.row, 10);
+  const col = parseInt(e.target.dataset.col, 10);
+  const defender = currentTurn === 1 ? p2 : p1;
+  if (defender.board[row][col] === 'hit' || defender.board[row][col] === 'miss') return;
+
+  let hit = false;
+  if (defender.board[row][col] === 'ship') {
+    defender.board[row][col] = 'hit';
+    hit = true;
+    const ship = findShipByPosition(defender.ships, row, col);
+    if (ship) {
+      ship.hits++;
+      setStatus(ship.hits === ship.size ? `You sunk the ${ship.name}!` : 'Hit!');
+    }
+  } else {
+    defender.board[row][col] = 'miss';
+    setStatus('Miss!');
+  }
+
+  if (checkAllShipsSunk(defender.ships)) {
+    winnerLocal = currentTurn;
+    phase = 'gameOver';
+    setStatus(gameMode === 'ai'
+      ? (currentTurn === 1 ? 'Congratulations! You won!' : 'Game over! You lost!')
+      : `Player ${currentTurn} wins!`);
+    renderLocalPlaying();
+    return;
+  }
+
+  if (gameMode === 'ai' && currentTurn === 1) {
+    currentTurn = 2;
+    renderLocalPlaying();
+    setTimeout(aiTurn, 1000);
+  } else if (gameMode === '2p') {
+    const justMoved = currentTurn;
+    // Render the shooter's own updated view (their target board with the
+    // fresh hit/miss mark) BEFORE flipping currentTurn or covering the
+    // screen with the pass-device overlay — otherwise the shot's visual
+    // result never actually appears (the underlying board data was still
+    // correct either way; the mark just silently never got painted before
+    // being covered, so it only became visible again on that player's
+    // NEXT turn instead of right away).
+    renderLocalPlaying();
+    currentTurn = currentTurn === 1 ? 2 : 1;
+    showPassDevice(`Player ${justMoved}'s shot: ${hit ? 'Hit!' : 'Miss!'} Pass the device to Player ${currentTurn}.`, () => {
+      phase = 'playing';
+      setStatus(`Player ${currentTurn}'s turn!`);
+      renderLocalPlaying();
+    });
+  } else {
+    renderLocalPlaying();
+  }
+}
+
+function aiTurn() {
+  if (phase !== 'playing' || currentTurn !== 2) return;
+  let row, col;
+  do {
+    row = Math.floor(Math.random() * BOARD_SIZE);
+    col = Math.floor(Math.random() * BOARD_SIZE);
+  } while (p1.board[row][col] === 'hit' || p1.board[row][col] === 'miss');
+
+  if (p1.board[row][col] === 'ship') {
+    p1.board[row][col] = 'hit';
+    const ship = findShipByPosition(p1.ships, row, col);
+    if (ship) {
+      ship.hits++;
+      setStatus(ship.hits === ship.size ? `AI sunk your ${ship.name}!` : 'AI hit your ship!');
+    }
+  } else {
+    p1.board[row][col] = 'miss';
+    setStatus('AI missed!');
+  }
+
+  if (checkAllShipsSunk(p1.ships)) {
+    winnerLocal = 2;
+    phase = 'gameOver';
+    setStatus('Game over! You lost!');
+    renderLocalPlaying();
+    return;
+  }
+
+  currentTurn = 1;
+  renderLocalPlaying();
+}
+
+// ============================= LOCAL MODE START / RESTART ====================
+function startLocalMode(mode) {
+  gameMode = mode;
+  phase = 'setup';
+  setupBoard = createEmptyBoard();
+  setupShips = [];
+  currentShipIndex = 0;
+  shipOrientation = 'horizontal';
+  settingUpPlayer = 1;
+  p1 = null; p2 = null;
+  currentTurn = 1;
+  winnerLocal = null;
+
+  document.getElementById('site-chrome').style.display = 'none';
+  document.getElementById('seaWarWrapper').style.display = 'flex';
+  readyBtn.style.display = 'none';
+  passDeviceOverlay.style.display = 'none';
+
+  renderSetup();
+  updateSetupMessage();
+  setStatus("Place your ships on the board");
+}
+
+document.getElementById('mode-tile-ai').addEventListener('click', () => startLocalMode('ai'));
+document.getElementById('mode-tile-2p').addEventListener('click', () => startLocalMode('2p'));
+document.getElementById('mode-tile-online').addEventListener('click', () => showView('waiting'));
+
+function backToSeaWarHub() {
+  if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+  activeGameId = null;
+  activeGameData = null;
+  document.getElementById('seaWarWrapper').style.display = 'none';
+  document.getElementById('site-chrome').style.display = 'block';
+  showView('mode-select');
+}
+document.getElementById('seawar-back-btn').addEventListener('click', () => backToSeaWarHub());
+
+// ============================= AUDIO ==========================================
+let audioStarted = false;
+function startAudio() {
+  if (audioStarted) return;
+  backgroundMusic.play().catch((e) => console.log("Audio play failed:", e));
+  audioStarted = true;
+  document.removeEventListener('click', startAudio);
+  document.removeEventListener('touchstart', startAudio);
+}
+document.addEventListener('click', startAudio);
+document.addEventListener('touchstart', startAudio);
+muteBtn.addEventListener('click', () => {
+  backgroundMusic.muted = !backgroundMusic.muted;
+  muteBtn.classList.toggle('muted', backgroundMusic.muted);
+});
+
+// ============================= AUTH ===========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  watchGamePlayLimit(currentUid);
+  await reconcileFinishedSeaWarGames();
+  const jumpedIntoGame = await checkForActiveGame();
+  if (!jumpedIntoGame && !isAnyViewAlreadyShown()) showView("mode-select");
+});
+
+function isAnyViewAlreadyShown() {
+  return document.getElementById("seaWarWrapper").style.display === "flex";
+}
+
+// ============================= VIEW ROUTER ====================================
+let unsubscribeOpenTables = null;
+let unsubscribeMyInvites = null;
+let unsubscribeMyActiveGame = null;
+
+function showView(name) {
+  document.getElementById("view-mode-select").style.display = name === "mode-select" ? "block" : "none";
+  document.getElementById("view-waiting").style.display = name === "waiting" ? "block" : "none";
+  document.getElementById("view-leaderboard").style.display = name === "leaderboard" ? "block" : "none";
+
+  document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  const insideOnlineMultiplayer = name === "waiting" || name === "leaderboard";
+  document.getElementById("nav-waiting").style.display = insideOnlineMultiplayer ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = insideOnlineMultiplayer ? "inline" : "none";
+
+  if (name === "waiting") watchWaitingRoom();
+  else {
+    if (unsubscribeOpenTables) unsubscribeOpenTables();
+    if (unsubscribeMyInvites) unsubscribeMyInvites();
+    if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+  }
+  if (name === "leaderboard") loadSeaWarLeaderboard();
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("mode-select"));
+
+async function checkForActiveGame() {
+  const q = query(
+    collection(db, "seaWarGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "in", ["setup", "playing"])
+  );
+  const snap = await getDocs(q).catch(() => null);
+  if (snap && !snap.empty) {
+    openSeaWarGame(snap.docs[0].id);
+    return true;
+  }
+  return false;
+}
+
+// ============================= WAITING ROOM ===================================
+function watchWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+  if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+
+  const myActiveQ = query(
+    collection(db, "seaWarGames"),
+    where("participants", "array-contains", currentUid),
+    where("status", "in", ["setup", "playing"])
+  );
+  unsubscribeMyActiveGame = onSnapshot(myActiveQ, (snap) => {
+    const mine = snap.docs.find((d) => d.data().player1Uid === currentUid || d.data().player2Uid === currentUid);
+    if (mine && !activeGameId) openSeaWarGame(mine.id);
+  }, (err) => console.error("My active game watch failed:", err));
+
+  const openQ = query(collection(db, "seaWarGames"), where("status", "==", "open"), where("inviteTo", "==", null));
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("open-tables-list");
+    const empty = document.getElementById("open-tables-empty");
+    const myTableWrap = document.getElementById("my-open-table-wrap");
+    list.innerHTML = "";
+    let shown = 0;
+    myOpenTableId = null;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.player1Uid === currentUid) { myOpenTableId = docSnap.id; return; }
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "site-btn small";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => joinTable(docSnap.id, g));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    myTableWrap.style.display = myOpenTableId ? "block" : "none";
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "seaWarGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("my-invites-list");
+    const empty = document.getElementById("my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button";
+      acceptBtn.className = "site-btn small";
+      acceptBtn.textContent = "Accept";
+      acceptBtn.addEventListener("click", () => joinTable(docSnap.id, g));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button";
+      declineBtn.className = "site-btn secondary small";
+      declineBtn.textContent = "Decline";
+      declineBtn.addEventListener("click", () => deleteDoc(doc(db, "seaWarGames", docSnap.id)).catch(() => {}));
+      actions.appendChild(acceptBtn);
+      actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadFriendsToInvite();
+}
+
+async function loadFriendsToInvite() {
+  const list = document.getElementById("friends-invite-list");
+  const empty = document.getElementById("friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    for (const docSnap of snap.docs) {
+      const d = docSnap.data();
+      if (d.status !== "accepted") continue;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "site-btn small";
+      btn.textContent = "Invite to play";
+      btn.addEventListener("click", () => createTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+
+let myOpenTableId = null;
+document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenTableId) return;
+  try {
+    await deleteDoc(doc(db, "seaWarGames", myOpenTableId));
+  } catch (err) {
+    alert(`Couldn't cancel table: ${err.message}`);
+  }
+});
+
+const INVITE_COOLDOWN_MS = 60 * 60 * 1000;
+async function checkInviteCooldown(inviteToUid, inviteToName, msg) {
+  const limitRef = doc(db, "gameInviteLimits", `${currentUid}_seaWarGames_${inviteToUid}`);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  if (!limitSnap || !limitSnap.exists()) return true;
+  const last = limitSnap.data().lastInvitedAt;
+  const lastMs = last?.seconds ? last.seconds * 1000 : 0;
+  const elapsedMs = Date.now() - lastMs;
+  if (elapsedMs >= INVITE_COOLDOWN_MS) return true;
+  const minsLeft = Math.max(1, Math.ceil((INVITE_COOLDOWN_MS - elapsedMs) / 60000));
+  showSiteMessage(msg, `You can invite ${inviteToName} again in about ${minsLeft} minute(s).`, "error");
+  return false;
+}
+
+// ============================= GAME PLAY LIMIT (online games only) ===========
+let currentGamePlayLimit = { day: 0, count: 0 };
+let unsubscribeGamePlayLimit = null;
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 10;
+  return 3;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("seawar-play-remaining");
+  if (!el) return;
+  const limit = myDailyTierLimit();
+  if (limit === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limit - currentGamePlayLimit.count) : limit;
+  el.textContent = `${remaining} / ${limit} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limit = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limit - data.count : limit;
+  if (remaining <= 0) {
+    showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  const newCount = sameDay ? data.count + 1 : 1;
+  return { ok: true, limitRef, count: newCount };
+}
+
+function showSiteMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+// ============================= CREATE / JOIN ==================================
+async function createTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    if (inviteToUid && !(await checkInviteCooldown(inviteToUid, inviteToName, msg))) return;
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const gameRef = doc(collection(db, "seaWarGames"));
+    const batch = writeBatch(db);
+    batch.set(gameRef, {
+      player1Uid: currentUid,
+      player1Name: currentUserName,
+      player2Uid: null,
+      player2Name: null,
+      inviteTo: inviteToUid || null,
+      inviteToName: inviteToName || null,
+      participants: [currentUid],
+      status: "open",
+      player1Board: null, player1Ships: null, player1Ready: false,
+      player2Board: null, player2Ships: null, player2Ready: false,
+      turn: "player1",
+      winner: null,
+      p1StatsRecorded: false,
+      p2StatsRecorded: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_seaWarGames_${inviteToUid}`);
+      batch.set(limitRef, {
+        inviterUid: currentUid,
+        game: "seaWarGames",
+        inviteeUid: inviteToUid,
+        lastInvitedAt: serverTimestamp(),
+      });
+    }
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    await batch.commit();
+    if (inviteToUid) {
+      showSiteMessage(msg, `Invite sent to ${inviteToName}.`, "success");
+    } else {
+      openSeaWarGame(gameRef.id);
+    }
+  } catch (err) {
+    if (inviteToUid && err.code === "permission-denied") {
+      showSiteMessage(msg, `You can invite ${inviteToName} again in about an hour, or you've reached your daily game limit.`, "error");
+      return;
+    }
+    if (err.code === "permission-denied") {
+      showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+      return;
+    }
+    showSiteMessage(msg, err.message, "error");
+  }
+}
+
+async function joinTable(gameId, gameData) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+
+    const batch = writeBatch(db);
+    batch.update(doc(db, "seaWarGames", gameId), {
+      player2Uid: currentUid,
+      player2Name: currentUserName,
+      participants: [gameData.player1Uid, currentUid],
+      status: "setup",
+      updatedAt: serverTimestamp(),
+    });
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    await batch.commit();
+    openSeaWarGame(gameId);
+  } catch (err) {
+    if (err.code === "permission-denied") {
+      showSiteMessage(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+      return;
+    }
+    showSiteMessage(msg, err.message, "error");
+  }
+}
+
+// ============================= ONLINE GAME ====================================
+function openSeaWarGame(gameId) {
+  activeGameId = gameId;
+  gameMode = 'online';
+
+  if (unsubscribeGame) unsubscribeGame();
+  unsubscribeGame = onSnapshot(doc(db, "seaWarGames", gameId), async (snap) => {
+    if (!snap.exists()) { activeGameId = null; showView("waiting"); return; }
+    activeGameData = snap.data();
+    myRole = activeGameData.player1Uid === currentUid ? 'player1' : 'player2';
+
+    document.getElementById('site-chrome').style.display = 'none';
+    document.getElementById('seaWarWrapper').style.display = 'flex';
+    passDeviceOverlay.style.display = 'none';
+
+    if (activeGameData.status === 'open') {
+      phase = 'waitingForOpponent';
+      opponentBoardWrap.style.display = 'none';
+      setupInstructionsEl.classList.add('hidden');
+      readyBtn.style.display = 'none';
+      setStatus('Waiting for an opponent to join...');
+    } else if (activeGameData.status === 'setup') {
+      const myReady = myRole === 'player1' ? activeGameData.player1Ready : activeGameData.player2Ready;
+      const oppReady = myRole === 'player1' ? activeGameData.player2Ready : activeGameData.player1Ready;
+      if (!myReady) {
+        phase = 'setup';
+        renderSetup();
+        updateSetupMessage();
+      } else if (!oppReady) {
+        phase = 'setupWaiting';
+        opponentBoardWrap.style.display = 'none';
+        setupInstructionsEl.classList.add('hidden');
+        readyBtn.style.display = 'none';
+        setStatus("Waiting for your opponent to place their ships...");
+      } else {
+        // Both ready but the status hasn't flipped yet — idempotent, either
+        // client can do this safely.
+        await updateDoc(doc(db, "seaWarGames", gameId), { status: 'playing', turn: 'player1', updatedAt: serverTimestamp() }).catch(() => {});
+      }
+    } else if (activeGameData.status === 'playing') {
+      phase = 'playing';
+      renderOnlinePlaying();
+    } else if (activeGameData.status === 'finished') {
+      phase = 'gameOver';
+      renderOnlinePlaying();
+      setStatus(activeGameData.winner === currentUid ? 'You won! 🎉' : 'You lost this one.');
+    }
+    maybeRecordSeaWarStats();
+  }, (err) => console.error("Game watch failed:", err));
+}
+
+async function submitReady() {
+  const boardField = myRole === 'player1' ? 'player1Board' : 'player2Board';
+  const shipsField = myRole === 'player1' ? 'player1Ships' : 'player2Ships';
+  const readyField = myRole === 'player1' ? 'player1Ready' : 'player2Ready';
+  try {
+    await updateDoc(doc(db, "seaWarGames", activeGameId), {
+      [boardField]: boardToFlat(setupBoard),
+      [shipsField]: setupShips,
+      [readyField]: true,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    alert(`Couldn't submit your fleet: ${err.message}`);
+  }
+}
+
+function isMyOnlineTurn() {
+  if (!activeGameData) return false;
+  return (activeGameData.turn === 'player1' && myRole === 'player1') || (activeGameData.turn === 'player2' && myRole === 'player2');
+}
+
+function renderOnlinePlaying() {
+  opponentBoardWrap.style.display = '';
+  const myBoardFlat = myRole === 'player1' ? activeGameData.player1Board : activeGameData.player2Board;
+  const theirBoardFlat = myRole === 'player1' ? activeGameData.player2Board : activeGameData.player1Board;
+  const myShips = (myRole === 'player1' ? activeGameData.player1Ships : activeGameData.player2Ships) || [];
+  renderBoard(playerBoardEl, flatToBoard(myBoardFlat), true, null);
+  renderBoard(opponentBoardEl, flatToBoard(theirBoardFlat), false, (phase === 'playing' && isMyOnlineTurn()) ? handleOnlineAttackClick : null);
+  renderShipStatus(myShips);
+  playerTitleEl.textContent = 'Your Fleet';
+  opponentTitleEl.textContent = "Opponent's Waters";
+  if (phase === 'playing') setStatus(isMyOnlineTurn() ? "Your turn! Attack the opponent's fleet." : "Opponent's turn...");
+}
+
+async function handleOnlineAttackClick(e) {
+  if (!isMyOnlineTurn()) return;
+  const row = parseInt(e.target.dataset.row, 10);
+  const col = parseInt(e.target.dataset.col, 10);
+  const oppBoardField = myRole === 'player1' ? 'player2Board' : 'player1Board';
+  const oppShipsField = myRole === 'player1' ? 'player2Ships' : 'player1Ships';
+  const theirBoardFlat = myRole === 'player1' ? activeGameData.player2Board : activeGameData.player1Board;
+  const theirBoard = flatToBoard(theirBoardFlat);
+  if (theirBoard[row][col] === 'hit' || theirBoard[row][col] === 'miss') return;
+  const theirShips = JSON.parse(JSON.stringify((myRole === 'player1' ? activeGameData.player2Ships : activeGameData.player1Ships) || []));
+
+  if (theirBoard[row][col] === 'ship') {
+    theirBoard[row][col] = 'hit';
+    const ship = findShipByPosition(theirShips, row, col);
+    if (ship) ship.hits = (ship.hits || 0) + 1;
+  } else {
+    theirBoard[row][col] = 'miss';
+  }
+
+  const update = {
+    [oppBoardField]: boardToFlat(theirBoard),
+    [oppShipsField]: theirShips,
+    turn: myRole === 'player1' ? 'player2' : 'player1',
+    updatedAt: serverTimestamp(),
+  };
+  if (checkAllShipsSunk(theirShips)) {
+    update.status = 'finished';
+    update.winner = currentUid;
+  }
+
+  try {
+    await updateDoc(doc(db, "seaWarGames", activeGameId), update);
+  } catch (err) {
+    alert(`Couldn't submit your shot: ${err.message}`);
+  }
+}
+
+// ============================= STATS / LEADERBOARD ============================
+async function recordSeaWarStatsForGame(gameId, gameData) {
+  const isP1 = gameData.player1Uid === currentUid;
+  const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
+  if (alreadyRecorded) return;
+
+  const won = gameData.winner === currentUid;
+  const pointsEarned = won ? 3 : 0;
+
+  try {
+    await updateDoc(doc(db, "seaWarGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      seaWarPoints: (data.seaWarPoints || 0) + pointsEarned,
+      seaWarWins: (data.seaWarWins || 0) + (won ? 1 : 0),
+      seaWarLosses: (data.seaWarLosses || 0) + (won ? 0 : 1),
+    });
+  } catch (err) {
+    console.error("Couldn't record Sea War stats:", err);
+  }
+}
+async function maybeRecordSeaWarStats() {
+  if (!activeGameData || activeGameData.status !== "finished") return;
+  await recordSeaWarStatsForGame(activeGameId, activeGameData);
+}
+async function reconcileFinishedSeaWarGames() {
+  try {
+    const q = query(collection(db, "seaWarGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status !== "finished") continue;
+      const isP1 = g.player1Uid === currentUid;
+      const alreadyRecorded = isP1 ? g.p1StatsRecorded : g.p2StatsRecorded;
+      if (!alreadyRecorded) await recordSeaWarStatsForGame(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished Sea War games:", err);
+  }
+}
+async function loadSeaWarLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const players = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      const points = d.seaWarPoints || 0;
+      const wins = d.seaWarWins || 0;
+      const losses = d.seaWarLosses || 0;
+      if (points > 0 || wins > 0 || losses > 0) {
+        players.push({ name: d.profile?.name || "Neighbor", points, wins, losses });
+      }
+    });
+    players.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (players.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    players.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span class="leader-rank">#${i + 1}</span><span style="flex:1;">${escapeHtml(p.name)}</span><span class="field-hint">${p.wins}W-${p.losses}L</span><span style="font-weight:600;">${p.points} pts</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    empty.textContent = `Couldn't load leaderboard: ${err.message}`;
+    empty.style.display = "block";
+  }
+}
+</script>
+</body>
+</html>
