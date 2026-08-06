@@ -1062,7 +1062,14 @@ async function reserveGamePlaySlot(msg) {
 // either alone isn't enough. All three fields only ever update together,
 // from whichever single run has the best efficiency so far.
 window.submitRunResult = async ({ totalScore, elapsedMs }) => {
-  if (!currentUid || !totalScore || !elapsedMs) return;
+  if (!totalScore || !elapsedMs) return; // nothing reached, nothing to submit
+  if (!currentUid) {
+    // Shouldn't normally be reachable, but silently discarding a
+    // real result here is exactly the invisible-data-loss pattern
+    // found in Follow Along's leaderboard — surface it instead.
+    alert("Your best run wasn't saved — you appear to be signed out. Sign back in; future runs will save normally.");
+    return;
+  }
   try {
     const efficiency = totalScore / (elapsedMs / 1000);
     const snap = await getDoc(doc(db, "users", currentUid));
@@ -1076,6 +1083,7 @@ window.submitRunResult = async ({ totalScore, elapsedMs }) => {
     }
   } catch (err) {
     console.error("Couldn't submit Match-3 run result:", err);
+    alert(`Your run couldn't be saved to the leaderboard: ${err.message}`);
   }
 };
 

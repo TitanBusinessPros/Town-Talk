@@ -936,7 +936,14 @@ async function reserveGamePlaySlot(msg) {
 // orderBy field — no composite index required, same reasoning already
 // applied to every other leaderboard on this site.
 window.submitRunResult = async ({ level, elapsedMs }) => {
-  if (!currentUid || !level || !elapsedMs) return;
+  if (!level || !elapsedMs) return; // nothing reached, nothing to submit
+  if (!currentUid) {
+    // Shouldn't normally be reachable, but silently discarding a
+    // real result here is exactly the invisible-data-loss pattern
+    // found in Follow Along's leaderboard — surface it instead.
+    alert("Your best run wasn't saved — you appear to be signed out. Sign back in; future runs will save normally.");
+    return;
+  }
   try {
     const snap = await getDoc(doc(db, "users", currentUid));
     const data = snap.exists() ? snap.data() : {};
@@ -952,6 +959,7 @@ window.submitRunResult = async ({ level, elapsedMs }) => {
     }
   } catch (err) {
     console.error("Couldn't submit Gravity Sling run result:", err);
+    alert(`Your run couldn't be saved to the leaderboard: ${err.message}`);
   }
 };
 

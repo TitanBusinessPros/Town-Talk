@@ -622,11 +622,18 @@ document.getElementById("pongBackBtn").addEventListener("click", () => showView(
 // share one signed-in account/device, a win is simply credited to that
 // account's tally, regardless of which seat (P1/P2) actually won.
 window.submitPongWin = async () => {
-  if (!currentUid) return;
+  if (!currentUid) {
+    // Shouldn't normally be reachable, but silently discarding a real
+    // result here is exactly the invisible-data-loss pattern found in
+    // Follow Along's leaderboard — surface it instead.
+    alert("Your win wasn't saved — you appear to be signed out. Sign back in; future wins will save normally.");
+    return;
+  }
   try {
     await updateDoc(doc(db, "users", currentUid), { pongWins: increment(1) });
   } catch (err) {
     console.error("Couldn't submit Pong win:", err);
+    alert(`Your win couldn't be saved to the leaderboard: ${err.message}`);
   }
 };
 

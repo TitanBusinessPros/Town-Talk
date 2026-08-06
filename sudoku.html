@@ -1826,7 +1826,14 @@ async function reserveGamePlaySlot(msg) {
 // rules just gate WHO can write, not whether the number is honest (hints
 // are disabled online specifically to keep this number meaningful).
 window.submitRunResult = async ({ streak }) => {
-  if (!currentUid || !streak) return;
+  if (!streak) return; // nothing reached, nothing to submit
+  if (!currentUid) {
+    // Shouldn't normally be reachable, but silently discarding a
+    // real result here is exactly the invisible-data-loss pattern
+    // found in Follow Along's leaderboard — surface it instead.
+    alert("Your best run wasn't saved — you appear to be signed out. Sign back in; future runs will save normally.");
+    return;
+  }
   try {
     const snap = await getDoc(doc(db, "users", currentUid));
     const data = snap.exists() ? snap.data() : {};
@@ -1835,6 +1842,7 @@ window.submitRunResult = async ({ streak }) => {
     }
   } catch (err) {
     console.error("Couldn't submit Sudoku run result:", err);
+    alert(`Your run couldn't be saved to the leaderboard: ${err.message}`);
   }
 };
 

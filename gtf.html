@@ -1328,7 +1328,14 @@ async function reserveGamePlaySlot(msg) {
 // honest. Lower is better (fastest total clear time), the opposite
 // direction from every other game's leaderboard on this site so far.
 window.submitRunResult = async ({ totalMs }) => {
-  if (!currentUid || !totalMs) return;
+  if (!totalMs) return; // nothing reached, nothing to submit
+  if (!currentUid) {
+    // Shouldn't normally be reachable, but silently discarding a
+    // real result here is exactly the invisible-data-loss pattern
+    // found in Follow Along's leaderboard — surface it instead.
+    alert("Your best run wasn't saved — you appear to be signed out. Sign back in; future runs will save normally.");
+    return;
+  }
   try {
     const snap = await getDoc(doc(db, "users", currentUid));
     const data = snap.exists() ? snap.data() : {};
@@ -1337,6 +1344,7 @@ window.submitRunResult = async ({ totalMs }) => {
     }
   } catch (err) {
     console.error("Couldn't submit Guide The Fly run result:", err);
+    alert(`Your run couldn't be saved to the leaderboard: ${err.message}`);
   }
 };
 
