@@ -853,8 +853,15 @@ async function loadLeaderboard() {
   list.innerHTML = "";
 
   try {
+    // approved==true has to be an explicit query filter, not just a rules
+    // check — Firestore rejects the WHOLE query with "Missing or
+    // insufficient permissions" (not a per-result filter) if a rule
+    // depends on a resource field the query itself can't prove for every
+    // possible match. Without this, any signed-in approved user hits that
+    // error the instant they open the leaderboard.
     const q = query(
       collection(db, "users"),
+      where("approved", "==", true),
       where("followBestRounds", ">", 0),
       orderBy("followBestRounds", "desc"),
       orderBy("followBestTimeMs", "asc"),

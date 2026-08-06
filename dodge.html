@@ -930,7 +930,7 @@ async function loadLeaderboard() {
   list.innerHTML = "";
 
   try {
-    const q = query(collection(db, "users"), where("dodgeHighScore", ">", 0), orderBy("dodgeHighScore", "desc"), limit(10));
+    const q = query(collection(db, "users"), where("approved", "==", true), where("dodgeHighScore", ">", 0), orderBy("dodgeHighScore", "desc"), limit(10));
     const snap = await getDocs(q);
     if (snap.empty) { empty.style.display = "block"; return; }
     empty.style.display = "none";

@@ -1347,7 +1347,7 @@ async function loadLeaderboard() {
   list.innerHTML = "";
 
   try {
-    const q = query(collection(db, "users"), where("gtfBestTimeMs", ">", 0), orderBy("gtfBestTimeMs", "asc"), limit(10));
+    const q = query(collection(db, "users"), where("approved", "==", true), where("gtfBestTimeMs", ">", 0), orderBy("gtfBestTimeMs", "asc"), limit(10));
     const snap = await getDocs(q);
     if (snap.empty) { empty.style.display = "block"; return; }
     empty.style.display = "none";
