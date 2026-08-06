@@ -274,10 +274,16 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
-  isTokenAutoRefreshEnabled: true,
-});
+// Same guard as index.html — App Check has no valid attestation for
+// localhost, so initializing it there just churns failing token requests
+// in the background. Production is unaffected — this branch never runs
+// there.
+if (location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
 const auth = getAuth(app);
 const db = getFirestore(app);
 

@@ -79,12 +79,17 @@ const { setGlobalOptions } = require("firebase-functions/v2");
 const { defineSecret } = require("firebase-functions/params");
 const Stripe = require("stripe");
 const admin = require("firebase-admin");
-const { FieldValue, Timestamp } = require("firebase-admin/firestore");
+// firebase-admin v13+ dropped the old namespaced admin.firestore()/
+// admin.auth()/admin.messaging() API entirely (not just deprecated it) —
+// everything here goes through the modular per-service imports instead.
+const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth");
+const { getMessaging } = require("firebase-admin/messaging");
 const { getStorage } = require("firebase-admin/storage");
 
 admin.initializeApp();
-const db = admin.firestore();
-const messaging = admin.messaging();
+const db = getFirestore();
+const messaging = getMessaging();
 
 // Keep every function in one region close to your users; also keeps
 // cold-start/cost behavior consistent across all of them.
@@ -769,7 +774,7 @@ exports.backupAuthAccounts = onSchedule(
     const users = [];
     let pageToken;
     do {
-      const result = await admin.auth().listUsers(1000, pageToken);
+      const result = await getAuth().listUsers(1000, pageToken);
       result.users.forEach((u) => users.push(u.toJSON()));
       pageToken = result.pageToken;
     } while (pageToken);
@@ -917,8 +922,8 @@ async function performProfileDeletion(callerUid, targetUid) {
   await userRef.delete();
 
   try {
-    await admin.auth().updateUser(targetUid, { disabled: true });
-    await admin.auth().revokeRefreshTokens(targetUid);
+    await getAuth().updateUser(targetUid, { disabled: true });
+    await getAuth().revokeRefreshTokens(targetUid);
   } catch (err) {
     // The profile is already archived and removed either way — losing the
     // Auth-disable step isn't fatal, just log it for follow-up.
@@ -992,7 +997,7 @@ exports.adminRestoreProfile = onCall(async (request) => {
   await archivedRef.delete();
 
   try {
-    await admin.auth().updateUser(targetUid, { disabled: false });
+    await getAuth().updateUser(targetUid, { disabled: false });
   } catch (err) {
     console.error(`Couldn't re-enable Auth account for ${targetUid}:`, err);
   }
@@ -1049,7 +1054,7 @@ exports.purgeExpiredDeletedProfiles = onSchedule(
 
     for (const docSnap of snap.docs) {
       await docSnap.ref.delete();
-      await admin.auth().deleteUser(docSnap.id).catch((err) => {
+      await getAuth().deleteUser(docSnap.id).catch((err) => {
         console.error(`Couldn't delete Auth account ${docSnap.id} during purge:`, err);
       });
     }

@@ -641,10 +641,16 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
-  isTokenAutoRefreshEnabled: true,
-});
+// Same guard as index.html — App Check has no valid attestation for
+// localhost, so initializing it there just churns failing token requests
+// in the background. Production is unaffected — this branch never runs
+// there.
+if (location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider("6LeKBmQtAAAAAM8tj4DY9yTtbSf0AlB8yS0a_Bs2"),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -801,7 +807,16 @@ async function reserveGamePlaySlot(msg) {
 // breaks a tie between two runs that reached the exact same round. Both
 // fields only ever update together, from the same run.
 window.submitRunResult = async ({ rounds, elapsedMs }) => {
-  if (!currentUid || !rounds || rounds < 1) return;
+  if (!rounds || rounds < 1) return; // nothing reached, nothing to submit
+  if (!currentUid) {
+    // Shouldn't normally be reachable — app-content only ever shows after
+    // the auth gate above has already set currentUid — but if a session
+    // expired/dropped mid-run, silently discarding a real result here is
+    // exactly the kind of invisible data loss that's impossible to debug
+    // from a bug report alone. Surface it instead.
+    alert(`Your best run wasn't saved — you appear to be signed out. Sign back in and this run's result (round ${rounds}) unfortunately can't be resubmitted, but future runs will save normally.`);
+    return;
+  }
   try {
     const snap = await getDoc(doc(db, "users", currentUid));
     const data = snap.exists() ? snap.data() : {};
@@ -815,7 +830,12 @@ window.submitRunResult = async ({ rounds, elapsedMs }) => {
       });
     }
   } catch (err) {
+    // Same reasoning as the currentUid check above — a failed save here
+    // used to be visible only in the browser console, which means it
+    // would look identical to "just didn't beat your best" from the
+    // player's side. Now it says so.
     console.error("Couldn't submit Follow Along run result:", err);
+    alert(`Your best run (round ${rounds}) couldn't be saved to the leaderboard: ${err.message}`);
   }
 };
 
