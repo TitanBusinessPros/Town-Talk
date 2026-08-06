@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "town-talk-87ff7"
+  },
+  "targets": {
+    "town-talk-87ff7": {
+      "storage": {
+        "default": [
+          "town-talk-87ff7.firebasestorage.app"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

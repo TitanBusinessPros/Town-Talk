@@ -128,6 +128,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .chatroom-tile { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 0.75rem; font-size: 0.85rem; font-weight: 600; color: var(--paper-050); cursor: pointer; text-align: center; }
 .chatroom-tile:hover { background: var(--ink-700); }
 
+.chatroom-sponsor-banner { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 0.85rem; }
+.chatroom-sponsor-banner.has-sponsor { background: var(--ink-800); border: 1px solid var(--amber-500); color: var(--paper-050); }
+.chatroom-sponsor-banner.no-sponsor { background: var(--ink-900, #1a1a1a); border: 1px dashed var(--line); color: var(--text-muted); cursor: pointer; justify-content: center; }
+.chatroom-sponsor-banner img { height: 32px; width: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
 .modal-box { background: var(--ink-800); border-radius: var(--radius); padding: 1.75rem; max-width: 440px; width: 100%; max-height: 85vh; overflow-y: auto; }
 
@@ -673,6 +678,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div id="admin-business-queue"></div>
     <div id="admin-business-empty" class="empty-state" style="display:none">Nothing waiting for review right now.</div>
 
+    <h2 style="margin-top:2.5rem;">Chat room sponsors</h2>
+    <p>Review the logo, company name, and room before approving — no illegal activity, nudity, or otherwise inappropriate content. Approving does NOT send an invoice automatically; use the email and total shown here to invoice them yourself.</p>
+    <div id="admin-chatsponsor-queue"></div>
+    <div id="admin-chatsponsor-empty" class="empty-state" style="display:none">Nothing waiting for review right now.</div>
+
     <h2 style="margin-top:2.5rem;">Reports</h2>
     <p>Reports submitted by users — minors, harassment, spam, or anything else flagged for review.</p>
     <div id="admin-reports-queue"></div>
@@ -780,6 +790,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div id="chatroom-thread-view" class="card" style="display:none; margin-top:1.5rem;">
       <button type="button" class="secondary small" id="chatroom-back" style="margin-bottom:1rem;">&larr; Back to rooms</button>
       <h2 id="chatroom-title" style="margin-bottom:1rem;"></h2>
+      <div id="chatroom-sponsor-banner" class="chatroom-sponsor-banner" style="display:none;"></div>
       <div id="chatroom-messages" class="thread-messages"></div>
       <form id="chatroom-form" class="form-row" style="margin-top:1rem;">
         <div class="emoji-picker-wrap">
@@ -926,6 +937,18 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
           <li>Separate from your personal profile</li>
         </ul>
         <button type="button" id="pricing-business-btn" class="secondary">Get Started</button>
+      </div>
+
+      <div class="pricing-card">
+        <div class="pricing-tier-name">📣 Sponsor a Chat Room</div>
+        <div class="pricing-price" id="chatsponsor-price-display">$50<span>/mo</span></div>
+        <ul class="pricing-features">
+          <li>Your logo &amp; company name in a banner at the top of one chat room, your choice</li>
+          <li>Seen by everyone in that room, every time they check in</li>
+          <li>Reviewed by an admin before it goes live — no illegal activity, nudity, or inappropriate content, ever</li>
+        </ul>
+        <p class="field-hint" id="chatsponsor-offer-note" style="color:#a3282f;"></p>
+        <button type="button" id="pricing-chatsponsor-btn" class="secondary">Get Started</button>
       </div>
     </div>
     <p class="field-hint" style="text-align:center; margin-top:1.5rem;">Membership status updates automatically within a few minutes of payment.</p>
@@ -1119,6 +1142,69 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     </div>
   </section>
 
+  <!-- ================= PRIVACY POLICY VIEW ================= -->
+  <section id="view-privacy" class="view">
+    <button type="button" class="secondary small" id="privacy-back" style="margin-bottom:1.5rem;">&larr; Back</button>
+    <div class="view-header">
+      <p class="eyebrow">Legal</p>
+      <h1>Privacy Policy</h1>
+      <p class="field-hint">Last updated: August 6, 2026</p>
+    </div>
+
+    <div class="card" style="text-align:left; max-width:760px; margin:0 auto;">
+      <p>This Privacy Policy explains what information Town Fuss ("the Service"), operated by Titan Business Pros LLC ("Company," "we," "us," or "our"), collects, why we collect it, who we share it with, and the choices you have. By using the Service you agree to the collection and use of information as described here. This Policy should be read together with our <a href="#" id="privacy-terms-link">Terms of Service</a>.</p>
+
+      <h3>1. Information We Collect</h3>
+      <p>1.1 Account information. When you create an account, we collect your email address and password (stored by our authentication provider, Firebase Authentication, in hashed form — we never see or store your plaintext password). If you sign in with Google instead, we receive your name, email address, and profile photo from Google, limited to basic profile information. We also record your self-reported confirmation that you are 18 or older, and the date you agreed to our Terms of Service. We do not independently verify age or identity.</p>
+      <p>1.2 Profile content. Anything you choose to add to your profile — display name, town/neighborhood, uploaded photos, and post/bio text — is collected and, once approved, shown to other approved members.</p>
+      <p>1.3 IP address. We record the IP address associated with your device on every sign-in. This is used specifically to enforce account bans: if an administrator removes an account for a serious violation, the associated IP address is blocked from creating or signing into any account going forward. We retain a record of blocked IP addresses, including when the block was applied and which administrator applied it.</p>
+      <p>1.4 Communications. We collect the content of private messages you send to other members, messages you post in town chat rooms (which are visible to other members of that room, not private), and any reports you file about another user or their content, including the reason selected, any additional details you provide, and the message text quoted in the report, if applicable.</p>
+      <p>1.5 Payment information. We use Stripe to process payments for Gold and Diamond memberships and business listings. We never receive or store your card number or other raw payment details — Stripe handles that directly. We do store a Stripe-issued customer identifier, your membership tier, and payment/renewal dates, so we know what you've paid for and when it expires.</p>
+      <p>1.6 Usage and device information. We record when you were last active, your game statistics (scores, wins, losses) if you play, and — if you enable notifications — a device push-notification token used to deliver alerts. This token identifies your device/browser for notification delivery only.</p>
+      <p>1.7 Automated collection. The Service uses Google reCAPTCHA in the background on every page to help distinguish real users from automated bots and abuse. reCAPTCHA collects device and interaction signals as part of that process, governed by Google's own privacy policy.</p>
+
+      <h3>2. How We Use Information</h3>
+      <p>2.1 To create and administer your account, verify your email, and review profiles/content before they appear publicly.</p>
+      <p>2.2 To operate core features: the Feed, Directory, Messages, Friends, Chat Rooms, Business listings, and games.</p>
+      <p>2.3 To enforce these policies and our Terms of Service, including reviewing reports, moderating content, and — for serious violations — disabling an account and blocking the associated IP address from returning.</p>
+      <p>2.4 To send you notifications you've opted into (game invites, first messages, chat reactions) and, if applicable, service-related emails (verification, password reset, payment receipts).</p>
+      <p>2.5 To process payments and manage memberships and business listings through Stripe.</p>
+      <p>2.6 To maintain the security, integrity, and reliability of the Service, including detecting and preventing fraud, abuse, and bot activity.</p>
+
+      <h3>3. How We Share Information</h3>
+      <p>3.1 We do not sell your personal information.</p>
+      <p>3.2 We share information with service providers who help us operate the Service, each acting under their own privacy and security practices: Google Firebase/Google Cloud (hosting, authentication, database, file storage, and push notifications), Stripe (payment processing), Google reCAPTCHA (bot/abuse detection), and GitHub (hosting the Service's static site).</p>
+      <p>3.3 Content you post publicly — an approved profile, a public post, a chat room message — is visible to other approved members of the Service by design.</p>
+      <p>3.4 We may disclose information if required by law, subpoena, or other legal process, or if we believe in good faith that disclosure is necessary to protect the rights, property, or safety of the Company, our users, or the public.</p>
+      <p>3.5 If the Company is involved in a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction; we will provide notice before your information becomes subject to a different privacy policy.</p>
+
+      <h3>4. Data Retention</h3>
+      <p>4.1 If your account is deleted (by you or by an administrator), your profile is archived privately for 10 days — during which an administrator may restore it — and then permanently purged, including your Firebase Authentication account.</p>
+      <p>4.2 We maintain a full backup of Authentication account records (email addresses, hashed passwords, and related account metadata) for up to 30 days, for disaster-recovery purposes only. This backup is not accessible to any client application and is stored separately from your public profile.</p>
+      <p>4.3 Blocked IP address records are retained indefinitely, since their purpose is to permanently prevent a banned individual from rejoining the Service.</p>
+      <p>4.4 Messages, chat room posts, and reports are retained for as long as your account (or, for reports, the underlying case) remains open, unless you delete specific content yourself where the Service allows it.</p>
+
+      <h3>5. Your Rights and Choices</h3>
+      <p>5.1 Access and correction. You can review and edit most of your own profile information at any time from your dashboard.</p>
+      <p>5.2 Deletion. You may delete your account at any time from your dashboard. This is subject to the 10-day archive/restore window described in Section 4.1, after which your data is permanently removed, subject to our legal and security retention obligations (including the IP block record, which is not tied to your deleted profile and persists to keep the ban effective).</p>
+      <p>5.3 Notifications. You may enable or disable push notifications at any time from your dashboard; this does not affect the in-app notification bell.</p>
+      <p>5.4 Blocking and reporting. You can block other members and report content or accounts you believe violate our Terms, as described there.</p>
+      <p>5.5 Questions or requests about your information, including requests to access or delete data beyond what's available in your dashboard, can be sent to the contact information in Section 9.</p>
+
+      <h3>6. Children's Privacy</h3>
+      <p>The Service is not directed to, and is not intended for use by, anyone under 18. We do not knowingly collect information from anyone under 18. If we learn an account belongs to someone under 18, we will remove the account and associated data. See Section 1 of our Terms of Service.</p>
+
+      <h3>7. Security</h3>
+      <p>We use commercially reasonable technical and organizational measures — including access-controlled databases, encrypted connections, and administrator-only visibility on sensitive records — to protect your information. No method of transmission or storage is completely secure, and we cannot guarantee absolute security.</p>
+
+      <h3>8. Changes to This Policy</h3>
+      <p>We may update this Privacy Policy from time to time. The "Last updated" date will change, and material changes will be communicated by posting the revised Policy on the Service or by email. Continued use of the Service after a change takes effect constitutes acceptance of the revised Policy.</p>
+
+      <h3>9. Contact</h3>
+      <p>Titan Business Pros LLC<br>Oklahoma City, OK<br>Phone: 405-998-7979<br>Email: info@titanbusinesspros.com<br>Website: www.oklahoma.marketing</p>
+    </div>
+  </section>
+
 </main>
 
 <!-- ================= REPORT MODAL ================= -->
@@ -1162,6 +1248,50 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <button type="button" class="secondary" id="bug-report-modal-cancel">Cancel</button>
       </div>
       <div id="bug-report-modal-message" class="message" style="display:none"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Chat room sponsorship submission — reviewed by an admin before any
+     invoice goes out (see chatSponsorReviewQueue). Payment itself happens
+     outside the app once approved, same manual pattern as business
+     listings ("Mark paid" in the admin panel), not an automated Stripe
+     flow — the collected email/months/total are just what the admin needs
+     to actually send that invoice. -->
+<div id="chatsponsor-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal-box">
+    <h2 style="margin-top:0;">Sponsor a Chat Room</h2>
+    <p class="field-hint" style="text-align:left;">Your logo and company name appear in a banner at the top of the room you choose, once an admin approves it. No illegal activity, nudity, or otherwise inappropriate content — ever.</p>
+
+    <div style="display:flex; justify-content:center; margin:1rem 0;">
+      <div class="image-slot" id="chatsponsor-logo-slot" style="width:160px;">
+        <span class="slot-label">+ Add logo</span>
+      </div>
+    </div>
+    <input type="file" id="chatsponsor-logo-input" accept="image/*" style="display:none" />
+    <div id="chatsponsor-logo-message" class="message" style="display:none"></div>
+
+    <form id="chatsponsor-form">
+      <label for="chatsponsor-room-select">Which chat room?</label>
+      <select id="chatsponsor-room-select" required>
+        <option value="">Select a room...</option>
+      </select>
+      <label for="chatsponsor-company-name">Company name</label>
+      <input id="chatsponsor-company-name" type="text" maxlength="60" required />
+      <label for="chatsponsor-months">How many months?</label>
+      <input id="chatsponsor-months" type="number" min="1" max="24" value="3" required />
+      <p class="field-hint" id="chatsponsor-price-preview" style="text-align:left;"></p>
+      <label for="chatsponsor-email">Email for invoice</label>
+      <input id="chatsponsor-email" type="email" placeholder="billing@yourcompany.com" required />
+      <label style="display:flex; align-items:flex-start; gap:0.6rem; margin-top:1rem; cursor:pointer;">
+        <input id="chatsponsor-policy-check" type="checkbox" required style="width:auto; margin-top:0.2rem;" />
+        <span style="font-size:0.85rem; color:var(--text-muted);">I confirm this ad will not promote illegal activity, and contains no nudity or otherwise inappropriate content.</span>
+      </label>
+      <div class="form-row">
+        <button type="submit">Submit for review</button>
+        <button type="button" class="secondary" id="chatsponsor-modal-cancel">Cancel</button>
+      </div>
+      <div id="chatsponsor-modal-message" class="message" style="display:none"></div>
     </form>
   </div>
 </div>
@@ -1244,7 +1374,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <div>405-998-7979 &nbsp;|&nbsp; <a href="mailto:info@titanbusinesspros.com">info@titanbusinesspros.com</a></div>
   <div><a href="https://www.oklahoma.marketing" target="_blank" rel="noopener">www.oklahoma.marketing</a></div>
   <div>Oklahoma City, OK</div>
-  <div style="margin-top:0.5rem;"><a href="#" id="footer-terms-link">Terms of Service</a></div>
+  <div style="margin-top:0.5rem;"><a href="#" id="footer-terms-link">Terms of Service</a> &nbsp;|&nbsp; <a href="#" id="footer-privacy-link">Privacy Policy</a></div>
   <div style="margin-top:0.5rem;">&copy; 2026 Titan Business Pros LLC. All rights reserved.</div>
 </footer>
 
@@ -1579,7 +1709,7 @@ function showView(name) {
   if (name === "friends") loadFriendsView();
   if (name === "chatrooms") { closeChatRoomThread(); renderChatRoomList(); }
   else if (unsubscribeChatRoom) { unsubscribeChatRoom(); unsubscribeChatRoom = null; }
-  if (name === "admin") { loadAdminQueue(); loadAdminReports(); loadAdminBugReports(); loadPromoWhitelist(); loadBusinessAdminQueue(); loadDeletedProfiles(); }
+  if (name === "admin") { loadAdminQueue(); loadAdminReports(); loadAdminBugReports(); loadPromoWhitelist(); loadBusinessAdminQueue(); loadChatSponsorAdminQueue(); loadDeletedProfiles(); }
   if (name === "pricing") loadPricingView();
   if (name === "messages") { closeThread(); watchConversations(); }
   else if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
@@ -1589,6 +1719,9 @@ function showView(name) {
 document.getElementById("brand-link").addEventListener("click", () => showView(auth.currentUser ? "dashboard" : "landing"));
 document.getElementById("footer-terms-link").addEventListener("click", (e) => { e.preventDefault(); showView("terms"); });
 document.getElementById("terms-back").addEventListener("click", () => showView(auth.currentUser ? "dashboard" : "landing"));
+document.getElementById("privacy-back").addEventListener("click", () => showView(auth.currentUser ? "dashboard" : "landing"));
+document.getElementById("footer-privacy-link").addEventListener("click", (e) => { e.preventDefault(); showView("privacy"); });
+document.getElementById("privacy-terms-link").addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); showView("terms"); });
 document.getElementById("nav-feed").addEventListener("click", (e) => { e.preventDefault(); showView("feed"); });
 document.getElementById("nav-directory").addEventListener("click", (e) => { e.preventDefault(); showView("directory"); });
 document.getElementById("nav-dashboard").addEventListener("click", (e) => { e.preventDefault(); showView("dashboard"); });
@@ -4538,11 +4671,39 @@ function openReactionNotification(clickAction) {
   }
 }
 
+// Approved-and-not-expired sponsor gets a real banner with their logo;
+// anything else (no submission, still pending, rejected, or expired) gets
+// the same "sponsor this room" invitation, so an open slot is always
+// visibly for sale rather than just blank.
+async function renderChatSponsorBanner(room) {
+  const banner = document.getElementById("chatroom-sponsor-banner");
+  banner.style.display = "none";
+  const snap = await getDoc(doc(db, "chatSponsors", room.id)).catch(() => null);
+  const data = snap && snap.exists() ? snap.data() : null;
+  const expiresMs = data?.expiresAt ? (data.expiresAt.seconds ? data.expiresAt.seconds * 1000 : 0) : 0;
+  const isActive = data?.status === "approved" && expiresMs > Date.now();
+
+  if (isActive) {
+    banner.className = "chatroom-sponsor-banner has-sponsor";
+    banner.innerHTML = `
+      <img src="${data.logoUrl}" alt="${escapeHtml(data.companyName)} logo" />
+      <span>This chat room is sponsored by <strong>${escapeHtml(data.companyName)}</strong></span>
+    `;
+    banner.onclick = null;
+  } else {
+    banner.className = "chatroom-sponsor-banner no-sponsor";
+    banner.innerHTML = `<span>This chat room is sponsored by — <strong>put your company name and logo here!</strong></span>`;
+    banner.onclick = () => showView("pricing");
+  }
+  banner.style.display = "flex";
+}
+
 function openChatRoom(room) {
   activeChatRoom = room;
   document.getElementById("chatroom-thread-view").style.display = "block";
   document.getElementById("chatroom-list-wrap").style.display = "none";
   document.getElementById("chatroom-title").textContent = room.name;
+  renderChatSponsorBanner(room);
 
   const messagesEl = document.getElementById("chatroom-messages");
   messagesEl.innerHTML = "";
@@ -4719,7 +4880,169 @@ function loadPricingView() {
   document.getElementById("pricing-free-badge").style.display = !isGold && !isDiamond ? "block" : "none";
   document.getElementById("pricing-gold-badge").style.display = isGold && !isDiamond ? "block" : "none";
   document.getElementById("pricing-diamond-badge").style.display = isDiamond ? "block" : "none";
+
+  if (chatSponsorIntroRateApplies()) {
+    document.getElementById("chatsponsor-price-display").innerHTML = `$50<span>/mo first 90 days, then $100/mo</span>`;
+    document.getElementById("chatsponsor-offer-note").textContent = "Intro rate ends 11/6/26 — lock in $50/mo before then.";
+  } else {
+    document.getElementById("chatsponsor-price-display").innerHTML = `$100<span>/mo</span>`;
+    document.getElementById("chatsponsor-offer-note").textContent = "";
+  }
 }
+
+// ============================= CHAT ROOM SPONSORS ===========================
+// Payment happens OUTSIDE the app, after an admin approves — see the admin
+// panel's "Chat room sponsors" section. This is the same manual-invoice
+// pattern as business listings' "Mark paid" button, not an automated
+// Stripe flow: what's built here just gates content review before any
+// money is asked for, and hands the admin exactly what they need (email,
+// months, computed total) to send that invoice themselves.
+const CHAT_SPONSOR_OFFER_CUTOFF = new Date("2026-11-06T00:00:00");
+function chatSponsorIntroRateApplies(now = new Date()) {
+  return now < CHAT_SPONSOR_OFFER_CUTOFF;
+}
+// First 3 months of ANY purchase are $50/mo, anything beyond that is
+// $100/mo — UNLESS the intro offer has already expired (11/6/26), in
+// which case it's $100/mo flat from month one, no discount at all.
+function computeChatSponsorPricing(months, now = new Date()) {
+  const introRateApplies = chatSponsorIntroRateApplies(now);
+  let totalCents = 0;
+  const parts = [];
+  if (introRateApplies) {
+    const introMonths = Math.min(months, 3);
+    const stdMonths = Math.max(0, months - 3);
+    if (introMonths > 0) {
+      totalCents += introMonths * 5000;
+      parts.push(`${introMonths} month${introMonths === 1 ? "" : "s"} @ $50`);
+    }
+    if (stdMonths > 0) {
+      totalCents += stdMonths * 10000;
+      parts.push(`${stdMonths} month${stdMonths === 1 ? "" : "s"} @ $100`);
+    }
+  } else {
+    totalCents = months * 10000;
+    parts.push(`${months} month${months === 1 ? "" : "s"} @ $100 (intro offer expired 11/6/26)`);
+  }
+  return { totalCents, introRateApplies, breakdown: parts.join(" + ") };
+}
+function formatCents(cents) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+let chatSponsorPendingLogo = null; // { url, storagePath } once uploaded
+
+function openChatSponsorModal() {
+  document.getElementById("chatsponsor-form").reset();
+  document.getElementById("chatsponsor-months").value = 3;
+  document.getElementById("chatsponsor-modal-message").style.display = "none";
+  document.getElementById("chatsponsor-logo-message").style.display = "none";
+  chatSponsorPendingLogo = null;
+  document.getElementById("chatsponsor-logo-slot").innerHTML = `<span class="slot-label">+ Add logo</span>`;
+  updateChatSponsorPricePreview();
+
+  const select = document.getElementById("chatsponsor-room-select");
+  select.innerHTML = `<option value="">Select a room...</option>`;
+  CHAT_ROOMS.forEach((room) => {
+    const opt = document.createElement("option");
+    opt.value = room.id;
+    opt.textContent = room.name;
+    select.appendChild(opt);
+  });
+
+  document.getElementById("chatsponsor-modal-backdrop").style.display = "flex";
+}
+
+function updateChatSponsorPricePreview() {
+  const months = parseInt(document.getElementById("chatsponsor-months").value, 10) || 0;
+  const preview = document.getElementById("chatsponsor-price-preview");
+  if (months < 1) { preview.textContent = ""; return; }
+  const { totalCents, breakdown } = computeChatSponsorPricing(months);
+  preview.textContent = `${breakdown} = ${formatCents(totalCents)} total`;
+}
+document.getElementById("chatsponsor-months").addEventListener("input", updateChatSponsorPricePreview);
+
+document.getElementById("pricing-chatsponsor-btn").addEventListener("click", openChatSponsorModal);
+document.getElementById("chatsponsor-modal-cancel").addEventListener("click", () => {
+  document.getElementById("chatsponsor-modal-backdrop").style.display = "none";
+});
+document.getElementById("chatsponsor-modal-backdrop").addEventListener("click", (e) => {
+  if (e.target.id === "chatsponsor-modal-backdrop") document.getElementById("chatsponsor-modal-backdrop").style.display = "none";
+});
+
+document.getElementById("chatsponsor-logo-slot").addEventListener("click", () => {
+  document.getElementById("chatsponsor-logo-input").click();
+});
+document.getElementById("chatsponsor-logo-input").addEventListener("change", async () => {
+  const file = document.getElementById("chatsponsor-logo-input").files[0];
+  if (!file) return;
+  const msg = document.getElementById("chatsponsor-logo-message");
+  showMessage(msg, "Processing logo...", "success");
+  try {
+    const processedBlob = await compressImageFile(file);
+    const imageId = crypto.randomUUID();
+    const path = `chatSponsorLogos/${currentUid}/images/${imageId}.jpg`;
+    const fileRef = ref(storage, path);
+    await uploadBytes(fileRef, processedBlob, { contentType: "image/jpeg" });
+    const url = await getDownloadURL(fileRef);
+    chatSponsorPendingLogo = { url, storagePath: path };
+    document.getElementById("chatsponsor-logo-slot").innerHTML = `<img src="${url}" alt="Logo" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" />`;
+    msg.style.display = "none";
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
+
+document.getElementById("chatsponsor-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("chatsponsor-modal-message");
+  const roomId = document.getElementById("chatsponsor-room-select").value;
+  const roomName = CHAT_ROOMS.find((r) => r.id === roomId)?.name || roomId;
+  const companyName = document.getElementById("chatsponsor-company-name").value.trim();
+  const months = parseInt(document.getElementById("chatsponsor-months").value, 10);
+  const invoiceEmail = document.getElementById("chatsponsor-email").value.trim();
+
+  if (!roomId) { showMessage(msg, "Please choose a chat room.", "error"); return; }
+  if (!companyName) { showMessage(msg, "Please enter a company name.", "error"); return; }
+  if (!chatSponsorPendingLogo) { showMessage(msg, "Please upload a logo.", "error"); return; }
+  if (!months || months < 1) { showMessage(msg, "Please enter how many months.", "error"); return; }
+  if (!invoiceEmail) { showMessage(msg, "Please enter an email for the invoice.", "error"); return; }
+
+  try {
+    // Another submission may have taken this room since the modal opened —
+    // check fresh rather than trusting the dropdown's snapshot from open time.
+    const existing = await getDoc(doc(db, "chatSponsors", roomId));
+    if (existing.exists() && ["pending", "approved"].includes(existing.data().status)) {
+      showMessage(msg, `${roomName} already has a sponsor ${existing.data().status === "pending" ? "submission pending review" : "in place"} — pick a different room.`, "error");
+      return;
+    }
+
+    const { totalCents, introRateApplies, breakdown } = computeChatSponsorPricing(months);
+    const submittedAt = Timestamp.now();
+    await setDoc(doc(db, "chatSponsors", roomId), {
+      roomId, roomName,
+      submittedByUid: currentUid,
+      companyName,
+      logoUrl: chatSponsorPendingLogo.url,
+      logoStoragePath: chatSponsorPendingLogo.storagePath,
+      months,
+      invoiceEmail,
+      introRateApplies,
+      totalCents,
+      pricingBreakdown: breakdown,
+      status: "pending",
+      submittedAt,
+    });
+    await setDoc(doc(db, "chatSponsorReviewQueue", roomId), {
+      submittedByUid: currentUid,
+      requestedAt: submittedAt,
+    });
+
+    showMessage(msg, "Submitted! An admin will review it — you'll be invoiced once approved.", "success");
+    setTimeout(() => { document.getElementById("chatsponsor-modal-backdrop").style.display = "none"; }, 1800);
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
 document.getElementById("pricing-business-btn").addEventListener("click", () => showView("business"));
 const BUSINESS_WORD_LIMIT = 500;
 let currentMyBusinessData = null;
@@ -5124,6 +5447,84 @@ function renderBusinessAdminCard(uid, data) {
       oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
       await updateDoc(doc(db, "businesses", uid), { businessPaidUntil: Timestamp.fromDate(oneYearFromNow) });
       showMessage(msg, "Marked paid through " + oneYearFromNow.toLocaleDateString() + ".", "success");
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  });
+
+  return card;
+}
+
+// ============================= ADMIN: CHAT ROOM SPONSORS ====================
+async function loadChatSponsorAdminQueue() {
+  const container = document.getElementById("admin-chatsponsor-queue");
+  const empty = document.getElementById("admin-chatsponsor-empty");
+  if (!container) return;
+  container.innerHTML = "";
+  empty.style.display = "none";
+
+  const q = query(collection(db, "chatSponsorReviewQueue"), orderBy("requestedAt", "asc"));
+  const queueSnap = await getDocs(q).catch((err) => {
+    container.innerHTML = `<div class="message error">Couldn't load the chat sponsor queue: ${err.message}</div>`;
+    return null;
+  });
+  if (!queueSnap) return;
+
+  if (queueSnap.empty) {
+    empty.style.display = "block";
+    return;
+  }
+
+  for (const queueDoc of queueSnap.docs) {
+    const roomId = queueDoc.id;
+    const sponsorSnap = await getDoc(doc(db, "chatSponsors", roomId)).catch(() => null);
+    if (!sponsorSnap || !sponsorSnap.exists()) continue;
+    container.appendChild(renderChatSponsorAdminCard(roomId, sponsorSnap.data()));
+  }
+}
+
+function renderChatSponsorAdminCard(roomId, data) {
+  const card = document.createElement("div");
+  card.className = "admin-card";
+
+  card.innerHTML = `
+    <div class="admin-meta">
+      📣 ${escapeHtml(data.companyName || "Unnamed company")} &nbsp;·&nbsp; wants: ${escapeHtml(data.roomName || roomId)}
+      &nbsp;·&nbsp; ${data.months} month${data.months === 1 ? "" : "s"}
+    </div>
+    ${data.logoUrl ? `<div class="admin-images"><img src="${data.logoUrl}" alt="Logo" /></div>` : ""}
+    <p class="admin-post">Invoice: <strong>${escapeHtml(data.invoiceEmail || "—")}</strong> for <strong>${formatCents(data.totalCents || 0)}</strong> (${escapeHtml(data.pricingBreakdown || "")})${data.introRateApplies ? "" : " — intro offer already expired, standard rate"}</p>
+    <div class="admin-actions">
+      <button type="button" data-action="approve">Approve</button>
+      <button type="button" class="secondary" data-action="reject">Reject</button>
+    </div>
+    <div class="message" style="display:none"></div>
+  `;
+  const msg = card.querySelector(".message");
+
+  card.querySelector('[data-action="approve"]').addEventListener("click", async () => {
+    try {
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + (data.months || 1));
+      await updateDoc(doc(db, "chatSponsors", roomId), {
+        status: "approved",
+        approvedAt: Timestamp.now(),
+        approvedBy: currentUid,
+        expiresAt: Timestamp.fromDate(expiresAt),
+      });
+      await deleteDoc(doc(db, "chatSponsorReviewQueue", roomId));
+      showMessage(msg, `Approved — now send the invoice to ${data.invoiceEmail} for ${formatCents(data.totalCents || 0)} yourself. Sponsorship runs through ${expiresAt.toLocaleDateString()}.`, "success");
+      setTimeout(() => card.remove(), 4000);
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  });
+  card.querySelector('[data-action="reject"]').addEventListener("click", async () => {
+    try {
+      await updateDoc(doc(db, "chatSponsors", roomId), { status: "rejected", rejectedAt: Timestamp.now() });
+      await deleteDoc(doc(db, "chatSponsorReviewQueue", roomId));
+      if (data.logoStoragePath) await deleteObject(ref(storage, data.logoStoragePath)).catch(() => {});
+      card.remove();
     } catch (err) {
       showMessage(msg, err.message, "error");
     }

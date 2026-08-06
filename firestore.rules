@@ -118,6 +118,39 @@ service cloud.firestore {
       allow write: if (isOwner(uid) && request.auth.token.email_verified == true) || isAdmin();
     }
 
+    // Chat room sponsorship — one active/pending submission per room,
+    // reviewed by an admin before anyone gets invoiced (see index.js
+    // comment and the admin panel's "Chat room sponsors" section; there's
+    // no automated Stripe flow here, the admin invoices manually using the
+    // email/months/total stored on the doc).
+    match /chatSponsors/{roomId} {
+      // Same audience as the chat rooms themselves — anyone who can see
+      // the rooms can see who's sponsoring them.
+      allow read: if isSignedIn() && (isApproved(request.auth.uid) || isAdmin());
+      allow create: if isSignedIn() && isApproved(request.auth.uid)
+                    && request.resource.data.submittedByUid == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update: if isAdmin()
+                    // Re-submitting for a room whose last sponsor was
+                    // rejected — Firestore evaluates this as an UPDATE,
+                    // not a create, since the doc already exists (same
+                    // reasoning as the beforeSignInBlocking stub-transition
+                    // branch on users/{uid} above). Anyone approved can
+                    // claim a rejected/open slot, not just whoever
+                    // submitted before.
+                    || (isSignedIn() && isApproved(request.auth.uid)
+                        && resource.data.status == 'rejected'
+                        && request.resource.data.submittedByUid == request.auth.uid
+                        && request.resource.data.status == 'pending');
+      allow delete: if isAdmin();
+    }
+    match /chatSponsorReviewQueue/{roomId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isApproved(request.auth.uid) && request.resource.data.submittedByUid == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
     // In-app notification bell. Only the Cloud Functions (via Admin SDK,
     // which bypasses rules) ever create these — a signed-in user can only
     // read their OWN notifications, and can only ever flip 'read' to true
