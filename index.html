@@ -950,6 +950,19 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <p class="field-hint" id="chatsponsor-offer-note" style="color:#a3282f;"></p>
         <button type="button" id="pricing-chatsponsor-btn" class="secondary">Get Started</button>
       </div>
+
+      <div class="pricing-card">
+        <div class="pricing-tier-name">🏛️ Found a Town</div>
+        <div class="pricing-price">$1,000<span>one-time</span></div>
+        <ul class="pricing-features">
+          <li>"President of [Your Town]" badge on your profile, for the life of your account</li>
+          <li>1 year of Diamond membership</li>
+          <li>A free year of your business listing</li>
+          <li>1 year as the sponsor of your new town's chat room, logo and all</li>
+        </ul>
+        <p class="field-hint">If your town wasn't picked as a Town Fuss area yet, you can apply to found it. Contact us by email to check eligibility — this isn't a self-service signup, and payment is by invoice, not a payment link.</p>
+        <a href="mailto:info@titanbusinesspros.com?subject=Founding%20a%20Town%20on%20Town%20Fuss"><button type="button" class="secondary">Contact Us</button></a>
+      </div>
     </div>
     <p class="field-hint" style="text-align:center; margin-top:1.5rem;">Membership status updates automatically within a few minutes of payment.</p>
   </section>
@@ -2805,6 +2818,14 @@ function membershipBadgeHtml(data) {
   return "";
 }
 
+// Permanent — set once by an admin after a Town Founder package is paid
+// for (see the "Found a Town" admin button below), never expires on its
+// own the way Gold/Diamond do. Shown alongside the membership badge, not
+// instead of it — a town's founder can also be a Diamond member.
+function townFounderBadgeHtml(data) {
+  return data.townFounderOf ? `<span class="membership-badge diamond">🏛️ President of ${escapeHtml(data.townFounderOf)}</span>` : "";
+}
+
 // Business account marker — shown wherever a business's name appears.
 function renderCard(uid, data) {
   const profile = data.profile || {};
@@ -2845,6 +2866,7 @@ function renderCard(uid, data) {
         ${profile.neighborhood ? `<span>${escapeHtml(profile.neighborhood)}</span>` : ""}
         ${friendCountHtml}
         ${membershipBadgeHtml(data)}
+        ${townFounderBadgeHtml(data)}
         ${chessBadgeHtml(uid)}
         ${checkersBadgeHtml(uid)}
         ${wynneWarsBadgeHtml(uid)}
@@ -2857,6 +2879,7 @@ function renderCard(uid, data) {
         <button type="button" class="secondary small block-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Block</button>
         <button type="button" class="secondary small report-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Report</button>
         ${isAdminUser && uid !== currentUid ? `<button type="button" class="secondary small admin-grant-gold-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Grant Gold</button>` : ""}
+        ${isAdminUser && uid !== currentUid ? `<button type="button" class="secondary small admin-found-town-btn" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Found a Town</button>` : ""}
         ${isAdminUser && uid !== currentUid ? `<button type="button" class="secondary small admin-delete-profile-btn" style="border-color:#a3282f; color:#a3282f;" data-uid="${uid}" data-name="${escapeHtml(profile.name || "Neighbor")}">Delete Profile</button>` : ""}
       </div>
     </div>
@@ -2872,6 +2895,44 @@ function renderCard(uid, data) {
         alert(`${targetName} is now a Gold member. You have ${result.data.remainingToday} grant(s) left today.`);
       } catch (err) {
         alert(err.message || "Couldn't grant Gold membership.");
+      }
+    });
+
+    // Grants 3 of the 4 Town Founder benefits directly (permanent
+    // President badge, +1 year of Diamond, free business-listing year via
+    // the existing promo-whitelist mechanism). The 4th — a year as the
+    // sponsor of that town's chat room — goes through the normal chat
+    // sponsor submission/approval flow once that room exists; this button
+    // only covers what can be granted immediately. Only use this AFTER
+    // the $1,000 invoice has actually been paid — nothing here checks
+    // that, same trust model as every other manual admin grant on this
+    // site (Mark paid, Grant Gold, etc.).
+    card.querySelector(".admin-found-town-btn").addEventListener("click", async () => {
+      const targetUid = uid;
+      const targetName = profile.name || "Neighbor";
+      const townName = prompt(`Town name for ${targetName}'s "President of ___" badge?`);
+      if (!townName || !townName.trim()) return;
+      if (!confirm(`Grant ${targetName} the full Town Founder package for "${townName.trim()}"? This gives a permanent President badge, +1 year of Diamond, and a free business-listing year. Only do this after the $1,000 invoice is actually paid.`)) return;
+      try {
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+        const currentExpiresMs = data.diamondExpiresAt?.seconds ? data.diamondExpiresAt.seconds * 1000 : 0;
+        const newDiamondExpiry = Timestamp.fromDate(new Date(Math.max(currentExpiresMs, Date.now()) + 365 * 24 * 60 * 60 * 1000));
+        await updateDoc(doc(db, "users", targetUid), {
+          townFounderOf: townName.trim(),
+          isDiamondMember: true,
+          diamondExpiresAt: newDiamondExpiry,
+        });
+        if (data.email) {
+          await setDoc(doc(db, "businessPromoWhitelist", data.email.toLowerCase()), {
+            email: data.email.toLowerCase(),
+            grantedAt: serverTimestamp(),
+            grantedBy: currentUid,
+          });
+        }
+        alert(`${targetName} is now President of ${townName.trim()} — Diamond through ${newDiamondExpiry.toDate().toLocaleDateString()}, and a free business-listing year is queued for ${data.email || "(no email on file — add their business listing to the promo whitelist manually)"}. Don't forget the 4th benefit: once ${townName.trim()}'s chat room exists, have them submit it through Sponsor a Chat Room and approve it for 12 months.`);
+      } catch (err) {
+        alert(err.message || "Couldn't grant the Town Founder package.");
       }
     });
 
@@ -4883,7 +4944,7 @@ function loadPricingView() {
 
   if (chatSponsorIntroRateApplies()) {
     document.getElementById("chatsponsor-price-display").innerHTML = `$50<span>/mo first 90 days, then $100/mo</span>`;
-    document.getElementById("chatsponsor-offer-note").textContent = "Intro rate ends 11/6/26 — lock in $50/mo before then.";
+    document.getElementById("chatsponsor-offer-note").textContent = "Intro rate ends 12/1/26 — lock in $50/mo before then.";
   } else {
     document.getElementById("chatsponsor-price-display").innerHTML = `$100<span>/mo</span>`;
     document.getElementById("chatsponsor-offer-note").textContent = "";
@@ -4897,12 +4958,12 @@ function loadPricingView() {
 // Stripe flow: what's built here just gates content review before any
 // money is asked for, and hands the admin exactly what they need (email,
 // months, computed total) to send that invoice themselves.
-const CHAT_SPONSOR_OFFER_CUTOFF = new Date("2026-11-06T00:00:00");
+const CHAT_SPONSOR_OFFER_CUTOFF = new Date("2026-12-01T00:00:00");
 function chatSponsorIntroRateApplies(now = new Date()) {
   return now < CHAT_SPONSOR_OFFER_CUTOFF;
 }
 // First 3 months of ANY purchase are $50/mo, anything beyond that is
-// $100/mo — UNLESS the intro offer has already expired (11/6/26), in
+// $100/mo — UNLESS the intro offer has already expired (12/1/26), in
 // which case it's $100/mo flat from month one, no discount at all.
 function computeChatSponsorPricing(months, now = new Date()) {
   const introRateApplies = chatSponsorIntroRateApplies(now);
@@ -4921,7 +4982,7 @@ function computeChatSponsorPricing(months, now = new Date()) {
     }
   } else {
     totalCents = months * 10000;
-    parts.push(`${months} month${months === 1 ? "" : "s"} @ $100 (intro offer expired 11/6/26)`);
+    parts.push(`${months} month${months === 1 ? "" : "s"} @ $100 (intro offer expired 12/1/26)`);
   }
   return { totalCents, introRateApplies, breakdown: parts.join(" + ") };
 }
