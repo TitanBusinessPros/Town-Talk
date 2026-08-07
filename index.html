@@ -370,6 +370,10 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .about-card p { margin: 0; }
 .about-towns { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 1.25rem; }
 .about-town-chip { font-family: var(--font-mono); font-size: 0.78rem; background: var(--ink-700); color: var(--paper-050); padding: 0.3rem 0.7rem; border-radius: 999px; }
+.edition-picker { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+.edition-picker:empty { display: none; margin-bottom: 0; }
+.edition-picker-link { display: block; text-align: center; font-size: 0.85rem; font-weight: 600; background: var(--amber-500); color: #fff; padding: 0.6rem 1rem; border-radius: var(--radius-sm); text-decoration: none; }
+.edition-picker-link:hover { background: var(--amber-600); }
 .about-feature-list { max-width: 640px; margin: 1.5rem auto 0; }
 .about-feature-list li { margin-bottom: 0.6rem; line-height: 1.6; }
 .about-cta { text-align: center; margin-top: 2.5rem; padding: 2rem 1.5rem; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); }
@@ -477,6 +481,9 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <!-- ================= LANDING / AUTH VIEW ================= -->
   <section id="view-landing" class="view active">
     <div class="page--narrow" style="margin:0 auto">
+      <div id="edition-picker" class="edition-picker">
+        <!-- Populated from OTHER_EDITIONS at load time (see the script below) — empty/hidden when there's nothing to show. -->
+      </div>
       <div class="view-header">
         <p class="eyebrow">Pauls Valley · Oklahoma</p>
         <h1>Sign in to your account</h1>
@@ -1396,6 +1403,13 @@ const EDITION_TOWNS = [
 ];
 // The town selected by default on the Feed's town-filter tabs.
 const EDITION_HOME_TOWN = "Pauls Valley";
+// Other live Town Fuss editions, shown as a small picker at the top of the
+// sign-in page — each is an entirely separate Firebase project/deployment
+// (not a different view of this same app), so entries just link out to
+// that edition's own site. List order is also display order.
+const OTHER_EDITIONS = [
+  { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+];
 
 // These Firebase project values are safe to expose publicly — access
 // control lives in Firestore/Storage security rules, not in hiding this
@@ -1493,6 +1507,13 @@ if (aboutTownsWrap) {
 
 const bannerSubEl = document.querySelector(".brand-banner-sub");
 if (bannerSubEl) bannerSubEl.textContent = `${EDITION_NAME} · ${EDITION_REGION}`;
+
+const editionPickerEl = document.getElementById("edition-picker");
+if (editionPickerEl && OTHER_EDITIONS.length) {
+  editionPickerEl.innerHTML = OTHER_EDITIONS.map((ed) =>
+    `<a href="${ed.url}" class="edition-picker-link">🆕 Now also serving the area around ${ed.name.replace(/ Edition$/, "")} — visit the ${ed.name} &rarr;</a>`
+  ).join("");
+}
 
 // ============================= PWA INSTALL BANNER ===========================
 // Independent of sign-in state — shows for anyone visiting in a regular

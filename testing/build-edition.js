@@ -37,6 +37,9 @@ const EDITIONS = {
       messagingSenderId: "825364437058",
       appId: "1:825364437058:web:12a32229ae30acf3e435db",
     },
+    otherEditions: [
+      { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+    ],
   },
 };
 
@@ -58,6 +61,12 @@ function formatFirebaseConfig(cfg) {
     .join("\n");
 }
 
+function formatOtherEditions(list) {
+  if (!list || !list.length) return "[]";
+  const entries = list.map((ed) => `  { name: "${ed.name}", url: "${ed.url}" },`).join("\n");
+  return `[\n${entries}\n]`;
+}
+
 function swapIndexHtmlConfig(content, edition) {
   const newBlock = `const EDITION_NAME = "${edition.editionName}";
 const EDITION_REGION = "${edition.editionRegion}";
@@ -69,6 +78,11 @@ ${formatTownsArray(edition.towns)}
 ];
 // The town selected by default on the Feed's town-filter tabs.
 const EDITION_HOME_TOWN = "${edition.homeTown}";
+// Other live Town Fuss editions, shown as a small picker at the top of the
+// sign-in page — each is an entirely separate Firebase project/deployment
+// (not a different view of this same app), so entries just link out to
+// that edition's own site. List order is also display order.
+const OTHER_EDITIONS = ${formatOtherEditions(edition.otherEditions)};
 
 // These Firebase project values are safe to expose publicly — access
 // control lives in Firestore/Storage security rules, not in hiding this

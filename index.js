@@ -699,6 +699,26 @@ exports.stripeWebhook = onRequest(
       return;
     }
 
+    // Every edition (Pauls Valley, Eufaula Lake, ...) is a separate Firebase
+    // project but can share one Stripe account — Stripe sends EVERY event to
+    // EVERY registered webhook endpoint on that account, not just the one
+    // tied to whichever Payment Link was actually used. Tag each edition's
+    // Payment Links/Prices with metadata.edition = "<firebase-project-id>"
+    // so this function can tell whether an event is actually its own before
+    // acting on it. Untagged events (existing Pauls Valley links predate
+    // this) default to "town-talk-87ff7" so production's own behavior never
+    // changes. invoice.payment_succeeded/customer.subscription.deleted
+    // don't need this same check — they look up the user by stripeCustomerId
+    // in THIS project's own Firestore, which simply won't contain another
+    // edition's customers at all, so cross-edition events already no-op
+    // there on their own.
+    const eventEdition = event.data.object.metadata?.edition || "town-talk-87ff7";
+    if (event.type === "checkout.session.completed" && eventEdition !== process.env.GCLOUD_PROJECT) {
+      console.log(`Stripe webhook: ignoring checkout.session.completed for edition "${eventEdition}" (this is ${process.env.GCLOUD_PROJECT})`);
+      res.status(200).send("ignored - different edition");
+      return;
+    }
+
     try {
       if (event.type === "checkout.session.completed") {
         await grantFromCheckout(event.data.object);
