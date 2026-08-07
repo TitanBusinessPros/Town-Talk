@@ -22,6 +22,13 @@ const BUILD_DIR = path.join(__dirname, "..", "build");
 const EDITIONS = {
   "eufaula-lake": {
     editionName: "Eufaula Lake Edition",
+    // Used to replace every plain-text "Pauls Valley" mention in marketing
+    // copy (title, meta tags, hero text, footer) — a bare town/area name,
+    // not the "___ Edition" branding string above. Missed entirely until
+    // a live user found "Pauls Valley" still showing on Eufaula Lake
+    // 2026-08-07 — this file previously only swapped the config block,
+    // not the surrounding page copy.
+    shortName: "Eufaula Lake",
     editionRegion: "Oklahoma",
     homeTown: "Eufaula",
     towns: [
@@ -96,6 +103,16 @@ ${formatFirebaseConfig(edition.firebaseConfig)}
   return content.replace(re, newBlock);
 }
 
+// Marketing copy (page title, meta tags, hero text, footer) that names
+// "Pauls Valley" directly as plain text, outside the EDITION CONFIGURATION
+// block — a plain global replace, not template-driven, since these are
+// free-form sentences (title tags, meta descriptions, paragraphs) rather
+// than a fixed data structure like EDITION_TOWNS.
+function swapMarketingCopy(content, edition) {
+  if (!edition.shortName) return content;
+  return content.split("Pauls Valley").join(edition.shortName);
+}
+
 function swapSimpleFirebaseConfig(content, edition, fileLabel) {
   const newBlock = `const firebaseConfig = {\n${formatFirebaseConfig(edition.firebaseConfig)}\n};`;
   const re = /const firebaseConfig = \{[\s\S]*?\};/;
@@ -131,7 +148,9 @@ function main() {
   copyDirExcept(REPO_ROOT, BUILD_DIR, skip);
 
   const indexPath = path.join(BUILD_DIR, "index.html");
-  fs.writeFileSync(indexPath, swapIndexHtmlConfig(fs.readFileSync(indexPath, "utf8"), edition), "utf8");
+  let indexContent = swapIndexHtmlConfig(fs.readFileSync(indexPath, "utf8"), edition);
+  indexContent = swapMarketingCopy(indexContent, edition);
+  fs.writeFileSync(indexPath, indexContent, "utf8");
 
   // Every other page that has its own firebaseConfig (all 22 solo/2-player
   // game pages plus the game-hub page) — each is its own separate script

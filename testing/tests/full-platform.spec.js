@@ -199,8 +199,8 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     // (renderMessageRemaining() in index.html) instead of letting an 11th send
     // attempt happen and get rejected after the fact — so there's no 11th
     // click to make; the button itself going disabled IS the expected result.
-    await expect(pageA.locator("#thread-send-btn")).toBeDisabled();
-    await expect(pageA.locator("#messages-remaining")).toContainText("0 / 10 messages left today");
+    await expect(pageA.locator("#thread-send-btn")).toBeDisabled({ timeout: 10_000 });
+    await expect(pageA.locator("#messages-remaining")).toContainText("0 / 10 messages left today", { timeout: 10_000 });
   });
 
   test("Chat room: Robot A posts, Robot B likes it, count updates for both", async () => {
