@@ -436,23 +436,22 @@ service cloud.firestore {
       allow read: if isSignedIn() && (isApproved(request.auth.uid) || isAdmin());
       allow create: if isSignedIn()
                     && (isApproved(request.auth.uid) || isAdmin())
-                    // Kept in sync with the CHAT_ROOMS list in index.html — a
-                    // room missing here isn't hidden from the UI, it just
-                    // silently rejects every post to it with a permission
-                    // error. Confirmed via a live report that 10 of the 16
-                    // town rooms (everything added after the original 6) and
-                    // both topic rooms added alongside them (Food & Recipes,
-                    // Introduce Yourself) had been missing from this list.
-                    && roomId in [
-                         'wynnewood-chat', 'elmore-city-chat', 'pauls-valley-chat',
-                         'davis-chat', 'paoli-chat', 'sulphur-chat',
-                         'whitebead-chat', 'maysville-chat', 'katie-chat',
-                         'stratford-chat', 'lindsay-chat', 'roff-chat',
-                         'wanette-chat', 'wayne-chat', 'purcell-chat', 'marlow-chat',
-                         'singles-chat', 'music-chat', 'events-chat', 'rants-raves-chat',
-                         'local-jobs-chat', 'helping-hands-chat',
-                         'food-recipes-chat', 'introduce-yourself-chat'
-                       ]
+                    // Used to be a hand-enumerated list of every valid room
+                    // ID, kept in sync with CHAT_ROOMS in index.html by
+                    // hand — a room missing here isn't hidden from the UI,
+                    // it just silently rejects every post to it with a
+                    // permission error. That happened twice: once when 10
+                    // of the original 16 town rooms + 2 topic rooms were
+                    // missing, and again when Eufaula Lake's entire town
+                    // list (different town names = different room IDs)
+                    // wasn't in this Pauls-Valley-specific list at all.
+                    // Every real room ID this file ever generates — in any
+                    // edition — is lowercase letters/digits/hyphens ending
+                    // in "-chat" (see CHAT_ROOMS in index.html: town rooms
+                    // are `${town-slug}-chat`, topic rooms are hand-picked
+                    // but follow the same shape), so a room list can never
+                    // drift out of sync with this check again.
+                    && roomId.matches('^[a-z0-9-]+-chat$')
                     && request.resource.data.senderId == request.auth.uid
                     && request.resource.data.text is string
                     && request.resource.data.text.size() > 0
