@@ -586,22 +586,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <label for="neighborhood">What town are you from?</label>
         <select id="neighborhood">
           <option value="">Select a town...</option>
-          <option value="Wynnewood">Wynnewood</option>
-          <option value="Pauls Valley">Pauls Valley</option>
-          <option value="Elmore City">Elmore City</option>
-          <option value="Davis">Davis</option>
-          <option value="Sulphur">Sulphur</option>
-          <option value="Paoli">Paoli</option>
-          <option value="Whitebead">Whitebead</option>
-          <option value="Maysville">Maysville</option>
-          <option value="Katie">Katie</option>
-          <option value="Stratford">Stratford</option>
-          <option value="Lindsay">Lindsay</option>
-          <option value="Roff">Roff</option>
-          <option value="Wanette">Wanette</option>
-          <option value="Wayne">Wayne</option>
-          <option value="Purcell">Purcell</option>
-          <option value="Marlow">Marlow</option>
+          <!-- Remaining options are populated from EDITION_TOWNS at load time (see populateTownOptions() in the script below). -->
         </select>
         <div class="form-row"><button type="submit">Save details</button></div>
         <div id="profile-message" class="message" style="display:none"></div>
@@ -844,22 +829,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
           <label for="biz-town">Location</label>
           <select id="biz-town">
             <option value="">Select a town...</option>
-            <option value="Wynnewood">Wynnewood</option>
-            <option value="Pauls Valley">Pauls Valley</option>
-            <option value="Elmore City">Elmore City</option>
-            <option value="Davis">Davis</option>
-            <option value="Sulphur">Sulphur</option>
-            <option value="Paoli">Paoli</option>
-            <option value="Whitebead">Whitebead</option>
-            <option value="Maysville">Maysville</option>
-            <option value="Katie">Katie</option>
-            <option value="Stratford">Stratford</option>
-            <option value="Lindsay">Lindsay</option>
-            <option value="Roff">Roff</option>
-            <option value="Wanette">Wanette</option>
-            <option value="Wayne">Wayne</option>
-            <option value="Purcell">Purcell</option>
-            <option value="Marlow">Marlow</option>
+            <!-- Remaining options are populated from EDITION_TOWNS at load time (see populateTownOptions() in the script below). -->
           </select>
           <label for="biz-description">Tell people about your business</label>
           <textarea id="biz-description" maxlength="6000" placeholder="What do you offer? Hours, specialties, anything neighbors should know."></textarea>
@@ -993,23 +963,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       </div>
     </div>
 
-    <div class="about-towns">
-      <span class="about-town-chip">Pauls Valley</span>
-      <span class="about-town-chip">Wynnewood</span>
-      <span class="about-town-chip">Elmore City</span>
-      <span class="about-town-chip">Davis</span>
-      <span class="about-town-chip">Sulphur</span>
-      <span class="about-town-chip">Paoli</span>
-      <span class="about-town-chip">Whitebead</span>
-      <span class="about-town-chip">Maysville</span>
-      <span class="about-town-chip">Katie</span>
-      <span class="about-town-chip">Stratford</span>
-      <span class="about-town-chip">Lindsay</span>
-      <span class="about-town-chip">Roff</span>
-      <span class="about-town-chip">Wanette</span>
-      <span class="about-town-chip">Wayne</span>
-      <span class="about-town-chip">Purcell</span>
-      <span class="about-town-chip">Marlow</span>
+    <div class="about-towns" id="about-towns">
+      <!-- Chips are populated from EDITION_TOWNS at load time (see the script below). -->
     </div>
 
     <div class="view-header" style="margin-top:2.5rem;">
@@ -1408,11 +1363,43 @@ import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com
 import { getMessaging, getToken, onMessage, isSupported as isMessagingSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-// -----------------------------------------------------------------------
-// Town Fuss — Pauls Valley Firebase project config.
-// These values are safe to expose publicly — access control lives in
-// Firestore/Storage security rules, not in hiding this object.
-// -----------------------------------------------------------------------
+// =========================================================================
+// EDITION CONFIGURATION — everything specific to this being the
+// "Pauls Valley Edition" lives in this one block. To clone Town Fuss into
+// a new regional edition:
+//   1. Create a new Firebase project mirroring this one's Firestore
+//      rules, Storage rules, firestore.indexes.json, Auth setup, and
+//      Cloud Functions (index.js).
+//   2. Update EDITION_NAME, EDITION_REGION, EDITION_TOWNS,
+//      EDITION_HOME_TOWN, and firebaseConfig below.
+//   3. Nothing else in this file should need to change — the town
+//      dropdowns, the About page's town chips, the town-based chat
+//      rooms, and the banner sub-text are all generated FROM this block
+//      further down. The 8 shared, non-town-specific chat rooms
+//      (Singles, Music, Events, etc. — see TOPIC_CHAT_ROOMS near
+//      CHAT_ROOMS below) are the same across every edition and don't
+//      need to change.
+//   4. firestore.rules' chatRooms/{roomId} create rule independently
+//      whitelists the exact same room IDs this file generates (rules
+//      can't import this file) — that list has to be updated by hand
+//      to match whenever EDITION_TOWNS changes.
+// =========================================================================
+const EDITION_NAME = "Pauls Valley Edition";
+const EDITION_REGION = "Oklahoma";
+// Order here is also the display order everywhere this list is rendered
+// (both town dropdowns, the About page's town chips, and the town chat
+// room list).
+const EDITION_TOWNS = [
+  "Wynnewood", "Pauls Valley", "Elmore City", "Davis", "Sulphur", "Paoli",
+  "Whitebead", "Maysville", "Katie", "Stratford", "Lindsay", "Roff",
+  "Wanette", "Wayne", "Purcell", "Marlow",
+];
+// The town selected by default on the Feed's town-filter tabs.
+const EDITION_HOME_TOWN = "Pauls Valley";
+
+// These Firebase project values are safe to expose publicly — access
+// control lives in Firestore/Storage security rules, not in hiding this
+// object.
 const firebaseConfig = {
   apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
   authDomain: "town-talk-87ff7.firebaseapp.com",
@@ -1421,6 +1408,9 @@ const firebaseConfig = {
   messagingSenderId: "95719537435",
   appId: "1:95719537435:web:b496db2c2144adb3c831be",
 };
+// =========================================================================
+// END EDITION CONFIGURATION
+// =========================================================================
 
 const app = initializeApp(firebaseConfig);
 
@@ -1472,6 +1462,37 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   connectStorageEmulator(storage, "127.0.0.1", 9199);
   connectFunctionsEmulator(functions, "127.0.0.1", 5001);
 }
+
+// ============================= EDITION-DRIVEN MARKUP ========================
+// Renders everything sourced from EDITION_TOWNS/EDITION_NAME/EDITION_REGION
+// (config block above) into the page — the HTML markup itself only keeps a
+// placeholder "Select a town..." option and static fallback text, so a new
+// edition never needs any of these elements hand-edited to match.
+function populateTownOptions(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  EDITION_TOWNS.forEach((town) => {
+    const opt = document.createElement("option");
+    opt.value = town;
+    opt.textContent = town;
+    select.appendChild(opt);
+  });
+}
+populateTownOptions("neighborhood");
+populateTownOptions("biz-town");
+
+const aboutTownsWrap = document.getElementById("about-towns");
+if (aboutTownsWrap) {
+  EDITION_TOWNS.forEach((town) => {
+    const chip = document.createElement("span");
+    chip.className = "about-town-chip";
+    chip.textContent = town;
+    aboutTownsWrap.appendChild(chip);
+  });
+}
+
+const bannerSubEl = document.querySelector(".brand-banner-sub");
+if (bannerSubEl) bannerSubEl.textContent = `${EDITION_NAME} · ${EDITION_REGION}`;
 
 // ============================= PWA INSTALL BANNER ===========================
 // Independent of sign-in state — shows for anyone visiting in a regular
@@ -2996,12 +3017,9 @@ function renderCard(uid, data) {
   return card;
 }
 
-const TOWNS = [
-  "Wynnewood", "Pauls Valley", "Elmore City", "Davis", "Sulphur", "Paoli",
-  "Whitebead", "Maysville", "Katie", "Stratford", "Lindsay", "Roff", "Wanette", "Wayne", "Purcell", "Marlow",
-];
+const TOWNS = EDITION_TOWNS;
 const TOP_PROFILES_LIMIT = 21;
-let selectedTown = "Pauls Valley";
+let selectedTown = EDITION_HOME_TOWN;
 
 function renderTownTabs() {
   const wrap = document.getElementById("town-tabs");
@@ -4630,23 +4648,11 @@ document.body.addEventListener("click", (e) => {
 });
 
 // ============================= CHAT ROOMS ===================================
-const CHAT_ROOMS = [
-  { id: "wynnewood-chat", name: "Wynnewood Chat" },
-  { id: "elmore-city-chat", name: "Elmore City Chat" },
-  { id: "pauls-valley-chat", name: "Pauls Valley Chat" },
-  { id: "davis-chat", name: "Davis Chat" },
-  { id: "paoli-chat", name: "Paoli Chat" },
-  { id: "sulphur-chat", name: "Sulphur Chat" },
-  { id: "whitebead-chat", name: "Whitebead Chat" },
-  { id: "maysville-chat", name: "Maysville Chat" },
-  { id: "katie-chat", name: "Katie Chat" },
-  { id: "stratford-chat", name: "Stratford Chat" },
-  { id: "lindsay-chat", name: "Lindsay Chat" },
-  { id: "roff-chat", name: "Roff Chat" },
-  { id: "wanette-chat", name: "Wanette Chat" },
-  { id: "wayne-chat", name: "Wayne Chat" },
-  { id: "purcell-chat", name: "Purcell Chat" },
-  { id: "marlow-chat", name: "Marlow Chat" },
+// Town-based rooms are generated from EDITION_TOWNS (config block, top of
+// file) — the room ID is just the town name lowercased with spaces turned
+// into hyphens. These 8 topic rooms are shared/unchanged across every
+// edition — they're the only part of CHAT_ROOMS that stays hand-written.
+const TOPIC_CHAT_ROOMS = [
   { id: "singles-chat", name: "Singles Chat" },
   { id: "music-chat", name: "Music Chat" },
   { id: "events-chat", name: "Events Chat" },
@@ -4655,6 +4661,13 @@ const CHAT_ROOMS = [
   { id: "helping-hands-chat", name: "Helping Hands Chat" },
   { id: "food-recipes-chat", name: "Food & Recipes Chat" },
   { id: "introduce-yourself-chat", name: "Introduce Yourself Chat" },
+];
+const CHAT_ROOMS = [
+  ...EDITION_TOWNS.map((town) => ({
+    id: town.toLowerCase().replace(/\s+/g, "-") + "-chat",
+    name: `${town} Chat`,
+  })),
+  ...TOPIC_CHAT_ROOMS,
 ];
 
 let currentChatLimit = { day: 0, count: 0 };
