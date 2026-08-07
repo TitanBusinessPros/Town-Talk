@@ -27,16 +27,38 @@ if (!admin.apps.length) {
 // under (e.g. deep into a long combined test run). Retry briefly instead
 // of failing outright on a timing hiccup.
 async function verifyEmailByAddress(email, retries = 10, delayMs = 500) {
+  let uid;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const user = await admin.auth().getUserByEmail(email);
       await admin.auth().updateUser(user.uid, { emailVerified: true });
-      return user.uid;
+      uid = user.uid;
+      break;
     } catch (err) {
       if (attempt === retries - 1) throw err;
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
+  // index.html's own signup handler writes the real users/{uid} profile
+  // doc (email/createdAt/etc.) asynchronously, AFTER
+  // createUserWithEmailAndPassword() resolves — which is also what makes
+  // the account visible to getUserByEmail() above. Returning before that
+  // write lands lets whatever the caller does next (almost always an
+  // admin-SDK merge write marking the account approved) win the race and
+  // reach the Firestore server FIRST, corrupting the exact "stub" doc
+  // shape the client's own write depends on to pass firestore.rules —
+  // which makes THAT write get rejected, and the signup handler responds
+  // to any such rejection by deleting the account and signing the person
+  // out. Root-caused 2026-08-06 after it spent a full session masquerading
+  // as random game-page hangs. Wait for the real doc to actually exist
+  // before handing the uid back, so nothing racing ahead of it can win.
+  const start = Date.now();
+  while (Date.now() - start < 15000) {
+    const snap = await admin.firestore().collection("users").doc(uid).get();
+    if (snap.exists && snap.data().email) return uid;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  throw new Error(`users/${uid} never got its real signup fields (email/createdAt) within 15000ms`);
 }
 
 async function makeAdmin(uid) {

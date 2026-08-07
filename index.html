@@ -2080,6 +2080,28 @@ document.getElementById("signup-terms-link").addEventListener("click", (e) => {
   showView("terms");
 });
 
+// Retries the brand-new profile-doc write a few times before giving up. A
+// single-attempt failure here used to mean the signup handlers' catch
+// blocks below would delete the just-created Auth account and sign the
+// person out entirely — turning one transient write hiccup (a slow
+// connection, a brief server blip) into permanent, silent account loss
+// with nothing left for them to sign back into. A genuine, non-transient
+// error (bad permissions, etc.) still fails the same way once these
+// retries are exhausted.
+async function setDocWithRetry(ref, data, options, attempts = 3) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await setDoc(ref, data, options);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 document.getElementById("form-signup").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("signup-email").value.trim();
@@ -2119,7 +2141,7 @@ document.getElementById("form-signup").addEventListener("submit", async (e) => {
     // including the one that happens immediately after this account is
     // created; a plain (non-merge) setDoc here would race it and silently
     // wipe that IP back out the moment it's recorded.
-    await setDoc(doc(db, "users", cred.user.uid), {
+    await setDocWithRetry(doc(db, "users", cred.user.uid), {
       createdAt: serverTimestamp(),
       email: email.toLowerCase(),
       profile: { name: "", neighborhood: "" },
@@ -2273,7 +2295,7 @@ document.getElementById("google-signin-btn").addEventListener("click", async () 
 
     // merge: true — preserves the lastKnownIp stub above instead of
     // clobbering it, same reasoning as the email Sign up form's setDoc.
-    await setDoc(userRef, {
+    await setDocWithRetry(userRef, {
       createdAt: serverTimestamp(),
       email: (cred.user.email || "").toLowerCase(),
       profile: { name: cred.user.displayName || "", neighborhood: "" },
