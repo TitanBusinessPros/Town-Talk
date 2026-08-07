@@ -1,4 +1,5 @@
 node_modules/
+build/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
