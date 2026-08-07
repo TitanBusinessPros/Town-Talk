@@ -585,8 +585,13 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     </div>
 
     <div id="dashboard-gated-content">
+    <!-- One form, one button — display name, town, and the intro post all
+         save together in a single submit. These used to be two separate
+         forms/buttons (profile basics, then the post, submitted
+         separately); that let people finish the first and never notice
+         the second, leaving signup silently incomplete. Merged 2026-08-07. -->
     <section class="card" style="margin-top:2rem">
-      <h2>The basics</h2>
+      <h2>Complete your profile <span id="post-status-badge"></span></h2>
       <form id="profile-form">
         <label for="display-name">Display name</label>
         <input id="display-name" type="text" maxlength="40" placeholder="What should neighbors call you?" />
@@ -595,7 +600,11 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
           <option value="">Select a town...</option>
           <!-- Remaining options are populated from EDITION_TOWNS at load time (see populateTownOptions() in the script below). -->
         </select>
-        <div class="form-row"><button type="submit">Save details</button></div>
+        <label for="post-text" style="display:block; margin-top:1rem;">Your post</label>
+        <p class="field-hint">Up to 500 words. Once submitted, it goes to the admin for approval before it's visible on the public feed. No profanity or negative words. For everyone's safety, do not ask for money or include phone numbers, email addresses, or links — use Town Fuss messaging instead. Once your profile has been approved, any edit takes it off the public feed until the admin reviews it again, and you can only make one edit every 30 days.</p>
+        <textarea id="post-text" maxlength="6000" placeholder="Tell your story..."></textarea>
+        <div class="field-hint" id="word-count">0 / 500 words</div>
+        <div class="form-row"><button type="submit">Save profile</button></div>
         <div id="profile-message" class="message" style="display:none"></div>
       </form>
     </section>
@@ -612,17 +621,6 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       </div>
       <p class="field-hint" id="notif-toggle-hint" style="text-align:center; margin-top:0.75rem;"></p>
       <div id="notif-message" class="message" style="display:none"></div>
-    </section>
-
-    <section class="card" style="margin-top:1.5rem">
-      <h2>Your post <span id="post-status-badge"></span></h2>
-      <p>Up to 500 words. Once submitted, it goes to the admin for approval before it's visible on the public feed. No profanity or negative words. For everyone's safety, do not ask for money or include phone numbers, email addresses, or links — use Town Fuss messaging instead. Once your profile has been approved, any edit takes it off the public feed until the admin reviews it again, and you can only make one edit every 30 days.</p>
-      <form id="post-form">
-        <textarea id="post-text" maxlength="6000" placeholder="Tell your story..."></textarea>
-        <div class="field-hint" id="word-count">0 / 500 words</div>
-        <div class="form-row"><button type="submit">Submit for approval</button></div>
-        <div id="post-message" class="message" style="display:none"></div>
-      </form>
     </section>
 
     <section class="card" style="margin-top:1.5rem">
@@ -2514,39 +2512,6 @@ function updateDashboardGates() {
   updateProtectedNavVisibility(auth.currentUser);
 }
 
-document.getElementById("profile-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const msg = document.getElementById("profile-message");
-
-  const lock = editLockInfo(currentUserData);
-  if (lock.locked) {
-    showMessage(msg, `You can edit your profile again in ${lock.daysLeft} day(s).`, "error");
-    return;
-  }
-
-  const profile = {
-    name: document.getElementById("display-name").value.trim(),
-    neighborhood: document.getElementById("neighborhood").value.trim(),
-  };
-  const update = { profile, lastEditedAt: serverTimestamp() };
-  if (currentUserData.everApproved) update.approved = false;
-  if (currentUserData.rejected) update.rejected = false;
-
-  try {
-    await updateDoc(doc(db, "users", currentUid), update);
-    const queued = await flagForReview();
-    if (!queued) {
-      showMessage(msg, "Saved, but we couldn't add you to the admin review queue — try logging out and back in, then save again.", "error");
-    } else {
-      showMessage(msg, currentUserData.everApproved
-        ? "Saved — this will need admin review again before it's live."
-        : "Saved.", "success");
-    }
-  } catch (err) {
-    showMessage(msg, err.message, "error");
-  }
-});
-
 const postTextArea = document.getElementById("post-text");
 postTextArea.addEventListener("input", updateWordCount);
 function updateWordCount() {
@@ -2583,13 +2548,16 @@ function wireWordCounter(inputId, counterId) {
 wireWordCounter("thread-input", "thread-word-count");
 wireWordCounter("chatroom-input", "chatroom-word-count");
 
-document.getElementById("post-form").addEventListener("submit", async (e) => {
+// One button saves everything below: display name, town, and the intro
+// post, in a single write — see the comment above the merged HTML section
+// for why this used to be two separate forms and isn't anymore.
+document.getElementById("profile-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const msg = document.getElementById("post-message");
+  const msg = document.getElementById("profile-message");
 
   const lock = editLockInfo(currentUserData);
   if (lock.locked) {
-    showMessage(msg, `You can edit your post again in ${lock.daysLeft} day(s).`, "error");
+    showMessage(msg, `You can edit your profile again in ${lock.daysLeft} day(s).`, "error");
     return;
   }
 
@@ -2607,7 +2575,17 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
     showMessage(msg, "Your post contains language that isn't allowed here. Please rephrase and try again.", "error");
     return;
   }
-  const update = { postText: text, postWordCount: words, lastEditedAt: serverTimestamp() };
+
+  const profile = {
+    name: document.getElementById("display-name").value.trim(),
+    neighborhood: document.getElementById("neighborhood").value.trim(),
+  };
+  const update = {
+    profile,
+    postText: text,
+    postWordCount: words,
+    lastEditedAt: serverTimestamp(),
+  };
   if (currentUserData.everApproved) update.approved = false;
   if (currentUserData.rejected) update.rejected = false;
 
@@ -2617,7 +2595,9 @@ document.getElementById("post-form").addEventListener("submit", async (e) => {
     if (!queued) {
       showMessage(msg, "Saved, but we couldn't add you to the admin review queue — try logging out and back in, then save again.", "error");
     } else {
-      showMessage(msg, "Saved — the admin will review your whole profile before it goes live.", "success");
+      showMessage(msg, currentUserData.everApproved
+        ? "Saved — this will need admin review again before it's live."
+        : "Saved — the admin will review your whole profile before it goes live.", "success");
     }
   } catch (err) {
     showMessage(msg, err.message, "error");

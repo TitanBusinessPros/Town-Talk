@@ -43,11 +43,10 @@ async function logIn(page, robot) {
 async function fillBasicsAndPost(page, robot) {
   await page.locator("#display-name").fill(robot.name);
   await page.locator("#neighborhood").selectOption(robot.town);
-  await page.locator("#profile-form button[type=submit]").click();
   await page.locator("#post-text").fill(
     `Hi neighbors, I'm ${robot.name}, an automated test account used to check that Town Fuss features are working correctly. Please ignore.`
   );
-  await page.locator("#post-form button[type=submit]").click();
+  await page.locator("#profile-form button[type=submit]").click();
 }
 
 // Simulates a real mouse drag on a frisbee-golf canvas. Coordinates are in
@@ -109,19 +108,19 @@ test.describe.serial("Town Fuss — full platform pass", () => {
   test("Both robots fill in their profile and submit a post", async () => {
     await fillBasicsAndPost(pageA, ROBOT_A);
     await fillBasicsAndPost(pageB, ROBOT_B);
-    await expect(pageA.locator("#post-message")).toContainText("Saved");
-    await expect(pageB.locator("#post-message")).toContainText("Saved");
+    await expect(pageA.locator("#profile-message")).toContainText("Saved");
+    await expect(pageB.locator("#profile-message")).toContainText("Saved");
   });
 
   test("Post-form rejects a too-long post and a post with a phone number", async () => {
     const tooLong = "word ".repeat(501);
     await pageA.locator("#post-text").fill(tooLong);
-    await pageA.locator("#post-form button[type=submit]").click();
-    await expect(pageA.locator("#post-message")).toContainText("500 words");
+    await pageA.locator("#profile-form button[type=submit]").click();
+    await expect(pageA.locator("#profile-message")).toContainText("500 words");
 
     await pageA.locator("#post-text").fill("Call me at 405-555-1234 anytime!");
-    await pageA.locator("#post-form button[type=submit]").click();
-    await expect(pageA.locator("#post-message")).toContainText("phone number");
+    await pageA.locator("#profile-form button[type=submit]").click();
+    await expect(pageA.locator("#profile-message")).toContainText("phone number");
 
     // Restore a clean, valid post before continuing.
     await fillBasicsAndPost(pageA, ROBOT_A);
