@@ -1,19 +1,22 @@
 // tier-limits.spec.js
 //
 // Closes two coverage gaps flagged after Batch 2 (tiered daily limits for
-// online game plays and direct messages: 3/day Free, 10/day Gold, unlimited
-// Diamond):
-//   1. The Gold tier's 10/day cap was never actually exercised end-to-end —
-//      only Free's 3 (via full-platform.spec.js) and Diamond's unlimited
+// online game plays and direct messages — 5/day Free, 15/day Gold games;
+// 10/day Free, 30/day Gold messages; unlimited Diamond for both — raised
+// from the original 3/10 shared numbers on 2026-08-07, applies to every
+// edition since firestore.rules/index.html are shared across all of them):
+//   1. The Gold tier's daily cap was never actually exercised end-to-end —
+//      only Free's cap (via full-platform.spec.js) and Diamond's unlimited
 //      (via the mid-suite Diamond grant) had been.
 //   2. Whether local vs-computer / same-device 2-player modes really stay
 //      exempt from the online-game-play limit was assumed, not verified.
 //
 // Uses throwaway accounts and admin-SDK seeding of gamePlayLimits/
 // messageLimits docs to jump straight to each boundary (e.g. "already
-// played 9 games today") instead of clicking through 9 real games first —
-// the actual 10th/11th attempt still goes through the real client code and
-// real Firestore security rules, which is the part actually being tested.
+// played N-1 games today") instead of clicking through that many real
+// games first — the actual next-attempt still goes through the real
+// client code and real Firestore security rules, which is the part
+// actually being tested.
 //
 // Requires `firebase emulators:start` running in another terminal.
 // Run with: npx playwright test tier-limits.spec.js
@@ -72,105 +75,105 @@ test.describe.serial("Tiered daily limits — Gold cap, Diamond unlimited, local
   test.setTimeout(120_000);
 
   // ---------------------------------------------------------------------
-  // Group 1: Gold — 10 online game plays/day, blocked at the 11th
+  // Group 1: Gold — 15 online game plays/day, blocked at the 16th
   // ---------------------------------------------------------------------
-  test.describe.serial("Gold: 10 online game plays per day", () => {
+  test.describe.serial("Gold: 15 online game plays per day", () => {
     let page, context, uid;
     const ACCOUNT = { email: `tier.gold.play.${Date.now()}@test.town`, password: "TestPass123!" };
 
-    test("setup: sign up, approve, grant Gold, seed 9 plays already used today", async ({ browser }) => {
+    test("setup: sign up, approve, grant Gold, seed 14 plays already used today", async ({ browser }) => {
       context = await browser.newContext();
       page = await context.newPage();
       await signUp(page, ACCOUNT);
       uid = await verifyEmailByAddress(ACCOUNT.email);
       await approveWithProfile(uid, "Gold Play Tester", { isGoldMember: true });
-      await seedGamePlayLimit(uid, 9);
+      await seedGamePlayLimit(uid, 14);
     });
 
-    test("10th play succeeds", async () => {
+    test("15th play succeeds", async () => {
       await page.goto("/chess.html");
       await page.locator("#game-tile-chess").click();
       await page.locator("#mode-tile-online").click();
-      await expect(page.locator("#chess-play-remaining")).toContainText("1 / 10 online games left today", { timeout: 10_000 });
+      await expect(page.locator("#chess-play-remaining")).toContainText("1 / 15 online games left today", { timeout: 10_000 });
 
       await page.locator("#create-table-btn").click();
       await expect(page.locator("#view-game")).toBeVisible({ timeout: 15_000 });
 
       const limitDoc = await admin.firestore().collection("gamePlayLimits").doc(uid).get();
-      expect(limitDoc.data().count).toBe(10);
+      expect(limitDoc.data().count).toBe(15);
     });
 
-    test("11th play is blocked with a friendly message, count stays at 10", async () => {
+    test("16th play is blocked with a friendly message, count stays at 15", async () => {
       await page.locator("#leave-table-btn").click();
       await expect(page.locator("#view-waiting")).toBeVisible();
-      await expect(page.locator("#chess-play-remaining")).toContainText("0 / 10 online games left today", { timeout: 10_000 });
+      await expect(page.locator("#chess-play-remaining")).toContainText("0 / 15 online games left today", { timeout: 10_000 });
 
       await page.locator("#create-table-btn").click();
       await expect(page.locator("#waiting-message")).toContainText("daily limit of online games", { timeout: 10_000 });
 
       const limitDoc = await admin.firestore().collection("gamePlayLimits").doc(uid).get();
-      expect(limitDoc.data().count).toBe(10);
+      expect(limitDoc.data().count).toBe(15);
     });
   });
 
   // ---------------------------------------------------------------------
-  // Group 2: Gold — 10 direct messages/day, blocked at the 11th
+  // Group 2: Gold — 30 direct messages/day, blocked at the 31st
   // ---------------------------------------------------------------------
-  test.describe.serial("Gold: 10 direct messages per day", () => {
+  test.describe.serial("Gold: 30 direct messages per day", () => {
     let page, context, uid, buddyUid;
     const ACCOUNT = { email: `tier.gold.msg.${Date.now()}@test.town`, password: "TestPass123!" };
 
-    test("setup: sign up, approve, grant Gold, seed 9 messages already sent today", async ({ browser }) => {
+    test("setup: sign up, approve, grant Gold, seed 29 messages already sent today", async ({ browser }) => {
       context = await browser.newContext();
       page = await context.newPage();
       await signUp(page, ACCOUNT);
       uid = await verifyEmailByAddress(ACCOUNT.email);
       await approveWithProfile(uid, "Gold Message Tester", { isGoldMember: true });
-      await seedMessageLimit(uid, 9);
+      await seedMessageLimit(uid, 29);
       buddyUid = await makeFakeApprovedProfile("gold-buddy", "Message Test Buddy");
     });
 
-    test("10th message succeeds", async () => {
+    test("30th message succeeds", async () => {
       await page.goto("/index.html");
       await page.locator("#nav-directory").click();
       await page.locator("#directory-search").fill("Message Test Buddy");
       await page.locator(".directory-card", { hasText: "Message Test Buddy" }).click();
       await page.locator(".msg-btn").click();
-      await page.locator("#thread-input").fill("Tenth message today.");
+      await page.locator("#thread-input").fill("Thirtieth message today.");
       await page.locator("#thread-form button[type=submit]").click();
-      await expect(page.locator("#thread-messages")).toContainText("Tenth message today.");
-      await expect(page.locator("#messages-remaining")).toContainText("0 / 10 messages left today", { timeout: 10_000 });
+      await expect(page.locator("#thread-messages")).toContainText("Thirtieth message today.");
+      await expect(page.locator("#messages-remaining")).toContainText("0 / 30 messages left today", { timeout: 10_000 });
 
       const limitDoc = await admin.firestore().collection("messageLimits").doc(uid).get();
-      expect(limitDoc.data().count).toBe(10);
+      expect(limitDoc.data().count).toBe(30);
     });
 
-    test("11th message is blocked, send button disabled, count stays at 10", async () => {
+    test("31st message is blocked, send button disabled, count stays at 30", async () => {
       await expect(page.locator("#thread-send-btn")).toBeDisabled();
       const limitDoc = await admin.firestore().collection("messageLimits").doc(uid).get();
-      expect(limitDoc.data().count).toBe(10);
+      expect(limitDoc.data().count).toBe(30);
     });
   });
 
   // ---------------------------------------------------------------------
-  // Group 3: Diamond — unlimited, both game plays and messages keep working past 10
+  // Group 3: Diamond — unlimited, both game plays and messages keep working past the Gold caps
   // ---------------------------------------------------------------------
   test.describe.serial("Diamond: unlimited game plays and messages", () => {
     let page, context, uid, buddyUid;
     const ACCOUNT = { email: `tier.diamond.${Date.now()}@test.town`, password: "TestPass123!" };
 
-    test("setup: sign up, approve, grant Diamond, seed 15 plays and 15 messages already used today", async ({ browser }) => {
+    test("setup: sign up, approve, grant Diamond, seed 20 plays and 35 messages already used today", async ({ browser }) => {
       context = await browser.newContext();
       page = await context.newPage();
       await signUp(page, ACCOUNT);
       uid = await verifyEmailByAddress(ACCOUNT.email);
       await approveWithProfile(uid, "Diamond Tester", { isDiamondMember: true });
-      await seedGamePlayLimit(uid, 15);
-      await seedMessageLimit(uid, 15);
+      await seedGamePlayLimit(uid, 20);
+      await seedMessageLimit(uid, 35);
       buddyUid = await makeFakeApprovedProfile("diamond-buddy", "Diamond Test Buddy");
     });
 
-    test("16th online game play still succeeds", async () => {
+    test("21st online game play still succeeds", async () => {
       await page.goto("/chess.html");
       await page.locator("#game-tile-chess").click();
       await page.locator("#mode-tile-online").click();
@@ -180,10 +183,10 @@ test.describe.serial("Tiered daily limits — Gold cap, Diamond unlimited, local
       await expect(page.locator("#view-game")).toBeVisible({ timeout: 15_000 });
 
       const limitDoc = await admin.firestore().collection("gamePlayLimits").doc(uid).get();
-      expect(limitDoc.data().count).toBe(16);
+      expect(limitDoc.data().count).toBe(21);
     });
 
-    test("16th direct message still succeeds", async () => {
+    test("36th direct message still succeeds", async () => {
       await page.goto("/index.html");
       await page.locator("#nav-directory").click();
       await page.locator("#directory-search").fill("Diamond Test Buddy");
@@ -191,12 +194,12 @@ test.describe.serial("Tiered daily limits — Gold cap, Diamond unlimited, local
       await page.locator(".msg-btn").click();
       await expect(page.locator("#messages-remaining")).toContainText("Unlimited messages today", { timeout: 10_000 });
 
-      await page.locator("#thread-input").fill("Sixteenth message today, still going.");
+      await page.locator("#thread-input").fill("Thirty-sixth message today, still going.");
       await page.locator("#thread-form button[type=submit]").click();
-      await expect(page.locator("#thread-messages")).toContainText("Sixteenth message today, still going.");
+      await expect(page.locator("#thread-messages")).toContainText("Thirty-sixth message today, still going.");
 
       const limitDoc = await admin.firestore().collection("messageLimits").doc(uid).get();
-      expect(limitDoc.data().count).toBe(16);
+      expect(limitDoc.data().count).toBe(36);
     });
   });
 
@@ -207,13 +210,13 @@ test.describe.serial("Tiered daily limits — Gold cap, Diamond unlimited, local
     let page, context, uid;
     const ACCOUNT = { email: `tier.free.local.${Date.now()}@test.town`, password: "TestPass123!" };
 
-    test("setup: sign up, approve (Free tier — no Gold/Diamond flags), seed 3 plays already used today", async ({ browser }) => {
+    test("setup: sign up, approve (Free tier — no Gold/Diamond flags), seed 5 plays already used today", async ({ browser }) => {
       context = await browser.newContext();
       page = await context.newPage();
       await signUp(page, ACCOUNT);
       uid = await verifyEmailByAddress(ACCOUNT.email);
       await approveWithProfile(uid, "Free Local Tester");
-      await seedGamePlayLimit(uid, 3);
+      await seedGamePlayLimit(uid, 5);
     });
 
     test("vs-Computer (local) mode loads and accepts a move despite the online cap being maxed", async () => {
@@ -244,7 +247,7 @@ test.describe.serial("Tiered daily limits — Gold cap, Diamond unlimited, local
     test("sanity check: online play for this same account is still actually blocked", async () => {
       await page.locator("#local-back-btn").click();
       await page.locator("#mode-tile-online").click();
-      await expect(page.locator("#chess-play-remaining")).toContainText("0 / 3 online games left today", { timeout: 10_000 });
+      await expect(page.locator("#chess-play-remaining")).toContainText("0 / 5 online games left today", { timeout: 10_000 });
 
       await page.locator("#create-table-btn").click();
       await expect(page.locator("#waiting-message")).toContainText("daily limit of online games", { timeout: 10_000 });

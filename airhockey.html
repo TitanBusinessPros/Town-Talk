@@ -1023,10 +1023,16 @@ async function checkInviteCooldown(inviteToUid, inviteToName, msg) {
 let currentGamePlayLimit = { day: 0, count: 0 };
 let unsubscribeGamePlayLimit = null;
 
+// Online-game-play daily cap by membership tier: 5 Free / 15 Gold /
+// unlimited Diamond. Applies to every edition (production, Eufaula Lake,
+// and any future clone) — mirrors dailyGamePlayLimit() in
+// firestore.rules, which is the actual security boundary; this copy is
+// only for the UI to show a friendly count before the write is even
+// attempted.
 function myDailyTierLimit() {
   if (currentUserData?.isDiamondMember) return Infinity;
-  if (currentUserData?.isGoldMember) return 10;
-  return 3;
+  if (currentUserData?.isGoldMember) return 15;
+  return 5;
 }
 function watchGamePlayLimit(uid) {
   if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();

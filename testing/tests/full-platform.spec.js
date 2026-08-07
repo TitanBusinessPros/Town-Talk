@@ -183,8 +183,8 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await expect(pageB.locator("#thread-messages")).toContainText("automated test message");
   });
 
-  test("Messaging respects the daily 3-message limit", async () => {
-    for (let i = 0; i < 2; i++) {
+  test("Messaging respects the daily 10-message limit", async () => {
+    for (let i = 0; i < 9; i++) {
       await pageA.locator("#thread-input").fill(`Test message number ${i + 2}`);
       await pageA.locator("#thread-form button[type=submit]").click();
       // The submit handler is async (it runs a Firestore transaction before
@@ -194,13 +194,13 @@ test.describe.serial("Town Fuss — full platform pass", () => {
       // iteration, so each send's transaction is confirmed complete first.
       await expect(pageA.locator("#thread-input")).toHaveValue("", { timeout: 10_000 });
     }
-    // After 3 total messages today (1 from the earlier test + 2 here), the
+    // After 10 total messages today (1 from the earlier test + 9 here), the
     // real-time messageLimits listener proactively disables the Send button
-    // (renderMessageRemaining() in index.html) instead of letting a 4th send
-    // attempt happen and get rejected after the fact — so there's no 4th
+    // (renderMessageRemaining() in index.html) instead of letting an 11th send
+    // attempt happen and get rejected after the fact — so there's no 11th
     // click to make; the button itself going disabled IS the expected result.
     await expect(pageA.locator("#thread-send-btn")).toBeDisabled();
-    await expect(pageA.locator("#messages-remaining")).toContainText("0 / 3 messages left today");
+    await expect(pageA.locator("#messages-remaining")).toContainText("0 / 10 messages left today");
   });
 
   test("Chat room: Robot A posts, Robot B likes it, count updates for both", async () => {
@@ -237,7 +237,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
 
   test("Grant both robots Diamond membership for the remaining game tests", async () => {
     // The free-tier message/game-play limit itself is already covered by the
-    // earlier "daily 3-message limit" test. Everything from here on plays
+    // earlier "daily 10-message limit" test. Everything from here on plays
     // through 5 different games with the same two accounts, and
     // gamePlayLimits/{uid} is ONE shared counter across all of them — so
     // without this, Robot A would run out of her 3 free online-game plays

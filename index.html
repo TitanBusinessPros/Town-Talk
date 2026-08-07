@@ -1699,11 +1699,15 @@ const MAX_IMAGES = 1;
 // Flat 3/day for everyone — only chat room posts (chatMessageLimits) use this.
 // Direct messages (messageLimits) are tiered instead, see myDailyTierLimit().
 const DAILY_MESSAGE_LIMIT = 3;
-// Direct-message daily cap by membership tier: 3 Free / 10 Gold / unlimited Diamond.
+// Direct-message daily cap by membership tier: 10 Free / 30 Gold / unlimited
+// Diamond. Applies to every edition (production, Eufaula Lake, and any
+// future clone) — mirrors dailyMessageLimit() in firestore.rules, which is
+// the actual security boundary; this copy is only for the UI to show a
+// friendly count before the write is even attempted.
 function myDailyTierLimit() {
   if (currentUserData?.isDiamondMember) return Infinity;
-  if (currentUserData?.isGoldMember) return 10;
-  return 3;
+  if (currentUserData?.isGoldMember) return 30;
+  return 10;
 }
 let currentUid = null;
 let unsubscribeSnapshot = null;
