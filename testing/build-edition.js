@@ -133,7 +133,23 @@ function main() {
   const indexPath = path.join(BUILD_DIR, "index.html");
   fs.writeFileSync(indexPath, swapIndexHtmlConfig(fs.readFileSync(indexPath, "utf8"), edition), "utf8");
 
-  for (const f of ["chess.html", "checkers.html", "ww.html"]) {
+  // Every other page that has its own firebaseConfig (all 22 solo/2-player
+  // game pages plus the game-hub page) — each is its own separate script
+  // context with no way to import index.html's config, so each one carries
+  // its own copy that has to be swapped the same way. Missing one of these
+  // here is exactly how a whole game silently ends up talking to the wrong
+  // Firebase project on a cloned edition (confirmed real bug 2026-08-07 on
+  // Eufaula Lake: titanspace.html was still pointed at production).
+  const SIMPLE_CONFIG_FILES = [
+    "chess.html", "checkers.html", "ww.html",
+    "airhockey.html", "blackjack.html", "blocks.html", "deepsea.html",
+    "desert.html", "dodge.html", "fg.html", "follow.html", "gamezone.html",
+    "golf.html", "gravity-sling.html", "gtf.html", "hearts.html",
+    "m3game.html", "match3.html", "neon-drift.html", "pong.html",
+    "sea-war.html", "stacking-checkers.html", "sudoku.html",
+    "titanspace.html", "war.html",
+  ];
+  for (const f of SIMPLE_CONFIG_FILES) {
     const p = path.join(BUILD_DIR, f);
     fs.writeFileSync(p, swapSimpleFirebaseConfig(fs.readFileSync(p, "utf8"), edition, f), "utf8");
   }

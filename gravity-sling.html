@@ -753,6 +753,12 @@ import {
   collection, getDocs, query, where, orderBy, limit, connectFirestoreEmulator,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// =========================================================================
+// EDITION CONFIGURATION — the only edition-specific value on this page.
+// Cloning to a new regional edition: paste that edition's Firebase project
+// config here (same values as index.html's EDITION CONFIGURATION block).
+// This page has no town lists or edition banner text of its own.
+// =========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
   authDomain: "town-talk-87ff7.firebaseapp.com",
@@ -761,6 +767,9 @@ const firebaseConfig = {
   messagingSenderId: "95719537435",
   appId: "1:95719537435:web:b496db2c2144adb3c831be",
 };
+// =========================================================================
+// END EDITION CONFIGURATION
+// =========================================================================
 
 const app = initializeApp(firebaseConfig);
 // Same guard as index.html — App Check has no valid attestation for
