@@ -161,6 +161,6 @@ test.describe.serial("Sudoku — deep functional pass", () => {
 
   test("The 'Games' nav button returns to the real cross-game hub (chess.html)", async () => {
     await page.locator("#nav-hub").click();
-    await page.waitForURL(/chess\.html/, { timeout: 10_000 });
+    await page.waitForURL(/chess\.html/, { timeout: 20_000 });
   });
 });

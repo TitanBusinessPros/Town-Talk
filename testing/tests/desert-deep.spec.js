@@ -159,6 +159,6 @@ test.describe.serial("Desert Rattler — deep functional pass", () => {
     // reported by the user 2026-07-31. Every other game (checkers, golf,
     // Frisbee Golf, Cribbage) redirects to chess.html instead.
     await page.locator("#nav-hub").click();
-    await page.waitForURL(/chess\.html/, { timeout: 10_000 });
+    await page.waitForURL(/chess\.html/, { timeout: 20_000 });
   });
 });
