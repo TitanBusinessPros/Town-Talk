@@ -72,7 +72,7 @@ workaround on Eufaula Lake:
 Press Ctrl+C now if you haven't done all 5 yet. Continuing in 5 seconds...
 =========================================================================
 `);
-  execSync("sleep 5 || timeout 5", { shell: true, stdio: "ignore" }).toString();
+  execSync("sleep 5 || timeout 5", { shell: true, stdio: "ignore" });
 
   console.log("\n--- Firestore ---");
   run(`firebase firestore:databases:create "(default)" --location nam5 --project ${projectId}`);

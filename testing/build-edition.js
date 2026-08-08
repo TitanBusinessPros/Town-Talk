@@ -54,6 +54,40 @@ const EDITIONS = {
     vapidKey: "BJfarbE3nY-ex5avq1iE4kVaMs1jTvBIVtjckkr8-g_p2Q05e8ccuOPhvpUTua0WWusvy-zNPk23amCI_38ysbs",
     otherEditions: [
       { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+      { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+    ],
+  },
+  "tulsa-townfuss": {
+    editionName: "Tulsa Edition",
+    shortName: "Tulsa",
+    editionRegion: "Oklahoma",
+    homeTown: "Tulsa",
+    // Straight-line (haversine) distance from Tulsa, verified against
+    // current census populations 2026-08-08 — not copied from any single
+    // web listing, several of which conflated driving distance with
+    // straight-line or were simply wrong (e.g. Wagoner reads as a close-in
+    // suburb on some sites but is actually ~37 mi out; excluded here).
+    // Order below is distance order (closest first), same convention as
+    // every other edition's town list.
+    towns: [
+      "Tulsa", "Sand Springs", "Jenks", "Owasso", "Sapulpa", "Broken Arrow",
+      "Glenpool", "Catoosa", "Bixby", "Collinsville", "Skiatook", "Verdigris",
+      "Mannford", "Coweta", "Claremore", "Cleveland",
+    ],
+    firebaseConfig: {
+      apiKey: "AIzaSyCDV5bXQ5w57kJ3Y5sQPyo2tkv8YnGpuSY",
+      authDomain: "tulsa-townfuss.firebaseapp.com",
+      projectId: "tulsa-townfuss",
+      storageBucket: "tulsa-townfuss.firebasestorage.app",
+      messagingSenderId: "184420545538",
+      appId: "1:184420545538:web:e7303b93bf7c06f1f4231b",
+    },
+    // Same one-time manual step as every other edition — see the
+    // eufaula-lake entry's comment above.
+    vapidKey: "BEn8szf0APOprQdidUNId_OoPdEB_piuI7miHaaiP28Ssq1R7jyLoxPjpzrNwNLh6XXBo5MGttfDd9k79TPwEGU",
+    otherEditions: [
+      { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+      { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
     ],
   },
 };
