@@ -4733,9 +4733,17 @@ const CHAT_ROOMS = [
 // approval queue). An entry here shows immediately and takes priority over
 // anything in the "chatSponsors" database, no approval step needed.
 //
-// Add one line per sponsored room, keyed by the room's ID (see CHAT_ROOMS
-// above for the exact ID — it's the town name lowercased with spaces
-// turned into hyphens, plus "-chat", e.g. "tulsa-chat", "eufaula-chat").
+// Add one line per sponsored room, keyed as "<firebase-project-id>::<room
+// id>" — see CHAT_ROOMS above for the room ID itself (town name lowercased
+// with spaces turned into hyphens, plus "-chat"; topic rooms use their own
+// fixed ID, e.g. "singles-chat"). The project-id prefix matters: this one
+// file is shared by all three editions, and several room IDs are IDENTICAL
+// across editions — every topic room (singles-chat, music-chat, etc.) uses
+// the exact same ID on every edition, and Coweta is a town on both Eufaula
+// Lake's and Tulsa's lists — so without the prefix, filling in one
+// edition's "singles-chat" would make that same banner show up on every
+// OTHER edition's "singles-chat" room too, since they'd share the exact
+// same object key. The prefix keeps every edition's rooms independent.
 //
 // logoUrl: paste a GitHub image link here. Use the RAW image URL, not the
 // regular github.com page URL you see when browsing a repo — those show an
@@ -4744,81 +4752,107 @@ const CHAT_ROOMS = [
 // preview and "Copy image address"), or hand-build one as
 // https://raw.githubusercontent.com/<user>/<repo>/<branch>/<path-to-file>.
 //
-// One placeholder line below for every chat room that exists on any
-// edition (all three editions share this one file, so this list has to
-// cover all of them at once — a room ID that doesn't exist on whichever
-// edition is actually running just gets ignored, harmlessly). Each starts
-// as "null", meaning no manual banner — replace null with an object to
-// activate it:
-//   "tulsa-chat": {
+// One placeholder line below for every chat room on every edition. Each
+// starts as "null", meaning no manual banner — replace null with an object
+// to activate it:
+//   "tulsa-townfuss::tulsa-chat": {
 //     logoUrl: "https://raw.githubusercontent.com/yourname/yourrepo/main/logo.png",
 //     companyName: "Example Business",
 //   },
 //
 // If a new edition or a new town is ever added, add its rooms here too
-// (ask Claude to do this as part of standing up the new edition).
+// (ask Claude to do this as part of standing up the new edition) — the
+// prefix for a new edition is that edition's Firebase project ID.
 const MANUAL_CHAT_SPONSORS = {
-  // ----- Pauls Valley Edition (www.townfuss.com) -----
-  "wynnewood-chat": null, // Wynnewood
-  "pauls-valley-chat": null, // Pauls Valley
-  "elmore-city-chat": null, // Elmore City
-  "davis-chat": null, // Davis
-  "sulphur-chat": null, // Sulphur
-  "paoli-chat": null, // Paoli
-  "whitebead-chat": null, // Whitebead
-  "maysville-chat": null, // Maysville
-  "katie-chat": null, // Katie
-  "stratford-chat": null, // Stratford
-  "lindsay-chat": null, // Lindsay
-  "roff-chat": null, // Roff
-  "wanette-chat": null, // Wanette
-  "wayne-chat": null, // Wayne
-  "purcell-chat": null, // Purcell
-  "marlow-chat": null, // Marlow
-  // ----- Eufaula Lake Edition (eufaula.townfuss.com) -----
-  "eufaula-chat": null, // Eufaula
-  "checotah-chat": null, // Checotah
-  "warner-chat": null, // Warner
-  "henryetta-chat": null, // Henryetta
-  "krebs-chat": null, // Krebs
-  "stigler-chat": null, // Stigler
-  "mcalester-chat": null, // McAlester
-  "morris-chat": null, // Morris
-  "hartshorne-chat": null, // Hartshorne
-  "okmulgee-chat": null, // Okmulgee
-  "muskogee-chat": null, // Muskogee
-  "haskell-chat": null, // Haskell
-  "wetumka-chat": null, // Wetumka
-  "longtown-chat": null, // Longtown
-  "texanna-chat": null, // Texanna
-  "coweta-chat": null, // Coweta — also used by Tulsa Edition (same town, listed on both editions' town lists; one entry here covers whichever edition is actually running)
-  // ----- Tulsa Edition (tulsa.townfuss.com) -----
-  "tulsa-chat": null, // Tulsa
-  "sand-springs-chat": null, // Sand Springs
-  "jenks-chat": null, // Jenks
-  "owasso-chat": null, // Owasso
-  "sapulpa-chat": null, // Sapulpa
-  "broken-arrow-chat": null, // Broken Arrow
-  "glenpool-chat": null, // Glenpool
-  "catoosa-chat": null, // Catoosa
-  "bixby-chat": null, // Bixby
-  "collinsville-chat": null, // Collinsville
-  "skiatook-chat": null, // Skiatook
-  "verdigris-chat": null, // Verdigris
-  "mannford-chat": null, // Mannford
-  "claremore-chat": null, // Claremore
-  "cleveland-chat": null, // Cleveland
-  // ("coweta-chat" already listed above under Eufaula Lake — same room ID, shared)
-  // ----- Topic rooms (shared across every edition) -----
-  "singles-chat": null, // Singles Chat
-  "music-chat": null, // Music Chat
-  "events-chat": null, // Events Chat
-  "rants-raves-chat": null, // Rants & Raves Chat
-  "local-jobs-chat": null, // Local Jobs Chat
-  "helping-hands-chat": null, // Helping Hands Chat
-  "food-recipes-chat": null, // Food & Recipes Chat
-  "introduce-yourself-chat": null, // Introduce Yourself Chat
+  // ===== Pauls Valley Edition (www.townfuss.com) — project: town-talk-87ff7 =====
+  "town-talk-87ff7::wynnewood-chat": null, // Wynnewood
+  "town-talk-87ff7::pauls-valley-chat": null, // Pauls Valley
+  "town-talk-87ff7::elmore-city-chat": null, // Elmore City
+  "town-talk-87ff7::davis-chat": null, // Davis
+  "town-talk-87ff7::sulphur-chat": null, // Sulphur
+  "town-talk-87ff7::paoli-chat": null, // Paoli
+  "town-talk-87ff7::whitebead-chat": null, // Whitebead
+  "town-talk-87ff7::maysville-chat": null, // Maysville
+  "town-talk-87ff7::katie-chat": null, // Katie
+  "town-talk-87ff7::stratford-chat": null, // Stratford
+  "town-talk-87ff7::lindsay-chat": null, // Lindsay
+  "town-talk-87ff7::roff-chat": null, // Roff
+  "town-talk-87ff7::wanette-chat": null, // Wanette
+  "town-talk-87ff7::wayne-chat": null, // Wayne
+  "town-talk-87ff7::purcell-chat": null, // Purcell
+  "town-talk-87ff7::marlow-chat": null, // Marlow
+  // Topic rooms — Pauls Valley Edition
+  "town-talk-87ff7::singles-chat": null, // Singles Chat
+  "town-talk-87ff7::music-chat": null, // Music Chat
+  "town-talk-87ff7::events-chat": null, // Events Chat
+  "town-talk-87ff7::rants-raves-chat": null, // Rants & Raves Chat
+  "town-talk-87ff7::local-jobs-chat": null, // Local Jobs Chat
+  "town-talk-87ff7::helping-hands-chat": null, // Helping Hands Chat
+  "town-talk-87ff7::food-recipes-chat": null, // Food & Recipes Chat
+  "town-talk-87ff7::introduce-yourself-chat": null, // Introduce Yourself Chat
+
+  // ===== Eufaula Lake Edition (eufaula.townfuss.com) — project: eufaula-lake =====
+  "eufaula-lake::eufaula-chat": null, // Eufaula
+  "eufaula-lake::checotah-chat": null, // Checotah
+  "eufaula-lake::warner-chat": null, // Warner
+  "eufaula-lake::henryetta-chat": null, // Henryetta
+  "eufaula-lake::krebs-chat": null, // Krebs
+  "eufaula-lake::stigler-chat": null, // Stigler
+  "eufaula-lake::mcalester-chat": null, // McAlester
+  "eufaula-lake::morris-chat": null, // Morris
+  "eufaula-lake::hartshorne-chat": null, // Hartshorne
+  "eufaula-lake::okmulgee-chat": null, // Okmulgee
+  "eufaula-lake::muskogee-chat": null, // Muskogee
+  "eufaula-lake::haskell-chat": null, // Haskell
+  "eufaula-lake::wetumka-chat": null, // Wetumka
+  "eufaula-lake::longtown-chat": null, // Longtown
+  "eufaula-lake::texanna-chat": null, // Texanna
+  "eufaula-lake::coweta-chat": null, // Coweta
+  // Topic rooms — Eufaula Lake Edition
+  "eufaula-lake::singles-chat": null, // Singles Chat
+  "eufaula-lake::music-chat": null, // Music Chat
+  "eufaula-lake::events-chat": null, // Events Chat
+  "eufaula-lake::rants-raves-chat": null, // Rants & Raves Chat
+  "eufaula-lake::local-jobs-chat": null, // Local Jobs Chat
+  "eufaula-lake::helping-hands-chat": null, // Helping Hands Chat
+  "eufaula-lake::food-recipes-chat": null, // Food & Recipes Chat
+  "eufaula-lake::introduce-yourself-chat": null, // Introduce Yourself Chat
+
+  // ===== Tulsa Edition (tulsa.townfuss.com) — project: tulsa-townfuss =====
+  "tulsa-townfuss::tulsa-chat": null, // Tulsa
+  "tulsa-townfuss::sand-springs-chat": null, // Sand Springs
+  "tulsa-townfuss::jenks-chat": null, // Jenks
+  "tulsa-townfuss::owasso-chat": null, // Owasso
+  "tulsa-townfuss::sapulpa-chat": null, // Sapulpa
+  "tulsa-townfuss::broken-arrow-chat": null, // Broken Arrow
+  "tulsa-townfuss::glenpool-chat": null, // Glenpool
+  "tulsa-townfuss::catoosa-chat": null, // Catoosa
+  "tulsa-townfuss::bixby-chat": null, // Bixby
+  "tulsa-townfuss::collinsville-chat": null, // Collinsville
+  "tulsa-townfuss::skiatook-chat": null, // Skiatook
+  "tulsa-townfuss::verdigris-chat": null, // Verdigris
+  "tulsa-townfuss::mannford-chat": null, // Mannford
+  "tulsa-townfuss::coweta-chat": null, // Coweta
+  "tulsa-townfuss::claremore-chat": null, // Claremore
+  "tulsa-townfuss::cleveland-chat": null, // Cleveland
+  // Topic rooms — Tulsa Edition
+  "tulsa-townfuss::singles-chat": null, // Singles Chat
+  "tulsa-townfuss::music-chat": null, // Music Chat
+  "tulsa-townfuss::events-chat": null, // Events Chat
+  "tulsa-townfuss::rants-raves-chat": null, // Rants & Raves Chat
+  "tulsa-townfuss::local-jobs-chat": null, // Local Jobs Chat
+  "tulsa-townfuss::helping-hands-chat": null, // Helping Hands Chat
+  "tulsa-townfuss::food-recipes-chat": null, // Food & Recipes Chat
+  "tulsa-townfuss::introduce-yourself-chat": null, // Introduce Yourself Chat
 };
+
+// Topic-room AND town-room IDs can collide across editions (see the long
+// comment above MANUAL_CHAT_SPONSORS) — this combines the room's plain ID
+// with the CURRENT edition's own Firebase project ID so the lookup always
+// hits the right edition's entry, never another edition's.
+function manualSponsorKeyFor(roomId) {
+  return `${firebaseConfig.projectId}::${roomId}`;
+}
 // =========================================================================
 // END MANUAL CHAT ROOM SPONSOR BANNERS
 // =========================================================================
@@ -4937,7 +4971,7 @@ async function renderChatSponsorBanner(room) {
 
   // Manual override takes priority over the database-driven, self-service
   // flow below — see MANUAL_CHAT_SPONSORS' declaration comment above.
-  const manual = MANUAL_CHAT_SPONSORS[room.id];
+  const manual = MANUAL_CHAT_SPONSORS[manualSponsorKeyFor(room.id)];
   if (manual) {
     banner.className = "chatroom-sponsor-banner has-sponsor";
     banner.innerHTML = `
