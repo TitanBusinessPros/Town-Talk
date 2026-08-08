@@ -371,10 +371,10 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .about-card p { margin: 0; }
 .about-towns { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 1.25rem; }
 .about-town-chip { font-family: var(--font-mono); font-size: 0.78rem; background: var(--ink-700); color: var(--paper-050); padding: 0.3rem 0.7rem; border-radius: 999px; }
-.edition-picker { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+.edition-picker { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; margin-bottom: 1rem; }
 .edition-picker:empty { display: none; margin-bottom: 0; }
-.edition-picker-link { display: block; text-align: center; font-size: 0.85rem; font-weight: 600; background: var(--amber-500); color: #fff; padding: 0.6rem 1rem; border-radius: var(--radius-sm); text-decoration: none; }
-.edition-picker-link:hover { background: var(--amber-600); }
+.edition-picker-link { font-size: 0.85rem; font-weight: 600; color: var(--amber-500); text-decoration: none; }
+.edition-picker-link:hover { text-decoration: underline; }
 .about-feature-list { max-width: 640px; margin: 1.5rem auto 0; }
 .about-feature-list li { margin-bottom: 0.6rem; line-height: 1.6; }
 .about-cta { text-align: center; margin-top: 2.5rem; padding: 2rem 1.5rem; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); }
@@ -1511,7 +1511,7 @@ if (bannerSubEl) bannerSubEl.textContent = `${EDITION_NAME} · ${EDITION_REGION}
 const editionPickerEl = document.getElementById("edition-picker");
 if (editionPickerEl && OTHER_EDITIONS.length) {
   editionPickerEl.innerHTML = OTHER_EDITIONS.map((ed) =>
-    `<a href="${ed.url}" class="edition-picker-link">🆕 Now also serving the area around ${ed.name.replace(/ Edition$/, "")} — visit the ${ed.name} &rarr;</a>`
+    `<a href="${ed.url}" class="edition-picker-link">Enter ${ed.name.replace(/ Edition$/, "")} Town Fuss &rarr;</a>`
   ).join("");
 }
 
