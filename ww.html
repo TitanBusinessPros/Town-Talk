@@ -837,17 +837,29 @@ async function loadWynneLeaderboard() {
 // are simply 3 for a win, 0 for a loss.
 async function recordWynneStatsForGame(gameId, gameData) {
   const isP1 = gameData.player1Uid === currentUid;
-  const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
-  if (alreadyRecorded) return;
+  const recordedField = isP1 ? "p1StatsRecorded" : "p2StatsRecorded";
+  if (gameData[recordedField]) return;
   const won = gameData.winner === currentUid;
   try {
-    await updateDoc(doc(db, "wynneGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
-    const userSnap = await getDoc(doc(db, "users", currentUid));
-    const data = userSnap.exists() ? userSnap.data() : {};
-    await updateDoc(doc(db, "users", currentUid), {
-      wynneWarsPoints: (data.wynneWarsPoints || 0) + (won ? 3 : 0),
-      wynneWarsWins: (data.wynneWarsWins || 0) + (won ? 1 : 0),
-      wynneWarsLosses: (data.wynneWarsLosses || 0) + (won ? 0 : 1),
+    // Transaction, not two separate updateDoc calls — see chess.html's
+    // identical fix for why: the onSnapshot listener driving this can fire
+    // twice in quick succession for the same finished-game update before
+    // the recordedField write from the first call lands, double-counting
+    // the win/points. Confirmed as a real bug in this exact pattern via
+    // the Cribbage test suite 2026-08-08.
+    await runTransaction(db, async (tx) => {
+      const gameRef = doc(db, "wynneGames", gameId);
+      const gameSnap = await tx.get(gameRef);
+      if (!gameSnap.exists() || gameSnap.data()[recordedField]) return;
+      const userRef = doc(db, "users", currentUid);
+      const userSnap = await tx.get(userRef);
+      const data = userSnap.exists() ? userSnap.data() : {};
+      tx.update(userRef, {
+        wynneWarsPoints: (data.wynneWarsPoints || 0) + (won ? 3 : 0),
+        wynneWarsWins: (data.wynneWarsWins || 0) + (won ? 1 : 0),
+        wynneWarsLosses: (data.wynneWarsLosses || 0) + (won ? 0 : 1),
+      });
+      tx.update(gameRef, { [recordedField]: true });
     });
   } catch (err) {
     console.error("Couldn't record WynneWars stats:", err);

@@ -406,7 +406,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
-  collection, getDocs, query, where, writeBatch, connectFirestoreEmulator,
+  collection, getDocs, query, where, writeBatch, runTransaction, connectFirestoreEmulator,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // =========================================================================
@@ -1397,20 +1397,32 @@ document.getElementById('stack-resign-btn').addEventListener('click', () => resi
 // ============================= STATS / LEADERBOARD ==========================
 async function recordStackStatsForGame(gameId, gameData) {
   const isP1 = gameData.player1Uid === currentUid;
-  const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
-  if (alreadyRecorded) return;
+  const recordedField = isP1 ? "p1StatsRecorded" : "p2StatsRecorded";
+  if (gameData[recordedField]) return;
 
   const won = gameData.winner === currentUid;
   const pointsEarned = won ? 3 : 0;
 
   try {
-    await updateDoc(doc(db, "stackCheckersGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
-    const userSnap = await getDoc(doc(db, "users", currentUid));
-    const data = userSnap.exists() ? userSnap.data() : {};
-    await updateDoc(doc(db, "users", currentUid), {
-      stackCheckersPoints: (data.stackCheckersPoints || 0) + pointsEarned,
-      stackCheckersWins: (data.stackCheckersWins || 0) + (won ? 1 : 0),
-      stackCheckersLosses: (data.stackCheckersLosses || 0) + (won ? 0 : 1),
+    // Transaction, not two separate updateDoc calls — see chess.html's
+    // identical fix for why: the onSnapshot listener driving this can fire
+    // twice in quick succession for the same finished-game update before
+    // the recordedField write from the first call lands, double-counting
+    // the win/points. Confirmed as a real bug in this exact pattern via
+    // the Cribbage test suite 2026-08-08.
+    await runTransaction(db, async (tx) => {
+      const gameRef = doc(db, "stackCheckersGames", gameId);
+      const gameSnap = await tx.get(gameRef);
+      if (!gameSnap.exists() || gameSnap.data()[recordedField]) return;
+      const userRef = doc(db, "users", currentUid);
+      const userSnap = await tx.get(userRef);
+      const data = userSnap.exists() ? userSnap.data() : {};
+      tx.update(userRef, {
+        stackCheckersPoints: (data.stackCheckersPoints || 0) + pointsEarned,
+        stackCheckersWins: (data.stackCheckersWins || 0) + (won ? 1 : 0),
+        stackCheckersLosses: (data.stackCheckersLosses || 0) + (won ? 0 : 1),
+      });
+      tx.update(gameRef, { [recordedField]: true });
     });
   } catch (err) {
     console.error("Couldn't record Stacking Checkers stats:", err);

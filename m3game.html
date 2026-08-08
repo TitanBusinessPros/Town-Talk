@@ -2204,18 +2204,34 @@ async function scoreCribAndAdvance(gameId, data) {
 
 async function maybeRecordCribbageStats(gameId, data) {
   const isP1 = currentUid === data.player1Uid;
-  const alreadyRecorded = isP1 ? data.p1StatsRecorded : data.p2StatsRecorded;
-  if (alreadyRecorded || data.status !== "finished") return;
+  const recordedField = isP1 ? "p1StatsRecorded" : "p2StatsRecorded";
+  if (data[recordedField] || data.status !== "finished") return;
   const won = data.winner === currentUid;
   try {
-    const userSnap = await getDoc(doc(db, "users", currentUid));
-    const u = userSnap.exists() ? userSnap.data() : {};
-    await updateDoc(doc(db, "users", currentUid), {
-      cribbagePoints: (u.cribbagePoints || 0) + (won ? 3 : 0),
-      cribbageWins: (u.cribbageWins || 0) + (won ? 1 : 0),
-      cribbageLosses: (u.cribbageLosses || 0) + (won ? 0 : 1),
+    // Read-check-write on two separate documents (game + user), not wrapped
+    // in a transaction — the onSnapshot listener driving this can legally
+    // fire twice in quick succession for the same update (e.g. once from
+    // local cache, once server-confirmed) before the recordedField write
+    // from the first call lands, so both calls would see it as false and
+    // double-count the win/points. Confirmed live via the test suite
+    // 2026-08-08: cribbageWins landed at 2 instead of 1 for a single game.
+    // A transaction makes the whole check-read-write atomic: Firestore
+    // retries automatically if two transactions race on the same game doc,
+    // and the retry sees recordedField already true and bails out cleanly.
+    await runTransaction(db, async (tx) => {
+      const gameRef = doc(db, "cribbageGames", gameId);
+      const gameSnap = await tx.get(gameRef);
+      if (!gameSnap.exists() || gameSnap.data()[recordedField]) return;
+      const userRef = doc(db, "users", currentUid);
+      const userSnap = await tx.get(userRef);
+      const u = userSnap.exists() ? userSnap.data() : {};
+      tx.update(userRef, {
+        cribbagePoints: (u.cribbagePoints || 0) + (won ? 3 : 0),
+        cribbageWins: (u.cribbageWins || 0) + (won ? 1 : 0),
+        cribbageLosses: (u.cribbageLosses || 0) + (won ? 0 : 1),
+      });
+      tx.update(gameRef, { [recordedField]: true });
     });
-    await updateDoc(doc(db, "cribbageGames", gameId), { [isP1 ? "p1StatsRecorded" : "p2StatsRecorded"]: true });
   } catch (err) {
     console.error("Couldn't record Cribbage stats:", err);
   }

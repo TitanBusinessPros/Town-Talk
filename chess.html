@@ -1587,22 +1587,38 @@ function updateGameStatus() {
 // player even if this listener fires again later (e.g. on reload).
 async function recordStatsForGame(gameId, gameData) {
   const isP1 = gameData.player1Uid === currentUid;
-  const alreadyRecorded = isP1 ? gameData.p1StatsRecorded : gameData.p2StatsRecorded;
-  if (alreadyRecorded) return;
+  const recordedField = isP1 ? "p1StatsRecorded" : "p2StatsRecorded";
+  if (gameData[recordedField]) return;
 
   const won = gameData.winner === currentUid;
   const draw = gameData.winner === "draw";
   const pointsEarned = won ? 3 : draw ? 1 : 0;
 
   try {
-    await updateDoc(doc(db, "chessGames", gameId), isP1 ? { p1StatsRecorded: true } : { p2StatsRecorded: true });
-    const userSnap = await getDoc(doc(db, "users", currentUid));
-    const data = userSnap.exists() ? userSnap.data() : {};
-    await updateDoc(doc(db, "users", currentUid), {
-      chessPoints: (data.chessPoints || 0) + pointsEarned,
-      chessWins: (data.chessWins || 0) + (won ? 1 : 0),
-      chessLosses: (data.chessLosses || 0) + (!won && !draw ? 1 : 0),
-      chessDraws: (data.chessDraws || 0) + (draw ? 1 : 0),
+    // Transaction, not two separate updateDoc calls: the onSnapshot
+    // listener driving this can legally fire twice in quick succession for
+    // the same finished-game update (e.g. once from local cache, once
+    // server-confirmed) before the recordedField write from the first call
+    // lands — both calls would then see the passed-in gameData as
+    // not-yet-recorded and double-count the win/points. Confirmed as a
+    // real bug in this exact pattern via the Cribbage test suite
+    // 2026-08-08 (cribbageWins landed at 2 instead of 1). Firestore retries
+    // a transaction automatically if two of them race on the same game
+    // doc, and the retry sees recordedField already true and bails out.
+    await runTransaction(db, async (tx) => {
+      const gameRef = doc(db, "chessGames", gameId);
+      const gameSnap = await tx.get(gameRef);
+      if (!gameSnap.exists() || gameSnap.data()[recordedField]) return;
+      const userRef = doc(db, "users", currentUid);
+      const userSnap = await tx.get(userRef);
+      const data = userSnap.exists() ? userSnap.data() : {};
+      tx.update(userRef, {
+        chessPoints: (data.chessPoints || 0) + pointsEarned,
+        chessWins: (data.chessWins || 0) + (won ? 1 : 0),
+        chessLosses: (data.chessLosses || 0) + (!won && !draw ? 1 : 0),
+        chessDraws: (data.chessDraws || 0) + (draw ? 1 : 0),
+      });
+      tx.update(gameRef, { [recordedField]: true });
     });
   } catch (err) {
     console.error("Couldn't record chess stats:", err);
