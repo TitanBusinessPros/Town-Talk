@@ -487,7 +487,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       </div>
       <div class="view-header">
         <p class="eyebrow">Pauls Valley · Oklahoma</p>
-        <h1>Sign in to your account</h1>
+        <h1>Sign in to your Pauls Valley account</h1>
         <p>Create a free account with your email. Your profile stays private until our admin team reviews and approves it.</p>
         <p><a href="#" id="landing-why-link">New here? See why Town Fuss is different &rarr;</a></p>
       </div>
@@ -1657,7 +1657,15 @@ async function enableNotifications() {
     showMessage(msg, "Notifications turned on for this device.", "success");
     return true;
   } catch (err) {
-    showMessage(msg, `Couldn't turn on notifications: ${err.message}`, "error");
+    // Firestore rules only allow notificationsEnabled/fcmTokens once the
+    // profile is approved (same "no platform access before approval"
+    // policy as everything else) — never show that as a raw permission
+    // error to someone who hasn't been approved yet.
+    if (err.code === "permission-denied") {
+      showMessage(msg, "Notifications will be available once your profile is approved by an admin.", "error");
+    } else {
+      showMessage(msg, `Couldn't turn on notifications: ${err.message}`, "error");
+    }
     return false;
   }
 }
@@ -1668,7 +1676,11 @@ async function disableNotifications() {
     await updateDoc(doc(db, "users", currentUid), { notificationsEnabled: false });
     showMessage(msg, "Notifications turned off.", "success");
   } catch (err) {
-    showMessage(msg, err.message, "error");
+    if (err.code === "permission-denied") {
+      showMessage(msg, "Notifications will be available once your profile is approved by an admin.", "error");
+    } else {
+      showMessage(msg, err.message, "error");
+    }
   }
 }
 
@@ -1680,9 +1692,18 @@ function renderNotifToggle(data) {
   const enabled = !!(data && data.notificationsEnabled);
   checkbox.checked = enabled;
   label.textContent = enabled ? "Notifications on" : "Notifications off";
-  hint.textContent = enabled
-    ? "You'll get an alert for a first message and for game invites from friends."
-    : "";
+  // Firestore rules gate notificationsEnabled/fcmTokens on approval — tell
+  // people that up front instead of letting them find out by clicking the
+  // toggle and hitting a permission error.
+  if (!data?.approved) {
+    checkbox.disabled = true;
+    hint.textContent = "Available once your profile is approved by an admin.";
+  } else {
+    checkbox.disabled = false;
+    hint.textContent = enabled
+      ? "You'll get an alert for a first message and for game invites from friends."
+      : "";
+  }
 }
 
 document.getElementById("notif-toggle-checkbox").addEventListener("change", async (e) => {
@@ -1955,6 +1976,7 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     currentUid = null;
     isAdminUser = false;
+    profileFormPopulated = false;
     document.getElementById("nav-admin").style.display = "none";
     if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
     if (unsubscribeMessageLimit) { unsubscribeMessageLimit(); unsubscribeMessageLimit = null; }
@@ -2461,21 +2483,29 @@ async function flagForReview() {
   }
 }
 
+// renderDashboard() re-runs on EVERY Firestore snapshot for this doc — not
+// just the first one after sign-in — including the 60s presence-heartbeat
+// write (updateLastActive) hitting this same doc. display-name/neighborhood/
+// post-text are the user's own in-progress draft; nothing else ever writes
+// them, so there's no reason to keep re-syncing them from the server after
+// the first load. Only populate them ONCE per sign-in, reset on sign-out.
+// A focus-based guard used to be here instead ("don't overwrite whichever
+// field currently has focus"), but that only protects ONE field at a time —
+// moving focus to something completely unrelated (e.g. the Notifications
+// toggle) left the other two unprotected for the next heartbeat tick,
+// wiping out unsaved edits and forcing a full re-fill. Confirmed live on
+// Tulsa 2026-08-08.
+let profileFormPopulated = false;
+
 function renderDashboard(data) {
   currentUserData = data;
   const profile = data.profile || {};
-  // Same "don't stomp on what they're actively typing" guard as post-text
-  // below. renderDashboard() re-runs on every Firestore snapshot — not
-  // just the first one — including the watchUserDoc() self-heal path that
-  // recreates a blank doc if a read ever raced ahead of the just-written
-  // signup doc. Without this guard, that (or any other) mid-typing
-  // snapshot would blank out a name/town the person hadn't saved yet,
-  // which is exactly the "keeps erasing my profile" symptom reported
-  // right after signing up.
   const nameEl = document.getElementById("display-name");
-  if (document.activeElement !== nameEl) nameEl.value = profile.name ?? "";
   const neighborhoodEl = document.getElementById("neighborhood");
-  if (document.activeElement !== neighborhoodEl) neighborhoodEl.value = profile.neighborhood ?? "";
+  if (!profileFormPopulated) {
+    nameEl.value = profile.name ?? "";
+    neighborhoodEl.value = profile.neighborhood ?? "";
+  }
 
   const badge = document.getElementById("post-status-badge");
   const lock = editLockInfo(data);
@@ -2492,10 +2522,11 @@ function renderDashboard(data) {
   }
 
   const postTextEl = document.getElementById("post-text");
-  if (document.activeElement !== postTextEl) {
+  if (!profileFormPopulated) {
     postTextEl.value = data.postText || "";
     updateWordCount();
   }
+  profileFormPopulated = true;
 
   renderImageSlots(data.images || []);
   currentImages = data.images || [];

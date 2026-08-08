@@ -222,8 +222,19 @@ function main() {
   copyDirExcept(REPO_ROOT, BUILD_DIR, skip, skipFilePattern);
 
   const indexPath = path.join(BUILD_DIR, "index.html");
-  let indexContent = swapIndexHtmlConfig(fs.readFileSync(indexPath, "utf8"), edition);
-  indexContent = swapMarketingCopy(indexContent, edition);
+  // swapMarketingCopy MUST run before swapIndexHtmlConfig: it does a blind
+  // global replace of the literal text "Pauls Valley", and
+  // swapIndexHtmlConfig's own output (the OTHER_EDITIONS array) contains
+  // the literal string "Pauls Valley Edition" for every edition that
+  // links back to production. Running marketing-copy-swap second corrupted
+  // that link's label into the current edition's own name (e.g. Eufaula
+  // Lake's picker read "Enter Eufaula Lake Town Fuss" instead of "Enter
+  // Pauls Valley Town Fuss", pointing at production) — confirmed live on
+  // both Eufaula Lake and Tulsa 2026-08-08. Running it first means it only
+  // ever touches the original page's actual prose (title, meta tags, hero
+  // text, footer), never the freshly-generated config block.
+  let indexContent = swapMarketingCopy(fs.readFileSync(indexPath, "utf8"), edition);
+  indexContent = swapIndexHtmlConfig(indexContent, edition);
   indexContent = swapVapidKey(indexContent, edition);
   fs.writeFileSync(indexPath, indexContent, "utf8");
   if (!edition.vapidKey) {
