@@ -135,6 +135,10 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 
   <main class="page">
 
+    <div id="page-loading" class="uicard" style="text-align:center;">
+      <p>Loading…</p>
+    </div>
+
     <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
       <h2>Sign in on Town Fuss first</h2>
       <p>You need a Town Fuss account to play Classic Pong and appear on the leaderboard.</p>
@@ -584,12 +588,14 @@ onAuthStateChanged(auth, async (user) => {
   }
   if (!user) {
     document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("page-loading").style.display = "none";
     document.getElementById("app-content").style.display = "none";
     document.getElementById("not-approved-notice").style.display = "none";
     return;
   }
   currentUid = user.uid;
   document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("page-loading").style.display = "none";
 
   // Being signed in was the only gate here before — the game itself (vs
   // Computer and 2 Player Challenge) is 100% client-side and never touches

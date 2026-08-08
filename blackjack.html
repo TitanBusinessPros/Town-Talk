@@ -91,6 +91,10 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 
 <main class="page">
 
+  <div id="page-loading" class="card" style="text-align:center;">
+    <p>Loading…</p>
+  </div>
+
   <div id="signed-out-notice" class="card" style="display:none; text-align:center;">
     <h2>Sign in on Town Fuss first</h2>
     <p>You need a Town Fuss account to play Blackjack with other members.</p>
@@ -468,12 +472,14 @@ onAuthStateChanged(auth, async (user) => {
   }
   if (!user) {
     document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("page-loading").style.display = "none";
     document.getElementById("app-content").style.display = "none";
     document.getElementById("not-approved-notice").style.display = "none";
     return;
   }
   currentUid = user.uid;
   document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("page-loading").style.display = "none";
 
   const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
   if (snap && snap.exists()) {

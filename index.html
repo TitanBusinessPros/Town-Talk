@@ -1874,6 +1874,19 @@ document.getElementById("beta-banner-dismiss").addEventListener("click", () => {
 });
 
 onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    // Same grace period as every game page's onAuthStateChanged: Firebase
+    // Auth can fire this listener once with a stale/empty state while it's
+    // still restoring a just-existing session on a fresh page load (e.g.
+    // navigating back to index.html from a game page), before the real user
+    // comes through. Without this, that transient null flips the nav to
+    // "signed out" and shows the landing view for ~1-2 seconds before the
+    // real callback fires and flips everything back — a visible
+    // sign-out/sign-in flash that isn't a real sign-out at all. Confirmed
+    // live 2026-08-07 via the "back to Town Fuss" link on a game page.
+    await new Promise((r) => setTimeout(r, 1200));
+    user = auth.currentUser;
+  }
   document.getElementById("nav-dashboard").style.display = user ? "inline" : "none";
   updateProtectedNavVisibility(user);
   document.getElementById("nav-logout").style.display = user ? "inline" : "none";
@@ -3759,7 +3772,11 @@ function watchConversations() {
       }
     });
   }, (err) => {
-    empty.textContent = `Couldn't load conversations: ${err.message}`;
+    // Never surface the raw Firestore error (e.g. a "requires an index" link)
+    // to users — log it for debugging and show the same friendly copy as the
+    // genuinely-empty case so the platform still reads as working.
+    console.error("Couldn't load conversations:", err);
+    empty.textContent = "No conversations yet — message someone from the feed to get started.";
     empty.style.display = "block";
   });
 }
