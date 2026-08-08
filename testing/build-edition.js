@@ -44,6 +44,14 @@ const EDITIONS = {
       messagingSenderId: "825364437058",
       appId: "1:825364437058:web:12a32229ae30acf3e435db",
     },
+    // Web Push certificate key pair — generated per-project in Firebase
+    // Console (Project Settings -> Cloud Messaging -> Web Push
+    // certificates -> generate key pair). There is no API to create or
+    // read this; it's a one-time manual step for every new edition. Until
+    // it's set to a real value here, push notifications on this edition
+    // fail with "messaging/token-subscribe-failed" — confirmed live on
+    // Eufaula Lake 2026-08-07.
+    vapidKey: null,
     otherEditions: [
       { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
     ],
@@ -120,6 +128,31 @@ function swapSimpleFirebaseConfig(content, edition, fileLabel) {
   return content.replace(re, newBlock);
 }
 
+// FCM_VAPID_KEY is tied to the Firebase project the same way firebaseConfig
+// is, but it lives in its own constant further down index.html (added after
+// push notifications shipped, post-dating the EDITION CONFIGURATION block).
+// Missed entirely on Eufaula Lake's first build — confirmed live 2026-08-07
+// as "messaging/token-subscribe-failed" when a real user tried to turn
+// notifications on.
+function swapVapidKey(content, edition) {
+  if (!edition.vapidKey) return content; // no key generated yet for this edition — leave production's in place rather than write a guaranteed-broken empty string
+  const re = /const FCM_VAPID_KEY = "[^"]*";/;
+  if (!re.test(content)) throw new Error("Could not find FCM_VAPID_KEY to replace in index.html");
+  return content.replace(re, `const FCM_VAPID_KEY = "${edition.vapidKey}";`);
+}
+
+// firebase-messaging-sw.js is a THIRD place carrying its own hardcoded
+// firebaseConfig (service workers can't share index.html's JS scope) — same
+// bug class as the 22 game files, just easier to miss since it's not a
+// .html file. Its config uses the compat SDK's plain-object literal, same
+// shape as the modular one, so the same formatter works.
+function swapServiceWorkerConfig(content, edition) {
+  const newBlock = `firebase.initializeApp({\n${formatFirebaseConfig(edition.firebaseConfig)}\n});`;
+  const re = /firebase\.initializeApp\(\{[\s\S]*?\}\);/;
+  if (!re.test(content)) throw new Error("Could not find firebase.initializeApp block to replace in firebase-messaging-sw.js");
+  return content.replace(re, newBlock);
+}
+
 function copyDirExcept(src, dest, skipNames) {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
@@ -150,7 +183,14 @@ function main() {
   const indexPath = path.join(BUILD_DIR, "index.html");
   let indexContent = swapIndexHtmlConfig(fs.readFileSync(indexPath, "utf8"), edition);
   indexContent = swapMarketingCopy(indexContent, edition);
+  indexContent = swapVapidKey(indexContent, edition);
   fs.writeFileSync(indexPath, indexContent, "utf8");
+  if (!edition.vapidKey) {
+    console.warn(`WARNING: no vapidKey set for ${editionId} — push notifications on this edition will keep failing with messaging/token-subscribe-failed until one is generated in that project's Firebase Console (Project Settings -> Cloud Messaging -> Web Push certificates) and added to EDITIONS in this file.`);
+  }
+
+  const swPath = path.join(BUILD_DIR, "firebase-messaging-sw.js");
+  fs.writeFileSync(swPath, swapServiceWorkerConfig(fs.readFileSync(swPath, "utf8"), edition), "utf8");
 
   // Every other page that has its own firebaseConfig (all 22 solo/2-player
   // game pages plus the game-hub page) — each is its own separate script
