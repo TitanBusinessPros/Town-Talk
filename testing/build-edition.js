@@ -51,7 +51,7 @@ const EDITIONS = {
     // it's set to a real value here, push notifications on this edition
     // fail with "messaging/token-subscribe-failed" — confirmed live on
     // Eufaula Lake 2026-08-07.
-    vapidKey: null,
+    vapidKey: "BJfarbE3nY-ex5avq1iE4kVaMs1jTvBIVtjckkr8-g_p2Q05e8ccuOPhvpUTua0WWusvy-zNPk23amCI_38ysbs",
     otherEditions: [
       { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
     ],
