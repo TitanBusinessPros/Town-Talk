@@ -153,14 +153,15 @@ function swapServiceWorkerConfig(content, edition) {
   return content.replace(re, newBlock);
 }
 
-function copyDirExcept(src, dest, skipNames) {
+function copyDirExcept(src, dest, skipNames, skipFilePattern) {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
     if (skipNames.has(entry.name)) continue;
+    if (skipFilePattern && !entry.isDirectory() && skipFilePattern.test(entry.name)) continue;
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
     if (entry.isDirectory()) {
-      copyDirExcept(srcPath, destPath, new Set());
+      copyDirExcept(srcPath, destPath, new Set(), skipFilePattern);
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
@@ -177,8 +178,14 @@ function main() {
   const edition = EDITIONS[editionId];
 
   if (fs.existsSync(BUILD_DIR)) fs.rmSync(BUILD_DIR, { recursive: true, force: true });
+  // *-debug.log: local emulator logs that land in the repo root while
+  // testing (gitignored, never committed) but were still getting swept into
+  // the deployed build since copyDirExcept only skips directories by name —
+  // confirmed live 2026-08-07: firestore-debug.log/pubsub-debug.log were
+  // both publicly downloadable at eufaula-lake.web.app.
   const skip = new Set(["node_modules", ".git", "build", "testing", ".firebase"]);
-  copyDirExcept(REPO_ROOT, BUILD_DIR, skip);
+  const skipFilePattern = /-debug\.log$/;
+  copyDirExcept(REPO_ROOT, BUILD_DIR, skip, skipFilePattern);
 
   const indexPath = path.join(BUILD_DIR, "index.html");
   let indexContent = swapIndexHtmlConfig(fs.readFileSync(indexPath, "utf8"), edition);
