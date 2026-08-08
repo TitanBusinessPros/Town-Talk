@@ -4726,6 +4726,36 @@ const CHAT_ROOMS = [
   ...TOPIC_CHAT_ROOMS,
 ];
 
+// =========================================================================
+// MANUAL CHAT ROOM SPONSOR BANNERS — edit this by hand any time you want to
+// put a logo + company name at the top of a chat room WITHOUT going through
+// the self-service Sponsor a Chat Room flow (upload, payment, admin
+// approval queue). An entry here shows immediately and takes priority over
+// anything in the "chatSponsors" database, no approval step needed.
+//
+// Add one line per sponsored room, keyed by the room's ID (see CHAT_ROOMS
+// above for the exact ID — it's the town name lowercased with spaces
+// turned into hyphens, plus "-chat", e.g. "tulsa-chat", "eufaula-chat").
+//
+// logoUrl: paste a GitHub image link here. Use the RAW image URL, not the
+// regular github.com page URL you see when browsing a repo — those show an
+// HTML page, not the image itself, and won't render. To get the raw URL:
+// open the image file on github.com, click "Download" (or right-click the
+// preview and "Copy image address"), or hand-build one as
+// https://raw.githubusercontent.com/<user>/<repo>/<branch>/<path-to-file>.
+//
+// Example (delete the comment slashes to activate):
+// const MANUAL_CHAT_SPONSORS = {
+//   "tulsa-chat": {
+//     logoUrl: "https://raw.githubusercontent.com/yourname/yourrepo/main/logo.png",
+//     companyName: "Example Business",
+//   },
+// };
+const MANUAL_CHAT_SPONSORS = {};
+// =========================================================================
+// END MANUAL CHAT ROOM SPONSOR BANNERS
+// =========================================================================
+
 let currentChatLimit = { day: 0, count: 0 };
 let unsubscribeChatLimit = null;
 
@@ -4837,6 +4867,21 @@ function openReactionNotification(clickAction) {
 async function renderChatSponsorBanner(room) {
   const banner = document.getElementById("chatroom-sponsor-banner");
   banner.style.display = "none";
+
+  // Manual override takes priority over the database-driven, self-service
+  // flow below — see MANUAL_CHAT_SPONSORS' declaration comment above.
+  const manual = MANUAL_CHAT_SPONSORS[room.id];
+  if (manual) {
+    banner.className = "chatroom-sponsor-banner has-sponsor";
+    banner.innerHTML = `
+      <img src="${manual.logoUrl}" alt="${escapeHtml(manual.companyName)} logo" />
+      <span>This chat room is sponsored by <strong>${escapeHtml(manual.companyName)}</strong></span>
+    `;
+    banner.onclick = null;
+    banner.style.display = "flex";
+    return;
+  }
+
   const snap = await getDoc(doc(db, "chatSponsors", room.id)).catch(() => null);
   const data = snap && snap.exists() ? snap.data() : null;
   const expiresMs = data?.expiresAt ? (data.expiresAt.seconds ? data.expiresAt.seconds * 1000 : 0) : 0;
