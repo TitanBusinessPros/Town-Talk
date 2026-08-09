@@ -55,6 +55,8 @@ const EDITIONS = {
     otherEditions: [
       { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
       { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+      { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
+      { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
     ],
   },
   "tulsa-townfuss": {
@@ -88,6 +90,72 @@ const EDITIONS = {
     otherEditions: [
       { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
       { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+      { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
+      { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+    ],
+  },
+  "edmond-townfuss": {
+    editionName: "Edmond Edition",
+    shortName: "Edmond",
+    editionRegion: "Oklahoma",
+    homeTown: "Edmond",
+    // Town list as given directly by the user (2026-08-09) — not
+    // independently re-derived via distance/population this time, since
+    // the request already specified the exact 16 towns to use.
+    towns: [
+      "Edmond", "Guthrie", "Luther", "Cashion", "Crescent", "Kingfisher",
+      "Langston", "Piedmont", "Wellston", "Jones", "Nichols Hills",
+      "Forest Park", "Spencer", "Bethany", "Arcadia", "Choctaw",
+    ],
+    firebaseConfig: {
+      apiKey: "AIzaSyBtr7np4GIBc4VoXOSi3j5nj44qkqnTwsU",
+      authDomain: "edmond-townfuss.firebaseapp.com",
+      projectId: "edmond-townfuss",
+      storageBucket: "edmond-townfuss.firebasestorage.app",
+      messagingSenderId: "1010429464536",
+      appId: "1:1010429464536:web:8f971c747742e45c68ecad",
+    },
+    // Same one-time manual step as every other edition — see the
+    // eufaula-lake entry's comment above.
+    vapidKey: "BH7AKguKV-1ineKG4-GHJ2heNOWRuJp0toF4R_ATzvyRz4bvgspMRoecuQDCdbHmLjHyNxelMssXF41I436ZQU8",
+    otherEditions: [
+      { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+      { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+      { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+      { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+    ],
+  },
+  "okc-townfuss": {
+    editionName: "Oklahoma City Edition",
+    shortName: "Oklahoma City",
+    editionRegion: "Oklahoma",
+    homeTown: "Oklahoma City",
+    // Town/district list as given directly by the user (2026-08-09) —
+    // includes several OKC-internal districts/neighborhoods (Bricktown,
+    // South/North/Central/West/East OKC) that aren't separately
+    // incorporated towns, used anyway per explicit instruction for
+    // hyper-local chat rooms within the city itself.
+    towns: [
+      "Oklahoma City", "Del City", "Midwest City", "Valley Brook", "Moore",
+      "Mustang", "Bricktown", "South OKC", "North OKC", "Central OKC",
+      "West OKC", "East OKC", "Yukon", "Union City", "El Reno", "Okarche",
+    ],
+    firebaseConfig: {
+      apiKey: "AIzaSyCuqGQpiifP7yjBNe5FVlORSNkUgianTI8",
+      authDomain: "okc-townfuss.firebaseapp.com",
+      projectId: "okc-townfuss",
+      storageBucket: "okc-townfuss.firebasestorage.app",
+      messagingSenderId: "1089534300505",
+      appId: "1:1089534300505:web:f6fcfa376278e7dd2c3c48",
+    },
+    // Same one-time manual step as every other edition — see the
+    // eufaula-lake entry's comment above.
+    vapidKey: "BLHlLuGEgucNfW6Brrpe73RrZj8A5TLM1K0zYoT6VcSgEHRrmWBOJVVp0d741fHk3sokyg1IWAUWX24pM3TZY98",
+    otherEditions: [
+      { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+      { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+      { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+      { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
     ],
   },
 };
