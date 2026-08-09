@@ -2387,7 +2387,15 @@ document.getElementById("google-signin-btn").addEventListener("click", async () 
     await setDocWithRetry(userRef, {
       createdAt: serverTimestamp(),
       email: (cred.user.email || "").toLowerCase(),
-      profile: { name: cred.user.displayName || "", neighborhood: "" },
+      // Never pre-fill with cred.user.displayName — that's the person's REAL
+      // name from their actual Google account, not a name they chose to
+      // show publicly. The email/password signup form starts this blank on
+      // purpose, forcing a deliberate choice of what to be known as here;
+      // Google Sign-In was silently skipping that choice and defaulting
+      // straight to their real name, which then showed on every chat room
+      // post and profile card. Confirmed a real privacy leak live on
+      // Oklahoma City 2026-08-09.
+      profile: { name: "", neighborhood: "" },
       postText: "",
       postWordCount: 0,
       approved: false,
