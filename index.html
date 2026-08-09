@@ -4733,117 +4733,333 @@ const CHAT_ROOMS = [
 // approval queue). An entry here shows immediately and takes priority over
 // anything in the "chatSponsors" database, no approval step needed.
 //
-// Add one line per sponsored room, keyed as "<firebase-project-id>::<room
-// id>" — see CHAT_ROOMS above for the room ID itself (town name lowercased
-// with spaces turned into hyphens, plus "-chat"; topic rooms use their own
-// fixed ID, e.g. "singles-chat"). The project-id prefix matters: this one
-// file is shared by all three editions, and several room IDs are IDENTICAL
-// across editions — every topic room (singles-chat, music-chat, etc.) uses
-// the exact same ID on every edition, and Coweta is a town on both Eufaula
-// Lake's and Tulsa's lists — so without the prefix, filling in one
-// edition's "singles-chat" would make that same banner show up on every
-// OTHER edition's "singles-chat" room too, since they'd share the exact
-// same object key. The prefix keeps every edition's rooms independent.
+// EVERY room on every edition already has an entry below — just fill in
+// the two blank fields for whichever room you want to sponsor:
+//   logoUrl:      paste a GitHub image link between the quotes.
+//   companyName:  type the business/company name between the quotes.
+// Leave a room untouched (both fields blank) and it shows no banner.
 //
-// logoUrl: paste a GitHub image link here. Use the RAW image URL, not the
-// regular github.com page URL you see when browsing a repo — those show an
-// HTML page, not the image itself, and won't render. To get the raw URL:
-// open the image file on github.com, click "Download" (or right-click the
-// preview and "Copy image address"), or hand-build one as
+// logoUrl must be the RAW image URL, not the regular github.com page URL
+// you see when browsing a repo — that one shows an HTML page, not the
+// image itself, and won't render. To get the raw URL: open the image file
+// on github.com, click "Download" (or right-click the preview and "Copy
+// image address"), or hand-build one as
 // https://raw.githubusercontent.com/<user>/<repo>/<branch>/<path-to-file>.
 //
-// One placeholder line below for every chat room on every edition. Each
-// starts as "null", meaning no manual banner — replace null with an object
-// to activate it:
+// Example, filled in:
 //   "tulsa-townfuss::tulsa-chat": {
 //     logoUrl: "https://raw.githubusercontent.com/yourname/yourrepo/main/logo.png",
 //     companyName: "Example Business",
 //   },
 //
-// If a new edition or a new town is ever added, add its rooms here too
-// (ask Claude to do this as part of standing up the new edition) — the
-// prefix for a new edition is that edition's Firebase project ID.
+// Each key is "<firebase-project-id>::<room-id>" — the project-id prefix
+// matters because this one file is shared by all three editions, and some
+// room IDs repeat across editions (every topic room like "singles-chat"
+// uses the same ID everywhere, and Coweta is a town on both Eufaula
+// Lake's and Tulsa's lists) — without the prefix, filling in one edition's
+// room would make that banner show up on every other edition's
+// identically-ID'd room too. The prefix keeps every edition independent.
+//
+// If a new edition or a new town is ever added later, add its rooms here
+// too (ask Claude to do this as part of standing up the new edition) —
+// the prefix for a new edition is that edition's Firebase project ID.
 const MANUAL_CHAT_SPONSORS = {
   // ===== Pauls Valley Edition (www.townfuss.com) — project: town-talk-87ff7 =====
-  "town-talk-87ff7::wynnewood-chat": null, // Wynnewood
-  "town-talk-87ff7::pauls-valley-chat": null, // Pauls Valley
-  "town-talk-87ff7::elmore-city-chat": null, // Elmore City
-  "town-talk-87ff7::davis-chat": null, // Davis
-  "town-talk-87ff7::sulphur-chat": null, // Sulphur
-  "town-talk-87ff7::paoli-chat": null, // Paoli
-  "town-talk-87ff7::whitebead-chat": null, // Whitebead
-  "town-talk-87ff7::maysville-chat": null, // Maysville
-  "town-talk-87ff7::katie-chat": null, // Katie
-  "town-talk-87ff7::stratford-chat": null, // Stratford
-  "town-talk-87ff7::lindsay-chat": null, // Lindsay
-  "town-talk-87ff7::roff-chat": null, // Roff
-  "town-talk-87ff7::wanette-chat": null, // Wanette
-  "town-talk-87ff7::wayne-chat": null, // Wayne
-  "town-talk-87ff7::purcell-chat": null, // Purcell
-  "town-talk-87ff7::marlow-chat": null, // Marlow
+  "town-talk-87ff7::wynnewood-chat": { // Wynnewood
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::pauls-valley-chat": { // Pauls Valley
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::elmore-city-chat": { // Elmore City
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::davis-chat": { // Davis
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::sulphur-chat": { // Sulphur
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::paoli-chat": { // Paoli
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::whitebead-chat": { // Whitebead
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::maysville-chat": { // Maysville
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::katie-chat": { // Katie
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::stratford-chat": { // Stratford
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::lindsay-chat": { // Lindsay
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::roff-chat": { // Roff
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::wanette-chat": { // Wanette
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::wayne-chat": { // Wayne
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::purcell-chat": { // Purcell
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::marlow-chat": { // Marlow
+    logoUrl: "",
+    companyName: "",
+  },
   // Topic rooms — Pauls Valley Edition
-  "town-talk-87ff7::singles-chat": null, // Singles Chat
-  "town-talk-87ff7::music-chat": null, // Music Chat
-  "town-talk-87ff7::events-chat": null, // Events Chat
-  "town-talk-87ff7::rants-raves-chat": null, // Rants & Raves Chat
-  "town-talk-87ff7::local-jobs-chat": null, // Local Jobs Chat
-  "town-talk-87ff7::helping-hands-chat": null, // Helping Hands Chat
-  "town-talk-87ff7::food-recipes-chat": null, // Food & Recipes Chat
-  "town-talk-87ff7::introduce-yourself-chat": null, // Introduce Yourself Chat
+  "town-talk-87ff7::singles-chat": { // Singles Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::music-chat": { // Music Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::events-chat": { // Events Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::rants-raves-chat": { // Rants & Raves Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::local-jobs-chat": { // Local Jobs Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::helping-hands-chat": { // Helping Hands Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::food-recipes-chat": { // Food & Recipes Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "town-talk-87ff7::introduce-yourself-chat": { // Introduce Yourself Chat
+    logoUrl: "",
+    companyName: "",
+  },
 
   // ===== Eufaula Lake Edition (eufaula.townfuss.com) — project: eufaula-lake =====
-  "eufaula-lake::eufaula-chat": null, // Eufaula
-  "eufaula-lake::checotah-chat": null, // Checotah
-  "eufaula-lake::warner-chat": null, // Warner
-  "eufaula-lake::henryetta-chat": null, // Henryetta
-  "eufaula-lake::krebs-chat": null, // Krebs
-  "eufaula-lake::stigler-chat": null, // Stigler
-  "eufaula-lake::mcalester-chat": null, // McAlester
-  "eufaula-lake::morris-chat": null, // Morris
-  "eufaula-lake::hartshorne-chat": null, // Hartshorne
-  "eufaula-lake::okmulgee-chat": null, // Okmulgee
-  "eufaula-lake::muskogee-chat": null, // Muskogee
-  "eufaula-lake::haskell-chat": null, // Haskell
-  "eufaula-lake::wetumka-chat": null, // Wetumka
-  "eufaula-lake::longtown-chat": null, // Longtown
-  "eufaula-lake::texanna-chat": null, // Texanna
-  "eufaula-lake::coweta-chat": null, // Coweta
+  "eufaula-lake::eufaula-chat": { // Eufaula
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::checotah-chat": { // Checotah
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::warner-chat": { // Warner
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::henryetta-chat": { // Henryetta
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::krebs-chat": { // Krebs
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::stigler-chat": { // Stigler
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::mcalester-chat": { // McAlester
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::morris-chat": { // Morris
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::hartshorne-chat": { // Hartshorne
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::okmulgee-chat": { // Okmulgee
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::muskogee-chat": { // Muskogee
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::haskell-chat": { // Haskell
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::wetumka-chat": { // Wetumka
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::longtown-chat": { // Longtown
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::texanna-chat": { // Texanna
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::coweta-chat": { // Coweta
+    logoUrl: "",
+    companyName: "",
+  },
   // Topic rooms — Eufaula Lake Edition
-  "eufaula-lake::singles-chat": null, // Singles Chat
-  "eufaula-lake::music-chat": null, // Music Chat
-  "eufaula-lake::events-chat": null, // Events Chat
-  "eufaula-lake::rants-raves-chat": null, // Rants & Raves Chat
-  "eufaula-lake::local-jobs-chat": null, // Local Jobs Chat
-  "eufaula-lake::helping-hands-chat": null, // Helping Hands Chat
-  "eufaula-lake::food-recipes-chat": null, // Food & Recipes Chat
-  "eufaula-lake::introduce-yourself-chat": null, // Introduce Yourself Chat
+  "eufaula-lake::singles-chat": { // Singles Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::music-chat": { // Music Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::events-chat": { // Events Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::rants-raves-chat": { // Rants & Raves Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::local-jobs-chat": { // Local Jobs Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::helping-hands-chat": { // Helping Hands Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::food-recipes-chat": { // Food & Recipes Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "eufaula-lake::introduce-yourself-chat": { // Introduce Yourself Chat
+    logoUrl: "",
+    companyName: "",
+  },
 
   // ===== Tulsa Edition (tulsa.townfuss.com) — project: tulsa-townfuss =====
-  "tulsa-townfuss::tulsa-chat": null, // Tulsa
-  "tulsa-townfuss::sand-springs-chat": null, // Sand Springs
-  "tulsa-townfuss::jenks-chat": null, // Jenks
-  "tulsa-townfuss::owasso-chat": null, // Owasso
-  "tulsa-townfuss::sapulpa-chat": null, // Sapulpa
-  "tulsa-townfuss::broken-arrow-chat": null, // Broken Arrow
-  "tulsa-townfuss::glenpool-chat": null, // Glenpool
-  "tulsa-townfuss::catoosa-chat": null, // Catoosa
-  "tulsa-townfuss::bixby-chat": null, // Bixby
-  "tulsa-townfuss::collinsville-chat": null, // Collinsville
-  "tulsa-townfuss::skiatook-chat": null, // Skiatook
-  "tulsa-townfuss::verdigris-chat": null, // Verdigris
-  "tulsa-townfuss::mannford-chat": null, // Mannford
-  "tulsa-townfuss::coweta-chat": null, // Coweta
-  "tulsa-townfuss::claremore-chat": null, // Claremore
-  "tulsa-townfuss::cleveland-chat": null, // Cleveland
+  "tulsa-townfuss::tulsa-chat": { // Tulsa
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::sand-springs-chat": { // Sand Springs
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::jenks-chat": { // Jenks
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::owasso-chat": { // Owasso
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::sapulpa-chat": { // Sapulpa
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::broken-arrow-chat": { // Broken Arrow
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::glenpool-chat": { // Glenpool
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::catoosa-chat": { // Catoosa
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::bixby-chat": { // Bixby
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::collinsville-chat": { // Collinsville
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::skiatook-chat": { // Skiatook
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::verdigris-chat": { // Verdigris
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::mannford-chat": { // Mannford
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::coweta-chat": { // Coweta
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::claremore-chat": { // Claremore
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::cleveland-chat": { // Cleveland
+    logoUrl: "",
+    companyName: "",
+  },
   // Topic rooms — Tulsa Edition
-  "tulsa-townfuss::singles-chat": null, // Singles Chat
-  "tulsa-townfuss::music-chat": null, // Music Chat
-  "tulsa-townfuss::events-chat": null, // Events Chat
-  "tulsa-townfuss::rants-raves-chat": null, // Rants & Raves Chat
-  "tulsa-townfuss::local-jobs-chat": null, // Local Jobs Chat
-  "tulsa-townfuss::helping-hands-chat": null, // Helping Hands Chat
-  "tulsa-townfuss::food-recipes-chat": null, // Food & Recipes Chat
-  "tulsa-townfuss::introduce-yourself-chat": null, // Introduce Yourself Chat
+  "tulsa-townfuss::singles-chat": { // Singles Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::music-chat": { // Music Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::events-chat": { // Events Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::rants-raves-chat": { // Rants & Raves Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::local-jobs-chat": { // Local Jobs Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::helping-hands-chat": { // Helping Hands Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::food-recipes-chat": { // Food & Recipes Chat
+    logoUrl: "",
+    companyName: "",
+  },
+  "tulsa-townfuss::introduce-yourself-chat": { // Introduce Yourself Chat
+    logoUrl: "",
+    companyName: "",
+  },
 };
 
 // Topic-room AND town-room IDs can collide across editions (see the long
@@ -4852,6 +5068,15 @@ const MANUAL_CHAT_SPONSORS = {
 // hits the right edition's entry, never another edition's.
 function manualSponsorKeyFor(roomId) {
   return `${firebaseConfig.projectId}::${roomId}`;
+}
+
+// A room only counts as sponsored once BOTH fields are actually filled in
+// -- an entry with blank strings (the untouched default) is treated the
+// same as no entry at all, so nothing shows until it's really filled out.
+function getManualSponsor(roomId) {
+  const entry = MANUAL_CHAT_SPONSORS[manualSponsorKeyFor(roomId)];
+  if (entry && entry.logoUrl && entry.companyName) return entry;
+  return null;
 }
 // =========================================================================
 // END MANUAL CHAT ROOM SPONSOR BANNERS
@@ -4971,7 +5196,7 @@ async function renderChatSponsorBanner(room) {
 
   // Manual override takes priority over the database-driven, self-service
   // flow below — see MANUAL_CHAT_SPONSORS' declaration comment above.
-  const manual = MANUAL_CHAT_SPONSORS[manualSponsorKeyFor(room.id)];
+  const manual = getManualSponsor(room.id);
   if (manual) {
     banner.className = "chatroom-sponsor-banner has-sponsor";
     banner.innerHTML = `
