@@ -2858,41 +2858,68 @@ function escapeHtml(str) {
 // Cloud Function (see functions/index.js, refreshLeaderboardCache) —
 // completely decoupled from how many people use the app or how often.
 // -----------------------------------------------------------------------
-let chessRankMap = new Map(); // uid -> rank (1-10), only for the current top 10
-let checkersRankMap = new Map();
-let wynneWarsRankMap = new Map();
+// Every game with an online-competitive score gets a badge slot here —
+// this used to be hardcoded to just chess/checkers/WynneWars (the original
+// three games), and every game added afterward silently never got one,
+// no matter how good someone's score was. Confirmed live 2026-08-09:
+// Titan Business Pros held the single highest Titan Space Defense score
+// on production and still showed no #1 badge, purely because
+// "titanSpaceHighScore" was never in this list. Keep this in sync with
+// GAME_POINT_FIELDS_DESC/GAME_TIME_FIELDS_ASC in functions/index.js — that
+// file computes which uids qualify, this one just decides how to label them.
+const GAME_BADGE_META = {
+  chessPoints: { icon: "♟", label: "Chess" },
+  checkersPoints: { icon: "⛃", label: "Checkers" },
+  wynneWarsPoints: { icon: "🧙", label: "WynneWars" },
+  airHockeyPoints: { icon: "🏒", label: "Air Hockey" },
+  blackjackPoints: { icon: "🃏", label: "Blackjack" },
+  cribbagePoints: { icon: "🎴", label: "Cribbage" },
+  fgPoints: { icon: "🥏", label: "Frisbee Golf" },
+  golfPoints: { icon: "⛳", label: "Golf" },
+  heartsPoints: { icon: "♥️", label: "Hearts" },
+  seaWarPoints: { icon: "🚢", label: "Sea War" },
+  stackCheckersPoints: { icon: "🔴", label: "Stacking Checkers" },
+  warPoints: { icon: "🂡", label: "War" },
+  blocksHighScore: { icon: "🧱", label: "Patriotic Blocks" },
+  deepSeaHighScore: { icon: "🤿", label: "Deep Sea Gem Diver" },
+  desertHighScore: { icon: "🐍", label: "Desert Rattler" },
+  dodgeHighScore: { icon: "💨", label: "Dodge" },
+  neonDriftHighScore: { icon: "🏎️", label: "Neon Drift" },
+  titanSpaceHighScore: { icon: "🚀", label: "Titan Space Defense" },
+  sudokuBestStreak: { icon: "🔢", label: "Sudoku" },
+  gravitySlingScore: { icon: "🌌", label: "Gravity Sling" },
+  match3BestEfficiency: { icon: "💎", label: "Match-3" },
+  pongWins: { icon: "🏓", label: "Classic Pong" },
+  gtfBestTimeMs: { icon: "🪰", label: "Guide The Fly" },
+  followBestRounds: { icon: "🎯", label: "Follow Along" },
+};
+
+let gameRankMaps = {}; // fieldName -> Map(uid -> rank 1-10)
 
 async function refreshGameRankCache() {
   try {
     const snap = await getDoc(doc(db, "leaderboardCache", "gameRanks"));
-    if (!snap.exists()) {
-      chessRankMap = new Map();
-      checkersRankMap = new Map();
-      wynneWarsRankMap = new Map();
-      return;
+    const data = snap.exists() ? snap.data() : {};
+    gameRankMaps = {};
+    for (const field of Object.keys(GAME_BADGE_META)) {
+      gameRankMaps[field] = new Map((data[field] || []).map((uid, i) => [uid, i + 1]));
     }
-    const data = snap.data();
-    chessRankMap = new Map((data.chessPoints || []).map((uid, i) => [uid, i + 1]));
-    checkersRankMap = new Map((data.checkersPoints || []).map((uid, i) => [uid, i + 1]));
-    wynneWarsRankMap = new Map((data.wynneWarsPoints || []).map((uid, i) => [uid, i + 1]));
   } catch (err) {
     console.error("Couldn't load cached game ranks:", err);
+    gameRankMaps = {};
   }
 }
 
-function chessBadgeHtml(uid) {
-  const rank = chessRankMap.get(uid);
-  return rank ? `<span class="chess-badge">♟ #${rank} Chess</span>` : "";
-}
-
-function checkersBadgeHtml(uid) {
-  const rank = checkersRankMap.get(uid);
-  return rank ? `<span class="chess-badge">⛃ #${rank} Checkers</span>` : "";
-}
-
-function wynneWarsBadgeHtml(uid) {
-  const rank = wynneWarsRankMap.get(uid);
-  return rank ? `<span class="chess-badge">🧙 #${rank} WynneWars</span>` : "";
+// Renders every badge a given uid has earned, across every game — a
+// top-10 finish in more than one game shows more than one badge, same as
+// it always has for the original three games.
+function gameBadgesHtml(uid) {
+  let html = "";
+  for (const [field, meta] of Object.entries(GAME_BADGE_META)) {
+    const rank = gameRankMaps[field]?.get(uid);
+    if (rank) html += `<span class="chess-badge">${meta.icon} #${rank} ${meta.label}</span>`;
+  }
+  return html;
 }
 
 // "Neighbor of the Week" badges — stamped directly onto the user's own
@@ -2967,9 +2994,7 @@ function renderCard(uid, data) {
         ${friendCountHtml}
         ${membershipBadgeHtml(data)}
         ${townFounderBadgeHtml(data)}
-        ${chessBadgeHtml(uid)}
-        ${checkersBadgeHtml(uid)}
-        ${wynneWarsBadgeHtml(uid)}
+        ${gameBadgesHtml(uid)}
         ${spotlightBadgesHtml(data)}
       </div>
       <p class="post-excerpt">${escapeHtml(postText).replace(/\n/g, "<br>")}</p>
@@ -3110,9 +3135,7 @@ function renderTopProfileCard(uid, data) {
       : `<div class="tp-fallback">${escapeHtml(initial)}</div>`}
     <span class="tp-name">${escapeHtml(profile.name || "Neighbor")}</span>
     <span class="tp-meta">${escapeHtml(profile.neighborhood || "")} · ${friendCount} friend${friendCount === 1 ? "" : "s"}</span>
-    ${chessRankMap.has(uid) ? `<span class="chess-badge">♟ #${chessRankMap.get(uid)} Chess</span>` : ""}
-    ${checkersRankMap.has(uid) ? `<span class="chess-badge">⛃ #${checkersRankMap.get(uid)} Checkers</span>` : ""}
-    ${wynneWarsRankMap.has(uid) ? `<span class="chess-badge">🧙 #${wynneWarsRankMap.get(uid)} WynneWars</span>` : ""}
+    ${gameBadgesHtml(uid)}
     ${spotlightBadgesHtml(data)}
     <span class="tp-excerpt">${escapeHtml(data.postText || "")}</span>
   `;

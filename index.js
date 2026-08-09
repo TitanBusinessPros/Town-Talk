@@ -406,7 +406,26 @@ exports.onChatReaction = onDocumentUpdated(
 // regardless of growth in users or visits. That's the fix for a cost
 // that otherwise scales with (users) × (visits) × (database size).
 // -----------------------------------------------------------------------
-const GAME_POINT_FIELDS = ["chessPoints", "checkersPoints", "wynneWarsPoints"];
+// Every game with an online-competitive score, not just chess/checkers/
+// WynneWars — that was the original set and nothing else was ever added
+// as new games shipped, so every other game's top players never got a
+// profile badge at all regardless of how good their score actually was.
+// Confirmed live 2026-08-09: Titan Business Pros held the single highest
+// (and only) Titan Space Defense score on production and still showed no
+// #1 badge, purely because "titanSpaceHighScore" was missing from this
+// list — nothing wrong with their score or approval status.
+//
+// Higher number = better rank, plain descending sort.
+const GAME_POINT_FIELDS_DESC = [
+  "chessPoints", "checkersPoints", "wynneWarsPoints", "airHockeyPoints",
+  "blackjackPoints", "cribbagePoints", "fgPoints", "golfPoints",
+  "heartsPoints", "seaWarPoints", "stackCheckersPoints", "warPoints",
+  "blocksHighScore", "deepSeaHighScore", "desertHighScore", "dodgeHighScore",
+  "neonDriftHighScore", "titanSpaceHighScore", "sudokuBestStreak",
+  "gravitySlingScore", "match3BestEfficiency", "pongWins",
+];
+// Lower number = better rank (elapsed time) — sort ascending instead.
+const GAME_TIME_FIELDS_ASC = ["gtfBestTimeMs"];
 
 exports.refreshLeaderboardCache = onSchedule(
   { schedule: "0 7,19 * * *", timeZone: "America/Chicago" },
@@ -414,7 +433,7 @@ exports.refreshLeaderboardCache = onSchedule(
     const snap = await db.collection("users").where("approved", "==", true).get();
 
     const cache = {};
-    for (const field of GAME_POINT_FIELDS) {
+    for (const field of GAME_POINT_FIELDS_DESC) {
       const players = [];
       snap.forEach((docSnap) => {
         const points = docSnap.data()[field] || 0;
@@ -422,6 +441,30 @@ exports.refreshLeaderboardCache = onSchedule(
       });
       players.sort((a, b) => b.points - a.points);
       cache[field] = players.slice(0, 10).map((p) => p.uid);
+    }
+
+    for (const field of GAME_TIME_FIELDS_ASC) {
+      const players = [];
+      snap.forEach((docSnap) => {
+        const ms = docSnap.data()[field] || 0;
+        if (ms > 0) players.push({ uid: docSnap.id, ms });
+      });
+      players.sort((a, b) => a.ms - b.ms);
+      cache[field] = players.slice(0, 10).map((p) => p.uid);
+    }
+
+    // Follow Along: ranked by rounds survived (higher wins), then by
+    // elapsed time as a tiebreak (lower wins) — same two-field sort its
+    // own leaderboard view uses, just computed here instead of queried.
+    {
+      const players = [];
+      snap.forEach((docSnap) => {
+        const d = docSnap.data();
+        const rounds = d.followBestRounds || 0;
+        if (rounds > 0) players.push({ uid: docSnap.id, rounds, timeMs: d.followBestTimeMs || Infinity });
+      });
+      players.sort((a, b) => b.rounds - a.rounds || a.timeMs - b.timeMs);
+      cache.followBestRounds = players.slice(0, 10).map((p) => p.uid);
     }
 
     await db.collection("leaderboardCache").doc("gameRanks").set({
