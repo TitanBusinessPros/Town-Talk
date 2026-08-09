@@ -129,9 +129,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .chatroom-tile:hover { background: var(--ink-700); }
 
 .chatroom-sponsor-banner { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 0.85rem; }
-.chatroom-sponsor-banner.has-sponsor { background: var(--ink-800); border: 1px solid var(--amber-500); color: var(--paper-050); }
+.chatroom-sponsor-banner.has-sponsor { background: var(--ink-800); border: 1px solid var(--amber-500); color: var(--paper-050); flex-direction: column; justify-content: center; text-align: center; }
 .chatroom-sponsor-banner.no-sponsor { background: var(--ink-900, #1a1a1a); border: 1px dashed var(--line); color: var(--text-muted); cursor: pointer; justify-content: center; }
-.chatroom-sponsor-banner img { height: 32px; width: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+/* Logo bumped ~10x (was 32px) and switched from object-fit: cover to
+   contain — cover was cropping rectangular logos into a tiny square,
+   compounding the "can't read it" problem. contain shows the whole logo,
+   scaled up to a large, readable size while keeping its real proportions —
+   max-width caps it on narrow screens instead of overflowing. */
+.chatroom-sponsor-banner.has-sponsor img { height: auto; width: auto; max-height: 320px; max-width: min(320px, 90%); border-radius: 6px; object-fit: contain; flex-shrink: 0; }
 
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
 .modal-box { background: var(--ink-800); border-radius: var(--radius); padding: 1.75rem; max-width: 440px; width: 100%; max-height: 85vh; overflow-y: auto; }
@@ -487,7 +492,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       </div>
       <div class="view-header">
         <p class="eyebrow">Pauls Valley · Oklahoma</p>
-        <h1>Sign in to your Pauls Valley account</h1>
+        <h1>Sign in to your Pauls Valley area account</h1>
         <p>Create a free account with your email. Your profile stays private until our admin team reviews and approves it.</p>
         <p><a href="#" id="landing-why-link">New here? See why Town Fuss is different &rarr;</a></p>
       </div>
