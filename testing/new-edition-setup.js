@@ -107,6 +107,30 @@ create admin accounts (${ADMIN_EMAILS.map(a => a.email).join(", ")}),
 build + deploy hosting via build-edition.js, and the custom domain DNS
 record (Firebase gives you the exact CNAME after "Add custom domain" in
 the Hosting console — no way to skip the DNS step, it's your registrar).
+
+DO NOT SKIP: once the custom domain is confirmed live (DNS resolves,
+SSL cert active), you MUST ALSO add it to Auth's authorizedDomains list —
+Firebase does NOT reliably auto-add it just because Hosting/DNS/SSL are
+done. Skipping this produces "auth/unauthorized-domain" the moment
+someone tries Google Sign-In on the custom domain, even though everything
+else works fine. This has now bitten Tulsa, Edmond, AND Oklahoma City
+before being caught each time (2026-08-09) — check it every single time,
+immediately after confirming the domain is live, not as an afterthought:
+
+  node -e "
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const token = JSON.parse(fs.readFileSync(path.join(os.tmpdir(),'access_token.json'),'utf8')).access_token;
+  fetch('https://identitytoolkit.googleapis.com/admin/v2/projects/<PROJECT_ID>/config', {
+    headers: { Authorization: 'Bearer ' + token }
+  }).then(r => r.json()).then(j => console.log(j.authorizedDomains));
+  "
+
+  Then PATCH in the missing custom domain (append, don't replace the
+  existing localhost/.firebaseapp.com/.web.app entries):
+
+  curl -X PATCH -H "Authorization: Bearer \$TOKEN" -H "Content-Type: application/json" \\
+    -d '{"authorizedDomains":["localhost","<project>.firebaseapp.com","<project>.web.app","<custom-domain>"]}' \\
+    "https://identitytoolkit.googleapis.com/admin/v2/projects/<PROJECT_ID>/config?updateMask=authorizedDomains"
 =========================================================================
 `);
 }
