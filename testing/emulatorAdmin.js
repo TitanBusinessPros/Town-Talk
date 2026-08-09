@@ -14,11 +14,23 @@
 process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
 process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
 process.env.FIREBASE_STORAGE_EMULATOR_HOST = "127.0.0.1:9199";
-process.env.GCLOUD_PROJECT = "town-talk-87ff7";
+// The emulator suite runs in --single_project_mode, scoped to whichever
+// --project was passed to `firebase emulators:start` — the Admin SDK here
+// has to match that exactly or every lookup silently misses (e.g.
+// getUserByEmail() throws "no user record" even though the browser's
+// signup genuinely succeeded, just under a different project namespace).
+// Defaults to production so nothing changes for the normal run; set
+// TEST_PROJECT_ID when running the suite against a different edition's
+// build (see testing/README or the edition's own build-edition.js entry
+// for its exact project id). Confirmed as a real gap 2026-08-09 testing
+// Eufaula Lake's build for the first time — this file had never been
+// touched for the multi-edition work at all.
+const PROJECT_ID = process.env.TEST_PROJECT_ID || "town-talk-87ff7";
+process.env.GCLOUD_PROJECT = PROJECT_ID;
 
 const admin = require("firebase-admin");
 if (!admin.apps.length) {
-  admin.initializeApp({ projectId: "town-talk-87ff7" });
+  admin.initializeApp({ projectId: PROJECT_ID });
 }
 
 // createUserWithEmailAndPassword() on the client is async, so calling this

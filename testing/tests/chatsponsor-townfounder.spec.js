@@ -17,6 +17,16 @@
 const { test, expect } = require("@playwright/test");
 const { verifyEmailByAddress, admin } = require("../emulatorAdmin");
 
+// Lets this suite validate any edition's real build — these two need to
+// be two DIFFERENT real towns that exist on whichever edition is running
+// (defaults to Pauls Valley's own towns for the normal/default run). Set
+// TEST_TOWN_1/TEST_TOWN_2 when running against a different edition.
+const TOWN_1 = process.env.TEST_TOWN_1 || "Wynnewood";
+const TOWN_2 = process.env.TEST_TOWN_2 || "Davis";
+const slug = (t) => t.toLowerCase().replace(/\s+/g, "-") + "-chat";
+const TOWN_1_ROOM_ID = slug(TOWN_1);
+const TOWN_2_ROOM_ID = slug(TOWN_2);
+
 async function signUp(page, email, password = "TestPass123!") {
   await page.goto("/index.html");
   await page.getByRole("button", { name: "Sign up" }).click();
@@ -70,7 +80,7 @@ test.describe("Chat Room Sponsorship", () => {
     await sponsorPage.waitForTimeout(500);
     await sponsorPage.locator("#pricing-chatsponsor-btn").click();
     await sponsorPage.waitForTimeout(300);
-    await sponsorPage.locator("#chatsponsor-room-select").selectOption({ label: "Wynnewood Chat" });
+    await sponsorPage.locator("#chatsponsor-room-select").selectOption({ label: `${TOWN_1} Chat` });
     await sponsorPage.locator("#chatsponsor-company-name").fill("Test Sponsor Co");
     await sponsorPage.locator("#chatsponsor-months").fill("3");
 
@@ -85,7 +95,7 @@ test.describe("Chat Room Sponsorship", () => {
     await sponsorPage.locator("#chatsponsor-form button[type=submit]").click();
     await sponsorPage.waitForTimeout(1500);
 
-    const sponsorDoc = await admin.firestore().collection("chatSponsors").doc("wynnewood-chat").get();
+    const sponsorDoc = await admin.firestore().collection("chatSponsors").doc(TOWN_1_ROOM_ID).get();
     expect(sponsorDoc.exists).toBe(true);
     expect(sponsorDoc.data().status).toBe("pending");
     expect(sponsorDoc.data().companyName).toBe("Test Sponsor Co");
@@ -109,7 +119,7 @@ test.describe("Chat Room Sponsorship", () => {
     await approveBtn.click();
     await adminPage.waitForTimeout(1500);
 
-    const approvedDoc = await admin.firestore().collection("chatSponsors").doc("wynnewood-chat").get();
+    const approvedDoc = await admin.firestore().collection("chatSponsors").doc(TOWN_1_ROOM_ID).get();
     expect(approvedDoc.data().status).toBe("approved");
     expect(approvedDoc.data().expiresAt).toBeTruthy();
 
@@ -124,7 +134,7 @@ test.describe("Chat Room Sponsorship", () => {
     await viewerPage.waitForTimeout(1500);
     await viewerPage.locator("#nav-chatrooms").dispatchEvent("click");
     await viewerPage.waitForTimeout(1000);
-    await viewerPage.getByText("Wynnewood Chat", { exact: true }).click();
+    await viewerPage.getByText(`${TOWN_1} Chat`, { exact: true }).click();
     await viewerPage.waitForTimeout(1000);
 
     const banner = viewerPage.locator("#chatroom-sponsor-banner.has-sponsor");
@@ -136,8 +146,8 @@ test.describe("Chat Room Sponsorship", () => {
     // Seed the room as already-rejected from someone else, then verify a
     // fresh submitter can take it — this exercises the update-not-create
     // branch in firestore.rules directly.
-    await admin.firestore().collection("chatSponsors").doc("davis-chat").set({
-      roomId: "davis-chat", roomName: "Davis Chat",
+    await admin.firestore().collection("chatSponsors").doc(TOWN_2_ROOM_ID).set({
+      roomId: TOWN_2_ROOM_ID, roomName: `${TOWN_2} Chat`,
       submittedByUid: "someone-else", companyName: "Rejected LLC",
       status: "rejected", rejectedAt: admin.firestore.Timestamp.now(),
     });
@@ -158,7 +168,7 @@ test.describe("Chat Room Sponsorship", () => {
     await page.waitForTimeout(500);
     await page.locator("#pricing-chatsponsor-btn").click();
     await page.waitForTimeout(300);
-    await page.locator("#chatsponsor-room-select").selectOption({ label: "Davis Chat" });
+    await page.locator("#chatsponsor-room-select").selectOption({ label: `${TOWN_2} Chat` });
     await page.locator("#chatsponsor-company-name").fill("New Claimant Co");
     await page.locator("#chatsponsor-months").fill("1");
     const tinyPng = Buffer.from(
@@ -175,7 +185,7 @@ test.describe("Chat Room Sponsorship", () => {
     const msg = await page.locator("#chatsponsor-modal-message").textContent();
     expect(msg).toContain("Submitted");
 
-    const doc = await admin.firestore().collection("chatSponsors").doc("davis-chat").get();
+    const doc = await admin.firestore().collection("chatSponsors").doc(TOWN_2_ROOM_ID).get();
     expect(doc.data().status).toBe("pending");
     expect(doc.data().companyName).toBe("New Claimant Co");
 

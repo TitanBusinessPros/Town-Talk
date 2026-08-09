@@ -15,8 +15,16 @@ const path = require("path");
 const { test, expect } = require("@playwright/test");
 const { verifyEmailByAddress, makeAdmin, grantUnlimitedGamePlay } = require("../emulatorAdmin");
 
-const ROBOT_A = { email: "robot.a@test.town", password: "TestPass123!", name: "Robot Alice", town: "Pauls Valley" };
-const ROBOT_B = { email: "robot.b@test.town", password: "TestPass123!", name: "Robot Bob", town: "Pauls Valley" };
+// Lets this same suite validate ANY edition's actual build, not just
+// production's — set TEST_HOME_TOWN to the edition's real anchor town
+// (e.g. "Tulsa", "Eufaula") when running against a different edition's
+// build. Defaults to Pauls Valley (production) so nothing changes for
+// the normal/default run. Only the chat-room/town-dropdown assertions
+// below actually need a REAL town that exists in whichever build is
+// running — everything else in this file is town-agnostic.
+const HOME_TOWN = process.env.TEST_HOME_TOWN || "Pauls Valley";
+const ROBOT_A = { email: "robot.a@test.town", password: "TestPass123!", name: "Robot Alice", town: HOME_TOWN };
+const ROBOT_B = { email: "robot.b@test.town", password: "TestPass123!", name: "Robot Bob", town: HOME_TOWN };
 const TEST_IMAGE_PATH = path.resolve(__dirname, "..", "..", "Logo-Fav.png");
 
 // -----------------------------------------------------------------------
@@ -205,13 +213,13 @@ test.describe.serial("Town Fuss — full platform pass", () => {
 
   test("Chat room: Robot A posts, Robot B likes it, count updates for both", async () => {
     await pageA.locator("#nav-chatrooms").click();
-    await pageA.locator(".chatroom-tile", { hasText: "Pauls Valley Chat" }).click();
+    await pageA.locator(".chatroom-tile", { hasText: `${HOME_TOWN} Chat` }).click();
     await pageA.locator("#chatroom-input").fill("Automated test chat message");
     await pageA.locator("#chatroom-form button[type=submit]").click();
     await expect(pageA.locator(".chat-msg-row").last()).toContainText("Automated test chat message");
 
     await pageB.locator("#nav-chatrooms").click();
-    await pageB.locator(".chatroom-tile", { hasText: "Pauls Valley Chat" }).click();
+    await pageB.locator(".chatroom-tile", { hasText: `${HOME_TOWN} Chat` }).click();
     const lastRow = pageB.locator(".chat-msg-row").last();
     await lastRow.locator('[data-action="like"]').click();
     await expect(lastRow.locator('[data-action="like"]')).toContainText("1");
@@ -465,7 +473,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     // there (it only skips the overwrite while the field has focus).
     await pageB.locator("#biz-name").fill("Bob's Bait & Tackle");
     await pageB.locator("#biz-phone").fill("(405) 555-0199");
-    await pageB.locator("#biz-town").selectOption("Pauls Valley");
+    await pageB.locator("#biz-town").selectOption(HOME_TOWN);
     await pageB.locator("#biz-description").fill("Worms, lures, and lake gossip since this morning.");
     await pageB.locator("#business-form button[type=submit]").click();
     await expect(pageB.locator("#business-form-message")).toContainText("Saved", { timeout: 10_000 });
@@ -527,7 +535,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     // chat room + message that got liked, not just the chat rooms list.
     await pageA.locator(".notif-bell-item", { hasText: "liked" }).click();
     await expect(pageA.locator("#chatroom-thread-view")).toBeVisible({ timeout: 10_000 });
-    await expect(pageA.locator("#chatroom-title")).toContainText("Pauls Valley Chat");
+    await expect(pageA.locator("#chatroom-title")).toContainText(`${HOME_TOWN} Chat`);
     await expect(pageA.locator(".chat-msg-highlight")).toContainText("Automated test chat message");
   });
 
@@ -617,7 +625,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     // test, but hasn't posted their own yet) — post one now so there's a
     // message from Robot B for Robot A to report.
     await pageB.locator("#nav-chatrooms").click();
-    await pageB.locator(".chatroom-tile", { hasText: "Pauls Valley Chat" }).click();
+    await pageB.locator(".chatroom-tile", { hasText: `${HOME_TOWN} Chat` }).click();
     await pageB.locator("#chatroom-input").fill("Reportable test message from Bob.");
     await pageB.locator("#chatroom-form button[type=submit]").click();
     await expect(pageB.locator(".chat-msg-row").last()).toContainText("Reportable test message from Bob.");
@@ -625,7 +633,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     // pageA is still on chess.html from the decline test.
     await pageA.goto("/index.html");
     await pageA.locator("#nav-chatrooms").click();
-    await pageA.locator(".chatroom-tile", { hasText: "Pauls Valley Chat" }).click();
+    await pageA.locator(".chatroom-tile", { hasText: `${HOME_TOWN} Chat` }).click();
     const lastRow = pageA.locator(".chat-msg-row").last();
     await expect(lastRow).toContainText("Reportable test message from Bob.");
     await lastRow.locator(".report-btn").click();
@@ -692,7 +700,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await page.reload();
     await page.waitForSelector("#profile-form", { timeout: 15_000 });
     await page.locator("#display-name").fill(throwaway.name);
-    await page.locator("#neighborhood").selectOption("Pauls Valley");
+    await page.locator("#neighborhood").selectOption(HOME_TOWN);
     await page.locator("#profile-form button[type=submit]").click();
 
     await page.locator("#nav-dashboard").click();
