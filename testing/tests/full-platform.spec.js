@@ -191,6 +191,20 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await expect(pageB.locator("#thread-messages")).toContainText("automated test message");
   });
 
+  test("Browser Back button leaves a DM thread instead of navigating away from the app", async () => {
+    // Regression test for the 2026-08-09 bug: showView()/openThread() never
+    // touched browser history, so pressing the native Back button while
+    // inside a DM thread (or chat room — see the matching test below) fell
+    // straight through to whatever real prior page was in tab history
+    // (e.g. a game page), instead of stepping back to the conversation
+    // list like a normal single-page app.
+    await expect(pageB.locator("#thread-view")).toBeVisible();
+    await pageB.goBack();
+    await expect(pageB.locator("#conversation-list-wrap")).toBeVisible();
+    await expect(pageB.locator("#thread-view")).toBeHidden();
+    await expect(pageB.locator("#view-messages")).toHaveClass(/active/);
+  });
+
   test("Messaging respects the daily 10-message limit", async () => {
     for (let i = 0; i < 9; i++) {
       await pageA.locator("#thread-input").fill(`Test message number ${i + 2}`);
@@ -226,6 +240,26 @@ test.describe.serial("Town Fuss — full platform pass", () => {
 
     // Confirm Robot A sees the like count update too (real-time listener).
     await expect(pageA.locator(".chat-msg-row").last().locator('[data-action="like"]')).toContainText("1");
+  });
+
+  test("Browser Back button leaves a chat room instead of navigating away from the app", async () => {
+    // See the matching DM-thread test above for the full bug description.
+    // pageA is still inside the room it just posted in.
+    await expect(pageA.locator("#chatroom-thread-view")).toBeVisible();
+    await pageA.goBack();
+    await expect(pageA.locator("#chatroom-list-wrap")).toBeVisible();
+    await expect(pageA.locator("#chatroom-thread-view")).toBeHidden();
+    await expect(pageA.locator("#view-chatrooms")).toHaveClass(/active/);
+
+    // The in-app "Back to rooms" button should behave identically —
+    // it now goes through history.back() instead of closing directly, so
+    // this confirms that path also lands cleanly on the room list rather
+    // than leaving a dangling history entry that reopens the room later.
+    await pageA.locator(".chatroom-tile", { hasText: `${HOME_TOWN} Chat` }).click();
+    await expect(pageA.locator("#chatroom-thread-view")).toBeVisible();
+    await pageA.locator("#chatroom-back").click();
+    await expect(pageA.locator("#chatroom-list-wrap")).toBeVisible();
+    await expect(pageA.locator("#chatroom-thread-view")).toBeHidden();
   });
 
   test("Blocking: Robot A blocks Robot B, who can no longer message them", async () => {
@@ -460,6 +494,26 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await pageB.locator("#image-input").setInputFiles(TEST_IMAGE_PATH);
     await expect(pageB.locator("#image-message")).toContainText("Uploaded", { timeout: 15_000 });
     await expect(pageB.locator("#image-slots img")).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("Admin re-approves Robot B after the photo re-upload", async () => {
+    // A photo re-upload on an already-approved profile sets approved:false
+    // pending re-review (see the "everApproved" comment above the image
+    // upload handler in index.html) — and since 2026-08-05,
+    // updateProtectedNavVisibility() correctly hides the ENTIRE protected
+    // nav (including Business) for any unapproved account, not just
+    // Feed/Directory as before. Without this re-approval step, the next
+    // test's click on #nav-business hits an element that's legitimately
+    // hidden — the app was behaving correctly, this test just predates
+    // that hardening and never accounted for it.
+    // pageA is still on frisbeegolf.html from the earlier Frisbee Golf
+    // test — #nav-admin only exists on index.html.
+    await pageA.goto("/index.html");
+    await pageA.locator("#nav-admin").click();
+    const bizOwnerCard = pageA.locator("#admin-queue .admin-card", { hasText: ROBOT_B.name });
+    await expect(bizOwnerCard).toBeVisible({ timeout: 10_000 });
+    await bizOwnerCard.locator('button:has-text("Approve")').click();
+    await expect(bizOwnerCard).toHaveCount(0, { timeout: 10_000 });
   });
 
   test("Robot B creates a business listing with a logo", async () => {

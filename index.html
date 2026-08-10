@@ -1355,6 +1355,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <div>Oklahoma City, OK</div>
   <div style="margin-top:0.5rem;"><a href="#" id="footer-terms-link">Terms of Service</a> &nbsp;|&nbsp; <a href="#" id="footer-privacy-link">Privacy Policy</a></div>
   <div style="margin-top:0.5rem;">&copy; 2026 Titan Business Pros LLC. All rights reserved.</div>
+  <div style="margin-top:0.5rem; font-size:0.75rem; opacity:0.8;">This platform's software was built using Claude Code, an AI coding tool by Anthropic. Titan Business Pros LLC owns and operates Town Fuss; the underlying software was developed with this third-party tool.</div>
 </footer>
 
 <script type="module">
@@ -1753,6 +1754,56 @@ let unsubscribeNotifBell = null;
 // ============================= VIEW ROUTER ==============================
 const PROTECTED_VIEWS = ["feed", "directory", "profile", "dashboard", "messages", "friends", "chatrooms", "admin", "business", "pricing"];
 
+// showView() used to be pure DOM show/hide with zero browser-history
+// integration — no pushState, no hash, nothing. That meant the native
+// Back button had nothing of this app's own to step through: pressing it
+// while inside a chat room (or any view) skipped straight past the whole
+// SPA to whatever REAL prior page load was in the tab's history (e.g. a
+// game page), landing on a fresh page whose own onAuthStateChanged grace
+// period produced a brief "signed out then back" flash. Confirmed live
+// 2026-08-09 via "press back in a chat room goes to games / flashes
+// signed out." Fixed by pushing one history entry per real view change
+// (plus one for entering a specific chat room or DM thread, since those
+// are a sub-state of the "chatrooms"/"messages" views) and driving both
+// the in-app Back buttons and the native Back button through the same
+// popstate handler, same as any normal single-page app.
+let currentViewName = null;
+let suppressHistoryPush = false;
+let historyInitialized = false;
+
+function pushAppState(state) {
+  if (suppressHistoryPush) return;
+  if (!historyInitialized) {
+    // Tags the entry the real page load already created instead of adding
+    // a new one, so the very first Back press correctly leaves the SPA.
+    historyInitialized = true;
+    history.replaceState(state, "", location.pathname + location.search);
+  } else {
+    history.pushState(state, "", location.pathname + location.search);
+  }
+}
+
+window.addEventListener("popstate", (e) => {
+  suppressHistoryPush = true;
+  try {
+    const state = e.state || {};
+    const name = state.view || (auth.currentUser ? "dashboard" : "landing");
+    showView(name);
+    if (name === "chatrooms" && state.roomId) {
+      const room = CHAT_ROOMS.find((r) => r.id === state.roomId);
+      if (room) openChatRoom(room);
+    }
+    if (name === "messages" && state.otherUid) {
+      // openThread() always re-fetches the real current name from
+      // Firestore before displaying it, so the placeholder here is only
+      // ever shown for an instant — see its declaration comment.
+      openThread(state.otherUid, "Neighbor");
+    }
+  } finally {
+    suppressHistoryPush = false;
+  }
+});
+
 function showView(name) {
   if (PROTECTED_VIEWS.includes(name) && !auth.currentUser) {
     name = "landing";
@@ -1789,6 +1840,10 @@ function showView(name) {
     // that only ever covered the standalone game pages, not this SPA's own
     // views.
     name = "dashboard";
+  }
+  if (name !== currentViewName) {
+    currentViewName = name;
+    pushAppState({ view: name });
   }
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
   document.getElementById(`view-${name}`).classList.add("active");
@@ -3861,6 +3916,7 @@ let activeOtherUid = null;
 let activeOtherName = "Neighbor";
 
 function openThread(otherUid, otherName) {
+  pushAppState({ view: "messages", otherUid });
   activeOtherUid = otherUid;
   activeOtherName = otherName || "Neighbor";
   document.getElementById("thread-view").style.display = "block";
@@ -3919,7 +3975,10 @@ function openThread(otherUid, otherName) {
   });
 }
 
-document.getElementById("thread-back").addEventListener("click", closeThread);
+document.getElementById("thread-back").addEventListener("click", () => {
+  // Same reasoning as chatroom-back — see its comment.
+  if (activeOtherUid) history.back();
+});
 
 document.getElementById("thread-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -5463,6 +5522,7 @@ async function renderChatSponsorBanner(room) {
 }
 
 function openChatRoom(room) {
+  pushAppState({ view: "chatrooms", roomId: room.id });
   activeChatRoom = room;
   document.getElementById("chatroom-thread-view").style.display = "block";
   document.getElementById("chatroom-list-wrap").style.display = "none";
@@ -5555,7 +5615,15 @@ function openChatRoom(room) {
   }, (err) => console.error("Chat room load failed:", err));
 }
 
-document.getElementById("chatroom-back").addEventListener("click", closeChatRoomThread);
+document.getElementById("chatroom-back").addEventListener("click", () => {
+  // Goes through browser history instead of calling closeChatRoomThread()
+  // directly, so this button and the native Back button stay in sync —
+  // otherwise the room-open history entry pushed by openChatRoom() is left
+  // dangling and a later real Back press would just reopen this same room
+  // instead of continuing further back. The popstate handler above does
+  // the actual close via showView("chatrooms").
+  if (activeChatRoom) history.back();
+});
 
 document.getElementById("chatroom-form").addEventListener("submit", async (e) => {
   e.preventDefault();
