@@ -743,6 +743,39 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await context.close();
   });
 
+  test("Game page quick-nav deep-links directly into a specific Town Fuss view", async ({ browser }) => {
+    // Regression test for the 2026-08-09 nav-menu addition to every game
+    // page — previously the only way back from a game was a single
+    // "Back to Town Fuss" link that always landed on the dashboard,
+    // requiring an extra in-app click to reach anywhere else. Uses a
+    // fresh admin account (bypasses manual approval) in an isolated
+    // context so it doesn't touch Robot A/B's ongoing state.
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const robot = { email: `quicknav.${Date.now()}@test.town`, password: "TestPass123!" };
+    await signUp(page, robot);
+    const uid = await verifyEmailByAddress(robot.email);
+    await makeAdmin(uid);
+    await page.goto("/chess.html");
+    await page.locator('.site-quicknav a[href="index.html?view=chatrooms"]').click();
+    await expect(page).toHaveURL(/view=chatrooms/, { timeout: 10_000 });
+    await expect(page.locator("#view-chatrooms")).toHaveClass(/active/, { timeout: 10_000 });
+    await context.close();
+  });
+
+  test("Game page quick-nav Log out link actually signs the user out", async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const robot = { email: `quicknavlogout.${Date.now()}@test.town`, password: "TestPass123!" };
+    await signUp(page, robot);
+    const uid = await verifyEmailByAddress(robot.email);
+    await makeAdmin(uid);
+    await page.goto("/chess.html");
+    await page.locator('.site-quicknav a[href="index.html?action=logout"]').click();
+    await expect(page.locator("#nav-auth")).toBeVisible({ timeout: 10_000 });
+    await context.close();
+  });
+
   test("Account deletion removes the account and its data", async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();

@@ -38,13 +38,31 @@ p { color: var(--text-muted); line-height: 1.6; }
 .signed-out-notice { max-width: 400px; margin: 3rem auto; text-align: center; }
 button { border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
 button:hover { background: var(--amber-600); }
+
+.site-quicknav { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; align-items: center; padding: 0.6rem 1.5rem; background: var(--ink-800); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.78rem; }
+.site-quicknav a { color: var(--text-muted); text-decoration: none; white-space: nowrap; }
+.site-quicknav a:hover { color: var(--paper-050); }
 </style>
 </head>
 <body>
 
 <header class="header-bar">
-  <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+  <a class="brand" href="index.html">Town Fuss</a>
 </header>
+<nav class="site-quicknav" aria-label="Town Fuss">
+  <a href="index.html?view=feed">Feed</a>
+  <a href="index.html?view=directory">Profiles</a>
+  <a href="index.html?view=messages">Messages</a>
+  <a href="index.html?view=friends">Friends</a>
+  <a href="index.html?view=chatrooms">Chat Rooms</a>
+  <a href="gamezone.html">Games</a>
+  <a href="index.html?view=business">Business</a>
+  <a href="index.html?view=pricing">Pricing</a>
+  <a href="index.html?view=report-issue">Report Issue</a>
+  <a href="index.html?view=dashboard">🔔 Notifications</a>
+  <a href="index.html?view=dashboard">Your page</a>
+  <a href="index.html?action=logout">Log out</a>
+</nav>
 
 <main class="page">
   <div id="signed-out-notice" class="card signed-out-notice" style="display:none;">

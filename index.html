@@ -1742,6 +1742,13 @@ function myDailyTierLimit() {
   return 10;
 }
 let currentUid = null;
+// Consumed exactly once per page load — lets the quick-nav added to every
+// game page (2026-08-09) deep-link straight into a specific view
+// (?view=feed, ?action=logout, etc.) instead of always landing on the
+// dashboard first. Only applies to the FIRST onAuthStateChanged
+// resolution so it can't hijack normal in-app navigation on a later
+// real sign-in in the same tab.
+let deepLinkConsumed = false;
 let unsubscribeSnapshot = null;
 let unsubscribeMessageLimit = null;
 let unsubscribeConversations = null;
@@ -1968,8 +1975,15 @@ onAuthStateChanged(auth, async (user) => {
     // real callback fires and flips everything back — a visible
     // sign-out/sign-in flash that isn't a real sign-out at all. Confirmed
     // live 2026-08-07 via the "back to Town Fuss" link on a game page.
-    await new Promise((r) => setTimeout(r, 1200));
-    user = auth.currentUser;
+    // Poll instead of a flat sleep — most real session restores resolve
+        // well under 1200ms, so this exits as soon as auth.currentUser actually
+        // becomes available instead of always paying the full delay. Same
+        // 1200ms worst-case ceiling as before (2026-08-09).
+        const graceDeadline = Date.now() + 1200;
+        while (!auth.currentUser && Date.now() < graceDeadline) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        user = auth.currentUser;
   }
   document.getElementById("nav-dashboard").style.display = user ? "inline" : "none";
   updateProtectedNavVisibility(user);
@@ -2034,7 +2048,34 @@ onAuthStateChanged(auth, async (user) => {
     // messages never write one anymore, so nothing else re-triggers this.
     renderChatRemaining();
 
-    showView("dashboard");
+    // Deep-link support for the quick-nav added to every game page
+    // (2026-08-09) — lets "Feed"/"Messages"/etc. on a game page jump
+    // straight to that view instead of always landing on the dashboard
+    // first. Guarded by deepLinkConsumed so a LATER onAuthStateChanged
+    // firing in the same page load (e.g. after a token refresh) can't
+    // fall through to the unconditional showView("dashboard") below and
+    // silently bounce the user back out of wherever they've since
+    // navigated — confirmed this actually happens via a flaky Playwright
+    // test before this guard covered the fallback call too.
+    if (!deepLinkConsumed) {
+      deepLinkConsumed = true;
+      const params = new URLSearchParams(location.search);
+      if (params.get("action") === "logout") {
+        signOut(auth).catch((err) => console.error("Couldn't sign out:", err));
+        return;
+      }
+      const requestedView = params.get("view");
+      if (requestedView === "report-issue") {
+        showView("dashboard");
+        openBugReportModal();
+        return;
+      }
+      if (requestedView && PROTECTED_VIEWS.includes(requestedView)) {
+        showView(requestedView);
+        return;
+      }
+      showView("dashboard");
+    }
   } else {
     currentUid = null;
     isAdminUser = false;

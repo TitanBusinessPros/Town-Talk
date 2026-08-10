@@ -90,18 +90,36 @@ button.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
 .mini-chat-form { display: flex; gap: 0.5rem; }
 .mini-chat-form input { flex: 1; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: var(--font-body); }
 .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+.site-quicknav { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; align-items: center; padding: 0.6rem 1.5rem; background: var(--ink-800); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.78rem; }
+.site-quicknav a { color: var(--text-muted); text-decoration: none; white-space: nowrap; }
+.site-quicknav a:hover { color: var(--paper-050); }
 </style>
 </head>
 <body>
 
 <header class="header-bar">
-  <a class="brand" href="index.html">&larr; Back to Town Fuss</a>
+  <a class="brand" href="index.html">Town Fuss</a>
   <nav class="header-nav">
     <button id="nav-hub" class="active">Games</button>
     <button id="nav-waiting" style="display:none;">Waiting Room</button>
     <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
   </nav>
 </header>
+<nav class="site-quicknav" aria-label="Town Fuss">
+  <a href="index.html?view=feed">Feed</a>
+  <a href="index.html?view=directory">Profiles</a>
+  <a href="index.html?view=messages">Messages</a>
+  <a href="index.html?view=friends">Friends</a>
+  <a href="index.html?view=chatrooms">Chat Rooms</a>
+  <a href="gamezone.html">Games</a>
+  <a href="index.html?view=business">Business</a>
+  <a href="index.html?view=pricing">Pricing</a>
+  <a href="index.html?view=report-issue">Report Issue</a>
+  <a href="index.html?view=dashboard">🔔 Notifications</a>
+  <a href="index.html?view=dashboard">Your page</a>
+  <a href="index.html?action=logout">Log out</a>
+</nav>
 
 <main class="page">
 
@@ -318,8 +336,15 @@ onAuthStateChanged(auth, async (user) => {
     // while it is still restoring a just-created session on a fresh page
     // load, before the real user comes through — give it one brief grace
     // period and re-check rather than concluding they are signed out.
-    await new Promise((r) => setTimeout(r, 1200));
-    user = auth.currentUser;
+    // Poll instead of a flat sleep — most real session restores resolve
+        // well under 1200ms, so this exits as soon as auth.currentUser actually
+        // becomes available instead of always paying the full delay. Same
+        // 1200ms worst-case ceiling as before (2026-08-09).
+        const graceDeadline = Date.now() + 1200;
+        while (!auth.currentUser && Date.now() < graceDeadline) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        user = auth.currentUser;
   }
   if (!user) {
     document.getElementById("signed-out-notice").style.display = "block";
