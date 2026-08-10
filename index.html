@@ -2060,6 +2060,17 @@ onAuthStateChanged(auth, async (user) => {
     if (!deepLinkConsumed) {
       deepLinkConsumed = true;
       const params = new URLSearchParams(location.search);
+      // Strip the query string immediately once read — otherwise
+      // ?action=logout or ?view=... stays in the address bar/bookmark and
+      // re-fires on every future load of that exact URL. This caused a
+      // real "admin can't log in" bug: signing out via a game page's
+      // quick-nav left ?action=logout sitting in the URL, and logging
+      // back in on that same page immediately signed the person right
+      // back out because the param was still there to be re-read.
+      // Confirmed live 2026-08-10.
+      if (location.search) {
+        history.replaceState(null, "", location.pathname);
+      }
       if (params.get("action") === "logout") {
         signOut(auth).catch((err) => console.error("Couldn't sign out:", err));
         return;
@@ -5562,6 +5573,38 @@ async function renderChatSponsorBanner(room) {
   banner.style.display = "flex";
 }
 
+// Chat messages store the sender's display name as a snapshot at
+// send-time (senderName), which never gets updated afterward — so
+// anyone who changes their profile name later still shows their OLD
+// name on every message they sent before the change, forever. Direct
+// messages already avoid this (openThread() re-fetches the real current
+// name), chat rooms didn't. Confirmed live 2026-08-10: an old name
+// ("Shawn Polly-Creator of Town-Fuss") kept showing on Pauls Valley chat
+// messages after the account's profile name had since changed.
+//
+// Cached per uid for the page's lifetime (not per-render) so displaying
+// 100 messages from a handful of regulars doesn't re-fetch the same
+// profile over and over. Returns the stored snapshot name immediately
+// (no blank/flash) while the live lookup is in flight, then patches
+// just that one message's name span once the real name resolves.
+const chatSenderNameCache = new Map();
+function resolveChatSenderName(uid, fallbackName, messageId) {
+  if (uid === currentUid && currentUserData?.profile?.name) return currentUserData.profile.name;
+  if (chatSenderNameCache.has(uid)) {
+    return chatSenderNameCache.get(uid) || fallbackName || "Neighbor";
+  }
+  chatSenderNameCache.set(uid, null); // marks it as already in-flight
+  getDoc(doc(db, "users", uid)).then((snap) => {
+    const liveName = snap.exists() ? (snap.data().profile?.name || null) : null;
+    chatSenderNameCache.set(uid, liveName);
+    if (liveName) {
+      const el = document.getElementById(`chat-msg-name-${messageId}`);
+      if (el) el.textContent = liveName;
+    }
+  }).catch(() => {});
+  return fallbackName || "Neighbor";
+}
+
 function openChatRoom(room) {
   pushAppState({ view: "chatrooms", roomId: room.id });
   activeChatRoom = room;
@@ -5594,9 +5637,10 @@ function openChatRoom(room) {
       row.className = "chat-msg-row";
       row.id = `chat-msg-${docSnap.id}`;
       const mine = m.senderId === currentUid;
-      const initial = (m.senderName || "N").trim().charAt(0).toUpperCase();
+      const displayName = resolveChatSenderName(m.senderId, m.senderName, docSnap.id);
+      const initial = (displayName || "N").trim().charAt(0).toUpperCase();
       const avatarHtml = m.senderAvatarUrl
-        ? `<img class="chat-msg-avatar" src="${m.senderAvatarUrl}" alt="${escapeHtml(m.senderName || "Neighbor")}" />`
+        ? `<img class="chat-msg-avatar" src="${m.senderAvatarUrl}" alt="${escapeHtml(displayName)}" />`
         : `<div class="chat-msg-avatar-fallback">${escapeHtml(initial)}</div>`;
       const likes = Array.isArray(m.likes) ? m.likes : [];
       const dislikes = Array.isArray(m.dislikes) ? m.dislikes : [];
@@ -5605,7 +5649,7 @@ function openChatRoom(room) {
       row.innerHTML = `
         <div class="chat-msg-header">
           ${avatarHtml}
-          <span class="chat-msg-name">${escapeHtml(m.senderName || "Neighbor")}</span>
+          <span class="chat-msg-name" id="chat-msg-name-${docSnap.id}">${escapeHtml(displayName)}</span>
           <span class="chat-msg-time">${time}</span>
           ${isAdminUser ? `<button type="button" class="secondary small" data-action="admin-delete" style="margin-left:auto;">Delete</button>` : ""}
         </div>
@@ -5634,7 +5678,7 @@ function openChatRoom(room) {
         reportBtn.textContent = "Report";
         reportBtn.style.cssText = "background:none; border:none; text-decoration:underline; font-size:0.7rem; color:var(--text-muted); cursor:pointer; padding:0; margin-top:0.2rem;";
         reportBtn.dataset.uid = m.senderId;
-        reportBtn.dataset.name = m.senderName || "Neighbor";
+        reportBtn.dataset.name = displayName;
         reportBtn.dataset.messageText = m.text || "";
         row.appendChild(reportBtn);
       }
