@@ -1428,21 +1428,45 @@ const EDITION_TOWNS = [
 ];
 // The town selected by default on the Feed's town-filter tabs.
 const EDITION_HOME_TOWN = "Pauls Valley";
+
+// These Firebase project values are safe to expose publicly — access
+// control lives in Firestore/Storage security rules, not in hiding this
+// object.
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+// =========================================================================
+// END EDITION CONFIGURATION
+// =========================================================================
+
 // Every town across every live Town Fuss edition, used by the "Find your
 // town" search on the sign-in page — each edition is an entirely
 // separate Firebase project/deployment (not a different view of this
 // same app), so picking a town just navigates to that edition's own
-// site, same as OTHER_EDITIONS used to. This list is identical across
-// every edition's build (unlike EDITION_TOWNS above, which is only this
-// specific edition's own towns) — deliberately NOT auto-generated from
-// EDITION_TOWNS per edition, so it stays byte-identical everywhere and
-// doesn't need a build-edition.js template step. A few town names repeat
-// across editions (Coweta, Stigler, Wellston) — each occurrence is kept
-// and shown with its own edition tag, since they're genuinely different
-// destinations despite the identical name. Sorted alphabetically by town,
-// then by edition for the rare duplicates. Update this by hand whenever
-// a new edition ships — see testing/build-edition.js's EDITIONS for the
-// source list to pull from.
+// site, same as OTHER_EDITIONS used to.
+//
+// DELIBERATELY PLACED HERE, after "END EDITION CONFIGURATION" — this is
+// identical across every edition's build, so it must NOT sit inside the
+// EDITION_NAME...firebaseConfig block above: build-edition.js's
+// swapIndexHtmlConfig() regex-replaces that ENTIRE range with its own
+// template on every non-production edition. This array used to live
+// inside that range (right where OTHER_EDITIONS used to be) and got
+// silently deleted on every built edition as a result — production
+// worked (it's never rebuilt), all 6 other editions threw
+// "ALL_EDITIONS_TOWNS is not defined" and the search did nothing at all.
+// Confirmed live and fixed 2026-08-11. Keep this OUTSIDE that block.
+//
+// A few town names repeat across editions (Coweta, Stigler, Wellston) —
+// each occurrence is kept and shown with its own edition tag, since
+// they're genuinely different destinations despite the identical name.
+// Sorted alphabetically by town, then by edition for the rare
+// duplicates. Update this by hand whenever a new edition ships — see
+// testing/build-edition.js's EDITIONS for the source list to pull from.
 const ALL_EDITIONS_TOWNS = [
   { town: "Arcadia", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
   { town: "Arkoma", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
@@ -1557,22 +1581,6 @@ const ALL_EDITIONS_TOWNS = [
   { town: "Wynnewood", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
   { town: "Yukon", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
 ];
-
-// These Firebase project values are safe to expose publicly — access
-// control lives in Firestore/Storage security rules, not in hiding this
-// object.
-const firebaseConfig = {
-  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
-  authDomain: "town-talk-87ff7.firebaseapp.com",
-  projectId: "town-talk-87ff7",
-  storageBucket: "town-talk-87ff7.firebasestorage.app",
-  messagingSenderId: "95719537435",
-  appId: "1:95719537435:web:b496db2c2144adb3c831be",
-};
-// =========================================================================
-// END EDITION CONFIGURATION
-// =========================================================================
-
 const app = initializeApp(firebaseConfig);
 
 // -----------------------------------------------------------------------
