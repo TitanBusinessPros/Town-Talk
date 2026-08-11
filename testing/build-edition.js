@@ -58,6 +58,7 @@ const EDITIONS = {
       { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
       { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
       { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
+      { name: "Prague Edition", url: "https://prague.townfuss.com" },
     ],
   },
   "tulsa-townfuss": {
@@ -94,6 +95,8 @@ const EDITIONS = {
       { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
       { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
       { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
+      { name: "Prague Edition", url: "https://prague.townfuss.com" },
+      { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
     ],
   },
   "edmond-townfuss": {
@@ -125,6 +128,8 @@ const EDITIONS = {
       { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
       { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
       { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+      { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
+      { name: "Prague Edition", url: "https://prague.townfuss.com" },
     ],
   },
   "okc-townfuss": {
@@ -159,6 +164,7 @@ const EDITIONS = {
       { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
       { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
       { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
+      { name: "Prague Edition", url: "https://prague.townfuss.com" },
     ],
   },
   "poteau-townfuss": {
@@ -193,6 +199,40 @@ const EDITIONS = {
       { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
       { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
       { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+      { name: "Prague Edition", url: "https://prague.townfuss.com" },
+    ],
+  },
+  "prague-townfuss": {
+    editionName: "Prague Edition",
+    shortName: "Prague",
+    editionRegion: "Oklahoma",
+    homeTown: "Prague",
+    // Derived via distance/population research (2026-08-11): every
+    // Oklahoma town within 45 miles of Prague with population 500+.
+    // Okemah and Maud's distances are straight-line coordinate estimates
+    // (no direct driving-distance source found for those two
+    // specifically) — both comfortably under the 45mi cutoff either way.
+    towns: [
+      "Prague", "Shawnee", "Cushing", "Seminole", "Tecumseh", "McLoud",
+      "Bristow", "Wewoka", "Okemah", "Chandler", "Stroud", "Konawa",
+      "Boley", "Meeker", "Maud", "Wellston",
+    ],
+    firebaseConfig: {
+      apiKey: "AIzaSyBvWLgGupdzmJAMestDKlqMX-I80hJlAns",
+      authDomain: "prague-townfuss.firebaseapp.com",
+      projectId: "prague-townfuss",
+      storageBucket: "prague-townfuss.firebasestorage.app",
+      messagingSenderId: "220339095620",
+      appId: "1:220339095620:web:c38a7d61123d316d05d411",
+    },
+    vapidKey: "BBFN-1SZuxWlfm4cAQf_NHecI1eILnv7cYVDT3Q7gQDI0kFFFt3RReAEyvunlyj_GX9759dNCUPGoNbqQHTmPgI",
+    otherEditions: [
+      { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+      { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+      { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+      { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
+      { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+      { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
     ],
   },
 };
