@@ -57,6 +57,7 @@ const EDITIONS = {
       { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
       { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
       { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+      { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
     ],
   },
   "tulsa-townfuss": {
@@ -92,6 +93,7 @@ const EDITIONS = {
       { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
       { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
       { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+      { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
     ],
   },
   "edmond-townfuss": {
@@ -156,6 +158,41 @@ const EDITIONS = {
       { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
       { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
       { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
+      { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
+    ],
+  },
+  "poteau-townfuss": {
+    editionName: "Poteau Edition",
+    shortName: "Poteau",
+    editionRegion: "Oklahoma",
+    homeTown: "Poteau",
+    // Derived via distance/population research (2026-08-10/11): every
+    // Oklahoma town within 40 miles of Poteau with population 500+,
+    // Arkansas towns excluded per explicit instruction (Fort Smith/Van
+    // Buren/Greenwood/Barling/Mansfield would otherwise qualify too, but
+    // were left out to keep this an Oklahoma-only edition). Gore, OK
+    // (~42mi, 951 pop) also excluded per explicit instruction — just
+    // outside the 40-mile cutoff.
+    towns: [
+      "Poteau", "Sallisaw", "Pocola", "Roland", "Heavener", "Spiro",
+      "Arkoma", "Panama", "Wister", "Shady Point", "Talihina", "Keota",
+      "McCurtain", "Muldrow", "Stigler", "Wilburton",
+    ],
+    firebaseConfig: {
+      apiKey: "AIzaSyA9SNsAbvnWxwB_fK4VmXC00wORipshFig",
+      authDomain: "poteau-townfuss.firebaseapp.com",
+      projectId: "poteau-townfuss",
+      storageBucket: "poteau-townfuss.firebasestorage.app",
+      messagingSenderId: "786435750960",
+      appId: "1:786435750960:web:ebf7998d486875943001f5",
+    },
+    vapidKey: "BNm7U2-Nz0IYNFNdtQOyw8dZUalYanDWZ-37BHdDU40nwgQS7W6pL0WlGdH3FJB6fZaq_l9f8Z2chpzflUV-0Kk",
+    otherEditions: [
+      { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+      { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+      { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+      { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
+      { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
     ],
   },
 };

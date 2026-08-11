@@ -773,6 +773,21 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await page.goto("/chess.html");
     await page.locator('.site-quicknav a[href="index.html?action=logout"]').click();
     await expect(page.locator("#nav-auth")).toBeVisible({ timeout: 10_000 });
+
+    // Regression test for a real 2026-08-10 bug: ?action=logout was never
+    // cleared from the URL after signing out, so logging back in on that
+    // SAME page (without navigating anywhere else first) immediately hit
+    // the same stale param again and signed the person right back out —
+    // looked exactly like "can't log in" (blocked a real admin login on
+    // the Oklahoma City edition). Log back in right here, on the same
+    // page, to prove the URL actually got cleaned up.
+    await expect(page).not.toHaveURL(/action=logout/);
+    await page.locator("#login-email").fill(robot.email);
+    await page.locator("#login-password").fill(robot.password);
+    await page.locator("#form-login button[type=submit]").click();
+    await expect(page.locator("#nav-dashboard")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("#nav-auth")).toBeHidden();
+
     await context.close();
   });
 
