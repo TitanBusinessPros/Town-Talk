@@ -376,10 +376,23 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .about-card p { margin: 0; }
 .about-towns { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 1.25rem; }
 .about-town-chip { font-family: var(--font-mono); font-size: 0.78rem; background: var(--ink-700); color: var(--paper-050); padding: 0.3rem 0.7rem; border-radius: 999px; }
-.edition-picker { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; margin-bottom: 1rem; }
-.edition-picker:empty { display: none; margin-bottom: 0; }
-.edition-picker-link { font-size: 0.85rem; font-weight: 600; color: var(--amber-500); text-decoration: none; }
-.edition-picker-link:hover { text-decoration: underline; }
+.town-finder { max-width: 420px; margin: 0 auto 1.75rem; text-align: center; }
+.town-finder-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; margin: 0 0 0.35rem; }
+.town-finder-sub { color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1rem; }
+.town-finder-input-wrap { position: relative; text-align: left; }
+.town-finder-input-wrap svg { position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); opacity: 0.55; pointer-events: none; }
+.town-finder-input { width: 100%; font-family: var(--font-body); font-size: 1rem; padding: 0.85rem 1rem 0.85rem 2.6rem; border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--ink-800); color: var(--paper-050); }
+.town-finder-input:focus { outline: none; border-color: var(--amber-500); }
+.town-finder-input::placeholder { color: var(--text-muted); }
+.town-finder-list { margin-top: 0.75rem; max-height: 280px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--ink-800); text-align: left; }
+.town-finder-list:empty { display: none; }
+.town-finder-group-label { font-family: var(--font-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 0.55rem 0.9rem 0.3rem; position: sticky; top: 0; background: var(--ink-800); }
+.town-finder-item { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; width: 100%; text-align: left; padding: 0.6rem 0.9rem; border: none; background: none; font-family: var(--font-body); font-size: 0.92rem; color: var(--paper-050); cursor: pointer; text-decoration: none; }
+.town-finder-item:hover, .town-finder-item:focus-visible { background: var(--ink-700); outline: none; }
+.town-finder-item .town-finder-edition-tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; }
+.town-finder-item mark { background: none; color: var(--amber-500); font-weight: 600; }
+.town-finder-empty { padding: 1.5rem 0.9rem; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+.town-finder-count { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); margin-top: 0.6rem; }
 .about-feature-list { max-width: 640px; margin: 1.5rem auto 0; }
 .about-feature-list li { margin-bottom: 0.6rem; line-height: 1.6; }
 .about-cta { text-align: center; margin-top: 2.5rem; padding: 2rem 1.5rem; background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); }
@@ -487,8 +500,15 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <!-- ================= LANDING / AUTH VIEW ================= -->
   <section id="view-landing" class="view active">
     <div class="page--narrow" style="margin:0 auto">
-      <div id="edition-picker" class="edition-picker">
-        <!-- Populated from OTHER_EDITIONS at load time (see the script below) — empty/hidden when there's nothing to show. -->
+      <div id="town-finder" class="town-finder">
+        <h1 class="town-finder-title">Find your town</h1>
+        <p class="town-finder-sub">Type or Scroll to find your town!</p>
+        <div class="town-finder-input-wrap">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11L14.5 14.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <input id="town-finder-input" class="town-finder-input" type="text" placeholder="Start typing — e.g. &quot;Stroud&quot;" autocomplete="off" aria-label="Find your town" />
+        </div>
+        <div id="town-finder-list" class="town-finder-list"></div>
+        <div id="town-finder-count" class="town-finder-count"></div>
       </div>
       <div class="view-header">
         <p class="eyebrow">Pauls Valley · Oklahoma</p>
@@ -1408,17 +1428,134 @@ const EDITION_TOWNS = [
 ];
 // The town selected by default on the Feed's town-filter tabs.
 const EDITION_HOME_TOWN = "Pauls Valley";
-// Other live Town Fuss editions, shown as a small picker at the top of the
-// sign-in page — each is an entirely separate Firebase project/deployment
-// (not a different view of this same app), so entries just link out to
-// that edition's own site. List order is also display order.
-const OTHER_EDITIONS = [
-  { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
-  { name: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
-  { name: "Edmond Edition", url: "https://edmond.townfuss.com" },
-  { name: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
-  { name: "Poteau Edition", url: "https://poteau.townfuss.com" },
-  { name: "Prague Edition", url: "https://prague.townfuss.com" },
+// Every town across every live Town Fuss edition, used by the "Find your
+// town" search on the sign-in page — each edition is an entirely
+// separate Firebase project/deployment (not a different view of this
+// same app), so picking a town just navigates to that edition's own
+// site, same as OTHER_EDITIONS used to. This list is identical across
+// every edition's build (unlike EDITION_TOWNS above, which is only this
+// specific edition's own towns) — deliberately NOT auto-generated from
+// EDITION_TOWNS per edition, so it stays byte-identical everywhere and
+// doesn't need a build-edition.js template step. A few town names repeat
+// across editions (Coweta, Stigler, Wellston) — each occurrence is kept
+// and shown with its own edition tag, since they're genuinely different
+// destinations despite the identical name. Sorted alphabetically by town,
+// then by edition for the rare duplicates. Update this by hand whenever
+// a new edition ships — see testing/build-edition.js's EDITIONS for the
+// source list to pull from.
+const ALL_EDITIONS_TOWNS = [
+  { town: "Arcadia", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Arkoma", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Bethany", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Bixby", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Boley", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Bricktown", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Bristow", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Broken Arrow", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Cashion", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Catoosa", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Central OKC", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Chandler", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Checotah", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Choctaw", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Claremore", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Cleveland", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Collinsville", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Coweta", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Coweta", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Crescent", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Cushing", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Davis", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Del City", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "East OKC", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Edmond", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "El Reno", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Elmore City", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Eufaula", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Forest Park", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Glenpool", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Guthrie", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Hartshorne", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Haskell", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Heavener", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Henryetta", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Jenks", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Jones", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Katie", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Keota", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Kingfisher", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Konawa", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Krebs", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Langston", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Lindsay", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Longtown", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Luther", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Mannford", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Marlow", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Maud", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Maysville", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "McAlester", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "McCurtain", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "McLoud", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Meeker", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Midwest City", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Moore", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Morris", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Muldrow", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Muskogee", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Mustang", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Nichols Hills", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "North OKC", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Okarche", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Okemah", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Oklahoma City", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Okmulgee", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Owasso", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Panama", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Paoli", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Pauls Valley", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Piedmont", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Pocola", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Poteau", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Prague", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Purcell", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Roff", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Roland", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Sallisaw", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Sand Springs", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Sapulpa", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Seminole", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Shady Point", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Shawnee", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Skiatook", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "South OKC", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Spencer", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Spiro", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Stigler", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Stigler", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Stratford", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Stroud", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Sulphur", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Talihina", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Tecumseh", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Texanna", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Tulsa", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Union City", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Valley Brook", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Verdigris", edition: "Tulsa Edition", url: "https://tulsa.townfuss.com" },
+  { town: "Wanette", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Warner", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Wayne", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Wellston", edition: "Edmond Edition", url: "https://edmond.townfuss.com" },
+  { town: "Wellston", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "West OKC", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
+  { town: "Wetumka", edition: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
+  { town: "Wewoka", edition: "Prague Edition", url: "https://prague.townfuss.com" },
+  { town: "Whitebead", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Wilburton", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Wister", edition: "Poteau Edition", url: "https://poteau.townfuss.com" },
+  { town: "Wynnewood", edition: "Pauls Valley Edition", url: "https://www.townfuss.com" },
+  { town: "Yukon", edition: "Oklahoma City Edition", url: "https://okc.townfuss.com" },
 ];
 
 // These Firebase project values are safe to expose publicly — access
@@ -1518,11 +1655,67 @@ if (aboutTownsWrap) {
 const bannerSubEl = document.querySelector(".brand-banner-sub");
 if (bannerSubEl) bannerSubEl.textContent = `${EDITION_NAME} · ${EDITION_REGION}`;
 
-const editionPickerEl = document.getElementById("edition-picker");
-if (editionPickerEl && OTHER_EDITIONS.length) {
-  editionPickerEl.innerHTML = OTHER_EDITIONS.map((ed) =>
-    `<a href="${ed.url}" class="edition-picker-link">Enter ${ed.name.replace(/ Edition$/, "")} Town Fuss &rarr;</a>`
-  ).join("");
+// "Find your town" search — shows every town across every edition,
+// sorted alphabetically. Empty box shows the full A-Z list to browse;
+// typing narrows it down live. Picking a town navigates to that
+// edition's own site, same as OTHER_EDITIONS' plain links used to.
+// Replaced the old "Sign into your X account" wall of edition-name
+// buttons (2026-08-11) — that got confusing once there were more than a
+// couple editions, and only gets worse as more ship.
+function highlightMatch(text, query) {
+  if (!query) return escapeHtml(text);
+  const i = text.toLowerCase().indexOf(query.toLowerCase());
+  if (i === -1) return escapeHtml(text);
+  return (
+    escapeHtml(text.slice(0, i)) +
+    "<mark>" + escapeHtml(text.slice(i, i + query.length)) + "</mark>" +
+    escapeHtml(text.slice(i + query.length))
+  );
+}
+
+const townFinderInput = document.getElementById("town-finder-input");
+const townFinderList = document.getElementById("town-finder-list");
+const townFinderCount = document.getElementById("town-finder-count");
+
+function renderTownFinder() {
+  const query = townFinderInput.value.trim();
+  const matches = query
+    ? ALL_EDITIONS_TOWNS.filter((e) => e.town.toLowerCase().includes(query.toLowerCase()))
+    : ALL_EDITIONS_TOWNS;
+
+  townFinderList.innerHTML = "";
+  if (!matches.length) {
+    townFinderList.innerHTML = `<div class="town-finder-empty">No town found for &ldquo;${escapeHtml(query)}&rdquo;.</div>`;
+    townFinderCount.textContent = "";
+    return;
+  }
+
+  let lastLetter = "";
+  const showGroups = !query;
+  matches.forEach((e) => {
+    const letter = e.town[0].toUpperCase();
+    if (showGroups && letter !== lastLetter) {
+      lastLetter = letter;
+      const group = document.createElement("div");
+      group.className = "town-finder-group-label";
+      group.textContent = letter;
+      townFinderList.appendChild(group);
+    }
+    const item = document.createElement("a");
+    item.className = "town-finder-item";
+    item.href = e.url;
+    item.innerHTML = `<span>${highlightMatch(e.town, query)}</span><span class="town-finder-edition-tag">${escapeHtml(e.edition.replace(/ Edition$/, ""))}</span>`;
+    townFinderList.appendChild(item);
+  });
+
+  townFinderCount.textContent = query
+    ? `${matches.length} match${matches.length === 1 ? "" : "es"}`
+    : `${ALL_EDITIONS_TOWNS.length} towns across every Town Fuss edition`;
+}
+
+if (townFinderInput) {
+  townFinderInput.addEventListener("input", renderTownFinder);
+  renderTownFinder();
 }
 
 // ============================= PWA INSTALL BANNER ===========================
@@ -2109,6 +2302,14 @@ onAuthStateChanged(auth, async (user) => {
     renderUnreadBadge(0);
     renderNotifBellBadge(0);
     document.getElementById("notif-bell-panel").style.display = "none";
+    // maybeShowAdminPinGate() can open this on the SAME onAuthStateChanged
+    // pass that ends up signing the user back out again (e.g. a brand-new
+    // admin account hitting the quick-nav's ?action=logout on its very
+    // first page load) — nothing else ever closes it once shown, so a
+    // sign-out has to explicitly clean it up or it's stuck blocking the
+    // page underneath forever. Found via a real Playwright failure
+    // 2026-08-11, not previously caught by anything.
+    document.getElementById("admin-pin-modal-backdrop").style.display = "none";
     closeThread();
     closeChatRoomThread();
     showView("landing");

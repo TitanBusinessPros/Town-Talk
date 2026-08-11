@@ -83,6 +83,42 @@ test.describe.serial("Town Fuss — full platform pass", () => {
   test.setTimeout(180_000);
   let pageA, pageB, contextA, contextB, uidA, uidB;
 
+  test("Find your town: search filters live and links to the right edition", async ({ browser }) => {
+    // Added 2026-08-11 alongside the "Find your town" search replacing
+    // the old "Sign into your X account" wall of edition-name buttons.
+    // Doesn't actually click through to another edition's live domain
+    // (that would navigate this test's page off-site) — just confirms
+    // the search filters correctly and each result's href is right.
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto("/index.html");
+
+    // Empty box: full alphabetical list, grouped by first letter.
+    await expect(page.locator(".town-finder-item")).toHaveCount(112);
+    await expect(page.locator(".town-finder-group-label").first()).toHaveText("A");
+
+    // A town unique to one edition — Wynnewood only exists in Pauls Valley.
+    await page.locator("#town-finder-input").fill("Wynnewood");
+    await expect(page.locator(".town-finder-item")).toHaveCount(1);
+    const result = page.locator(".town-finder-item").first();
+    await expect(result).toContainText("Wynnewood");
+    await expect(result).toContainText("Pauls Valley");
+    await expect(result).toHaveAttribute("href", "https://www.townfuss.com");
+
+    // A town name that exists in two different editions (Coweta: Eufaula
+    // Lake + Tulsa) — both should show, tagged with their own edition.
+    await page.locator("#town-finder-input").fill("Coweta");
+    await expect(page.locator(".town-finder-item")).toHaveCount(2);
+    await expect(page.locator(".town-finder-item").nth(0)).toContainText("Eufaula Lake");
+    await expect(page.locator(".town-finder-item").nth(1)).toContainText("Tulsa");
+
+    // No match at all.
+    await page.locator("#town-finder-input").fill("Notarealtownxyz");
+    await expect(page.locator(".town-finder-empty")).toBeVisible();
+
+    await context.close();
+  });
+
   test("Sign up both robots and get past email verification", async ({ browser }) => {
     contextA = await browser.newContext();
     contextB = await browser.newContext();
