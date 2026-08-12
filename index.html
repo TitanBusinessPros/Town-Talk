@@ -630,10 +630,10 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <h2>Complete your profile <span id="post-status-badge"></span></h2>
       <form id="profile-form">
         <label for="display-name">Display name</label>
-        <input id="display-name" type="text" maxlength="40" placeholder="What should neighbors call you?" />
+        <input id="display-name" type="text" maxlength="40" placeholder="What should neighbors call you?" required />
         <label for="neighborhood">What town are you from?</label>
-        <select id="neighborhood">
-          <option value="">Select a town...</option>
+        <select id="neighborhood" required>
+          <option value="" disabled selected>Select a town...</option>
           <!-- Remaining options are populated from EDITION_TOWNS at load time (see populateTownOptions() in the script below). -->
         </select>
         <label for="post-text" style="display:block; margin-top:1rem;">Your post</label>
@@ -1743,15 +1743,47 @@ if (townFinderInput) {
 // a Friend button. No invite codes or new backend, just a link to this
 // edition's own site via location.origin, so it works unmodified on every
 // edition. Wired up here for the Chat Rooms view specifically.
+//
+// The og:image/twitter:image tags (added 2026-08-12) control the preview
+// when a link gets UNFURLED by the app you send it to (iMessage, Discord,
+// etc.) — they don't reliably put an image directly in the OS share-sheet
+// popup itself. To actually get a thumbnail in that popup, the image has
+// to be attached to the share as a file. Falls back to the plain
+// url-only share (then clipboard) if file-sharing isn't supported.
+async function buildInviteLogoFile() {
+  try {
+    const resp = await fetch("/Logo-Fav.png");
+    const blob = await resp.blob();
+    const file = new File([blob], "town-fuss-logo.png", { type: blob.type || "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) return file;
+  } catch (err) {
+    // Ignore — falls through to a url-only share below.
+  }
+  return null;
+}
 async function inviteAFriend(statusEl) {
   const inviteUrl = location.origin + "/";
   const shareText = "Come join me on Town Fuss!";
   if (navigator.share) {
+    const logoFile = await buildInviteLogoFile();
+    const shareData = { title: "Town Fuss", text: shareText, url: inviteUrl };
+    if (logoFile) shareData.files = [logoFile];
     try {
-      await navigator.share({ title: "Town Fuss", text: shareText, url: inviteUrl });
+      await navigator.share(shareData);
       return;
     } catch (err) {
       if (err && err.name === "AbortError") return;
+      // Some platforms reject a combined files+url share even though
+      // canShare() said yes — retry without the file rather than fail
+      // the whole invite over a thumbnail.
+      if (logoFile) {
+        try {
+          await navigator.share({ title: "Town Fuss", text: shareText, url: inviteUrl });
+          return;
+        } catch (err2) {
+          if (err2 && err2.name === "AbortError") return;
+        }
+      }
     }
   }
   try {
@@ -3007,6 +3039,21 @@ document.getElementById("profile-form").addEventListener("submit", async (e) => 
     name: document.getElementById("display-name").value.trim(),
     neighborhood: document.getElementById("neighborhood").value.trim(),
   };
+  // Neither field was actually required before this — no `required`
+  // attribute, no JS check — so a blank display name and/or a
+  // never-changed "Select a town..." could be submitted and then
+  // approved with nothing to stop it. Confirmed live 2026-08-12: an
+  // approved profile in the Prague directory had an empty name (falling
+  // back to the generic "Neighbor" label everywhere it's shown) and no
+  // town. Blocking it here at the source.
+  if (!profile.name) {
+    showMessage(msg, "Please enter a display name — this is what other members will see you as.", "error");
+    return;
+  }
+  if (!profile.neighborhood) {
+    showMessage(msg, "Please select your town.", "error");
+    return;
+  }
   const update = {
     profile,
     postText: text,
@@ -3785,6 +3832,17 @@ function renderAdminCard(uid, data) {
   const msg = card.querySelector(".message");
 
   card.querySelector('[data-action="approve"]').addEventListener("click", async () => {
+    // The submit form now requires both fields (see profile-form's submit
+    // handler), but this guards against anything already sitting in the
+    // queue from before that fix, or any future path that writes to
+    // reviewQueue without going through that form. Confirmed live
+    // 2026-08-12: an admin approved a profile with a blank name and no
+    // town, which then showed up in the directory as the generic
+    // "Neighbor" fallback instead of a real name.
+    if (!profile.name || !profile.neighborhood) {
+      showMessage(msg, "Can't approve — this profile is missing a display name and/or town. Reject it instead, or ask the member to finish their profile.", "error");
+      return;
+    }
     try {
       await updateDoc(doc(db, "users", uid), { approved: true, everApproved: true, rejected: false });
       await deleteDoc(doc(db, "reviewQueue", uid));
