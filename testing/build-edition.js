@@ -31,10 +31,15 @@ const EDITIONS = {
     shortName: "Eufaula Lake",
     editionRegion: "Oklahoma",
     homeTown: "Eufaula",
+    // Coweta swapped out 2026-08-11 -- it's a Tulsa-metro town (~15mi from
+    // Tulsa, ~30mi from Eufaula) and was already duplicated on the Tulsa
+    // edition's own list, which is the correct home for it. Replaced with
+    // Porum (~18mi from Eufaula, pop. ~700), which wasn't claimed by any
+    // other edition.
     towns: [
       "Eufaula", "Checotah", "Warner", "Henryetta", "Krebs", "Stigler",
       "McAlester", "Morris", "Hartshorne", "Okmulgee", "Muskogee", "Haskell",
-      "Wetumka", "Longtown", "Texanna", "Coweta",
+      "Wetumka", "Longtown", "Texanna", "Porum",
     ],
     firebaseConfig: {
       apiKey: "AIzaSyAzSpyuWsl_533D24U1J9fYEY0efw30FO0",
@@ -179,10 +184,15 @@ const EDITIONS = {
     // were left out to keep this an Oklahoma-only edition). Gore, OK
     // (~42mi, 951 pop) also excluded per explicit instruction — just
     // outside the 40-mile cutoff.
+    // Stigler swapped out 2026-08-11 -- it was already on the Eufaula Lake
+    // edition's list first (its correct home, roughly equidistant but
+    // added there earlier), duplicated here later. Replaced with Howe
+    // (~15mi from Poteau, pop. ~800) -- not Gore, which stays excluded per
+    // the note above.
     towns: [
       "Poteau", "Sallisaw", "Pocola", "Roland", "Heavener", "Spiro",
       "Arkoma", "Panama", "Wister", "Shady Point", "Talihina", "Keota",
-      "McCurtain", "Muldrow", "Stigler", "Wilburton",
+      "McCurtain", "Muldrow", "Howe", "Wilburton",
     ],
     firebaseConfig: {
       apiKey: "AIzaSyA9SNsAbvnWxwB_fK4VmXC00wORipshFig",
@@ -212,10 +222,14 @@ const EDITIONS = {
     // Okemah and Maud's distances are straight-line coordinate estimates
     // (no direct driving-distance source found for those two
     // specifically) — both comfortably under the 45mi cutoff either way.
+    // Wellston swapped out 2026-08-11 -- it was already on the Edmond
+    // edition's list first (its correct home, roughly equidistant but
+    // added there earlier), duplicated here later. Replaced with Earlsboro
+    // (~15mi from Prague, pop. ~600).
     towns: [
       "Prague", "Shawnee", "Cushing", "Seminole", "Tecumseh", "McLoud",
       "Bristow", "Wewoka", "Okemah", "Chandler", "Stroud", "Konawa",
-      "Boley", "Meeker", "Maud", "Wellston",
+      "Boley", "Meeker", "Maud", "Earlsboro",
     ],
     firebaseConfig: {
       apiKey: "AIzaSyBvWLgGupdzmJAMestDKlqMX-I80hJlAns",

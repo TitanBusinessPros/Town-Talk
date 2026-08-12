@@ -42,6 +42,12 @@ button:hover { background: var(--amber-600); }
 .site-quicknav { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; align-items: center; padding: 0.6rem 1.5rem; background: var(--ink-800); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.78rem; }
 .site-quicknav a { color: var(--text-muted); text-decoration: none; white-space: nowrap; }
 .site-quicknav a:hover { color: var(--paper-050); }
+
+.invite-banner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; background: var(--ink-800); border: 1px solid var(--amber-500); border-radius: var(--radius); padding: 1.25rem 1.5rem; max-width: 700px; margin: 0 auto 2rem; text-align: left; }
+.invite-banner h2 { text-align: left; font-size: 1.05rem; margin: 0 0 0.25rem; }
+.invite-banner p { margin: 0; }
+.invite-banner button { flex-shrink: 0; }
+#invite-status { text-align: center; min-height: 1.2em; margin-top: -1rem; margin-bottom: 1.5rem; }
 </style>
 </head>
 <body>
@@ -75,6 +81,15 @@ button:hover { background: var(--amber-600); }
     <span class="eyebrow">Town Fuss</span>
     <h1>Games</h1>
     <p style="text-align:center;">Pick a game to play against other Town Fuss members.</p>
+
+    <div class="invite-banner">
+      <div>
+        <h2>Invite a friend to Town Fuss Games</h2>
+        <p class="field-hint">Challenge your friends — send them a link to come play.</p>
+      </div>
+      <button type="button" id="invite-friend-btn">Invite a Friend</button>
+    </div>
+    <p id="invite-status" class="field-hint" aria-live="polite"></p>
 
     <!-- ============================================================
          TO ADD A NEW GAME LATER: just copy one of these <div class="card">
@@ -152,7 +167,7 @@ button:hover { background: var(--amber-600); }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // =========================================================================
 // EDITION CONFIGURATION — the only edition-specific value on this page.
@@ -185,10 +200,63 @@ if (location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
 }
 const auth = getAuth(app);
 
+// Local testing only — never runs against the real production site. Every
+// other game page already has this (chess.html, checkers.html, etc.) —
+// gamezone.html was missing it, which meant its sign-in gating (the
+// #games-hub / #signed-out-notice split below) could never actually be
+// exercised against the local emulator: without this, the page's auth
+// lookups go to real production Firebase instead of the emulator and
+// silently fail for any emulator-only test account. Found 2026-08-12
+// while adding a Playwright test for the Invite a Friend feature.
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+}
+
 onAuthStateChanged(auth, (user) => {
   document.getElementById("signed-out-notice").style.display = user ? "none" : "block";
   document.getElementById("games-hub").style.display = user ? "block" : "none";
 });
+
+// Invite a friend — no invite codes or new backend, just a link to this
+// edition's own games page. location.origin makes this automatically
+// correct on every edition without any per-edition templating.
+const inviteBtn = document.getElementById("invite-friend-btn");
+const inviteStatus = document.getElementById("invite-status");
+let inviteStatusTimer = null;
+function showInviteStatus(text) {
+  inviteStatus.textContent = text;
+  clearTimeout(inviteStatusTimer);
+  inviteStatusTimer = setTimeout(() => { inviteStatus.textContent = ""; }, 6000);
+}
+if (inviteBtn) {
+  inviteBtn.addEventListener("click", async () => {
+    const inviteUrl = `${location.origin}/gamezone.html`;
+    const shareText = "Come play games with me on Town Fuss!";
+    // Prefer the native share sheet (texts/email/socials) when the
+    // browser supports it — mainly mobile. Falls back to copying the
+    // link for desktop browsers without navigator.share.
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Town Fuss Games", text: shareText, url: inviteUrl });
+        return;
+      } catch (err) {
+        // AbortError just means the user closed the share sheet — leave
+        // it, don't fall through to clipboard on top of that. Any other
+        // failure (e.g. share unsupported for this content) falls
+        // through to the clipboard path below.
+        if (err && err.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${shareText} ${inviteUrl}`);
+      showInviteStatus("Invite link copied — paste it in a text or email!");
+    } catch (err) {
+      // Clipboard access can fail (permissions, insecure context) — show
+      // the link directly so there's always a way to get it.
+      showInviteStatus(`Copy this link: ${inviteUrl}`);
+    }
+  });
+}
 </script>
 </body>
 </html>

@@ -105,16 +105,27 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await expect(result).toContainText("Pauls Valley");
     await expect(result).toHaveAttribute("href", "https://www.townfuss.com");
 
-    // A town name that exists in two different editions (Coweta: Eufaula
-    // Lake + Tulsa) — both should show, tagged with their own edition.
+    // Coweta used to sit on both Eufaula Lake's and Tulsa's lists at once
+    // (a real duplicate, fixed 2026-08-11 by moving it to Tulsa only, its
+    // actual home) — confirm it now resolves to exactly one result.
     await page.locator("#town-finder-input").fill("Coweta");
-    await expect(page.locator(".town-finder-item")).toHaveCount(2);
-    await expect(page.locator(".town-finder-item").nth(0)).toContainText("Eufaula Lake");
-    await expect(page.locator(".town-finder-item").nth(1)).toContainText("Tulsa");
+    await expect(page.locator(".town-finder-item")).toHaveCount(1);
+    await expect(page.locator(".town-finder-item").first()).toContainText("Tulsa");
 
     // No match at all.
     await page.locator("#town-finder-input").fill("Notarealtownxyz");
     await expect(page.locator(".town-finder-empty")).toBeVisible();
+
+    // No town name should ever appear under more than one edition — this
+    // is the general form of the Coweta/Stigler/Wellston bug found
+    // 2026-08-11 (three towns each duplicated across two editions'
+    // otherwise-independent lists). Catches any future edition's town
+    // list accidentally re-claiming a town another edition already has.
+    await page.locator("#town-finder-input").fill("");
+    const allTownNames = await page.locator(".town-finder-item span:first-child").allTextContents();
+    const seen = new Set();
+    const duplicates = allTownNames.filter((t) => (seen.has(t) ? true : (seen.add(t), false)));
+    expect(duplicates).toEqual([]);
 
     await context.close();
   });
@@ -823,6 +834,37 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await page.locator("#form-login button[type=submit]").click();
     await expect(page.locator("#nav-dashboard")).toBeVisible({ timeout: 10_000 });
     await expect(page.locator("#nav-auth")).toBeHidden();
+
+    await context.close();
+  });
+
+  test("Games hub 'Invite a Friend' copies a working link to the clipboard", async ({ browser }) => {
+    // gamezone.html has no navigator.share in this headless context, so
+    // this exercises the clipboard fallback path every desktop browser
+    // actually hits. Confirms the link points at this edition's own
+    // games page (location.origin), not a hardcoded domain — that's
+    // what makes this feature work unmodified across every edition's
+    // build without needing to be in build-edition.js's templating.
+    const context = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"] });
+    const page = await context.newPage();
+    const robot = { email: `invitefriend.${Date.now()}@test.town`, password: "TestPass123!" };
+    await signUp(page, robot);
+    const uid = await verifyEmailByAddress(robot.email);
+    await makeAdmin(uid);
+    await page.goto("/gamezone.html");
+    // Same grace period as the "#profile-form" wait above (line 159) — the
+    // very first Firestore/Auth real-time connection in a fresh run/worker
+    // can take noticeably longer than any later one. This test is
+    // self-contained (own signUp), so run in isolation it's often that
+    // first connection itself.
+    await expect(page.locator("#games-hub")).toBeVisible({ timeout: 45_000 });
+
+    await page.locator("#invite-friend-btn").click();
+    await expect(page.locator("#invite-status")).toContainText("copied", { timeout: 5_000 });
+
+    const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+    expect(clipboardText).toContain("Town Fuss");
+    expect(clipboardText).toContain(`${new URL(page.url()).origin}/gamezone.html`);
 
     await context.close();
   });
