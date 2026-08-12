@@ -239,22 +239,15 @@ function showInviteStatus(text) {
   clearTimeout(inviteStatusTimer);
   inviteStatusTimer = setTimeout(() => { inviteStatus.textContent = ""; }, 6000);
 }
-// Attaches the logo as a real shared file so it shows as a thumbnail in
-// the OS share-sheet popup itself — og:image/twitter:image (added
-// 2026-08-12) only affect how the link unfurls once it lands in the
-// receiving app, not that first popup. Falls back cleanly if the
-// platform doesn't support file-sharing.
-async function buildInviteLogoFile() {
-  try {
-    const resp = await fetch("/Logo-Fav.png");
-    const blob = await resp.blob();
-    const file = new File([blob], "town-fuss-logo.png", { type: blob.type || "image/png" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) return file;
-  } catch (err) {
-    // Ignore — falls through to a url-only share below.
-  }
-  return null;
-}
+// Deliberately text+url ONLY — a 2026-08-12 attempt to also attach the
+// logo as a shared file (for a thumbnail in the share-sheet popup itself)
+// broke real invites: several share targets (iMessage/SMS among them)
+// treat an attached file as the primary thing being shared and drop or
+// bury the actual text/link, so people receiving the "invite" got a
+// picture with no way to actually get to the site. Reverted the same
+// day. The og:image/twitter:image meta tags stay -- they still correctly
+// show the logo once the link is actually sent and unfurled by the
+// receiving app, without this failure mode.
 if (inviteBtn) {
   inviteBtn.addEventListener("click", async () => {
     const inviteUrl = `${location.origin}/gamezone.html`;
@@ -263,11 +256,8 @@ if (inviteBtn) {
     // browser supports it — mainly mobile. Falls back to copying the
     // link for desktop browsers without navigator.share.
     if (navigator.share) {
-      const logoFile = await buildInviteLogoFile();
-      const shareData = { title: "Town Fuss Games", text: shareText, url: inviteUrl };
-      if (logoFile) shareData.files = [logoFile];
       try {
-        await navigator.share(shareData);
+        await navigator.share({ title: "Town Fuss Games", text: shareText, url: inviteUrl });
         return;
       } catch (err) {
         // AbortError just means the user closed the share sheet — leave
@@ -275,14 +265,6 @@ if (inviteBtn) {
         // failure (e.g. share unsupported for this content) falls
         // through to the clipboard path below.
         if (err && err.name === "AbortError") return;
-        if (logoFile) {
-          try {
-            await navigator.share({ title: "Town Fuss Games", text: shareText, url: inviteUrl });
-            return;
-          } catch (err2) {
-            if (err2 && err2.name === "AbortError") return;
-          }
-        }
       }
     }
     try {

@@ -1744,46 +1744,24 @@ if (townFinderInput) {
 // edition's own site via location.origin, so it works unmodified on every
 // edition. Wired up here for the Chat Rooms view specifically.
 //
-// The og:image/twitter:image tags (added 2026-08-12) control the preview
-// when a link gets UNFURLED by the app you send it to (iMessage, Discord,
-// etc.) — they don't reliably put an image directly in the OS share-sheet
-// popup itself. To actually get a thumbnail in that popup, the image has
-// to be attached to the share as a file. Falls back to the plain
-// url-only share (then clipboard) if file-sharing isn't supported.
-async function buildInviteLogoFile() {
-  try {
-    const resp = await fetch("/Logo-Fav.png");
-    const blob = await resp.blob();
-    const file = new File([blob], "town-fuss-logo.png", { type: blob.type || "image/png" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) return file;
-  } catch (err) {
-    // Ignore — falls through to a url-only share below.
-  }
-  return null;
-}
+// Deliberately text+url ONLY — a 2026-08-12 attempt to also attach the
+// logo as a shared file (for a thumbnail in the share-sheet popup itself)
+// broke real invites: several share targets (iMessage/SMS among them)
+// treat an attached file as the primary thing being shared and drop or
+// bury the actual text/link, so people receiving the "invite" got a
+// picture with no way to actually get to the site. Reverted the same
+// day. The og:image/twitter:image meta tags stay -- they still correctly
+// show the logo once the link is actually sent and unfurled by the
+// receiving app, without this failure mode.
 async function inviteAFriend(statusEl) {
   const inviteUrl = location.origin + "/";
   const shareText = "Come join me on Town Fuss!";
   if (navigator.share) {
-    const logoFile = await buildInviteLogoFile();
-    const shareData = { title: "Town Fuss", text: shareText, url: inviteUrl };
-    if (logoFile) shareData.files = [logoFile];
     try {
-      await navigator.share(shareData);
+      await navigator.share({ title: "Town Fuss", text: shareText, url: inviteUrl });
       return;
     } catch (err) {
       if (err && err.name === "AbortError") return;
-      // Some platforms reject a combined files+url share even though
-      // canShare() said yes — retry without the file rather than fail
-      // the whole invite over a thumbnail.
-      if (logoFile) {
-        try {
-          await navigator.share({ title: "Town Fuss", text: shareText, url: inviteUrl });
-          return;
-        } catch (err2) {
-          if (err2 && err2.name === "AbortError") return;
-        }
-      }
     }
   }
   try {

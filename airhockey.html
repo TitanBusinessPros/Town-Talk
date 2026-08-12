@@ -115,46 +115,30 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: whit
 // Invite a Friend — same share-sheet-with-clipboard-fallback pattern used
 // on gamezone.html and the Chat Rooms view. Plain script (not a module),
 // so it works the same on every game page without touching each page own
-// module script or Firebase config. Attaches the logo as a real shared
-// file so it shows as a thumbnail in the OS share-sheet popup itself —
-// og:image/twitter:image only affect how the link unfurls once it lands
-// in the receiving app, not that first popup. Falls back cleanly if the
-// platform does not support file-sharing.
+// module script or Firebase config.
+//
+// Deliberately text+url ONLY — a 2026-08-12 attempt to also attach the
+// logo as a shared file (for a thumbnail in the share-sheet popup itself)
+// broke real invites: several share targets (iMessage/SMS among them)
+// treat an attached file as the primary thing being shared and drop or
+// bury the actual text/link, so people receiving the "invite" got a
+// picture with no way to actually get to the site. Reverted the same
+// day. The og:image/twitter:image meta tags stay -- they still correctly
+// show the logo once the link is actually sent and unfurled by the
+// receiving app, without this failure mode.
 (function () {
   var btn = document.getElementById("quicknav-invite-friend");
   if (!btn) return;
-  async function buildInviteLogoFile() {
-    try {
-      var resp = await fetch("/Logo-Fav.png");
-      var blob = await resp.blob();
-      var file = new File([blob], "town-fuss-logo.png", { type: blob.type || "image/png" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) return file;
-    } catch (err) {
-      // Ignore — falls through to a url-only share below.
-    }
-    return null;
-  }
   btn.addEventListener("click", async function (e) {
     e.preventDefault();
     var inviteUrl = location.origin + "/";
     var shareText = "Come join me on Town Fuss!";
     if (navigator.share) {
-      var logoFile = await buildInviteLogoFile();
-      var shareData = { title: "Town Fuss", text: shareText, url: inviteUrl };
-      if (logoFile) shareData.files = [logoFile];
       try {
-        await navigator.share(shareData);
+        await navigator.share({ title: "Town Fuss", text: shareText, url: inviteUrl });
         return;
       } catch (err) {
         if (err && err.name === "AbortError") return;
-        if (logoFile) {
-          try {
-            await navigator.share({ title: "Town Fuss", text: shareText, url: inviteUrl });
-            return;
-          } catch (err2) {
-            if (err2 && err2.name === "AbortError") return;
-          }
-        }
       }
     }
     var original = btn.textContent;
