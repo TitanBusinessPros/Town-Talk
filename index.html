@@ -10,13 +10,23 @@
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Town Fuss — Pauls Valley" />
 <meta property="og:description" content="A community platform for Pauls Valley, Oklahoma. Create a profile, share a post, and message your neighbors." />
-<!-- TODO: replace with your own hosted preview image -->
-<!-- <meta property="og:image" content="https://yourdomain.com/preview.jpg" /> -->
+<!-- Pointed at production's copy of the logo rather than each edition's
+     own domain — it's the exact same image file on every edition's build,
+     so there's no need to template this per edition, and it keeps this
+     tag working correctly even in a raw copy of this file. This is what
+     fills the image box in the native share sheet / iMessage / Discord /
+     etc. link preview when someone uses the Invite a Friend button. Was a
+     commented-out placeholder before 2026-08-12 — a real user found the
+     empty box and asked why no image showed up. -->
+<meta property="og:image" content="https://www.townfuss.com/Logo-Fav.png" />
+<meta property="og:image:width" content="1536" />
+<meta property="og:image:height" content="1024" />
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Town Fuss — Pauls Valley" />
 <meta name="twitter:description" content="A community platform for Pauls Valley, Oklahoma. Create a profile, share a post, and message your neighbors." />
+<meta name="twitter:image" content="https://www.townfuss.com/Logo-Fav.png" />
 
 <link rel="icon" type="image/png" href="/Logo-Fav.png" />
 <link rel="manifest" href="/manifest.json" />
