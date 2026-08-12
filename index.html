@@ -797,6 +797,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <p class="eyebrow">Pauls Valley area</p>
       <h1>Chat Rooms</h1>
       <p class="field-hint" id="chat-remaining">Loading your daily limit...</p>
+      <button type="button" class="secondary small" id="invite-friend-chatrooms-btn">Invite a Friend</button>
+      <p id="invite-friend-chatrooms-status" class="field-hint" aria-live="polite"></p>
     </div>
 
     <div id="chatroom-list-wrap">
@@ -1724,6 +1726,37 @@ function renderTownFinder() {
 if (townFinderInput) {
   townFinderInput.addEventListener("input", renderTownFinder);
   renderTownFinder();
+}
+
+// ============================= INVITE A FRIEND ==============================
+// Same share-sheet-with-clipboard-fallback pattern as gamezone.html's Invite
+// a Friend button. No invite codes or new backend, just a link to this
+// edition's own site via location.origin, so it works unmodified on every
+// edition. Wired up here for the Chat Rooms view specifically.
+async function inviteAFriend(statusEl) {
+  const inviteUrl = location.origin + "/";
+  const shareText = "Come join me on Town Fuss!";
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Town Fuss", text: shareText, url: inviteUrl });
+      return;
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(`${shareText} ${inviteUrl}`);
+    statusEl.textContent = "Invite link copied — paste it in a text or email!";
+  } catch (err) {
+    statusEl.textContent = `Copy this link: ${inviteUrl}`;
+  }
+  setTimeout(() => { statusEl.textContent = ""; }, 6000);
+}
+const inviteFriendChatroomsBtn = document.getElementById("invite-friend-chatrooms-btn");
+if (inviteFriendChatroomsBtn) {
+  inviteFriendChatroomsBtn.addEventListener("click", () => {
+    inviteAFriend(document.getElementById("invite-friend-chatrooms-status"));
+  });
 }
 
 // ============================= PWA INSTALL BANNER ===========================

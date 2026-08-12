@@ -102,6 +102,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: whit
   <a href="index.html?view=friends">Friends</a>
   <a href="index.html?view=chatrooms">Chat Rooms</a>
   <a href="chess.html">Games</a>
+  <a href="#" id="quicknav-invite-friend">Invite a Friend</a>
   <a href="index.html?view=business">Business</a>
   <a href="index.html?view=pricing">Pricing</a>
   <a href="index.html?view=report-issue">Report Issue</a>
@@ -109,6 +110,38 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: whit
   <a href="index.html?view=dashboard">Your page</a>
   <a href="index.html?action=logout">Log out</a>
 </nav>
+
+<script>
+// Invite a Friend — same share-sheet-with-clipboard-fallback pattern used
+// on gamezone.html and the Chat Rooms view. Plain script (not a module),
+// so it works the same on every game page without touching each page own
+// module script or Firebase config.
+(function () {
+  var btn = document.getElementById("quicknav-invite-friend");
+  if (!btn) return;
+  btn.addEventListener("click", async function (e) {
+    e.preventDefault();
+    var inviteUrl = location.origin + "/";
+    var shareText = "Come join me on Town Fuss!";
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Town Fuss", text: shareText, url: inviteUrl });
+        return;
+      } catch (err) {
+        if (err && err.name === "AbortError") return;
+      }
+    }
+    var original = btn.textContent;
+    try {
+      await navigator.clipboard.writeText(shareText + " " + inviteUrl);
+      btn.textContent = "Link copied!";
+    } catch (err) {
+      btn.textContent = "Copy: " + inviteUrl;
+    }
+    setTimeout(function () { btn.textContent = original; }, 4000);
+  });
+})();
+</script>
 
   <main class="page">
 

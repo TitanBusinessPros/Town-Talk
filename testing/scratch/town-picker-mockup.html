@@ -1,0 +1,332 @@
+<title>Town Fuss — Find Your Town (Design Review)</title>
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --sage-500: #74875a;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+:root[data-theme="dark"] {
+  --ink-900: #201a16;
+  --ink-800: #2b241f;
+  --ink-700: #372e27;
+  --paper-050: #f3e9db;
+  --amber-500: #e07a52;
+  --amber-600: #f0967244;
+  --sage-500: #9db084;
+  --line: #46392f;
+  --text-muted: #a99884;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink-900: #201a16;
+    --ink-800: #2b241f;
+    --ink-700: #372e27;
+    --paper-050: #f3e9db;
+    --amber-500: #e07a52;
+    --amber-600: #f0967244;
+    --sage-500: #9db084;
+    --line: #46392f;
+    --text-muted: #a99884;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--ink-900);
+  color: var(--paper-050);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+.review-shell { max-width: 780px; margin: 0 auto; padding: 2rem 1.25rem 6rem; }
+
+.review-header { text-align: center; margin-bottom: 3rem; }
+.review-eyebrow { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber-500); }
+.review-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 600; margin: 0.5rem 0 0.6rem; text-wrap: balance; }
+.review-sub { color: var(--text-muted); font-size: 0.95rem; max-width: 46ch; margin: 0 auto; }
+
+.panel-label { display: flex; align-items: baseline; gap: 0.75rem; margin: 3.5rem 0 1rem; }
+.panel-label .num { font-family: var(--font-mono); font-size: 0.75rem; color: var(--amber-500); border: 1px solid var(--amber-500); border-radius: 999px; width: 1.6rem; height: 1.6rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.panel-label h2 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 600; margin: 0; }
+.panel-label .where { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-left: auto; }
+
+.frame {
+  background: var(--ink-800);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(43, 36, 32, 0.06);
+}
+.frame-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--ink-700);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.frame-chrome .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.frame-body { padding: 2.25rem 1.75rem; }
+
+/* --- Panel 1: main site --- */
+.brand-mini { text-align: center; margin-bottom: 1.75rem; }
+.brand-mini .b { font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; }
+.brand-mini .b span { color: var(--amber-500); }
+.brand-mini .t { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+.finder { max-width: 420px; margin: 0 auto; }
+.finder-label { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0.5rem; }
+.finder-input-wrap { position: relative; }
+.finder-input-wrap svg { position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); opacity: 0.55; }
+.finder-input {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  padding: 0.85rem 1rem 0.85rem 2.6rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--ink-900);
+  color: var(--paper-050);
+}
+.finder-input:focus { outline: none; border-color: var(--amber-500); }
+.finder-input::placeholder { color: var(--text-muted); }
+
+.finder-list { margin-top: 0.75rem; max-height: 280px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--ink-900); }
+.finder-group-label { font-family: var(--font-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 0.55rem 0.9rem 0.3rem; position: sticky; top: 0; background: var(--ink-900); }
+.finder-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--paper-050);
+  cursor: pointer;
+}
+.finder-item:hover, .finder-item:focus-visible { background: var(--ink-700); outline: none; }
+.finder-item .edition-tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; }
+.finder-item mark { background: none; color: var(--amber-500); font-weight: 600; }
+.finder-empty { padding: 1.5rem 0.9rem; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+.finder-empty a { color: var(--amber-500); }
+
+.finder-count { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); margin-top: 0.6rem; text-align: center; }
+
+/* --- Panel 2: inside an edition sign-in page --- */
+.edition-card { max-width: 380px; margin: 0 auto; }
+.edition-brand { text-align: center; margin-bottom: 1.5rem; }
+.edition-brand .region { font-family: var(--font-mono); font-size: 0.7rem; color: var(--amber-500); text-transform: uppercase; letter-spacing: 0.08em; }
+.edition-brand h3 { font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; margin: 0.35rem 0 0; }
+
+.tabs { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 1.5rem; }
+.tab { flex: 1; text-align: center; padding: 0.7rem 0; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; color: var(--text-muted); cursor: default; }
+.tab.active { color: var(--paper-050); border-bottom: 2px solid var(--amber-500); }
+
+.field { margin-bottom: 0.9rem; }
+.field label { display: block; font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.35rem; }
+.field input { width: 100%; padding: 0.7rem 0.85rem; border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); font-size: 0.92rem; }
+.btn-primary { width: 100%; margin-top: 0.6rem; padding: 0.8rem; border: none; border-radius: var(--radius-sm); background: var(--amber-500); color: #fff; font-family: var(--font-body); font-weight: 600; font-size: 0.95rem; cursor: pointer; }
+
+.wrong-town { text-align: center; margin-top: 1.5rem; }
+.wrong-town summary { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); cursor: pointer; list-style: none; }
+.wrong-town summary::-webkit-details-marker { display: none; }
+.wrong-town summary span { border-bottom: 1px dashed var(--text-muted); }
+.wrong-town summary:hover span { color: var(--amber-500); border-color: var(--amber-500); }
+.wrong-town[open] summary { margin-bottom: 1rem; }
+.wrong-town .finder { text-align: left; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.75rem;
+  transform: translate(-50%, 0);
+  background: var(--paper-050);
+  color: var(--ink-900);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 10;
+  white-space: nowrap;
+}
+:root[data-theme="dark"] .toast { background: var(--paper-050); color: var(--ink-900); }
+.toast.show { opacity: 1; transform: translate(-50%, -6px); }
+
+.review-note { font-size: 0.82rem; color: var(--text-muted); text-align: center; margin-top: 0.75rem; }
+.review-note code { font-family: var(--font-mono); background: var(--ink-700); padding: 0.1rem 0.35rem; border-radius: 4px; }
+</style>
+
+<div class="review-shell">
+  <div class="review-header">
+    <div class="review-eyebrow">Design review — not live</div>
+    <h1 class="review-title">Find your town</h1>
+    <p class="review-sub">Type or Scroll to find your town!</p>
+  </div>
+
+  <div class="panel-label">
+    <div class="num">1</div>
+    <h2>On the main site</h2>
+    <div class="where">www.townfuss.com</div>
+  </div>
+  <div class="frame">
+    <div class="frame-chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;www.townfuss.com</div>
+    <div class="frame-body">
+      <div class="brand-mini">
+        <div class="b">Town<span>Fuss</span></div>
+        <div class="t">Neighbors, first.</div>
+      </div>
+      <div class="finder" id="finder-main">
+        <div class="finder-label">Type your town or city</div>
+        <div class="finder-input-wrap">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11L14.5 14.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <input class="finder-input" type="text" placeholder="Start typing — e.g. &quot;Stroud&quot;" autocomplete="off">
+        </div>
+        <div class="finder-list"></div>
+        <div class="finder-count"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-label">
+    <div class="num">2</div>
+    <h2>Inside an edition's own sign-in page</h2>
+    <div class="where">tulsa.townfuss.com</div>
+  </div>
+  <div class="frame">
+    <div class="frame-chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp;tulsa.townfuss.com</div>
+    <div class="frame-body">
+      <div class="edition-card">
+        <div class="edition-brand">
+          <div class="region">Tulsa Edition</div>
+          <h3>Sign in to your Tulsa area account</h3>
+        </div>
+        <div class="tabs"><div class="tab active">Sign in</div><div class="tab">Sign up</div></div>
+        <div class="field"><label>Email</label><input type="text" placeholder="you@example.com" disabled></div>
+        <div class="field"><label>Password</label><input type="password" placeholder="••••••••" disabled></div>
+        <button class="btn-primary" type="button" disabled>Sign in</button>
+
+        <details class="wrong-town">
+          <summary><span>Not your town?</span></summary>
+          <div class="finder" id="finder-edition">
+            <div class="finder-input-wrap">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11L14.5 14.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <input class="finder-input" type="text" placeholder="Find your real town..." autocomplete="off">
+            </div>
+            <div class="finder-list"></div>
+            <div class="finder-count"></div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <p class="review-note">Clicking a town shows where it would send you (<code>edition.townfuss.com</code>) — real navigation isn't wired up in this review copy.</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Real town data across all 7 live editions, alphabetical within each
+// group for the "browse" view — same data that would drive the real page.
+const EDITIONS = [
+  { name: "Pauls Valley", url: "www.townfuss.com", towns: ["Davis", "Elmore City", "Katie", "Lindsay", "Marlow", "Maysville", "Paoli", "Pauls Valley", "Purcell", "Roff", "Stratford", "Sulphur", "Wanette", "Wayne", "Whitebead", "Wynnewood"] },
+  { name: "Eufaula Lake", url: "eufaula.townfuss.com", towns: ["Checotah", "Coweta", "Eufaula", "Hartshorne", "Haskell", "Henryetta", "Krebs", "Longtown", "McAlester", "Morris", "Muskogee", "Okmulgee", "Stigler", "Texanna", "Warner", "Wetumka"] },
+  { name: "Tulsa", url: "tulsa.townfuss.com", towns: ["Bixby", "Broken Arrow", "Catoosa", "Claremore", "Cleveland", "Collinsville", "Coweta", "Glenpool", "Jenks", "Mannford", "Owasso", "Sand Springs", "Sapulpa", "Skiatook", "Tulsa", "Verdigris"] },
+  { name: "Edmond", url: "edmond.townfuss.com", towns: ["Arcadia", "Bethany", "Cashion", "Choctaw", "Crescent", "Edmond", "Forest Park", "Guthrie", "Jones", "Kingfisher", "Langston", "Luther", "Nichols Hills", "Piedmont", "Spencer", "Wellston"] },
+  { name: "Oklahoma City", url: "okc.townfuss.com", towns: ["Bricktown", "Central OKC", "Del City", "East OKC", "El Reno", "Midwest City", "Moore", "Mustang", "North OKC", "Okarche", "Oklahoma City", "South OKC", "Union City", "Valley Brook", "West OKC", "Yukon"] },
+  { name: "Poteau", url: "poteau.townfuss.com", towns: ["Arkoma", "Boley".replace("Boley",""), "Heavener", "Keota", "McCurtain", "Muldrow", "Panama", "Pocola", "Poteau", "Roland", "Sallisaw", "Shady Point", "Spiro", "Stigler", "Talihina", "Wilburton", "Wister"].filter(Boolean) },
+  { name: "Prague", url: "prague.townfuss.com", towns: ["Boley", "Bristow", "Chandler", "Cushing", "Konawa", "Maud", "McLoud", "Meeker", "Okemah", "Prague", "Seminole", "Stroud", "Tecumseh", "Wellston", "Wewoka", "Shawnee"] },
+];
+
+// Flatten to one alphabetical list. A few town names repeat across
+// editions (Coweta: Eufaula Lake + Tulsa; Stigler: Eufaula Lake + Poteau;
+// Wellston: Edmond + Prague; Boley: Poteau + Prague) — each occurrence is
+// kept and tagged with its own edition, since they're genuinely
+// different sign-up destinations even when the town name is identical.
+const ALL = [];
+EDITIONS.forEach((ed) => ed.towns.forEach((t) => ALL.push({ town: t, edition: ed.name, url: ed.url })));
+ALL.sort((a, b) => a.town.localeCompare(b.town) || a.edition.localeCompare(b.edition));
+
+function highlight(text, query) {
+  if (!query) return text;
+  const i = text.toLowerCase().indexOf(query.toLowerCase());
+  if (i === -1) return text;
+  return text.slice(0, i) + "<mark>" + text.slice(i, i + query.length) + "</mark>" + text.slice(i + query.length);
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function mount(rootId) {
+  const root = document.getElementById(rootId);
+  const input = root.querySelector(".finder-input");
+  const list = root.querySelector(".finder-list");
+  const count = root.querySelector(".finder-count");
+
+  function render() {
+    const q = input.value.trim();
+    const matches = q ? ALL.filter((e) => e.town.toLowerCase().includes(q.toLowerCase())) : ALL;
+    list.innerHTML = "";
+    if (!matches.length) {
+      list.innerHTML = '<div class="finder-empty">No town found for &ldquo;' + q + '&rdquo;.</div>';
+      count.textContent = "";
+      return;
+    }
+    let lastLetter = "";
+    const showGroups = !q;
+    matches.slice(0, 200).forEach((e) => {
+      const letter = e.town[0].toUpperCase();
+      if (showGroups && letter !== lastLetter) {
+        lastLetter = letter;
+        const g = document.createElement("div");
+        g.className = "finder-group-label";
+        g.textContent = letter;
+        list.appendChild(g);
+      }
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "finder-item";
+      btn.innerHTML = "<span>" + highlight(e.town, q) + "</span><span class=\"edition-tag\">" + e.edition + "</span>";
+      btn.addEventListener("click", () => showToast("Would go to → " + e.url));
+      list.appendChild(btn);
+    });
+    count.textContent = q
+      ? matches.length + " match" + (matches.length === 1 ? "" : "es")
+      : ALL.length + " towns across " + EDITIONS.length + " editions";
+  }
+
+  input.addEventListener("input", render);
+  render();
+}
+
+mount("finder-main");
+mount("finder-edition");
+</script>
