@@ -106,6 +106,30 @@
       ]
     },
     {
+      "collectionGroup": "businesses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "approved", "order": "ASCENDING" },
+        { "fieldPath": "businessPaidUntil", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isGoldMember", "order": "ASCENDING" },
+        { "fieldPath": "goldExpiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isDiamondMember", "order": "ASCENDING" },
+        { "fieldPath": "diamondExpiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "bugReports",
       "queryScope": "COLLECTION",
       "fields": [
