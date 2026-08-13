@@ -95,6 +95,46 @@ const messaging = getMessaging();
 // cold-start/cost behavior consistent across all of them.
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
+// Resend (resend.com) — used only for the admin new-signup email alert
+// (onNewSignup below). Same verified townfuss.com domain as before;
+// destroying the old secret didn't touch the domain verification itself,
+// which lives on Resend's side, not Firebase's.
+const resendApiKey = defineSecret("RESEND_API_KEY");
+
+// Human-readable name per edition, keyed by Firebase project ID
+// (process.env.GCLOUD_PROJECT) — this file is shared source deployed
+// separately to all 7 editions, so a function needs this to know which
+// one it's actually running in for anything edition-labeled.
+const EDITION_DISPLAY_NAMES = {
+  "town-talk-87ff7": "Pauls Valley",
+  "eufaula-lake": "Eufaula Lake",
+  "tulsa-townfuss": "Tulsa",
+  "edmond-townfuss": "Edmond",
+  "okc-townfuss": "Oklahoma City",
+  "poteau-townfuss": "Poteau",
+  "prague-townfuss": "Prague",
+};
+
+async function sendSignupAlertEmail(name) {
+  const editionName = EDITION_DISPLAY_NAMES[process.env.GCLOUD_PROJECT] || process.env.GCLOUD_PROJECT;
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey.value()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Town Fuss <noreply@townfuss.com>",
+      to: "titanbusinesspros@gmail.com",
+      subject: `New sign-up — ${editionName}`,
+      html: `<p>${name} just signed up on the <strong>${editionName}</strong> edition and is waiting on approval.</p>`,
+    }),
+  });
+  if (!resp.ok) {
+    console.error("Signup alert email failed:", resp.status, await resp.text().catch(() => ""));
+  }
+}
+
 // -----------------------------------------------------------------------
 // Shared helper: given a recipient uid + a notification payload, look up
 // whether they've opted in and have any device tokens saved, send to all
@@ -277,29 +317,38 @@ exports.onAirHockeyInvite = makeGameInviteTrigger("airHockeyGames");
 // already respects each admin's own notificationsEnabled toggle, so an
 // admin who doesn't want pushes simply won't get one.
 // -----------------------------------------------------------------------
-exports.onNewSignup = onDocumentCreated("users/{uid}", async (event) => {
-  const newUser = event.data?.data();
-  if (!newUser) return;
-  const { uid } = event.params;
+exports.onNewSignup = onDocumentCreated(
+  { document: "users/{uid}", secrets: [resendApiKey] },
+  async (event) => {
+    const newUser = event.data?.data();
+    if (!newUser) return;
+    const { uid } = event.params;
 
-  const adminsSnap = await db.collection("admins").get();
-  console.log(`onNewSignup(${uid}): found ${adminsSnap.size} admin doc(s): [${adminsSnap.docs.map((d) => d.id).join(", ")}]`);
-  if (adminsSnap.empty) return;
+    const name = newUser.profile?.name || "A new user";
 
-  const name = newUser.profile?.name || "A new user";
-  await Promise.all(
-    adminsSnap.docs
-      .filter((doc) => doc.id !== uid) // don't notify an admin about their own signup
-      .map((doc) =>
-        sendPushToUser(doc.id, {
-          type: "signup",
-          title: "Town Fuss — New Sign-Up",
-          body: `${name} just signed up and is waiting on approval.`,
-          clickAction: "/index.html?admin=pending",
-        })
-      )
-  );
-});
+    // Email alert (titanbusinesspros@gmail.com, every edition) and the
+    // existing admin push notifications run independently — a failure
+    // in one should never block or hide a failure in the other.
+    sendSignupAlertEmail(name).catch((err) => console.error(`onNewSignup(${uid}): signup alert email failed:`, err));
+
+    const adminsSnap = await db.collection("admins").get();
+    console.log(`onNewSignup(${uid}): found ${adminsSnap.size} admin doc(s): [${adminsSnap.docs.map((d) => d.id).join(", ")}]`);
+    if (adminsSnap.empty) return;
+
+    await Promise.all(
+      adminsSnap.docs
+        .filter((doc) => doc.id !== uid) // don't notify an admin about their own signup
+        .map((doc) =>
+          sendPushToUser(doc.id, {
+            type: "signup",
+            title: "Town Fuss — New Sign-Up",
+            body: `${name} just signed up and is waiting on approval.`,
+            clickAction: "/index.html?admin=pending",
+          })
+        )
+    );
+  }
+);
 
 // -----------------------------------------------------------------------
 // 3. First-time message notification.
