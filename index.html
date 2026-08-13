@@ -10,6 +10,15 @@
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Town Fuss — Social Media Made For Small Towns!" />
 <meta property="og:description" content="A community platform for Pauls Valley, Oklahoma. Create a profile, share a post, and message your neighbors." />
+<!-- The canonical URL for THIS edition — swapped per edition by
+     build-edition.js (swapOgUrl) the same way firebaseConfig is, since
+     every edition genuinely lives at a different real domain. Tells
+     Facebook/etc. "this is the one real address for this content" so
+     shares of slightly different URL variations (with/without www,
+     trailing slash, tracking params) still consolidate under one link
+     instead of splintering likes/comments/cached previews across
+     several "different" pages for what's really the same edition. -->
+<meta property="og:url" content="https://www.townfuss.com/" />
 <!-- Pointed at production's copy of the logo rather than each edition's
      own domain — it's the exact same image file on every edition's build,
      so there's no need to template this per edition, and it keeps this

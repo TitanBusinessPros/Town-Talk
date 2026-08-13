@@ -29,6 +29,7 @@ const EDITIONS = {
     // 2026-08-07 — this file previously only swapped the config block,
     // not the surrounding page copy.
     shortName: "Eufaula Lake",
+    ownUrl: "https://eufaula.townfuss.com/",
     editionRegion: "Oklahoma",
     homeTown: "Eufaula",
     // Coweta swapped out 2026-08-11 -- it's a Tulsa-metro town (~15mi from
@@ -69,6 +70,7 @@ const EDITIONS = {
   "tulsa-townfuss": {
     editionName: "Tulsa Edition",
     shortName: "Tulsa",
+    ownUrl: "https://tulsa.townfuss.com/",
     editionRegion: "Oklahoma",
     homeTown: "Tulsa",
     // Straight-line (haversine) distance from Tulsa, verified against
@@ -107,6 +109,7 @@ const EDITIONS = {
   "edmond-townfuss": {
     editionName: "Edmond Edition",
     shortName: "Edmond",
+    ownUrl: "https://edmond.townfuss.com/",
     editionRegion: "Oklahoma",
     homeTown: "Edmond",
     // Town list as given directly by the user (2026-08-09) — not
@@ -140,6 +143,7 @@ const EDITIONS = {
   "okc-townfuss": {
     editionName: "Oklahoma City Edition",
     shortName: "Oklahoma City",
+    ownUrl: "https://okc.townfuss.com/",
     editionRegion: "Oklahoma",
     homeTown: "Oklahoma City",
     // Town/district list as given directly by the user (2026-08-09) —
@@ -175,6 +179,7 @@ const EDITIONS = {
   "poteau-townfuss": {
     editionName: "Poteau Edition",
     shortName: "Poteau",
+    ownUrl: "https://poteau.townfuss.com/",
     editionRegion: "Oklahoma",
     homeTown: "Poteau",
     // Derived via distance/population research (2026-08-10/11): every
@@ -215,6 +220,7 @@ const EDITIONS = {
   "prague-townfuss": {
     editionName: "Prague Edition",
     shortName: "Prague",
+    ownUrl: "https://prague.townfuss.com/",
     editionRegion: "Oklahoma",
     homeTown: "Prague",
     // Derived via distance/population research (2026-08-11): every
@@ -307,6 +313,19 @@ ${formatFirebaseConfig(edition.firebaseConfig)}
 function swapMarketingCopy(content, edition) {
   if (!edition.shortName) return content;
   return content.split("Pauls Valley").join(edition.shortName);
+}
+
+// og:url has to be the edition's OWN real domain, not swapped by the
+// blind "Pauls Valley" text replace above (a URL doesn't contain that
+// text) or by swapIndexHtmlConfig (not part of the firebaseConfig
+// block) — needs its own explicit swap, same reasoning as
+// swapVapidKey/swapServiceWorkerConfig above for other per-edition
+// values that live outside the main config block.
+function swapOgUrl(content, edition) {
+  if (!edition.ownUrl) return content; // shouldn't happen once every edition has one, but don't ship a broken tag if it's ever missing
+  const re = /<meta property="og:url" content="[^"]*" \/>/;
+  if (!re.test(content)) throw new Error("Could not find og:url meta tag to replace in index.html");
+  return content.replace(re, `<meta property="og:url" content="${edition.ownUrl}" />`);
 }
 
 function swapSimpleFirebaseConfig(content, edition, fileLabel) {
@@ -408,6 +427,7 @@ function main() {
   indexContent = indexContent.replace(townsPlaceholder, townsBlockOriginal);
   indexContent = swapIndexHtmlConfig(indexContent, edition);
   indexContent = swapVapidKey(indexContent, edition);
+  indexContent = swapOgUrl(indexContent, edition);
   fs.writeFileSync(indexPath, indexContent, "utf8");
   if (!edition.vapidKey) {
     console.warn(`WARNING: no vapidKey set for ${editionId} — push notifications on this edition will keep failing with messaging/token-subscribe-failed until one is generated in that project's Firebase Console (Project Settings -> Cloud Messaging -> Web Push certificates) and added to EDITIONS in this file.`);
