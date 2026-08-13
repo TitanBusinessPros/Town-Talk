@@ -234,7 +234,7 @@ service cloud.firestore {
                         && isApproved(uid)
                         && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'heartsPoints', 'heartsWins', 'heartsLosses', 'blackjackPoints', 'blackjackWins', 'blackjackLosses', 'blackjackDraws', 'airHockeyPoints', 'airHockeyWins', 'airHockeyLosses', 'deepSeaHighScore', 'titanSpaceHighScore', 'pongWins', 'blocksHighScore', 'stackCheckersPoints', 'stackCheckersWins', 'stackCheckersLosses', 'seaWarPoints', 'seaWarWins', 'seaWarLosses', 'notificationsEnabled', 'fcmTokens']));
+                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'heartsPoints', 'heartsWins', 'heartsLosses', 'blackjackPoints', 'blackjackWins', 'blackjackLosses', 'blackjackDraws', 'airHockeyPoints', 'airHockeyWins', 'airHockeyLosses', 'deepSeaHighScore', 'titanSpaceHighScore', 'pongWins', 'blocksHighScore', 'stackCheckersPoints', 'stackCheckersWins', 'stackCheckersLosses', 'seaWarPoints', 'seaWarWins', 'seaWarLosses', 'notificationsEnabled', 'fcmTokens', 'dailyRewards']));
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -1081,6 +1081,69 @@ service cloud.firestore {
                       && !exists(/databases/$(database)/documents/blocks/$(conversationId));
         allow update, delete: if false;
       }
+    }
+
+    // -----------------------------------------------------------------------
+    // Daily Rewards — local sponsors (e.g. "Sonic: 1 free shake/day") give
+    // out prizes to qualifying users once a day. Split across 4 collections
+    // on purpose, for one specific security reason: the coupon code that
+    // proves someone won must NEVER be readable by the general public (or
+    // anyone could screenshot/redeem someone else's prize), but the WINNER'S
+    // NAME/PHOTO/PRIZE must be fully public (that's the whole point of the
+    // chat-room winners banner). Firestore can't restrict individual fields
+    // within one document, so the public-facing summary and the sensitive
+    // full record are two separate documents instead.
+    // -----------------------------------------------------------------------
+
+    // One doc per sponsor's giveaway campaign. Only an admin creates/edits
+    // these (the admin giveaway form); a sponsor can read their own (for
+    // their portal), same isSponsorFor() check used below.
+    function isSponsorFor(sponsorId) {
+      return isSignedIn()
+          && exists(/databases/$(database)/documents/dailyRewardSponsorAccounts/$(request.auth.uid))
+          && get(/databases/$(database)/documents/dailyRewardSponsorAccounts/$(request.auth.uid)).data.sponsorId == sponsorId;
+    }
+    match /dailyRewardSponsors/{sponsorId} {
+      allow read: if isAdmin() || isSponsorFor(sponsorId);
+      allow write: if isAdmin();
+    }
+
+    // The FULL winner record — includes the coupon code and redeemed
+    // status, so read access is deliberately narrow: the winner themselves,
+    // the specific sponsor whose prize it was, or an admin. Never written by
+    // a client at all — only the daily-draw Cloud Function (Admin SDK,
+    // bypasses rules) creates these, and only the sponsor-portal Cloud
+    // Function (also Admin SDK) flips 'redeemed'. Powers both the sponsor's
+    // last-30-days verification page and each user's own 7-day cooldown
+    // check (read via Admin SDK server-side, not this rule).
+    match /dailyRewardWinners/{winnerId} {
+      allow read: if isAdmin()
+                  || (isSignedIn() && resource.data.uid == request.auth.uid)
+                  || isSponsorFor(resource.data.sponsorId);
+      allow write: if false;
+    }
+
+    // The PUBLIC summary the chat-room banner actually reads — name, photo,
+    // prize, sponsor name/logo, nothing else (no uid, no code). A single
+    // fixed doc ID ("current"), overwritten wholesale by the daily-draw
+    // function each day — that overwrite IS the "yesterday's winners
+    // disappear, today's take their place" rotation, no extra cleanup job
+    // needed.
+    match /dailyRewardsPublicToday/current {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Maps a sponsor's Firebase Auth account (created via the admin
+    // email-invite flow, Admin SDK) to which single sponsorId they're
+    // allowed to see — this doc is what isSponsorFor() above checks, and
+    // it's the actual enforcement point that keeps one sponsor from ever
+    // seeing another's winners/codes, not just a UI restriction. A sponsor
+    // never gets a users/{uid} profile at all; this doc is the entirety of
+    // their account.
+    match /dailyRewardSponsorAccounts/{uid} {
+      allow read: if isAdmin() || isOwner(uid);
+      allow write: if isAdmin();
     }
   }
 }
