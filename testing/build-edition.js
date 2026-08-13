@@ -450,7 +450,7 @@ function main() {
     "golf.html", "gravity-sling.html", "gtf.html", "hearts.html",
     "m3game.html", "match3.html", "neon-drift.html", "pong.html",
     "sea-war.html", "stacking-checkers.html", "sudoku.html",
-    "titanspace.html", "war.html",
+    "titanspace.html", "war.html", "daily-rewards-verify.html",
   ];
   for (const f of SIMPLE_CONFIG_FILES) {
     const p = path.join(BUILD_DIR, f);

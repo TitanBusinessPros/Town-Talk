@@ -918,6 +918,236 @@ exports.expireMemberships = onSchedule(
   }
 );
 
+// Excludes visually-ambiguous characters (0/O, 1/I/l) — this gets read off
+// a phone screen and typed/spoken to a cashier, so avoiding characters
+// that look alike matters more here than a slightly bigger keyspace would.
+function generateDailyRewardCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// -----------------------------------------------------------------------
+// Daily Rewards draw — runs once a day at 4pm America/Chicago. For each
+// currently-active PUBLISHED sponsor, picks winner(s) at random from
+// everyone who (a) opted in, (b) did all 3 qualifying things TODAY
+// (centralDateString match on gamePlayedDate/chatMessageDate/
+// shareClickDate), and (c) hasn't won anything from ANY sponsor in the
+// past 7 days. Once someone wins once today, they're removed from the
+// pool for every other sponsor's draw that same run — "spread it around"
+// was explicit, not just the 7-day cooldown.
+//
+// Writes two very different kinds of record for each win — see the
+// firestore.rules comment on dailyRewardWinners/dailyRewardsPublicToday
+// for why: the full record (uid, coupon code, redeemed flag) stays
+// narrowly readable (the winner, their sponsor, admins), while
+// dailyRewardsPublicToday/current — a single doc, overwritten wholesale
+// every run — is the public, code-free summary the chat-room banner
+// reads. That overwrite IS the daily rotation; no separate cleanup job
+// needed for "yesterday's winners disappear."
+// -----------------------------------------------------------------------
+exports.dailyRewardsDraw = onSchedule(
+  { schedule: "0 16 * * *", timeZone: "America/Chicago" },
+  async () => {
+    const todayStr = centralDateString();
+    const now = Timestamp.now();
+
+    const sponsorsSnap = await db.collection("dailyRewardSponsors").where("status", "==", "published").get();
+    const activeSponsors = sponsorsSnap.docs.filter((d) => {
+      const s = d.data();
+      return s.startDate.toMillis() <= now.toMillis()
+          && s.endDate.toMillis() >= now.toMillis()
+          && (s.quantityCap == null || (s.quantityAwarded || 0) < s.quantityCap);
+    });
+
+    if (activeSponsors.length === 0) {
+      await db.collection("dailyRewardsPublicToday").doc("current").set({ date: todayStr, winners: [] });
+      return;
+    }
+
+    // Firestore has no clean way to query "3 different fields all equal
+    // today" without a matching composite index for that exact
+    // combination — filtering in memory instead, on just the opted-in
+    // users, which is a small enough set per edition that this is cheap
+    // rather than needing yet another index.
+    const usersSnap = await db.collection("users").where("dailyRewards.optedIn", "==", true).get();
+    const sevenDaysAgoMs = now.toMillis() - 7 * 24 * 60 * 60 * 1000;
+    let eligible = usersSnap.docs
+      .map((d) => ({ uid: d.id, ...d.data() }))
+      .filter((u) => {
+        const dr = u.dailyRewards || {};
+        if (dr.gamePlayedDate !== todayStr || dr.chatMessageDate !== todayStr || dr.shareClickDate !== todayStr) return false;
+        if (dr.lastWonAt && dr.lastWonAt.toMillis() > sevenDaysAgoMs) return false;
+        return true;
+      });
+
+    if (eligible.length === 0) {
+      await db.collection("dailyRewardsPublicToday").doc("current").set({ date: todayStr, winners: [] });
+      return;
+    }
+
+    // Shuffle once — Math.random() is fine here, this isn't a security
+    // context, just "pick a fair winner."
+    eligible = eligible.sort(() => Math.random() - 0.5);
+
+    const publicWinners = [];
+    const usedUids = new Set();
+
+    for (const sponsorDoc of activeSponsors) {
+      const sponsor = sponsorDoc.data();
+      const sponsorId = sponsorDoc.id;
+      let remainingSlots = sponsor.maxWinnersPerDay || 1;
+      if (sponsor.quantityCap != null) {
+        remainingSlots = Math.min(remainingSlots, sponsor.quantityCap - (sponsor.quantityAwarded || 0));
+      }
+
+      let awarded = 0;
+      for (const candidate of eligible) {
+        if (awarded >= remainingSlots) break;
+        if (usedUids.has(candidate.uid)) continue;
+        usedUids.add(candidate.uid);
+        awarded++;
+
+        const code = generateDailyRewardCode();
+        const winnerName = candidate.profile?.name || "A Town Fuss member";
+        const winnerPhotoUrl = candidate.images?.[0]?.url || "";
+
+        await db.collection("dailyRewardWinners").add({
+          uid: candidate.uid,
+          winnerName,
+          winnerPhotoUrl,
+          sponsorId,
+          sponsorName: sponsor.companyName,
+          sponsorLogoUrl: sponsor.logoUrl || "",
+          prizeDescription: sponsor.prizeDescription,
+          couponCode: code,
+          wonAt: now,
+          wonDateStr: todayStr,
+          redeemed: false,
+          redeemedAt: null,
+        });
+        await db.collection("users").doc(candidate.uid).update({ "dailyRewards.lastWonAt": now });
+        await db.collection("dailyRewardSponsors").doc(sponsorId).update({ quantityAwarded: FieldValue.increment(1) });
+
+        publicWinners.push({
+          name: winnerName,
+          photoUrl: winnerPhotoUrl,
+          prize: sponsor.prizeDescription,
+          sponsorName: sponsor.companyName,
+          sponsorLogoUrl: sponsor.logoUrl || "",
+        });
+
+        await sendPushToUser(candidate.uid, {
+          type: "daily_reward_win",
+          title: "🎉 You won a Daily Reward!",
+          body: `You won ${sponsor.prizeDescription} from ${sponsor.companyName}! Check the Chat Rooms page for your code.`,
+          clickAction: "/index.html?view=chatrooms",
+        }).catch((err) => console.error(`dailyRewardsDraw: couldn't push-notify winner ${candidate.uid}:`, err));
+      }
+    }
+
+    await db.collection("dailyRewardsPublicToday").doc("current").set({ date: todayStr, winners: publicWinners });
+  }
+);
+
+// -----------------------------------------------------------------------
+// Daily Rewards sponsor portal invite. A sponsor never gets a real Town
+// Fuss account/profile — just a Firebase Auth login (same Auth instance,
+// but no users/{uid} doc, and a dailyRewardSponsorAccounts/{uid} doc
+// instead, which is what firestore.rules' isSponsorFor() actually checks
+// to scope their reads to their own giveaway). Reuses the exact same
+// generatePasswordResetLink() + Resend pattern built earlier for the
+// (since-removed) user-facing password reset — same domain, same secret,
+// just repointed at the sponsor portal page as the continue URL instead
+// of the main app.
+// -----------------------------------------------------------------------
+exports.inviteDailyRewardSponsor = onCall({ secrets: [resendApiKey] }, async (request) => {
+  await requireAdmin(request);
+
+  const sponsorId = (request.data?.sponsorId || "").trim();
+  const email = (request.data?.email || "").trim().toLowerCase();
+  if (!sponsorId || !email) throw new HttpsError("invalid-argument", "sponsorId and email are required.");
+
+  const sponsorSnap = await db.collection("dailyRewardSponsors").doc(sponsorId).get();
+  if (!sponsorSnap.exists) throw new HttpsError("not-found", "That giveaway doesn't exist.");
+
+  let userRecord;
+  try {
+    userRecord = await getAuth().getUserByEmail(email);
+  } catch {
+    // Doesn't exist yet — create it. No password set; they set their own
+    // via the link below, same as the removed password-reset flow.
+    userRecord = await getAuth().createUser({ email });
+  }
+
+  await db.collection("dailyRewardSponsorAccounts").doc(userRecord.uid).set({
+    email,
+    sponsorId,
+    invitedAt: Timestamp.now(),
+    invitedBy: request.auth.uid,
+  });
+
+  const editionName = EDITION_DISPLAY_NAMES[process.env.GCLOUD_PROJECT] || process.env.GCLOUD_PROJECT;
+  const continueUrl = (request.data?.continueUrl || "").trim() || undefined;
+  const link = await getAuth().generatePasswordResetLink(
+    email,
+    continueUrl ? { url: continueUrl } : undefined
+  );
+
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey.value()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: `${editionName} Daily Rewards <noreply@townfuss.com>`,
+      to: email,
+      subject: `${editionName} Daily Rewards — verification access`,
+      html: `<p>You've been invited to verify Daily Rewards winners for <strong>${sponsorSnap.data().companyName}</strong> on ${editionName} Town Fuss.</p>
+<p><a href="${link}">Click here to set your password and get access</a></p>
+<p>Once set, you can log in anytime with this email address and the password you choose.</p>`,
+    }),
+  });
+  if (!resp.ok) {
+    console.error("Sponsor invite email failed:", resp.status, await resp.text().catch(() => ""));
+    throw new HttpsError("internal", "Couldn't send the invite email.");
+  }
+  return { ok: true };
+});
+
+// -----------------------------------------------------------------------
+// The sponsor portal's ONE write action — marking a coupon redeemed. Not
+// a direct client write (dailyRewardWinners' rule is allow write: if
+// false, on purpose — see the firestore.rules comment) specifically so
+// this can independently re-verify the caller is actually the RIGHT
+// sponsor for THIS SPECIFIC winner doc server-side, not just trust
+// whatever the client claims. The code itself always stays in the
+// response either way — "in case of a mistake" was explicit.
+// -----------------------------------------------------------------------
+exports.markDailyRewardRedeemed = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in required.");
+  const winnerId = (request.data?.winnerId || "").trim();
+  const redeemed = !!request.data?.redeemed;
+  if (!winnerId) throw new HttpsError("invalid-argument", "winnerId is required.");
+
+  const acctSnap = await db.collection("dailyRewardSponsorAccounts").doc(request.auth.uid).get();
+  if (!acctSnap.exists) throw new HttpsError("permission-denied", "Not a sponsor account.");
+
+  const winnerSnap = await db.collection("dailyRewardWinners").doc(winnerId).get();
+  if (!winnerSnap.exists) throw new HttpsError("not-found", "Winner record not found.");
+  if (winnerSnap.data().sponsorId !== acctSnap.data().sponsorId) {
+    throw new HttpsError("permission-denied", "That winner isn't from your giveaway.");
+  }
+
+  await winnerSnap.ref.update({
+    redeemed,
+    redeemedAt: redeemed ? Timestamp.now() : null,
+  });
+  return { ok: true };
+});
+
 // -----------------------------------------------------------------------
 // 9. Firebase Auth account backup (backupAuthAccounts):
 //      Firestore's own scheduled backups (set up separately via

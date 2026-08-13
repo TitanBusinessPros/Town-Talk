@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Rewards Verification — Town Fuss</title>
+<meta name="description" content="Sponsor portal for verifying Town Fuss Daily Rewards winners." />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink-900: #fbf6ef;
+  --ink-800: #ffffff;
+  --ink-700: #f3e9db;
+  --paper-050: #2b2420;
+  --amber-500: #c1502e;
+  --amber-600: #9c3f22;
+  --line: #e8dbc8;
+  --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--ink-900); color: var(--paper-050); font-family: var(--font-body); }
+h1, h2 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; }
+p { color: var(--text-muted); line-height: 1.6; }
+.page { max-width: 760px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.header-bar { display: flex; align-items: center; justify-content: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+.header-bar span.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; color: var(--paper-050); }
+.header-bar span.brand em { color: var(--amber-500); font-style: normal; }
+.eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+.card { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; }
+input, textarea { width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 0.95rem; background: var(--ink-900); color: var(--paper-050); margin-bottom: 0.75rem; }
+label { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.3rem; }
+button { border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+button:hover { background: var(--amber-600); }
+button.secondary { background: transparent; color: var(--paper-050); border: 1px solid var(--line); }
+.message { border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; font-size: 0.85rem; margin-top: 0.5rem; }
+.message.error { background: #fbeaea; color: #9c2b2b; }
+.message.success { background: #eaf6ea; color: #2b6b3f; }
+.field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); }
+table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.88rem; }
+th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+code.coupon { font-family: var(--font-mono); font-weight: 600; background: var(--ink-900); padding: 0.15rem 0.4rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header class="header-bar">
+  <span class="brand">Town Fuss <em>Daily Rewards Verification</em></span>
+</header>
+
+<main class="page">
+  <div id="login-view" class="card" style="max-width:400px; margin:3rem auto;">
+    <span class="eyebrow">Sponsor Portal</span>
+    <h1 style="font-size:1.3rem;">Verify Daily Rewards Winners</h1>
+    <p style="text-align:center;">Sign in with the email and password sent to you.</p>
+    <form id="login-form">
+      <label for="login-email">Email</label>
+      <input id="login-email" type="email" required autocomplete="email" />
+      <label for="login-password">Password</label>
+      <input id="login-password" type="password" required autocomplete="current-password" />
+      <button type="submit" style="width:100%;">Log in</button>
+    </form>
+    <div id="login-message" class="message" style="display:none"></div>
+  </div>
+
+  <div id="portal-view" style="display:none;">
+    <span class="eyebrow">Sponsor Portal</span>
+    <h1 id="portal-company-name" style="font-size:1.5rem;">Your Giveaway</h1>
+    <p style="text-align:center;">Last 30 days of winners for your giveaway only — coupon codes always stay visible, even once marked redeemed, in case of a mistake.</p>
+    <div style="text-align:right; margin-bottom:1rem;">
+      <button type="button" class="secondary" id="logout-btn">Log out</button>
+    </div>
+    <div id="winners-table-wrap"></div>
+    <div id="winners-empty" class="field-hint" style="display:none; text-align:center; margin-top:1.5rem;">No winners in the last 30 days.</div>
+    <div id="portal-message" class="message" style="display:none"></div>
+  </div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, query, where, orderBy, getDocs, Timestamp, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+
+// =========================================================================
+// EDITION CONFIGURATION — the only edition-specific value on this page,
+// same as gamezone.html. No App Check here on purpose: this page is
+// reachable by someone who never goes through the main app at all (a
+// sponsor with no Town Fuss account), and App Check's reCAPTCHA
+// provisioning is scoped to the main site's usage pattern.
+// =========================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+// =========================================================================
+// END EDITION CONFIGURATION
+// =========================================================================
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const functions = getFunctions(app);
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+}
+
+function showMessage(el, text, type) {
+  el.textContent = text;
+  el.className = `message ${type}`;
+  el.style.display = "block";
+}
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("login-message");
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      document.getElementById("login-email").value.trim(),
+      document.getElementById("login-password").value
+    );
+  } catch (err) {
+    showMessage(msg, "Email or password is incorrect.", "error");
+  }
+});
+
+document.getElementById("logout-btn").addEventListener("click", () => signOut(auth));
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    document.getElementById("login-view").style.display = "block";
+    document.getElementById("portal-view").style.display = "none";
+    return;
+  }
+
+  // Confirms this login actually IS a sponsor account, not just any real
+  // Town Fuss user who happened to type their own email/password here —
+  // firestore.rules' isSponsorFor() enforces the same check server-side
+  // for the actual data reads below, this is just the friendlier
+  // "you're signed in but this isn't for you" message.
+  const acctSnap = await getDoc(doc(db, "dailyRewardSponsorAccounts", user.uid)).catch(() => null);
+  if (!acctSnap || !acctSnap.exists()) {
+    showMessage(document.getElementById("login-message"), "This account doesn't have Daily Rewards verification access.", "error");
+    await signOut(auth);
+    return;
+  }
+  const sponsorId = acctSnap.data().sponsorId;
+
+  document.getElementById("login-view").style.display = "none";
+  document.getElementById("portal-view").style.display = "block";
+
+  const sponsorSnap = await getDoc(doc(db, "dailyRewardSponsors", sponsorId)).catch(() => null);
+  document.getElementById("portal-company-name").textContent = sponsorSnap?.data()?.companyName || "Your Giveaway";
+
+  const thirtyDaysAgo = Timestamp.fromMillis(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const winnersSnap = await getDocs(
+    query(
+      collection(db, "dailyRewardWinners"),
+      where("sponsorId", "==", sponsorId),
+      where("wonAt", ">=", thirtyDaysAgo),
+      orderBy("wonAt", "desc")
+    )
+  ).catch((err) => {
+    showMessage(document.getElementById("portal-message"), `Couldn't load winners: ${err.message}`, "error");
+    return null;
+  });
+
+  const wrap = document.getElementById("winners-table-wrap");
+  const empty = document.getElementById("winners-empty");
+  if (!winnersSnap || winnersSnap.empty) {
+    wrap.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  const rows = winnersSnap.docs.map((d) => {
+    const w = d.data();
+    const dateStr = w.wonAt?.toDate().toLocaleDateString() || "?";
+    return `
+      <tr data-id="${d.id}">
+        <td>${dateStr}</td>
+        <td>${escapeHtml(w.winnerName || "")}</td>
+        <td>${escapeHtml(w.prizeDescription || "")}</td>
+        <td><code class="coupon">${escapeHtml(w.couponCode || "")}</code></td>
+        <td>
+          <label style="display:flex; align-items:center; gap:0.4rem; font-weight:400; margin:0;">
+            <input type="checkbox" style="width:auto; margin:0;" data-redeemed-toggle ${w.redeemed ? "checked" : ""} />
+            Redeemed
+          </label>
+        </td>
+      </tr>`;
+  }).join("");
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Date</th><th>Winner</th><th>Prize</th><th>Code</th><th>Redeemed</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+
+  wrap.querySelectorAll("[data-redeemed-toggle]").forEach((checkbox) => {
+    checkbox.addEventListener("change", async () => {
+      const winnerId = checkbox.closest("tr").dataset.id;
+      const portalMsg = document.getElementById("portal-message");
+      try {
+        await httpsCallable(functions, "markDailyRewardRedeemed")({ winnerId, redeemed: checkbox.checked });
+      } catch (err) {
+        checkbox.checked = !checkbox.checked; // revert the visual state on failure
+        showMessage(portalMsg, err.message, "error");
+      }
+    });
+  });
+});
+</script>
+</body>
+</html>

@@ -713,6 +713,58 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div id="admin-inactive-queue" style="margin-top:1rem;"></div>
     <div id="admin-inactive-empty" class="empty-state" style="display:none">No inactive accounts found.</div>
 
+    <h2 style="margin-top:2.5rem;">Daily Rewards</h2>
+    <p>Local sponsors give out a daily prize (e.g. "Sonic: 1 free shake/day") to qualifying members. Save as a draft while you're setting one up, then Publish to actually enter it into the daily drawing — nothing here is live until published.</p>
+    <form id="dailyreward-form" class="form-row" style="flex-direction:column; align-items:stretch; gap:0.75rem;">
+      <input type="hidden" id="dailyreward-editing-id" value="" />
+      <label for="dailyreward-company-name">Company name</label>
+      <input type="text" id="dailyreward-company-name" required />
+
+      <label for="dailyreward-prize">Prize description</label>
+      <input type="text" id="dailyreward-prize" placeholder="e.g. 1 free medium shake" required />
+
+      <div class="image-slot" id="dailyreward-logo-slot" style="width:160px;"><span class="slot-label">+ Add logo</span></div>
+      <input type="file" id="dailyreward-logo-input" accept="image/*" style="display:none" />
+      <div id="dailyreward-logo-message" class="message" style="display:none"></div>
+
+      <label for="dailyreward-start-date">Campaign start date</label>
+      <input type="date" id="dailyreward-start-date" required />
+
+      <label for="dailyreward-end-date">Campaign end date (coupon expiration)</label>
+      <input type="date" id="dailyreward-end-date" required />
+
+      <label for="dailyreward-max-winners">Max winners per day</label>
+      <input type="number" id="dailyreward-max-winners" min="1" value="1" required />
+
+      <label for="dailyreward-quantity-cap">Total quantity cap (optional — leave blank for no cap)</label>
+      <input type="number" id="dailyreward-quantity-cap" min="1" />
+
+      <label for="dailyreward-redemption">Redemption instructions</label>
+      <textarea id="dailyreward-redemption" rows="2" placeholder="e.g. Show this page at the register"></textarea>
+
+      <label for="dailyreward-fine-print">Fine print (optional, sponsor-specific — shown alongside the platform-wide disclaimer)</label>
+      <textarea id="dailyreward-fine-print" rows="2"></textarea>
+
+      <div class="form-row">
+        <button type="submit" data-mode="draft">Save as draft</button>
+        <button type="button" class="secondary" id="dailyreward-cancel-edit-btn" style="display:none">Cancel edit</button>
+      </div>
+    </form>
+    <div id="dailyreward-message" class="message" style="display:none"></div>
+
+    <div id="dailyreward-queue" style="margin-top:1.5rem;"></div>
+    <div id="dailyreward-empty" class="empty-state" style="display:none">No giveaways created yet.</div>
+
+    <h2 style="margin-top:2.5rem;">Daily Rewards sponsor portal access</h2>
+    <p>Invite a sponsor's own email address to give them a link to set a password and access their own scoped verification page (last 30 days of their own winners/codes only) — separate from a Town Fuss account, they never see the main platform.</p>
+    <form id="sponsor-invite-form" class="form-row">
+      <select id="sponsor-invite-sponsor-select" required style="flex:1"></select>
+      <input type="email" id="sponsor-invite-email" placeholder="owner@example.com" required style="flex:1" />
+      <button type="submit">Send invite</button>
+    </form>
+    <div id="sponsor-invite-message" class="message" style="display:none"></div>
+    <div id="sponsor-invite-list" style="margin-top:1rem;"></div>
+
     <h2 style="margin-top:2.5rem;">Deleted profiles</h2>
     <p>Profiles deleted from anyone's "Delete Profile" button. Each deletion requires your admin PIN, and deleting more than 3 profiles within 3 minutes starts a 30-minute cooldown. A deleted profile (and the person's ability to log in) is kept for 10 days and can be restored here with your PIN — after 10 days it's purged for good.</p>
     <div id="admin-deleted-queue"></div>
@@ -782,6 +834,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <button type="button" class="secondary small" id="invite-friend-chatrooms-btn">Invite a Friend</button>
       <p id="invite-friend-chatrooms-status" class="field-hint" aria-live="polite"></p>
     </div>
+
+    <div id="daily-rewards-banner" class="chatroom-sponsor-banner" style="display:none; margin-bottom:1.5rem;"></div>
 
     <div id="chatroom-list-wrap">
       <div id="chatroom-list" class="chatroom-grid"></div>
@@ -1334,6 +1388,10 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <label style="display:flex; align-items:flex-start; gap:0.6rem; margin-top:0.75rem; cursor:pointer;">
       <input id="google-confirm-terms" type="checkbox" style="width:auto; margin-top:0.2rem;" />
       <span style="font-size:0.85rem; color:var(--text-muted);">I agree to the <a href="#" id="google-confirm-terms-link">Terms of Service</a>.</span>
+    </label>
+    <label style="display:flex; align-items:flex-start; gap:0.6rem; margin-top:0.75rem; cursor:pointer;">
+      <input id="google-confirm-daily-rewards" type="checkbox" style="width:auto; margin-top:0.2rem;" />
+      <span style="font-size:0.85rem; color:var(--text-muted);">Sign me up for Daily Rewards in my area — a chance to win free food, gift cards, and more from local sponsors. <em>Daily Rewards are only available when a sponsor is actively participating in your area. Prizes, availability, and fulfillment are the responsibility of the sponsoring business — Town Fuss is not responsible for a sponsor's contribution, prize quality, or ability to honor a reward.</em></span>
     </label>
     <div class="form-row">
       <button type="button" id="google-confirm-continue-btn">Create account</button>
@@ -2131,9 +2189,9 @@ function showView(name) {
   if (name === "feed") loadFeed();
   if (name === "directory") loadDirectory();
   if (name === "friends") loadFriendsView();
-  if (name === "chatrooms") { closeChatRoomThread(); renderChatRoomList(); }
+  if (name === "chatrooms") { closeChatRoomThread(); renderChatRoomList(); renderDailyRewardsBanner(); }
   else if (unsubscribeChatRoom) { unsubscribeChatRoom(); unsubscribeChatRoom = null; }
-  if (name === "admin") { loadAdminQueue(); loadAdminReports(); loadAdminBugReports(); loadPromoWhitelist(); loadBusinessAdminQueue(); loadChatSponsorAdminQueue(); loadDeletedProfiles(); }
+  if (name === "admin") { loadAdminQueue(); loadAdminReports(); loadAdminBugReports(); loadPromoWhitelist(); loadBusinessAdminQueue(); loadChatSponsorAdminQueue(); loadDeletedProfiles(); loadDailyRewardAdminQueue(); loadSponsorInviteList(); }
   if (name === "pricing") loadPricingView();
   if (name === "messages") { closeThread(); watchConversations(); }
   else if (unsubscribeConversations) { unsubscribeConversations(); unsubscribeConversations = null; }
@@ -2582,6 +2640,7 @@ let pendingGoogleConfirmResolve = null;
 function promptGoogleNewUserConfirm() {
   document.getElementById("google-confirm-age").checked = false;
   document.getElementById("google-confirm-terms").checked = false;
+  document.getElementById("google-confirm-daily-rewards").checked = false;
   document.getElementById("google-confirm-message").style.display = "none";
   document.getElementById("google-confirm-modal-backdrop").style.display = "flex";
   return new Promise((resolve) => {
@@ -2684,6 +2743,17 @@ document.getElementById("google-signin-btn").addEventListener("click", async () 
       images: [],
       agreedToTerms: true,
       agreedToTermsAt: serverTimestamp(),
+      // Existing accounts (before this checkbox existed) never get this —
+      // no toggle, no retroactive banner, explicit decision. Only ever
+      // set here, at creation; the qualification fields start blank and
+      // get stamped by real activity (see the game/chat/share qualifiers).
+      dailyRewards: {
+        optedIn: document.getElementById("google-confirm-daily-rewards").checked,
+        gamePlayedDate: "",
+        chatMessageDate: "",
+        shareClickDate: "",
+        lastWonAt: null,
+      },
     }, { merge: true });
     // The doc now genuinely exists — same reason as the email signup flow:
     // replace the listener set up on the earlier (pre-doc) auth event with
@@ -5772,6 +5842,40 @@ async function renderChatSponsorBanner(room) {
   banner.style.display = "flex";
 }
 
+// Daily Rewards — reads the PUBLIC, code-free summary doc
+// (dailyRewardsPublicToday/current), never dailyRewardWinners directly —
+// that collection deliberately isn't broadly readable (see the
+// firestore.rules comment on it) since it carries the coupon code. The
+// draw function overwrites this single doc once a day at 4pm Central;
+// that overwrite IS the "yesterday's winners disappear, today's replace
+// them" rotation, nothing extra needed here for that.
+async function renderDailyRewardsBanner() {
+  const banner = document.getElementById("daily-rewards-banner");
+  const snap = await getDoc(doc(db, "dailyRewardsPublicToday", "current")).catch(() => null);
+  const winners = snap && snap.exists() ? snap.data().winners || [] : [];
+
+  if (winners.length === 0) {
+    banner.className = "chatroom-sponsor-banner no-sponsor";
+    banner.innerHTML = `<span>🎁 No Daily Rewards today — check back tomorrow!</span>`;
+    banner.style.display = "flex";
+    return;
+  }
+
+  banner.className = "chatroom-sponsor-banner has-sponsor";
+  banner.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:0.75rem; width:100%;">
+      <strong>🎉 Today's Daily Reward Winners</strong>
+      ${winners.map((w) => `
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+          ${w.photoUrl ? `<img src="${w.photoUrl}" alt="${escapeHtml(w.name)}" style="width:36px; height:36px; border-radius:50%; object-fit:cover;" />` : `<span style="width:36px; height:36px; border-radius:50%; background:var(--paper-700, #333); display:inline-block;"></span>`}
+          <span><strong>${escapeHtml(w.name)}</strong> won <strong>${escapeHtml(w.prize)}</strong> from ${w.sponsorLogoUrl ? `<img src="${w.sponsorLogoUrl}" alt="${escapeHtml(w.sponsorName)}" style="height:18px; vertical-align:middle;" />` : ""} <strong>${escapeHtml(w.sponsorName)}</strong></span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+  banner.style.display = "flex";
+}
+
 // Chat messages store the sender's display name as a snapshot at
 // send-time (senderName), which never gets updated afterward — so
 // anyone who changes their profile name later still shows their OLD
@@ -6653,6 +6757,258 @@ function renderChatSponsorAdminCard(roomId, data) {
 
   return card;
 }
+
+// ============================= DAILY REWARDS (ADMIN) ========================
+// Logo upload keyed by a CLIENT-GENERATED Firestore doc ID, not currentUid
+// like chatSponsorLogos — the sponsor doc doesn't exist yet when the logo
+// is uploaded (the admin is still filling out the form), so there's no
+// sponsorId to key the Storage path on until one is generated up front via
+// doc(collection(...)) — a real Firestore ID, reserved but not yet
+// written, which then gets used for both the Storage path and the
+// eventual setDoc.
+let dailyRewardPendingLogo = null; // { url, storagePath }
+let dailyRewardDraftId = null; // the reserved doc ID for whatever's currently in the form
+
+function resetDailyRewardForm() {
+  document.getElementById("dailyreward-form").reset();
+  document.getElementById("dailyreward-editing-id").value = "";
+  document.getElementById("dailyreward-logo-slot").innerHTML = `<span class="slot-label">+ Add logo</span>`;
+  document.getElementById("dailyreward-cancel-edit-btn").style.display = "none";
+  dailyRewardPendingLogo = null;
+  dailyRewardDraftId = null;
+}
+
+document.getElementById("dailyreward-logo-slot").addEventListener("click", () => {
+  document.getElementById("dailyreward-logo-input").click();
+});
+document.getElementById("dailyreward-logo-input").addEventListener("change", async () => {
+  const file = document.getElementById("dailyreward-logo-input").files[0];
+  if (!file) return;
+  const msg = document.getElementById("dailyreward-logo-message");
+  showMessage(msg, "Processing logo...", "success");
+  try {
+    if (!dailyRewardDraftId) dailyRewardDraftId = doc(collection(db, "dailyRewardSponsors")).id;
+    const processedBlob = await compressImageFile(file);
+    const path = `dailyRewardLogos/${dailyRewardDraftId}/images/logo.jpg`;
+    const fileRef = ref(storage, path);
+    await uploadBytes(fileRef, processedBlob, { contentType: "image/jpeg" });
+    const url = await getDownloadURL(fileRef);
+    dailyRewardPendingLogo = { url, storagePath: path };
+    document.getElementById("dailyreward-logo-slot").innerHTML = `<img src="${url}" alt="Logo" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" />`;
+    msg.style.display = "none";
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
+
+document.getElementById("dailyreward-cancel-edit-btn").addEventListener("click", resetDailyRewardForm);
+
+document.getElementById("dailyreward-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("dailyreward-message");
+  const editingId = document.getElementById("dailyreward-editing-id").value || null;
+  const sponsorId = editingId || dailyRewardDraftId || doc(collection(db, "dailyRewardSponsors")).id;
+
+  const quantityCapRaw = document.getElementById("dailyreward-quantity-cap").value;
+  const data = {
+    companyName: document.getElementById("dailyreward-company-name").value.trim(),
+    prizeDescription: document.getElementById("dailyreward-prize").value.trim(),
+    startDate: Timestamp.fromDate(new Date(document.getElementById("dailyreward-start-date").value)),
+    endDate: Timestamp.fromDate(new Date(document.getElementById("dailyreward-end-date").value)),
+    maxWinnersPerDay: parseInt(document.getElementById("dailyreward-max-winners").value, 10) || 1,
+    quantityCap: quantityCapRaw ? parseInt(quantityCapRaw, 10) : null,
+    redemptionInstructions: document.getElementById("dailyreward-redemption").value.trim(),
+    finePrint: document.getElementById("dailyreward-fine-print").value.trim(),
+  };
+  if (dailyRewardPendingLogo) {
+    data.logoUrl = dailyRewardPendingLogo.url;
+    data.logoStoragePath = dailyRewardPendingLogo.storagePath;
+  }
+
+  try {
+    if (editingId) {
+      await updateDoc(doc(db, "dailyRewardSponsors", editingId), data);
+      showMessage(msg, "Saved.", "success");
+    } else {
+      await setDoc(doc(db, "dailyRewardSponsors", sponsorId), {
+        ...data,
+        status: "draft",
+        quantityAwarded: 0,
+        createdAt: Timestamp.now(),
+        createdBy: currentUid,
+        publishedAt: null,
+      });
+      showMessage(msg, "Saved as draft — click Publish on it below when you're ready to enter it into the daily drawing.", "success");
+    }
+    resetDailyRewardForm();
+    loadDailyRewardAdminQueue();
+    loadSponsorInviteList();
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
+
+async function loadDailyRewardAdminQueue() {
+  const container = document.getElementById("dailyreward-queue");
+  const empty = document.getElementById("dailyreward-empty");
+  if (!container) return;
+  container.innerHTML = "";
+  empty.style.display = "none";
+
+  const q = query(collection(db, "dailyRewardSponsors"), orderBy("createdAt", "desc"));
+  const snap = await getDocs(q).catch((err) => {
+    container.innerHTML = `<div class="message error">Couldn't load giveaways: ${err.message}</div>`;
+    return null;
+  });
+  if (!snap) return;
+  if (snap.empty) {
+    empty.style.display = "block";
+    return;
+  }
+  snap.forEach((docSnap) => container.appendChild(renderDailyRewardAdminCard(docSnap.id, docSnap.data())));
+}
+
+const DAILY_REWARD_STATUS_LABEL = { draft: "📝 Draft", published: "✅ Published", paused: "⏸️ Paused", ended: "⏹️ Ended" };
+
+function renderDailyRewardAdminCard(sponsorId, data) {
+  const card = document.createElement("div");
+  card.className = "admin-card";
+  const statusLabel = DAILY_REWARD_STATUS_LABEL[data.status] || data.status;
+  const dateRange = `${data.startDate?.toDate().toLocaleDateString() || "?"} – ${data.endDate?.toDate().toLocaleDateString() || "?"}`;
+
+  card.innerHTML = `
+    <div class="admin-meta">
+      ${statusLabel} &nbsp;·&nbsp; ${escapeHtml(data.companyName || "Unnamed sponsor")} &nbsp;·&nbsp; ${escapeHtml(data.prizeDescription || "")}
+      &nbsp;·&nbsp; ${dateRange} &nbsp;·&nbsp; up to ${data.maxWinnersPerDay || 1}/day
+      ${data.quantityCap ? ` &nbsp;·&nbsp; ${data.quantityAwarded || 0}/${data.quantityCap} given out` : ""}
+    </div>
+    ${data.logoUrl ? `<div class="admin-images"><img src="${data.logoUrl}" alt="Logo" /></div>` : ""}
+    <div class="admin-actions">
+      <button type="button" data-action="edit">Edit</button>
+      ${data.status === "draft" || data.status === "paused" ? `<button type="button" data-action="publish">Publish</button>` : ""}
+      ${data.status === "published" ? `<button type="button" class="secondary" data-action="pause">Pause</button>` : ""}
+      ${data.status !== "ended" ? `<button type="button" class="secondary" data-action="end">End</button>` : ""}
+      <button type="button" class="secondary" data-action="delete">Delete</button>
+    </div>
+    <div class="message" style="display:none"></div>
+  `;
+  const msg = card.querySelector(".message");
+
+  card.querySelector('[data-action="edit"]').addEventListener("click", () => {
+    document.getElementById("dailyreward-editing-id").value = sponsorId;
+    document.getElementById("dailyreward-company-name").value = data.companyName || "";
+    document.getElementById("dailyreward-prize").value = data.prizeDescription || "";
+    document.getElementById("dailyreward-start-date").value = data.startDate?.toDate().toISOString().slice(0, 10) || "";
+    document.getElementById("dailyreward-end-date").value = data.endDate?.toDate().toISOString().slice(0, 10) || "";
+    document.getElementById("dailyreward-max-winners").value = data.maxWinnersPerDay || 1;
+    document.getElementById("dailyreward-quantity-cap").value = data.quantityCap || "";
+    document.getElementById("dailyreward-redemption").value = data.redemptionInstructions || "";
+    document.getElementById("dailyreward-fine-print").value = data.finePrint || "";
+    if (data.logoUrl) {
+      document.getElementById("dailyreward-logo-slot").innerHTML = `<img src="${data.logoUrl}" alt="Logo" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" />`;
+    }
+    dailyRewardDraftId = sponsorId;
+    dailyRewardPendingLogo = null; // only set if they upload a NEW logo; editing keeps the existing one otherwise
+    document.getElementById("dailyreward-cancel-edit-btn").style.display = "inline-block";
+    window.scrollTo({ top: document.getElementById("dailyreward-form").offsetTop - 20, behavior: "smooth" });
+  });
+  card.querySelector('[data-action="publish"]').addEventListener("click", async () => {
+    try {
+      await updateDoc(doc(db, "dailyRewardSponsors", sponsorId), { status: "published", publishedAt: Timestamp.now() });
+      loadDailyRewardAdminQueue();
+      loadSponsorInviteList();
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  });
+  const pauseBtn = card.querySelector('[data-action="pause"]');
+  if (pauseBtn) pauseBtn.addEventListener("click", async () => {
+    try {
+      await updateDoc(doc(db, "dailyRewardSponsors", sponsorId), { status: "paused" });
+      loadDailyRewardAdminQueue();
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  });
+  card.querySelector('[data-action="end"]').addEventListener("click", async () => {
+    try {
+      await updateDoc(doc(db, "dailyRewardSponsors", sponsorId), { status: "ended" });
+      loadDailyRewardAdminQueue();
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  });
+  card.querySelector('[data-action="delete"]').addEventListener("click", async () => {
+    if (!confirm(`Delete "${data.companyName}"? This can't be undone (existing winner records are kept, just the sponsor listing itself goes away).`)) return;
+    try {
+      await deleteDoc(doc(db, "dailyRewardSponsors", sponsorId));
+      if (data.logoStoragePath) await deleteObject(ref(storage, data.logoStoragePath)).catch(() => {});
+      card.remove();
+    } catch (err) {
+      showMessage(msg, err.message, "error");
+    }
+  });
+
+  return card;
+}
+
+// Sponsor portal invite — the dropdown lists PUBLISHED giveaways only (no
+// point inviting a sponsor to verify a draft nobody can win yet), and the
+// list below shows who's already been invited for which sponsor.
+async function loadSponsorInviteList() {
+  const select = document.getElementById("sponsor-invite-sponsor-select");
+  const list = document.getElementById("sponsor-invite-list");
+  if (!select) return;
+
+  const sponsorsSnap = await getDocs(query(collection(db, "dailyRewardSponsors"), where("status", "in", ["published", "paused", "ended"]))).catch(() => null);
+  select.innerHTML = "";
+  if (sponsorsSnap && !sponsorsSnap.empty) {
+    sponsorsSnap.forEach((s) => {
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = s.data().companyName || s.id;
+      select.appendChild(opt);
+    });
+  } else {
+    select.innerHTML = `<option value="">Publish a giveaway first</option>`;
+  }
+
+  const accountsSnap = await getDocs(collection(db, "dailyRewardSponsorAccounts")).catch(() => null);
+  list.innerHTML = "";
+  if (accountsSnap && !accountsSnap.empty) {
+    for (const accDoc of accountsSnap.docs) {
+      const acc = accDoc.data();
+      const sponsorSnap = await getDoc(doc(db, "dailyRewardSponsors", acc.sponsorId)).catch(() => null);
+      const row = document.createElement("div");
+      row.className = "admin-card";
+      row.innerHTML = `<div class="admin-meta">${escapeHtml(acc.email)} &nbsp;·&nbsp; ${escapeHtml(sponsorSnap?.data()?.companyName || acc.sponsorId)}</div>`;
+      list.appendChild(row);
+    }
+  }
+}
+
+document.getElementById("sponsor-invite-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("sponsor-invite-message");
+  const sponsorId = document.getElementById("sponsor-invite-sponsor-select").value;
+  const email = document.getElementById("sponsor-invite-email").value.trim();
+  if (!sponsorId) {
+    showMessage(msg, "Publish a giveaway before inviting a sponsor to verify it.", "error");
+    return;
+  }
+  try {
+    await httpsCallable(functions, "inviteDailyRewardSponsor")({
+      sponsorId,
+      email,
+      continueUrl: new URL("daily-rewards-verify.html", location.href).href,
+    });
+    showMessage(msg, `Invite sent to ${email}.`, "success");
+    document.getElementById("sponsor-invite-email").value = "";
+    loadSponsorInviteList();
+  } catch (err) {
+    showMessage(msg, err.message, "error");
+  }
+});
 </script>
 </body>
 </html>
