@@ -653,17 +653,45 @@ const stripeWebhookSecret3 = defineSecret("STRIPE_WEBHOOK_SECRET_3");
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const ONE_MONTH_MS = 31 * 24 * 60 * 60 * 1000;
 
+// client_reference_id carries THREE pieces of info packed into one string:
+// "<type>_<uid>_<edition>", e.g. "gold_AbC123.._eufaula-lake" — type and
+// edition are added by whichever edition's pricing page builds the
+// Payment Link URL; Firebase uids and Firebase project IDs are both
+// guaranteed never to contain an underscore themselves (project IDs:
+// lowercase letters/digits/hyphens only; uids: alphanumeric), so splitting
+// on the LAST underscore to pull edition off the end, then the first "_"
+// to pull the type prefix off the front, is unambiguous. All 7 editions
+// share the exact same 3 Payment Links — this is what lets one shared
+// link tell 7 separate webhooks (one per edition's Firebase project)
+// whether a given purchase is theirs, without needing 18 separate
+// Payment Links configured with per-edition metadata in Stripe's
+// dashboard. Missing edition suffix (links built before this existed)
+// falls back to "town-talk-87ff7" so nothing already in flight breaks.
+function parseCheckoutRef(ref) {
+  const prefixes = ["business_", "gold_", "diamond_"];
+  const prefix = prefixes.find((p) => ref.startsWith(p));
+  if (!prefix) return null;
+  const type = prefix.slice(0, -1);
+  const rest = ref.slice(prefix.length);
+  const lastUnderscore = rest.lastIndexOf("_");
+  if (lastUnderscore === -1) return { type, uid: rest, edition: "town-talk-87ff7" };
+  return { type, uid: rest.slice(0, lastUnderscore), edition: rest.slice(lastUnderscore + 1) };
+}
+
 async function grantFromCheckout(session) {
-  const ref = session.client_reference_id || "";
-  if (ref.startsWith("business_")) {
-    const uid = ref.slice("business_".length);
+  const parsed = parseCheckoutRef(session.client_reference_id || "");
+  if (!parsed) {
+    console.error("Stripe webhook: checkout.session.completed with unrecognized client_reference_id:", session.client_reference_id);
+    return;
+  }
+  const { type, uid } = parsed;
+  if (type === "business") {
     await db
       .collection("businesses")
       .doc(uid)
       .update({ businessPaidUntil: Timestamp.fromDate(new Date(Date.now() + ONE_YEAR_MS)) })
       .catch((err) => console.error(`Stripe webhook: couldn't mark business ${uid} paid:`, err));
-  } else if (ref.startsWith("gold_")) {
-    const uid = ref.slice("gold_".length);
+  } else if (type === "gold") {
     await db
       .collection("users")
       .doc(uid)
@@ -672,8 +700,7 @@ async function grantFromCheckout(session) {
         goldExpiresAt: Timestamp.fromDate(new Date(Date.now() + ONE_YEAR_MS)),
       })
       .catch((err) => console.error(`Stripe webhook: couldn't grant gold to ${uid}:`, err));
-  } else if (ref.startsWith("diamond_")) {
-    const uid = ref.slice("diamond_".length);
+  } else if (type === "diamond") {
     await db
       .collection("users")
       .doc(uid)
@@ -683,8 +710,6 @@ async function grantFromCheckout(session) {
         stripeCustomerId: session.customer || null,
       })
       .catch((err) => console.error(`Stripe webhook: couldn't grant diamond to ${uid}:`, err));
-  } else {
-    console.error("Stripe webhook: checkout.session.completed with unrecognized client_reference_id:", ref);
   }
 }
 
@@ -743,23 +768,23 @@ exports.stripeWebhook = onRequest(
     }
 
     // Every edition (Pauls Valley, Eufaula Lake, ...) is a separate Firebase
-    // project but can share one Stripe account — Stripe sends EVERY event to
-    // EVERY registered webhook endpoint on that account, not just the one
-    // tied to whichever Payment Link was actually used. Tag each edition's
-    // Payment Links/Prices with metadata.edition = "<firebase-project-id>"
-    // so this function can tell whether an event is actually its own before
-    // acting on it. Untagged events (existing Pauls Valley links predate
-    // this) default to "town-talk-87ff7" so production's own behavior never
-    // changes. invoice.payment_succeeded/customer.subscription.deleted
-    // don't need this same check — they look up the user by stripeCustomerId
-    // in THIS project's own Firestore, which simply won't contain another
+    // project but shares ONE Stripe account and the same 3 Payment Links —
+    // Stripe sends EVERY event to EVERY registered webhook endpoint on that
+    // account, not just "the right one". The edition rides along inside
+    // client_reference_id itself (see parseCheckoutRef above), so this
+    // function can tell whether an event is actually its own before acting
+    // on it. invoice.payment_succeeded/customer.subscription.deleted don't
+    // need this same check — they look up the user by stripeCustomerId in
+    // THIS project's own Firestore, which simply won't contain another
     // edition's customers at all, so cross-edition events already no-op
     // there on their own.
-    const eventEdition = event.data.object.metadata?.edition || "town-talk-87ff7";
-    if (event.type === "checkout.session.completed" && eventEdition !== process.env.GCLOUD_PROJECT) {
-      console.log(`Stripe webhook: ignoring checkout.session.completed for edition "${eventEdition}" (this is ${process.env.GCLOUD_PROJECT})`);
-      res.status(200).send("ignored - different edition");
-      return;
+    if (event.type === "checkout.session.completed") {
+      const eventEdition = parseCheckoutRef(event.data.object.client_reference_id || "")?.edition || "town-talk-87ff7";
+      if (eventEdition !== process.env.GCLOUD_PROJECT) {
+        console.log(`Stripe webhook: ignoring checkout.session.completed for edition "${eventEdition}" (this is ${process.env.GCLOUD_PROJECT})`);
+        res.status(200).send("ignored - different edition");
+        return;
+      }
     }
 
     try {

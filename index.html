@@ -523,19 +523,16 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <div class="view-header">
         <p class="eyebrow">Pauls Valley · Oklahoma</p>
         <h1>Sign in to your Pauls Valley area account</h1>
-        <p>Create a free account with your email. Your profile stays private until our admin team reviews and approves it.</p>
+        <p>New accounts sign in with Google. Your profile stays private until our admin team reviews and approves it.</p>
         <p><a href="#" id="landing-why-link">New here? See why Town Fuss is different &rarr;</a></p>
       </div>
 
-      <div class="tabs">
-        <button class="tab active" data-tab="login">Log in</button>
-        <button class="tab" data-tab="signup">Sign up</button>
-        <button class="tab" data-tab="reset">Forgot password</button>
-      </div>
-
-      <!-- Outside .auth-form on purpose — stays visible no matter which tab
-           is selected, since one Google click covers both sign-up and
-           login (handleGoogleSignIn below figures out which one applies). -->
+      <!-- Not wrapped in .auth-form on purpose — always visible, since this
+           is now the only way to create a NEW account (handleGoogleSignIn
+           figures out sign-up vs. login on its own). Email/password sign-in
+           below is kept ONLY for accounts that already existed before
+           email sign-up was removed 2026-08-12 — no new ones are created
+           this way anymore. -->
       <div class="form-row" style="justify-content:center; margin-top:0.75rem;">
         <button type="button" id="google-signin-btn" class="secondary">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="18" height="18" style="vertical-align:middle; margin-right:0.5rem;" aria-hidden="true">
@@ -548,40 +545,6 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         </button>
       </div>
       <div id="google-signin-message" class="message" style="display:none; text-align:center;"></div>
-
-      <form id="form-login" class="auth-form">
-        <label for="login-email">Email</label>
-        <input id="login-email" type="email" required autocomplete="email" />
-        <label for="login-password">Password</label>
-        <input id="login-password" type="password" required autocomplete="current-password" />
-        <div class="form-row"><button type="submit">Log in</button></div>
-        <div id="login-message" class="message" style="display:none"></div>
-      </form>
-
-      <form id="form-signup" class="auth-form" style="display:none">
-        <label for="signup-email">Email</label>
-        <input id="signup-email" type="email" required autocomplete="email" />
-        <label for="signup-password">Password</label>
-        <input id="signup-password" type="password" required minlength="6" autocomplete="new-password" />
-        <p class="field-hint">6+ characters. Your profile is private until an admin approves it.</p>
-        <label style="display:flex; align-items:flex-start; gap:0.6rem; margin-top:1.1rem; cursor:pointer;">
-          <input id="signup-age-confirm" type="checkbox" required style="width:auto; margin-top:0.2rem;" />
-          <span style="font-size:0.85rem; color:var(--text-muted);">I confirm I am at least 18 years old. Town Fuss is for adults only.</span>
-        </label>
-        <label style="display:flex; align-items:flex-start; gap:0.6rem; margin-top:0.75rem; cursor:pointer;">
-          <input id="signup-terms-confirm" type="checkbox" required style="width:auto; margin-top:0.2rem;" />
-          <span style="font-size:0.85rem; color:var(--text-muted);">I agree to the <a href="#" id="signup-terms-link">Terms of Service</a>.</span>
-        </label>
-        <div class="form-row"><button type="submit">Create account</button></div>
-        <div id="signup-message" class="message" style="display:none"></div>
-      </form>
-
-      <form id="form-reset" class="auth-form" style="display:none">
-        <label for="reset-email">Email</label>
-        <input id="reset-email" type="email" required autocomplete="email" />
-        <div class="form-row"><button type="submit">Send reset link</button></div>
-        <div id="reset-message" class="message" style="display:none"></div>
-      </form>
     </div>
   </section>
 
@@ -1393,8 +1356,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  sendPasswordResetEmail, onAuthStateChanged, signOut, deleteUser,
+  getAuth,
+  onAuthStateChanged, signOut, deleteUser,
   EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification, connectAuthEmulator,
   GoogleAuthProvider, signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -2140,8 +2103,10 @@ document.getElementById("nav-pricing").addEventListener("click", (e) => { e.prev
 document.getElementById("nav-about").addEventListener("click", (e) => { e.preventDefault(); showView("about"); });
 document.getElementById("landing-why-link").addEventListener("click", (e) => { e.preventDefault(); showView("about"); });
 document.getElementById("about-cta-signup-btn").addEventListener("click", () => {
+  // Google sign-in is the only way to create a new account now (see the
+  // landing view) — the "Continue with Google" button is always visible
+  // there, no tab to switch to anymore.
   showView("landing");
-  document.querySelector('.tab[data-tab="signup"]').click();
 });
 document.getElementById("nav-notifications").addEventListener("click", (e) => {
   e.preventDefault();
@@ -2176,10 +2141,12 @@ document.getElementById("nav-logout").addEventListener("click", async (e) => {
 let isAdminUser = false;
 let didForceVerifiedTokenRefresh = false;
 // True for the duration of a fresh signup's own account-creation flow —
-// see the form-signup submit handler below for why this exists (a race
+// see the Google sign-in handler below for why this exists (a race
 // between that handler's own profile-doc create and two other things
 // onAuthStateChanged fires immediately: updateLastActive() and
-// watchUserDoc()'s self-heal).
+// watchUserDoc()'s self-heal). Used to only apply to the email/password
+// signup form too, before that form was removed 2026-08-12 in favor of
+// Google-only sign-up.
 let signupInProgress = false;
 
 function updateProtectedNavVisibility(user) {
@@ -2270,7 +2237,7 @@ onAuthStateChanged(auth, async (user) => {
     watchNotificationBell(user.uid);
     loadBlockedList();
     // Skipped mid-signup — see signupInProgress's declaration comment.
-    // The form-signup handler calls watchUserDoc() itself once its own
+    // The Google sign-in handler calls watchUserDoc() itself once its own
     // create succeeds, which is what actually needs the profile doc to
     // exist; the interval-based heartbeat in startPresenceHeartbeat()
     // will cover the "last active" ping from then on regardless.
@@ -2513,16 +2480,6 @@ function showMessage(el, text, type) {
   el.style.display = "block";
 }
 
-// ============================= AUTH TABS ================================
-document.querySelectorAll(".tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-    document.querySelectorAll(".auth-form").forEach((f) => (f.style.display = "none"));
-    tab.classList.add("active");
-    document.getElementById(`form-${tab.dataset.tab}`).style.display = "block";
-  });
-});
-
 function friendlyAuthError(err) {
   const code = err.code || "";
   if (code.includes("email-already-in-use")) return "An account with that email already exists — try logging in instead.";
@@ -2533,12 +2490,6 @@ function friendlyAuthError(err) {
   if (code.includes("popup-blocked")) return "Your browser blocked the Google sign-in popup — please allow popups for this site and try again.";
   return err.message || "Something went wrong. Please try again.";
 }
-
-document.getElementById("signup-terms-link").addEventListener("click", (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  showView("terms");
-});
 
 // Retries the brand-new profile-doc write a few times before giving up. A
 // single-attempt failure here used to mean the signup handlers' catch
@@ -2561,103 +2512,6 @@ async function setDocWithRetry(ref, data, options, attempts = 3) {
   }
   throw lastErr;
 }
-
-document.getElementById("form-signup").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = document.getElementById("signup-email").value.trim();
-  const password = document.getElementById("signup-password").value;
-  const msg = document.getElementById("signup-message");
-  if (!document.getElementById("signup-age-confirm").checked) {
-    showMessage(msg, "You must confirm you're 18 or older to create an account.", "error");
-    return;
-  }
-  if (!document.getElementById("signup-terms-confirm").checked) {
-    showMessage(msg, "You must agree to the Terms of Service to create an account.", "error");
-    return;
-  }
-  let cred;
-  // onAuthStateChanged fires the instant createUserWithEmailAndPassword()
-  // resolves below — well before this handler's own setDoc() (a few lines
-  // down) has actually created the profile doc. Left unguarded, that
-  // listener's updateLastActive() call and watchUserDoc()'s "doc is
-  // missing, self-heal" path both race to write the SAME brand-new
-  // document first, sometimes landing before this handler's create even
-  // reaches the server — which can fail the whole signup outright (or
-  // silently create a broken doc missing agreedToTerms). This flag tells
-  // both of those "give this handler a chance to create the doc first."
-  signupInProgress = true;
-  try {
-    cred = await createUserWithEmailAndPassword(auth, email, password);
-    // NOTE: we intentionally do NOT auto-send the verification email here.
-    // Firebase's automatic send-on-creation has proven unreliable in
-    // practice (emails silently failing to arrive the first time). The
-    // verify-email-gate screen the person lands on next has its own
-    // "Send verification email" button, which uses the exact same
-    // sendEmailVerification() call but as a direct user-initiated click —
-    // that path has been the reliable one, so we lean on it instead of a
-    // background call the person can't see or retry themselves.
-    // merge: true — beforeSignInBlocking (index.js) stamps a lastKnownIp
-    // stub onto this same doc via its own merge write on every sign-in,
-    // including the one that happens immediately after this account is
-    // created; a plain (non-merge) setDoc here would race it and silently
-    // wipe that IP back out the moment it's recorded.
-    await setDocWithRetry(doc(db, "users", cred.user.uid), {
-      createdAt: serverTimestamp(),
-      email: email.toLowerCase(),
-      profile: { name: "", neighborhood: "" },
-      postText: "",
-      postWordCount: 0,
-      approved: false,
-      everApproved: false,
-      lastEditedAt: serverTimestamp(),
-      images: [],
-      agreedToTerms: true,
-      agreedToTermsAt: serverTimestamp(),
-    }, { merge: true });
-    // The doc now genuinely exists — re-run the listener setup so it picks
-    // up the real state on its next snapshot instead of whatever it may
-    // have skipped (or self-healed into a placeholder) while the flag
-    // above was up. onAuthStateChanged already called watchUserDoc() once
-    // for this same uid earlier, before the doc existed; this replaces
-    // that subscription with a fresh one now that there's something real
-    // to watch.
-    watchUserDoc(cred.user.uid);
-  } catch (err) {
-    // If the Firestore write got rejected for some reason, don't leave an
-    // orphaned Auth account with no profile behind it.
-    if (cred) {
-      await deleteUser(cred.user).catch(() => {});
-      await signOut(auth).catch(() => {});
-    }
-    showMessage(msg, friendlyAuthError(err), "error");
-  } finally {
-    signupInProgress = false;
-  }
-});
-
-document.getElementById("form-login").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = document.getElementById("login-email").value.trim();
-  const password = document.getElementById("login-password").value;
-  const msg = document.getElementById("login-message");
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-  } catch (err) {
-    showMessage(msg, friendlyAuthError(err), "error");
-  }
-});
-
-document.getElementById("form-reset").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = document.getElementById("reset-email").value.trim();
-  const msg = document.getElementById("reset-message");
-  try {
-    await sendPasswordResetEmail(auth, email);
-    showMessage(msg, "Check your email for a reset link.", "success");
-  } catch (err) {
-    showMessage(msg, friendlyAuthError(err), "error");
-  }
-});
 
 // ============================= GOOGLE SIGN-IN ==============================
 // One button, shared across all three tabs (see the HTML — it lives
@@ -6074,12 +5928,15 @@ function loadPricingView() {
   const params = new URLSearchParams();
   if (auth.currentUser?.email) params.set("prefilled_email", auth.currentUser.email);
 
+  // The trailing _${firebaseConfig.projectId} is what lets these same 3
+  // Payment Links be shared by all 7 editions — see parseCheckoutRef in
+  // index.js for how the webhook uses it to tell editions apart.
   const goldParams = new URLSearchParams(params);
-  goldParams.set("client_reference_id", `gold_${currentUid}`);
+  goldParams.set("client_reference_id", `gold_${currentUid}_${firebaseConfig.projectId}`);
   document.getElementById("pricing-gold-link").href = `${STRIPE_GOLD_MEMBERSHIP_URL}?${goldParams.toString()}`;
 
   const diamondParams = new URLSearchParams(params);
-  diamondParams.set("client_reference_id", `diamond_${currentUid}`);
+  diamondParams.set("client_reference_id", `diamond_${currentUid}_${firebaseConfig.projectId}`);
   document.getElementById("pricing-diamond-link").href = `${STRIPE_DIAMOND_MEMBERSHIP_URL}?${diamondParams.toString()}`;
 
   const isDiamond = !!currentUserData.isDiamondMember;
@@ -6331,7 +6188,9 @@ function renderMyBusiness(data) {
     payLink.style.display = "inline-block";
   }
   const params = new URLSearchParams();
-  params.set("client_reference_id", `business_${currentUid}`);
+  // Trailing _${firebaseConfig.projectId} — see the matching comment on the
+  // gold/diamond links above for why.
+  params.set("client_reference_id", `business_${currentUid}_${firebaseConfig.projectId}`);
   if (auth.currentUser?.email) params.set("prefilled_email", auth.currentUser.email);
   payLink.href = `${STRIPE_BUSINESS_LISTING_URL}?${params.toString()}`;
 }
