@@ -179,6 +179,9 @@ button:hover { background: var(--amber-600); }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
 import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+// Added for Daily Rewards' share-click qualification stamp only — this
+// page otherwise has no Firestore reads/writes of its own.
+import { getFirestore, doc, updateDoc, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // =========================================================================
 // EDITION CONFIGURATION — the only edition-specific value on this page.
@@ -219,8 +222,10 @@ const auth = getAuth(app);
 // lookups go to real production Firebase instead of the emulator and
 // silently fail for any emulator-only test account. Found 2026-08-12
 // while adding a Playwright test for the Invite a Friend feature.
+const db = getFirestore(app);
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
 }
 
 onAuthStateChanged(auth, (user) => {
@@ -250,6 +255,14 @@ function showInviteStatus(text) {
 // receiving app, without this failure mode.
 if (inviteBtn) {
   inviteBtn.addEventListener("click", async () => {
+    // Daily Rewards qualification: "shared on social media" — honor
+    // system, same reasoning as every other Invite a Friend button (see
+    // the matching comment on the game pages' quicknav version).
+    if (auth.currentUser) {
+      updateDoc(doc(db, "users", auth.currentUser.uid), {
+        "dailyRewards.shareClickDate": new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date()),
+      }).catch(() => {});
+    }
     const inviteUrl = `${location.origin}/gamezone.html`;
     const shareText = "Come play games with me on Town Fuss!";
     // Prefer the native share sheet (texts/email/socials) when the

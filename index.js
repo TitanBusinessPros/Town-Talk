@@ -115,6 +115,15 @@ const EDITION_DISPLAY_NAMES = {
   "prague-townfuss": "Prague",
 };
 
+// "Today" for Daily Rewards purposes, in America/Chicago — the same
+// timezone the 4pm draw and every other scheduled function in this file
+// already runs in. en-CA locale is a deliberate trick, not a typo: it's
+// the one built-in Intl format that outputs YYYY-MM-DD directly, no manual
+// string assembly needed.
+function centralDateString(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(date);
+}
+
 async function sendSignupAlertEmail(name) {
   const editionName = EDITION_DISPLAY_NAMES[process.env.GCLOUD_PROJECT] || process.env.GCLOUD_PROJECT;
   const resp = await fetch("https://api.resend.com/emails", {
@@ -438,6 +447,26 @@ exports.onChatReaction = onDocumentUpdated(
       body: `${reactorName} ${verb} your message in chat.`,
       clickAction: `/index.html?chatroom=${event.params.roomId}&msg=${event.params.messageId}`,
     });
+  }
+);
+
+// -----------------------------------------------------------------------
+// Daily Rewards qualification: posting a chat message. Stamped server-side
+// on message CREATE, unlike the game-played/share-clicked qualifiers (which
+// are simple self-reported client writes, honor-system, same trust level
+// already agreed for social-share verification) — a real chat message
+// already has to pass real security rules to exist at all (isApproved,
+// length limits, etc.), so it's a genuinely trustworthy signal rather than
+// something worth trusting the client to self-report.
+// -----------------------------------------------------------------------
+exports.onChatMessageDailyRewardQualify = onDocumentCreated(
+  "chatRooms/{roomId}/messages/{messageId}",
+  async (event) => {
+    const message = event.data?.data();
+    if (!message?.senderId) return;
+    await db.collection("users").doc(message.senderId)
+      .update({ "dailyRewards.chatMessageDate": centralDateString() })
+      .catch((err) => console.error(`onChatMessageDailyRewardQualify: couldn't stamp ${message.senderId}:`, err));
   }
 );
 

@@ -1765,6 +1765,13 @@ if (townFinderInput) {
 // show the logo once the link is actually sent and unfurled by the
 // receiving app, without this failure mode.
 async function inviteAFriend(statusEl) {
+  // Daily Rewards qualification: "shared on social media" — honor system,
+  // same reasoning as every other Invite a Friend button on the site.
+  if (currentUid) {
+    updateDoc(doc(db, "users", currentUid), {
+      "dailyRewards.shareClickDate": new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date()),
+    }).catch(() => {});
+  }
   const inviteUrl = location.origin + "/";
   const shareText = "Come join me on Town Fuss!";
   if (navigator.share) {

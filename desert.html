@@ -451,6 +451,17 @@
   if (!btn) return;
   btn.addEventListener("click", async function (e) {
     e.preventDefault();
+    // Daily Rewards qualification: "shared on social media" — honor
+    // system, same as already agreed for verifying a share actually
+    // happened (there's no way to know what someone did after this hands
+    // off to the OS share sheet or clipboard). Counts the click itself,
+    // guarded on actually being signed in since this button is reachable
+    // from a signed-out state too.
+    if (currentUid) {
+      updateDoc(doc(db, "users", currentUid), {
+        "dailyRewards.shareClickDate": new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date()),
+      }).catch(() => {});
+    }
     var inviteUrl = location.origin + "/";
     var shareText = "Come join me on Town Fuss!";
     if (navigator.share) {
@@ -1386,6 +1397,18 @@ onAuthStateChanged(auth, async (user) => {
   }
   document.getElementById("not-approved-notice").style.display = "none";
   document.getElementById("app-content").style.display = "block";
+
+  // Daily Rewards qualification: "played a game" — even entering and
+  // immediately leaving counts, so this fires just for reaching this
+  // point (signed in, approved). Unconditional small write on every
+  // load rather than checking "already stamped today" first — the
+  // Firestore cost of re-writing the same date is negligible, and it
+  // keeps this snippet identical across all 24 game pages regardless of
+  // whether a given page happens to keep its own profile snapshot in
+  // memory (some do, some — like pong.html — don't).
+  updateDoc(doc(db, "users", currentUid), {
+    "dailyRewards.gamePlayedDate": new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date()),
+  }).catch(() => {});
 
   watchGamePlayLimit(currentUid);
   showView("hub");
