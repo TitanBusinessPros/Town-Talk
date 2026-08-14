@@ -223,6 +223,16 @@ service cloud.firestore {
                         && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
                              .hasOnly(['lastActiveAt', 'agreedToTerms', 'agreedToTermsAt']))
+                    // Daily Rewards opt-in toggle — its own dedicated branch,
+                    // deliberately NOT gated on isApproved(uid) the way
+                    // notificationsEnabled below is. Someone should be able to
+                    // turn this on the moment they create their profile, before
+                    // an admin has reviewed anything — that's the whole point of
+                    // it living on the profile page instead of, say, a
+                    // post-approval settings screen.
+                    || (isOwner(uid)
+                        && membershipFieldsUnchanged()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dailyRewards']))
                     // Actual platform-usage stats (game points/wins/losses, high
                     // scores, friend count, notification settings) — gated on
                     // approval, same "no platform access before approval" policy as
@@ -234,7 +244,7 @@ service cloud.firestore {
                         && isApproved(uid)
                         && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'heartsPoints', 'heartsWins', 'heartsLosses', 'blackjackPoints', 'blackjackWins', 'blackjackLosses', 'blackjackDraws', 'airHockeyPoints', 'airHockeyWins', 'airHockeyLosses', 'deepSeaHighScore', 'titanSpaceHighScore', 'pongWins', 'blocksHighScore', 'stackCheckersPoints', 'stackCheckersWins', 'stackCheckersLosses', 'seaWarPoints', 'seaWarWins', 'seaWarLosses', 'notificationsEnabled', 'fcmTokens', 'dailyRewards']));
+                             .hasOnly(['friendCount', 'lastActiveAt', 'agreedToTerms', 'agreedToTermsAt', 'chessPoints', 'chessWins', 'chessLosses', 'chessDraws', 'checkersPoints', 'checkersWins', 'checkersLosses', 'checkersDraws', 'wynneWarsPoints', 'wynneWarsWins', 'wynneWarsLosses', 'golfPoints', 'golfWins', 'golfLosses', 'golfDraws', 'fgPoints', 'fgWins', 'fgLosses', 'fgDraws', 'cribbagePoints', 'cribbageWins', 'cribbageLosses', 'match3BestScore', 'match3BestTimeMs', 'match3BestEfficiency', 'followBestRounds', 'followBestTimeMs', 'desertHighScore', 'sudokuBestStreak', 'neonDriftHighScore', 'gtfBestTimeMs', 'gravitySlingBestLevel', 'gravitySlingBestTimeMs', 'gravitySlingScore', 'dodgeHighScore', 'warPoints', 'warWins', 'warLosses', 'heartsPoints', 'heartsWins', 'heartsLosses', 'blackjackPoints', 'blackjackWins', 'blackjackLosses', 'blackjackDraws', 'airHockeyPoints', 'airHockeyWins', 'airHockeyLosses', 'deepSeaHighScore', 'titanSpaceHighScore', 'pongWins', 'blocksHighScore', 'stackCheckersPoints', 'stackCheckersWins', 'stackCheckersLosses', 'seaWarPoints', 'seaWarWins', 'seaWarLosses', 'notificationsEnabled', 'fcmTokens']));
       allow delete: if isOwner(uid) || isAdmin();
     }
 
