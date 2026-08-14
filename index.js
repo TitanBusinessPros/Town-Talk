@@ -942,11 +942,27 @@ function generateDailyRewardCode() {
 // firestore.rules comment on dailyRewardWinners/dailyRewardsPublicToday
 // for why: the full record (uid, coupon code, redeemed flag) stays
 // narrowly readable (the winner, their sponsor, admins), while
-// dailyRewardsPublicToday/current — a single doc, overwritten wholesale
-// every run — is the public, code-free summary the chat-room banner
-// reads. That overwrite IS the daily rotation; no separate cleanup job
-// needed for "yesterday's winners disappear."
+// dailyRewardsPublicToday/current — a single doc — is the public,
+// code-free summary the chat-room banner reads. The doc's `date` field
+// is what drives the daily rotation ("yesterday's winners disappear"):
+// on the first run of a new day the doc is replaced outright, but if
+// this run's `date` already matches what's stored (a same-day re-run —
+// scheduler retry, or a manual re-trigger while testing) this run's
+// winners are merged into the existing array instead of clobbering it.
+// Wrapped in a transaction so two same-day runs can't race each other's
+// read-then-write.
 // -----------------------------------------------------------------------
+async function mergePublicWinnersToday(todayStr, newWinners) {
+  const ref = db.collection("dailyRewardsPublicToday").doc("current");
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const existing = snap.exists ? snap.data() : null;
+    const sameDay = existing && existing.date === todayStr;
+    const winners = sameDay ? [...(existing.winners || []), ...newWinners] : newWinners;
+    tx.set(ref, { date: todayStr, winners });
+  });
+}
+
 exports.dailyRewardsDraw = onSchedule(
   { schedule: "0 16 * * *", timeZone: "America/Chicago" },
   async () => {
@@ -962,7 +978,7 @@ exports.dailyRewardsDraw = onSchedule(
     });
 
     if (activeSponsors.length === 0) {
-      await db.collection("dailyRewardsPublicToday").doc("current").set({ date: todayStr, winners: [] });
+      await mergePublicWinnersToday(todayStr, []);
       return;
     }
 
@@ -983,7 +999,7 @@ exports.dailyRewardsDraw = onSchedule(
       });
 
     if (eligible.length === 0) {
-      await db.collection("dailyRewardsPublicToday").doc("current").set({ date: todayStr, winners: [] });
+      await mergePublicWinnersToday(todayStr, []);
       return;
     }
 
@@ -1041,13 +1057,13 @@ exports.dailyRewardsDraw = onSchedule(
         await sendPushToUser(candidate.uid, {
           type: "daily_reward_win",
           title: "🎉 You won a Daily Reward!",
-          body: `You won ${sponsor.prizeDescription} from ${sponsor.companyName}! Check the Chat Rooms page for your code.`,
-          clickAction: "/index.html?view=chatrooms",
+          body: `You won ${sponsor.prizeDescription} from ${sponsor.companyName}! Check your profile page for your code.`,
+          clickAction: "/index.html?view=dashboard",
         }).catch((err) => console.error(`dailyRewardsDraw: couldn't push-notify winner ${candidate.uid}:`, err));
       }
     }
 
-    await db.collection("dailyRewardsPublicToday").doc("current").set({ date: todayStr, winners: publicWinners });
+    await mergePublicWinnersToday(todayStr, publicWinners);
   }
 );
 

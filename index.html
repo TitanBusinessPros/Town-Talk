@@ -629,6 +629,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <span id="dailyrewards-toggle-label" style="font-weight:600;">Daily Rewards off</span>
       </div>
       <div id="dailyrewards-message" class="message" style="display:none"></div>
+      <div id="dailyrewards-wins" style="margin-top:1rem;"></div>
     </section>
 
     <section class="card" style="margin-top:1.5rem">
@@ -2085,6 +2086,34 @@ document.getElementById("dailyrewards-toggle-checkbox").addEventListener("change
   checkbox.disabled = false;
 });
 
+// Shows the winner's own coupon code(s) right on their profile — NOT the
+// chat room, which only ever shows the code-free public summary (see
+// renderDailyRewardsBanner). Firestore rules already let a signed-in user
+// read their own dailyRewardWinners docs (resource.data.uid ==
+// request.auth.uid), so this is a plain client-side query, no callable
+// needed. No orderBy in the query itself (equality-only, so no composite
+// index needed) — sorted client-side instead since a winner will only
+// ever have a handful of these at most.
+async function loadMyDailyRewardWins() {
+  const container = document.getElementById("dailyrewards-wins");
+  if (!container || !currentUid) return;
+  const snap = await getDocs(query(collection(db, "dailyRewardWinners"), where("uid", "==", currentUid))).catch(() => null);
+  if (!snap || snap.empty) { container.innerHTML = ""; return; }
+
+  const wins = snap.docs.map((d) => d.data()).sort((a, b) => (b.wonAt?.seconds || 0) - (a.wonAt?.seconds || 0));
+  container.innerHTML = `
+    <h3 style="font-size:0.95rem; margin-bottom:0.5rem;">Your winning code${wins.length > 1 ? "s" : ""}</h3>
+    ${wins.map((w) => `
+      <div class="card" style="margin-bottom:0.5rem; padding:0.75rem 1rem; text-align:left;">
+        <strong>${escapeHtml(w.prizeDescription || "")}</strong> from ${escapeHtml(w.sponsorName || "")}<br />
+        <span style="font-family:monospace; font-size:1.2rem; letter-spacing:0.1em;">${escapeHtml(w.couponCode || "")}</span>
+        ${w.redeemed ? ` <span class="field-hint">(already redeemed)</span>` : ""}
+        <p class="field-hint" style="margin-top:0.3rem;">Show this code to ${escapeHtml(w.sponsorName || "the sponsor")} to claim your prize.</p>
+      </div>
+    `).join("")}
+  `;
+}
+
 document.getElementById("notif-toggle-checkbox").addEventListener("change", async (e) => {
   const checkbox = e.target;
   checkbox.disabled = true;
@@ -2935,6 +2964,7 @@ function renderDashboard(data) {
   currentImages = data.images || [];
   renderNotifToggle(data);
   renderDailyRewardsToggle(data);
+  loadMyDailyRewardWins();
   updateDashboardGates();
 }
 
