@@ -384,7 +384,39 @@ function main() {
   }
   const edition = EDITIONS[editionId];
 
-  if (fs.existsSync(BUILD_DIR)) fs.rmSync(BUILD_DIR, { recursive: true, force: true });
+  // Windows Defender/Search/OneDrive will sometimes hold a lock on files in
+  // ./build for a few seconds right after the previous edition's `firebase
+  // deploy` finished touching them (confirmed 2026-08-13: rmSync failed
+  // with EBUSY for 60+ straight seconds across two separate editions back
+  // to back, with no owning process found via Get-Process/Get-CimInstance —
+  // consistent with an AV/indexer scan racing the delete, not a real
+  // handle leak in our own tooling). Retrying with backoff instead of
+  // failing outright, since the lock does eventually clear on its own.
+  rmBuildDirWithRetry();
+
+  function rmBuildDirWithRetry(attempt = 1) {
+    if (!fs.existsSync(BUILD_DIR)) return;
+    try {
+      fs.rmSync(BUILD_DIR, { recursive: true, force: true });
+    } catch (err) {
+      if (err.code !== "EBUSY" && err.code !== "EPERM") throw err;
+      if (attempt >= 15) {
+        // Give up deleting and just overwrite in place instead of failing
+        // the whole build. Safe here specifically because copyDirExcept
+        // below always copies the exact same REPO_ROOT file set regardless
+        // of edition — the only thing that differs between editions is
+        // file CONTENTS (config swaps), never which files exist — so a
+        // stale ./build from a previous edition's run has nothing in it
+        // that this run won't overwrite anyway.
+        console.warn(`build dir still locked after ${attempt} attempts — leaving it in place and overwriting its contents instead of deleting it first.`);
+        return;
+      }
+      const delayMs = Math.min(2000, 250 * attempt);
+      console.warn(`build dir locked (${err.code}), retrying in ${delayMs}ms (attempt ${attempt}/15)...`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delayMs);
+      rmBuildDirWithRetry(attempt + 1);
+    }
+  }
   // *-debug.log: local emulator logs that land in the repo root while
   // testing (gitignored, never committed) but were still getting swept into
   // the deployed build since copyDirExcept only skips directories by name —
