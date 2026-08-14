@@ -451,6 +451,32 @@ exports.onChatReaction = onDocumentUpdated(
 );
 
 // -----------------------------------------------------------------------
+// Notifies the ORIGINAL sender when someone replies to their chat message.
+// Modeled directly on onChatReaction above — same trigger shape, same
+// sendPushToUser call, same clickAction pattern — just onCreate instead of
+// onUpdate, since a reply is a brand new message doc (with replyTo* fields
+// on it) rather than a field changing on an existing one. Unlike
+// onChatReaction, replyToSenderId comes straight off the new message
+// itself (client-supplied, but firestore.rules' isValidChatReply()
+// already verified it matches the real original sender before this could
+// ever get written) — no extra lookup needed to find who to notify.
+// -----------------------------------------------------------------------
+exports.onChatReply = onDocumentCreated(
+  "chatRooms/{roomId}/messages/{messageId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data || !data.replyToSenderId || data.replyToSenderId === data.senderId) return; // not a reply, or replying to yourself
+
+    await sendPushToUser(data.replyToSenderId, {
+      type: "reply",
+      title: "Town Fuss — Chat Reply",
+      body: `${data.senderName || "A neighbor"} replied to your message in chat.`,
+      clickAction: `/index.html?chatroom=${event.params.roomId}&msg=${event.params.messageId}`,
+    });
+  }
+);
+
+// -----------------------------------------------------------------------
 // Daily Rewards qualification: posting a chat message. Stamped server-side
 // on message CREATE, unlike the game-played/share-clicked qualifiers (which
 // are simple self-reported client writes, honor-system, same trust level

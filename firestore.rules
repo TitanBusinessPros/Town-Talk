@@ -55,6 +55,25 @@ service cloud.firestore {
       return userData.get('isDiamondMember', false) ? 999999999
            : (userData.get('isGoldMember', false) ? 15 : 5);
     }
+    // A chat message's optional reply-quote fields. No reply fields at all
+    // (the common case — most messages aren't replies) is always valid.
+    // If present, all four must be present together and replyToSenderId
+    // must actually match the real sender of replyToMessageId in the SAME
+    // room — otherwise someone could forge "so-and-so replied to your
+    // message" notifications pointing at a message that isn't theirs, or
+    // quote text that was never actually said. One extra read (the
+    // replied-to message itself), only on replies.
+    function isValidChatReply(roomId, data) {
+      return !data.keys().hasAny(['replyToMessageId', 'replyToSenderId', 'replyToSenderName', 'replyToText']) || (
+        data.keys().hasAll(['replyToMessageId', 'replyToSenderId', 'replyToSenderName', 'replyToText'])
+        && data.replyToMessageId is string
+        && data.replyToSenderId is string
+        && data.replyToSenderName is string
+        && data.replyToText is string && data.replyToText.size() <= 120
+        && exists(/databases/$(database)/documents/chatRooms/$(roomId)/messages/$(data.replyToMessageId))
+        && get(/databases/$(database)/documents/chatRooms/$(roomId)/messages/$(data.replyToMessageId)).data.senderId == data.replyToSenderId
+      );
+    }
 
     match /admins/{uid} {
       allow read: if isOwner(uid);
@@ -466,7 +485,8 @@ service cloud.firestore {
                     && request.resource.data.text is string
                     && request.resource.data.text.size() > 0
                     && request.resource.data.text.size() <= 500
-                    && request.resource.data.text.split(' ').size() <= 50;
+                    && request.resource.data.text.split(' ').size() <= 50
+                    && isValidChatReply(roomId, request.resource.data);
       allow update: if isSignedIn() && (isApproved(request.auth.uid) || isAdmin()) && (
                       // Toggling a like: only the likes array may change, and it
                       // may only change by adding or removing YOUR OWN uid, one

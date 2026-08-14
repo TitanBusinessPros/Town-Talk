@@ -143,6 +143,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .chat-reaction-btn.active-like { background: rgba(66, 183, 42, 0.15); color: #2e8b1f; border-color: #2e8b1f; }
 .chat-reaction-btn.active-dislike { background: rgba(163, 40, 47, 0.12); color: #a3282f; border-color: #a3282f; }
 
+.chat-reply-quote { border-left: 3px solid var(--amber-500); padding: 0.25rem 0.6rem; margin-bottom: 0.3rem; font-size: 0.78rem; color: var(--text-muted); cursor: pointer; text-align: left; }
+.chat-reply-quote:hover { color: var(--paper-050); }
+.chat-reply-quote strong { color: var(--paper-050); }
+.chat-reply-bar { display: flex; align-items: center; gap: 0.6rem; border-left: 3px solid var(--amber-500); background: var(--ink-800); padding: 0.4rem 0.7rem; margin-bottom: 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem; }
+.chat-reply-bar-text { flex: 1; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-reply-bar-text strong { color: var(--paper-050); }
+.chat-reply-bar-cancel { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 0.2rem; }
+.chat-reply-bar-cancel:hover { color: var(--paper-050); }
+.chat-reply-btn { background: none; border: none; text-decoration: underline; font-size: 0.7rem; color: var(--text-muted); cursor: pointer; padding: 0; margin-top: 0.2rem; margin-right: 0.75rem; font-family: var(--font-body); }
+
 .chatroom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 1.5rem; }
 .chatroom-tile { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 0.75rem; font-size: 0.85rem; font-weight: 600; color: var(--paper-050); cursor: pointer; text-align: center; }
 .chatroom-tile:hover { background: var(--ink-700); }
@@ -862,6 +872,10 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <h2 id="chatroom-title" style="margin-bottom:1rem;"></h2>
       <div id="chatroom-sponsor-banner" class="chatroom-sponsor-banner" style="display:none;"></div>
       <div id="chatroom-messages" class="thread-messages"></div>
+      <div id="chatroom-reply-bar" class="chat-reply-bar" style="display:none; margin-top:1rem;">
+        <span class="chat-reply-bar-text">↩ Replying to <strong id="chatroom-reply-bar-name"></strong>: <span id="chatroom-reply-bar-snippet"></span></span>
+        <button type="button" class="chat-reply-bar-cancel" id="chatroom-reply-bar-cancel" aria-label="Cancel reply">✕</button>
+      </div>
       <form id="chatroom-form" class="form-row" style="margin-top:1rem;">
         <div class="emoji-picker-wrap">
           <button type="button" class="secondary emoji-toggle-btn" data-target="chatroom-input">😀</button>
@@ -5821,11 +5835,49 @@ function renderChatRoomList() {
 
 let activeChatRoom = null;
 let pendingHighlightMessageId = null;
+// The message currently being replied to (or null) — set by the Reply
+// button on a message row, cleared on send or cancel. Snapshot of what's
+// needed to write the reply fields AND render the "Replying to..." bar,
+// not a live reference — see the note on isValidChatReply in
+// firestore.rules for why the snapshot approach was chosen.
+let replyingToMessage = null;
+
+function setReplyingTo(messageId, senderId, senderName, text) {
+  replyingToMessage = { messageId, senderId, senderName, text };
+  document.getElementById("chatroom-reply-bar-name").textContent = senderName;
+  document.getElementById("chatroom-reply-bar-snippet").textContent = text.length > 80 ? text.slice(0, 80) + "…" : text;
+  document.getElementById("chatroom-reply-bar").style.display = "flex";
+  document.getElementById("chatroom-input").focus();
+}
+
+function clearReplyingTo() {
+  replyingToMessage = null;
+  document.getElementById("chatroom-reply-bar").style.display = "none";
+}
+
+document.getElementById("chatroom-reply-bar-cancel").addEventListener("click", clearReplyingTo);
+
+// Scrolls to and briefly highlights a message already rendered in the
+// currently-open room, for clicking a reply quote to jump to the
+// original. Unlike pendingHighlightMessageId (which handles jumping to a
+// message from a fresh deep link, before the room's even open), this is
+// for a room that's already loaded — if the target isn't in the loaded
+// window (capped at the most recent 100 messages, see openChatRoom), this
+// silently does nothing rather than erroring; the quoted text/name still
+// shown in the reply block came from a snapshot anyway, not a live read.
+function jumpToMessage(messageId) {
+  const target = document.getElementById(`chat-msg-${messageId}`);
+  if (!target) return;
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  target.classList.add("chat-msg-highlight");
+  setTimeout(() => target.classList.remove("chat-msg-highlight"), 3000);
+}
 
 function closeChatRoomThread() {
   document.getElementById("chatroom-thread-view").style.display = "none";
   document.getElementById("chatroom-list-wrap").style.display = "block";
   if (unsubscribeChatRoom) { unsubscribeChatRoom(); unsubscribeChatRoom = null; }
+  clearReplyingTo();
   activeChatRoom = null;
 }
 
@@ -6024,6 +6076,9 @@ function openChatRoom(room) {
       const dislikes = Array.isArray(m.dislikes) ? m.dislikes : [];
       const iLiked = likes.includes(currentUid);
       const iDisliked = dislikes.includes(currentUid);
+      const replyQuoteHtml = m.replyToMessageId
+        ? `<div class="chat-reply-quote" data-jump-to="${m.replyToMessageId}">↩ <strong>${escapeHtml(m.replyToSenderName || "Neighbor")}</strong>: ${escapeHtml(m.replyToText || "")}</div>`
+        : "";
       row.innerHTML = `
         <div class="chat-msg-header">
           ${avatarHtml}
@@ -6031,6 +6086,7 @@ function openChatRoom(room) {
           <span class="chat-msg-time">${time}</span>
           ${isAdminUser ? `<button type="button" class="secondary small" data-action="admin-delete" style="margin-left:auto;">Delete</button>` : ""}
         </div>
+        ${replyQuoteHtml}
         <div class="chat-msg-text">${escapeHtml(m.text || "")}</div>
         <div class="chat-reaction-row">
           <button type="button" class="chat-reaction-btn${iLiked ? " active-like" : ""}" data-action="like">👍 ${likes.length}</button>
@@ -6049,6 +6105,16 @@ function openChatRoom(room) {
           await deleteDoc(doc(db, "chatRooms", room.id, "messages", docSnap.id)).catch((err) => alert(err.message));
         });
       }
+      const replyQuoteEl = row.querySelector(".chat-reply-quote");
+      if (replyQuoteEl) {
+        replyQuoteEl.addEventListener("click", () => jumpToMessage(replyQuoteEl.dataset.jumpTo));
+      }
+      const replyBtn = document.createElement("button");
+      replyBtn.type = "button";
+      replyBtn.className = "chat-reply-btn";
+      replyBtn.textContent = "Reply";
+      replyBtn.addEventListener("click", () => setReplyingTo(docSnap.id, m.senderId, displayName, m.text || ""));
+      row.appendChild(replyBtn);
       if (!mine) {
         const reportBtn = document.createElement("button");
         reportBtn.type = "button";
@@ -6138,11 +6204,22 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
         senderAvatarUrl: senderImages.length ? senderImages[0].url : null,
         text,
         sentAt: serverTimestamp(),
+        // firestore.rules' isValidChatReply() re-verifies replyToSenderId
+        // actually matches replyToMessageId's real sender before this can
+        // ever land — replyingToMessage here is just what drives the UI,
+        // never trusted on its own.
+        ...(replyingToMessage ? {
+          replyToMessageId: replyingToMessage.messageId,
+          replyToSenderId: replyingToMessage.senderId,
+          replyToSenderName: replyingToMessage.senderName,
+          replyToText: replyingToMessage.text.length > 100 ? replyingToMessage.text.slice(0, 100) + "…" : replyingToMessage.text,
+        } : {}),
       });
     });
     input.value = "";
     input.dispatchEvent(new Event("input"));
     msg.style.display = "none";
+    clearReplyingTo();
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
