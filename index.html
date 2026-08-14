@@ -152,6 +152,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .chat-reply-bar-cancel { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 0.2rem; }
 .chat-reply-bar-cancel:hover { color: var(--paper-050); }
 .chat-reply-btn { background: none; border: none; text-decoration: underline; font-size: 0.7rem; color: var(--text-muted); cursor: pointer; padding: 0; margin-top: 0.2rem; margin-right: 0.75rem; font-family: var(--font-body); }
+.chat-msg-row.is-reply { border-left: 2px solid var(--line); padding-left: 0.6rem; }
 
 .chatroom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 1.5rem; }
 .chatroom-tile { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.9rem 0.75rem; font-size: 0.85rem; font-weight: 600; color: var(--paper-050); cursor: pointer; text-align: center; }
@@ -6059,13 +6060,46 @@ function openChatRoom(room) {
   );
   unsubscribeChatRoom = onSnapshot(q, (snap) => {
     messagesEl.innerHTML = "";
+
+    // Build each message's row WITHOUT appending it anywhere yet — a reply
+    // needs to land directly under its parent, not wherever it falls in
+    // strict chronological order (that was the actual bug report: a reply
+    // could visually appear 10-50 messages below the thing it replied to,
+    // connected only by the small quote text). Rendering happens in a
+    // second pass below, walking the reply tree depth-first so every
+    // reply (and replies to THAT reply) render immediately after their
+    // parent.
+    const docSnaps = [];
     snap.forEach((docSnap) => {
+      if (myBlockedUids.has(docSnap.data().senderId)) return; // hide messages from people I've blocked
+      docSnaps.push(docSnap);
+    });
+    const loadedIds = new Set(docSnaps.map((d) => d.id));
+    const childrenOf = new Map(); // parentId -> [childId, ...] in chronological order
+    const rootIds = [];
+    for (const docSnap of docSnaps) {
+      const parentId = docSnap.data().replyToMessageId;
+      // A reply to something outside the loaded window (older than the
+      // last 100 messages) has nothing to nest under here — render it as
+      // its own root rather than dropping it.
+      if (parentId && loadedIds.has(parentId)) {
+        if (!childrenOf.has(parentId)) childrenOf.set(parentId, []);
+        childrenOf.get(parentId).push(docSnap.id);
+      } else {
+        rootIds.push(docSnap.id);
+      }
+    }
+
+    function buildRow(docSnap, depth) {
       const m = docSnap.data();
-      if (myBlockedUids.has(m.senderId)) return; // hide messages from people I've blocked
       const time = m.sentAt ? new Date(m.sentAt.seconds * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
       const row = document.createElement("div");
-      row.className = "chat-msg-row";
+      row.className = "chat-msg-row" + (depth > 0 ? " is-reply" : "");
       row.id = `chat-msg-${docSnap.id}`;
+      // Capped rather than unbounded — a long reply-to-a-reply-to-a-reply
+      // chain would otherwise squeeze message text into a sliver on
+      // mobile.
+      if (depth > 0) row.style.marginLeft = `${Math.min(depth, 4) * 1.1}rem`;
       const mine = m.senderId === currentUid;
       const displayName = resolveChatSenderName(m.senderId, m.senderName, docSnap.id);
       const initial = (displayName || "N").trim().charAt(0).toUpperCase();
@@ -6076,7 +6110,12 @@ function openChatRoom(room) {
       const dislikes = Array.isArray(m.dislikes) ? m.dislikes : [];
       const iLiked = likes.includes(currentUid);
       const iDisliked = dislikes.includes(currentUid);
-      const replyQuoteHtml = m.replyToMessageId
+      // Only shown when the parent ISN'T the row directly above (i.e. the
+      // reply landed outside the loaded window and fell back to a root) —
+      // when it's already nested right under its parent, repeating the
+      // quote right above the same text it's sitting beneath is just
+      // noise.
+      const replyQuoteHtml = (m.replyToMessageId && !loadedIds.has(m.replyToMessageId))
         ? `<div class="chat-reply-quote" data-jump-to="${m.replyToMessageId}">↩ <strong>${escapeHtml(m.replyToSenderName || "Neighbor")}</strong>: ${escapeHtml(m.replyToText || "")}</div>`
         : "";
       row.innerHTML = `
@@ -6126,8 +6165,23 @@ function openChatRoom(room) {
         reportBtn.dataset.messageText = m.text || "";
         row.appendChild(reportBtn);
       }
-      messagesEl.appendChild(row);
-    });
+      return row;
+    }
+
+    const docSnapById = new Map(docSnaps.map((d) => [d.id, d]));
+    const rendered = new Set(); // guards against any unexpected cycle
+    function renderThread(messageId, depth) {
+      if (rendered.has(messageId)) return;
+      rendered.add(messageId);
+      const docSnap = docSnapById.get(messageId);
+      if (!docSnap) return;
+      messagesEl.appendChild(buildRow(docSnap, depth));
+      for (const childId of childrenOf.get(messageId) || []) {
+        renderThread(childId, depth + 1);
+      }
+    }
+    for (const rootId of rootIds) renderThread(rootId, 0);
+
     if (pendingHighlightMessageId) {
       const target = document.getElementById(`chat-msg-${pendingHighlightMessageId}`);
       pendingHighlightMessageId = null;
