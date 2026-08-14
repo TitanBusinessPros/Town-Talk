@@ -71,7 +71,7 @@
  * two for the index to build, and it'll work from then on.
  */
 
-const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { beforeUserSignedIn, HttpsError: IdentityHttpsError } = require("firebase-functions/v2/identity");
@@ -1511,3 +1511,39 @@ exports.beforeSignInBlocking = beforeUserSignedIn(async (event) => {
     console.error(`Couldn't record lastKnownIp for ${uid}:`, err);
   });
 });
+
+// -----------------------------------------------------------------------
+// Keeps each admin's Firebase Auth custom claim (`admin: true`) in sync
+// with the admins/{uid} Firestore collection, so security rules that
+// can't do a Firestore lookup of their own — Storage rules, specifically —
+// have a real way to check "is this caller an admin" without one.
+//
+// This replaces a cross-service firestore.exists() check that
+// storage.rules used to make directly against admins/{uid}. That check
+// was syntactically correct (verified against Firebase's own docs, and
+// against the live-deployed rules content) but kept failing at runtime
+// for a confirmed real admin — never fully root-caused, and cross-service
+// Storage->Firestore rule calls add a real Firestore read (and its
+// latency/failure surface) to every single Storage request regardless.
+// Custom claims are the pattern Firebase actually recommends for
+// role-based access control in rules generally: the claim rides on the
+// ID token itself, so `request.auth.token.admin == true` is a pure,
+// local, zero-latency check with no cross-service call at all.
+//
+// Custom claims only take effect on a FRESH ID token — an admin who was
+// already signed in when their claim changes needs to sign out/in again
+// (or wait for the SDK's background token refresh, roughly hourly) before
+// a claim-gated rule will see it.
+// -----------------------------------------------------------------------
+exports.syncAdminClaim = onDocumentWritten("admins/{uid}", async (event) => {
+  const uid = event.params.uid;
+  const stillAdmin = event.data?.after?.exists ?? false;
+  await getAuth().setCustomUserClaims(uid, stillAdmin ? { admin: true } : null).catch((err) => {
+    // Most likely cause: the admins/{uid} doc was created for a uid that
+    // doesn't have a matching Auth account (typo, or the account was
+    // deleted separately) — log it but don't retry-loop forever on a
+    // uid that will never resolve.
+    console.error(`syncAdminClaim: couldn't set claim for ${uid}:`, err);
+  });
+});
+
