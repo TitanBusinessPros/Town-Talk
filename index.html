@@ -479,6 +479,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <button class="brand" id="brand-link">Town<span class="brand-mark">Fuss</span></button>
   <nav class="nav-links">
     <a href="#" id="nav-about">Why Town Fuss</a>
+    <a href="daily-rewards-verify.html" id="nav-daily-rewards-portal" target="_blank" rel="noopener">Daily Rewards Portal</a>
     <a href="#" id="nav-pricing" style="display:none">Pricing</a>
     <a href="#" id="nav-feed" style="display:none">Feed</a>
     <a href="#" id="nav-directory" style="display:none">Profiles</a>
@@ -2352,6 +2353,11 @@ function updateProtectedNavVisibility(user) {
   // has full access, it's just adding clutter to an already-long nav, so
   // hide it instead of piling on an ever-growing 13th item.
   document.getElementById("nav-about").style.display = canSeeFullNav ? "none" : "inline";
+  // Daily Rewards Portal is for SPONSOR companies, not Town Fuss members —
+  // they never sign in through this app's own flow, so they're always on
+  // the signed-out landing view when they'd go looking for it. Same
+  // "hide once you're a real member" treatment as nav-about.
+  document.getElementById("nav-daily-rewards-portal").style.display = canSeeFullNav ? "none" : "inline";
 
   // Beta banner — only makes sense once the Report Issue button it points
   // at is actually visible. Dismissal is permanent (localStorage) — once
