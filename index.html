@@ -3895,7 +3895,12 @@ function renderAdminCard(uid, data) {
     ? `<div class="admin-images">${images.map((img) => `<img src="${img.url}" alt="Photo" />`).join("")}</div>`
     : `<p class="field-hint">No photos uploaded yet.</p>`;
 
+  const flagHtml = data.safeSearchFlag?.flagged
+    ? `<div class="message error" style="margin-bottom:0.75rem;">🚩 SafeSearch flagged an uploaded photo (${escapeHtml(data.safeSearchFlag.reason || "")}) — take a look before approving.</div>`
+    : "";
+
   card.innerHTML = `
+    ${flagHtml}
     <div class="admin-meta">
       ${data.everApproved ? "Re-review after edit" : "First-time submission"}
       &nbsp;·&nbsp; ${escapeHtml(profile.name || "—")}
@@ -6871,7 +6876,12 @@ function renderBusinessAdminCard(uid, data) {
   const paidUntilMs = data.businessPaidUntil ? (data.businessPaidUntil.seconds ? data.businessPaidUntil.seconds * 1000 : 0) : 0;
   const isPaid = paidUntilMs > Date.now();
 
+  const flagHtml = data.safeSearchFlag?.flagged
+    ? `<div class="message error" style="margin-bottom:0.75rem;">🚩 SafeSearch flagged the uploaded logo (${escapeHtml(data.safeSearchFlag.reason || "")}) — take a look before approving.</div>`
+    : "";
+
   card.innerHTML = `
+    ${flagHtml}
     <div class="admin-meta" style="color:${isPaid ? "#2e8b1f" : "#a3282f"};">
       🏢 ${escapeHtml(data.name || "Unnamed business")} &nbsp;·&nbsp; ${escapeHtml(data.phone || "no phone")}
       &nbsp;·&nbsp; ${escapeHtml(data.town || "no town")}

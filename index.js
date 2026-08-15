@@ -72,12 +72,14 @@
  */
 
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onObjectFinalized } = require("firebase-functions/v2/storage");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { beforeUserSignedIn, HttpsError: IdentityHttpsError } = require("firebase-functions/v2/identity");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { defineSecret } = require("firebase-functions/params");
 const Stripe = require("stripe");
+const vision = require("@google-cloud/vision");
 const admin = require("firebase-admin");
 // firebase-admin v13+ dropped the old namespaced admin.firestore()/
 // admin.auth()/admin.messaging() API entirely (not just deprecated it) —
@@ -90,6 +92,7 @@ const { getStorage } = require("firebase-admin/storage");
 admin.initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
+const visionClient = new vision.ImageAnnotatorClient();
 
 // Keep every function in one region close to your users; also keeps
 // cold-start/cost behavior consistent across all of them.
@@ -411,6 +414,97 @@ exports.onProfileApproved = onDocumentUpdated(
     );
   }
 );
+
+// -----------------------------------------------------------------------
+// Runs Cloud Vision's SafeSearch on every profile/business photo the
+// moment it's uploaded — first upload AND every re-upload (a Storage
+// trigger fires per file-write event, not per "profile created", so a
+// photo swapped out after the 7-day image-edit-lock resets gets screened
+// again automatically, same as the very first one).
+//
+// Scoped to users/{uid}/images/ and businesses/{uid}/images/ only — the
+// two paths a MEMBER actually uploads to. dailyRewardLogos/
+// chatSponsorLogos are admin-uploaded only (see storage.rules), so they
+// don't need the same screening.
+//
+// A flagged image pulls the profile/business back to pending review
+// (approved: false — harmless no-op if it wasn't approved yet anyway)
+// and records WHY on safeSearchFlag, so the admin queue can show a real
+// reason instead of just "pending". Never auto-deletes the image or
+// auto-rejects the profile outright — SafeSearch has real false
+// positives (swimwear, medical, art), so a human still makes the actual
+// call; this only makes sure they're the one making it.
+// -----------------------------------------------------------------------
+// Storage triggers require the function's region to exactly match the
+// bucket's own region — confirmed live 2026-08-14: town-talk-87ff7's
+// default bucket is us-east1, an outlier among all 7 editions (every
+// other edition's bucket is the us-central1 default that matches this
+// file's setGlobalOptions), so deploying with the global region fails
+// outright for Pauls Valley specifically.
+const STORAGE_TRIGGER_REGION = process.env.GCLOUD_PROJECT === "town-talk-87ff7" ? "us-east1" : "us-central1";
+
+exports.checkImageSafeSearch = onObjectFinalized({ region: STORAGE_TRIGGER_REGION }, async (event) => {
+  const filePath = event.data.name;
+  const contentType = event.data.contentType || "";
+  if (!contentType.startsWith("image/")) return;
+
+  const match = filePath.match(/^(users|businesses)\/([^/]+)\/images\/(.+)$/);
+  if (!match) return; // not a path this feature screens
+  const [, collection, uid, fileName] = match;
+
+  const gcsUri = `gs://${event.data.bucket}/${filePath}`;
+  let safe;
+  try {
+    const [result] = await visionClient.safeSearchDetection(gcsUri);
+    safe = result.safeSearchAnnotation;
+  } catch (err) {
+    console.error(`checkImageSafeSearch(${filePath}): Vision API call failed:`, err);
+    return;
+  }
+  if (!safe) return;
+
+  // VERY_UNLIKELY / UNLIKELY / POSSIBLE / LIKELY / VERY_LIKELY — POSSIBLE
+  // is deliberately excluded from triggering a flag (Vision's own docs
+  // note it produces real false positives at that level; LIKELY and up
+  // is where it's actually being confident).
+  const LIKELY_OR_WORSE = new Set(["LIKELY", "VERY_LIKELY"]);
+  const flaggedCategories = ["adult", "racy"].filter((category) => LIKELY_OR_WORSE.has(safe[category]));
+  if (flaggedCategories.length === 0) return;
+
+  const reason = flaggedCategories.map((category) => `${category}: ${safe[category]}`).join(", ");
+  console.warn(`checkImageSafeSearch: FLAGGED ${filePath} — ${reason}`);
+
+  await db.collection(collection).doc(uid).set({
+    approved: false,
+    safeSearchFlag: {
+      flagged: true,
+      reason,
+      fileName,
+      checkedAt: Timestamp.now(),
+    },
+  }, { merge: true });
+
+  // Setting approved: false alone doesn't put anything in front of an
+  // admin — the queue they actually see is driven by reviewQueue/
+  // businessReviewQueue (see loadAdminQueue()/loadBusinessAdminQueue() in
+  // index.html), a separate collection the client normally only writes to
+  // when a member submits/resubmits. Without this, a flagged profile
+  // would silently sit unreviewable with no card anywhere.
+  const queueCollection = collection === "users" ? "reviewQueue" : "businessReviewQueue";
+  await db.collection(queueCollection).doc(uid).set({ requestedAt: Timestamp.now() }, { merge: true });
+
+  const adminsSnap = await db.collection("admins").get();
+  await Promise.all(
+    adminsSnap.docs.map((adminDoc) =>
+      sendPushToUser(adminDoc.id, {
+        type: "safesearch",
+        title: "Town Fuss — Flagged Image",
+        body: `An uploaded ${collection === "users" ? "profile" : "business"} photo was flagged (${reason}) and pulled for review.`,
+        clickAction: "/index.html?admin=pending",
+      })
+    )
+  );
+});
 
 // -----------------------------------------------------------------------
 // 3. First-time message notification.
