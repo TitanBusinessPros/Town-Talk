@@ -677,10 +677,13 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
     <section class="card" style="margin-top:1.5rem; border-color:#a3282f;">
       <h2>Delete my account</h2>
-      <p>This permanently removes your profile, post, photos, and messages from our system — nothing is kept. This cannot be undone. Enter your password to confirm.</p>
+      <p>This permanently removes your profile, post, photos, and messages from our system — nothing is kept. This cannot be undone.</p>
       <form id="delete-account-form">
-        <label for="delete-password">Password</label>
-        <input id="delete-password" type="password" required autocomplete="current-password" />
+        <div id="delete-password-field">
+          <label for="delete-password">Password</label>
+          <input id="delete-password" type="password" autocomplete="current-password" />
+        </div>
+        <p class="field-hint" id="delete-google-hint" style="display:none">You'll be asked to confirm with Google before this goes through.</p>
         <div class="form-row">
           <button type="submit" style="background:#a3282f;">Permanently delete my account</button>
         </div>
@@ -1492,7 +1495,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getAuth,
   onAuthStateChanged, signOut, deleteUser,
-  EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification, connectAuthEmulator,
+  EmailAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, sendEmailVerification, connectAuthEmulator,
   GoogleAuthProvider, signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -2431,6 +2434,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     currentUid = user.uid;
+    setupDeleteAccountFormForProvider(user);
     watchUserDoc(user.uid);
     watchMessageLimit(user.uid);
     watchUnreadConversations(user.uid);
@@ -3269,11 +3273,24 @@ imageInput.addEventListener("change", async () => {
 });
 
 // ============================= DELETE ACCOUNT ============================
+// Google-provider accounts (the only way to create a NEW account since
+// 2026-08-12) have no app-level password at all — the delete-account form
+// used to unconditionally ask for one anyway, meaning reauthentication
+// could never actually succeed for any of them. Called once right after
+// sign-in (see onAuthStateChanged) since provider info comes straight off
+// the Auth user, no Firestore round-trip needed.
+function setupDeleteAccountFormForProvider(user) {
+  const isGoogleAccount = user.providerData[0]?.providerId === "google.com";
+  document.getElementById("delete-password-field").style.display = isGoogleAccount ? "none" : "block";
+  document.getElementById("delete-password").required = !isGoogleAccount;
+  document.getElementById("delete-google-hint").style.display = isGoogleAccount ? "block" : "none";
+}
+
 document.getElementById("delete-account-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const msg = document.getElementById("delete-account-message");
-  const password = document.getElementById("delete-password").value;
   const user = auth.currentUser;
+  const isGoogleAccount = user.providerData[0]?.providerId === "google.com";
 
   if (!confirm("This will permanently delete your profile, post, and photos. This cannot be undone. Continue?")) {
     return;
@@ -3281,10 +3298,20 @@ document.getElementById("delete-account-form").addEventListener("submit", async 
 
   try {
     // Deleting an account is a sensitive operation — Firebase requires a
-    // recent sign-in, which is why we ask for the password again here
-    // rather than trusting however long ago they originally logged in.
-    const credential = EmailAuthProvider.credential(user.email, password);
-    await reauthenticateWithCredential(user, credential);
+    // recent sign-in. A Google-provider account has no password to
+    // reauthenticate with at all, so it confirms through Google itself
+    // instead (reauthenticateWithPopup) — same "prove it's really you
+    // right now" requirement, just satisfied through the credential type
+    // the account was actually created with. Legacy password-provider
+    // accounts (predating the Google-only switch) still go through the
+    // original password path.
+    if (isGoogleAccount) {
+      await reauthenticateWithPopup(user, googleProvider);
+    } else {
+      const password = document.getElementById("delete-password").value;
+      const credential = EmailAuthProvider.credential(user.email, password);
+      await reauthenticateWithCredential(user, credential);
+    }
 
     // Remove every uploaded photo from Storage.
     for (const img of currentImages) {
@@ -3299,7 +3326,9 @@ document.getElementById("delete-account-form").addEventListener("submit", async 
 
     // onAuthStateChanged will detect the sign-out and return to landing.
   } catch (err) {
-    if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+    if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+      // They just closed the Google confirm popup themselves — not a real error.
+    } else if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
       showMessage(msg, "That password is incorrect.", "error");
     } else {
       showMessage(msg, err.message, "error");

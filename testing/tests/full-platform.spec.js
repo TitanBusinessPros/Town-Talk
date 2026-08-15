@@ -877,21 +877,13 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await context.close();
   });
 
-  // KNOWN BROKEN IN THE APP ITSELF, not a test-harness problem — found
-  // 2026-08-14 while migrating this suite off email/password. The Delete
-  // My Account form (#delete-account-form) still requires typing a
-  // password and reauthenticates via EmailAuthProvider, but Google
-  // Sign-In has been the ONLY way to create a new account since
-  // 2026-08-12 — meaning every account created since then HAS no
-  // password, and can never successfully submit this form. This is a
-  // real, live gap on all 7 editions right now (self-delete/data-rights
-  // is effectively broken for every Google-only account), tracked but
-  // deliberately not fixed as part of this test-suite pass. Re-enable
-  // once index.html switches to reauthenticateWithPopup for
-  // Google-provider accounts (email/password reauthenticateWithCredential
-  // only for whatever legacy accounts still predate the Google-only
-  // switch).
-  test.fixme("Account deletion removes the account and its data", async ({ browser }) => {
+  // Was test.fixme'd 2026-08-14 — the Delete My Account form required
+  // typing a password, but Google Sign-In has been the only way to
+  // create a new account since 2026-08-12, so no account could actually
+  // reauthenticate to delete itself. Fixed in index.html
+  // (setupDeleteAccountFormForProvider + reauthenticateWithPopup for
+  // Google-provider accounts) — re-enabled here to prove it for real.
+  test("Account deletion removes the account and its data", async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     const throwaway = { email: `deleteme.${Date.now()}@test.town`, name: "Delete Me" };
@@ -906,13 +898,19 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await page.locator("#profile-form button[type=submit]").click();
 
     await page.locator("#nav-dashboard").click();
+    // A Google-provider account hides the password field entirely — see
+    // setupDeleteAccountFormForProvider — and reauthenticates through a
+    // real Google popup instead, same mechanics as googleAuthHelper.js's
+    // logInWithGoogle (existing account, not a new one).
+    await expect(page.locator("#delete-password-field")).toBeHidden();
     page.once("dialog", (dialog) => dialog.accept());
-    // Nothing valid to type here anymore for a Google-only account — see
-    // this test's own fixme note above. Left as a password field so this
-    // still reads as "what the real form currently is" for whoever fixes
-    // the app bug and re-enables this test.
-    await page.locator("#delete-password").fill("");
-    await page.locator("#delete-account-form button[type=submit]").click();
+    const [popup] = await Promise.all([
+      context.waitForEvent("page"),
+      page.locator("#delete-account-form button[type=submit]").click(),
+    ]);
+    await popup.waitForLoadState("domcontentloaded");
+    await popup.locator(`li.mdc-list-item:has-text("${throwaway.email}")`).click();
+    await popup.waitForEvent("close", { timeout: 15_000 }).catch(() => {});
 
     // onAuthStateChanged should detect the sign-out and drop back to a
     // signed-out view.
