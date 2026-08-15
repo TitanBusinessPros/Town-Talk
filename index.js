@@ -920,13 +920,16 @@ exports.expireBusinessListings = onSchedule(
 //
 // Gold and business are simple one-time annual payments (grant one year
 // from the moment of payment, same as the pre-webhook "mark paid by hand"
-// flow this replaces for business). Diamond is a real Stripe subscription
-// ($2.99/month): checkout.session.completed grants the first month and
-// records the Stripe customer ID; invoice.payment_succeeded (fired on
-// each monthly renewal charge) extends it another month by looking the
-// user up via that stored customer ID, since renewal invoice events don't
-// carry client_reference_id; customer.subscription.deleted revokes it
-// immediately on cancellation, same lookup.
+// flow this replaces for business). Diamond is a real Stripe subscription,
+// sold on two separate Payment Links ($2.99/month or $30/year, added
+// 2026-08-15) that both share the "diamond_" prefix — checkout.session.
+// completed grants a period computed from whichever plan's interval Stripe
+// itself reports (see getDiamondDurationMs) and records the Stripe customer
+// ID; invoice.payment_succeeded (fired on each renewal charge, monthly or
+// yearly) extends it the same computed period by looking the user up via
+// that stored customer ID, since renewal invoice events don't carry
+// client_reference_id; customer.subscription.deleted revokes it immediately
+// on cancellation, same lookup.
 // -----------------------------------------------------------------------
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 // 3 separate secrets, not 1 — Stripe assigns a distinct signing secret per
@@ -966,7 +969,27 @@ function parseCheckoutRef(ref) {
   return { type, uid: rest.slice(0, lastUnderscore), edition: rest.slice(lastUnderscore + 1) };
 }
 
-async function grantFromCheckout(session) {
+// Diamond now sells on TWO Payment Links — the original $2.99/month
+// subscription and a $30/year one added 2026-08-15 — both sharing the same
+// "diamond_" client_reference_id prefix (see parseCheckoutRef), so the
+// webhook can't tell them apart from the ref alone. Instead of a second
+// prefix (which the pricing page would also have to start sending), this
+// asks Stripe directly what interval the actual subscription bills on —
+// the one thing that's always correct even if prices/plans change later.
+// Defaults to monthly on any lookup failure since that's been the only
+// option this whole grant path supported until now.
+async function getDiamondDurationMs(stripe, subscriptionId) {
+  if (!subscriptionId) return ONE_MONTH_MS;
+  try {
+    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+    return sub.items?.data?.[0]?.price?.recurring?.interval === "year" ? ONE_YEAR_MS : ONE_MONTH_MS;
+  } catch (err) {
+    console.error(`Stripe webhook: couldn't look up subscription ${subscriptionId} to determine Diamond duration, defaulting to monthly:`, err);
+    return ONE_MONTH_MS;
+  }
+}
+
+async function grantFromCheckout(session, stripe) {
   const parsed = parseCheckoutRef(session.client_reference_id || "");
   if (!parsed) {
     console.error("Stripe webhook: checkout.session.completed with unrecognized client_reference_id:", session.client_reference_id);
@@ -989,26 +1012,28 @@ async function grantFromCheckout(session) {
       })
       .catch((err) => console.error(`Stripe webhook: couldn't grant gold to ${uid}:`, err));
   } else if (type === "diamond") {
+    const durationMs = await getDiamondDurationMs(stripe, session.subscription);
     await db
       .collection("users")
       .doc(uid)
       .update({
         isDiamondMember: true,
-        diamondExpiresAt: Timestamp.fromDate(new Date(Date.now() + ONE_MONTH_MS)),
+        diamondExpiresAt: Timestamp.fromDate(new Date(Date.now() + durationMs)),
         stripeCustomerId: session.customer || null,
       })
       .catch((err) => console.error(`Stripe webhook: couldn't grant diamond to ${uid}:`, err));
   }
 }
 
-async function extendDiamondFromInvoice(invoice) {
+async function extendDiamondFromInvoice(invoice, stripe) {
   if (!invoice.customer || !invoice.subscription) return;
   const snap = await db.collection("users").where("stripeCustomerId", "==", invoice.customer).limit(1).get();
   if (snap.empty) return; // likely the subscription's first invoice, already covered by checkout.session.completed
+  const durationMs = await getDiamondDurationMs(stripe, invoice.subscription);
   await snap.docs[0].ref
     .update({
       isDiamondMember: true,
-      diamondExpiresAt: Timestamp.fromDate(new Date(Date.now() + ONE_MONTH_MS)),
+      diamondExpiresAt: Timestamp.fromDate(new Date(Date.now() + durationMs)),
     })
     .catch((err) => console.error(`Stripe webhook: couldn't extend diamond for customer ${invoice.customer}:`, err));
 }
@@ -1077,9 +1102,9 @@ exports.stripeWebhook = onRequest(
 
     try {
       if (event.type === "checkout.session.completed") {
-        await grantFromCheckout(event.data.object);
+        await grantFromCheckout(event.data.object, stripe);
       } else if (event.type === "invoice.payment_succeeded") {
-        await extendDiamondFromInvoice(event.data.object);
+        await extendDiamondFromInvoice(event.data.object, stripe);
       } else if (event.type === "customer.subscription.deleted") {
         await revokeDiamondFromSubscription(event.data.object);
       }

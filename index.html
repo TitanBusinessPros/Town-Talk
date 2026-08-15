@@ -998,6 +998,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
           <li>Blue ring &amp; Diamond Member badge on your profile</li>
         </ul>
         <a id="pricing-diamond-link" href="#" target="_blank" rel="noopener"><button type="button">Subscribe with Stripe</button></a>
+        <p class="field-hint" style="margin-top:0.5rem;">or <a id="pricing-diamond-annual-link" href="#" target="_blank" rel="noopener">$30/year</a> — saves you a few bucks!</p>
         <div id="pricing-diamond-badge" class="pricing-current-badge" style="display:none;">Your current plan</div>
       </div>
 
@@ -6363,6 +6364,12 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
 const STRIPE_BUSINESS_LISTING_URL = "https://buy.stripe.com/fZu8wQaRH4kg5XIb3x7AI0T";
 const STRIPE_GOLD_MEMBERSHIP_URL = "https://buy.stripe.com/5kQcN6f7X6soadYb3x7AI0U";
 const STRIPE_DIAMOND_MEMBERSHIP_URL = "https://buy.stripe.com/28EcN66BraIE3PA0oT7AI0V";
+// $30/year alternative to the $2.99/month Diamond subscription above,
+// added 2026-08-15 — same "diamond_" client_reference_id prefix as the
+// monthly link (the webhook tells them apart by asking Stripe what
+// interval the resulting subscription actually bills on, see
+// getDiamondDurationMs in index.js), so no extra parsing is needed here.
+const STRIPE_DIAMOND_ANNUAL_URL = "https://buy.stripe.com/aFa9AU3pf4kgdqa4F97AI0W";
 
 // ============================= PRICING ============================
 function loadPricingView() {
@@ -6379,6 +6386,10 @@ function loadPricingView() {
   const diamondParams = new URLSearchParams(params);
   diamondParams.set("client_reference_id", `diamond_${currentUid}_${firebaseConfig.projectId}`);
   document.getElementById("pricing-diamond-link").href = `${STRIPE_DIAMOND_MEMBERSHIP_URL}?${diamondParams.toString()}`;
+
+  const diamondAnnualParams = new URLSearchParams(params);
+  diamondAnnualParams.set("client_reference_id", `diamond_${currentUid}_${firebaseConfig.projectId}`);
+  document.getElementById("pricing-diamond-annual-link").href = `${STRIPE_DIAMOND_ANNUAL_URL}?${diamondAnnualParams.toString()}`;
 
   const isDiamond = !!currentUserData.isDiamondMember;
   const isGold = !!currentUserData.isGoldMember;
