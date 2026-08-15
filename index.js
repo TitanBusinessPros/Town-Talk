@@ -174,6 +174,31 @@ async function sendProfileApprovedEmail(toEmail, name) {
   }
 }
 
+// Alerts townfussok@gmail.com whenever checkImageSafeSearch flags a
+// photo — separate from the existing admin push notification (same
+// belt-and-suspenders pattern as sendSignupAlertEmail's email-plus-push),
+// and specifically names which EDITION the flagged profile/business is
+// sitting in, since an admin managing all 7 has no other way to tell
+// from a bare push notification alone.
+async function sendSafeSearchFlagAlertEmail(name, reason, editionName, kind) {
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey.value()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Town Fuss <noreply@townfuss.com>",
+      to: "townfussok@gmail.com",
+      subject: `Flagged ${kind} photo — ${editionName}`,
+      html: `<p>A ${kind} photo for <strong>${name}</strong> on the <strong>${editionName}</strong> edition was flagged by SafeSearch (${reason}) and pulled for admin review.</p>`,
+    }),
+  });
+  if (!resp.ok) {
+    console.error("SafeSearch flag alert email failed:", resp.status, await resp.text().catch(() => ""));
+  }
+}
+
 // -----------------------------------------------------------------------
 // Shared helper: given a recipient uid + a notification payload, look up
 // whether they've opted in and have any device tokens saved, send to all
@@ -443,7 +468,7 @@ exports.onProfileApproved = onDocumentUpdated(
 // outright for Pauls Valley specifically.
 const STORAGE_TRIGGER_REGION = process.env.GCLOUD_PROJECT === "town-talk-87ff7" ? "us-east1" : "us-central1";
 
-exports.checkImageSafeSearch = onObjectFinalized({ region: STORAGE_TRIGGER_REGION }, async (event) => {
+exports.checkImageSafeSearch = onObjectFinalized({ region: STORAGE_TRIGGER_REGION, secrets: [resendApiKey] }, async (event) => {
   const filePath = event.data.name;
   const contentType = event.data.contentType || "";
   if (!contentType.startsWith("image/")) return;
@@ -474,6 +499,10 @@ exports.checkImageSafeSearch = onObjectFinalized({ region: STORAGE_TRIGGER_REGIO
   const reason = flaggedCategories.map((category) => `${category}: ${safe[category]}`).join(", ");
   console.warn(`checkImageSafeSearch: FLAGGED ${filePath} — ${reason}`);
 
+  const docSnap = await db.collection(collection).doc(uid).get().catch(() => null);
+  const name = collection === "users" ? docSnap?.data()?.profile?.name : docSnap?.data()?.name;
+  const editionName = EDITION_DISPLAY_NAMES[process.env.GCLOUD_PROJECT] || process.env.GCLOUD_PROJECT;
+
   await db.collection(collection).doc(uid).set({
     approved: false,
     safeSearchFlag: {
@@ -503,6 +532,10 @@ exports.checkImageSafeSearch = onObjectFinalized({ region: STORAGE_TRIGGER_REGIO
         clickAction: "/index.html?admin=pending",
       })
     )
+  );
+
+  await sendSafeSearchFlagAlertEmail(name || "(no name set)", reason, editionName, collection === "users" ? "profile" : "business").catch((err) =>
+    console.error(`checkImageSafeSearch(${filePath}): flag alert email failed:`, err)
   );
 });
 

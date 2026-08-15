@@ -117,9 +117,13 @@ service cloud.firestore {
       // bypasses rules) or an admin's manual "mark paid" — an owner editing
       // their own listing must never be able to change it, even via the
       // "resubmit for review" self-edit path below.
+      // Auto-approval (2026-08-15): a brand-new listing is created already
+      // approved by default now — nothing could possibly be SafeSearch-
+      // flagged yet on a doc that doesn't exist until this exact write, so
+      // unlike the update rule below there's no flag state to check here.
       allow create: if isOwner(uid)
-                    && request.resource.data.approved == false
-                    && request.resource.data.everApproved == false
+                    && ((request.resource.data.approved == false && request.resource.data.everApproved == false)
+                        || (request.resource.data.approved == true && request.resource.data.everApproved == true))
                     && (
                          request.resource.data.get('businessPaidUntil', null) == null
                          || (request.auth.token.email != null
@@ -127,7 +131,15 @@ service cloud.firestore {
                        );
       allow update: if isAdmin()
                     || (isOwner(uid)
-                        && request.resource.data.approved == false
+                        // Same auto-approval condition as users/{uid}'s
+                        // matching branch — see its comment for the full
+                        // reasoning (checks the CURRENT doc's SafeSearch flag,
+                        // not anything the client supplies).
+                        && (request.resource.data.approved == false
+                            || (request.resource.data.approved == true
+                                && request.resource.data.everApproved == true
+                                && request.resource.data.get('rejected', false) == false
+                                && resource.data.get('safeSearchFlag', {}).get('flagged', false) == false))
                         && request.resource.data.get('businessPaidUntil', null) == resource.data.get('businessPaidUntil', null)
                         // Same missing-whitelist gap as users/{uid} above: without
                         // this, ANY field was writable as long as approved stayed
@@ -135,7 +147,7 @@ service cloud.firestore {
                         // just the fields the listing-edit/photo-upload flows
                         // actually touch.
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['name', 'phone', 'town', 'description', 'lastEditedAt', 'image', 'approved', 'rejected']));
+                             .hasOnly(['name', 'phone', 'town', 'description', 'lastEditedAt', 'image', 'approved', 'everApproved', 'rejected']));
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -218,19 +230,31 @@ service cloud.firestore {
                     // Profile/post/photo edits (the "Basics" form, post submission,
                     // and photo upload) — covers both a never-yet-approved person
                     // completing their profile for the first time AND an
-                    // already-approved person editing (which resets them to
-                    // pending). Explicitly whitelisted to just the fields those
-                    // three flows actually touch: without this hasOnly(), ANY
-                    // field write here would pass as long as `approved` stayed
-                    // false in the result — which it trivially always does for an
-                    // unapproved account (nothing lets them flip it to true), so
-                    // this was a wide-open door to every other field including
-                    // game stats/high scores, not just profile/post/photo.
+                    // already-approved person editing. Explicitly whitelisted to
+                    // just the fields those three flows actually touch: without
+                    // this hasOnly(), ANY field write here would pass as long as
+                    // the approved condition below held — a wide-open door to
+                    // every other field including game stats/high scores, not
+                    // just profile/post/photo.
+                    //
+                    // Auto-approval (2026-08-15): a self-owner write is allowed
+                    // to set approved: true directly now — admin review is no
+                    // longer required for every submission, only when
+                    // checkImageSafeSearch (index.js) has an active flag sitting
+                    // on the CURRENT doc (resource.data, not the client-supplied
+                    // request.resource.data — a client can't just claim it isn't
+                    // flagged to bypass this). everApproved/rejected must move
+                    // together with approved in that same write, matching
+                    // exactly what index.html's own self-approve path sends.
                     || (isOwner(uid)
-                        && request.resource.data.approved == false
+                        && (request.resource.data.approved == false
+                            || (request.resource.data.approved == true
+                                && request.resource.data.everApproved == true
+                                && request.resource.data.get('rejected', false) == false
+                                && resource.data.get('safeSearchFlag', {}).get('flagged', false) == false))
                         && membershipFieldsUnchanged()
                         && request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['profile', 'lastEditedAt', 'postText', 'postWordCount', 'lastImageEditedAt', 'images', 'approved', 'rejected']))
+                             .hasOnly(['profile', 'lastEditedAt', 'postText', 'postWordCount', 'lastImageEditedAt', 'images', 'approved', 'everApproved', 'rejected']))
                     // Administrative/consent fields — always writable regardless of
                     // approval status. lastActiveAt is a login heartbeat, and
                     // agreedToTerms/agreedToTermsAt has to stay writable even before

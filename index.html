@@ -612,7 +612,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
          the second, leaving signup silently incomplete. Merged 2026-08-07. -->
     <section class="card" style="margin-top:2rem">
       <h2>Complete your profile <span id="post-status-badge"></span></h2>
-      <p class="field-hint" id="profile-approval-notice">Profiles can take up to 24 hours for an admin to approve. You'll get an email as soon as yours is.</p>
+      <p class="field-hint" id="profile-approval-notice" style="display:none"></p>
       <form id="profile-form">
         <label for="display-name">Display name</label>
         <input id="display-name" type="text" maxlength="40" placeholder="What should neighbors call you?" required />
@@ -1092,7 +1092,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <div class="about-card">
         <div class="about-card-icon">🏡</div>
         <h2>Small towns, not big cities</h2>
-        <p>Town Fuss isn't trying to be Facebook for the whole planet. It's made for Pauls Valley and the small Oklahoma towns around it — so when you post, message, or join a chat room, the people on the other end actually live nearby.</p>
+        <p>Town Fuss isn't trying to be a giant social network for the whole planet. It's made for Pauls Valley and the small Oklahoma towns around it — so when you post, message, or join a chat room, the people on the other end actually live nearby.</p>
       </div>
       <div class="about-card">
         <div class="about-card-icon">🔞</div>
@@ -1476,12 +1476,6 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
   <div class="footer-brand">Town<span style="color:var(--amber-500)">Fuss</span></div>
   <div>Town Fuss was created by <strong>Titan Business Pros LLC</strong></div>
   <div>Pauls Valley area, Oklahoma</div>
-  <div>
-    <a class="footer-social" href="https://www.facebook.com/TitanBusinessPros/" target="_blank" rel="noopener">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.78-1.63 1.57v1.88h2.78l-.44 2.91h-2.34V22c4.78-.76 8.44-4.92 8.44-9.94z"/></svg>
-      Facebook
-    </a>
-  </div>
   <div>405-998-7979 &nbsp;|&nbsp; <a href="mailto:info@titanbusinesspros.com">info@titanbusinesspros.com</a></div>
   <div><a href="https://www.oklahoma.marketing" target="_blank" rel="noopener">www.oklahoma.marketing</a></div>
   <div>Oklahoma City, OK</div>
@@ -2925,6 +2919,16 @@ function imageLockInfo(data) {
   return daysLeft > 0 ? { locked: true, daysLeft } : { locked: false };
 }
 
+// Profiles/businesses auto-approve by default now (see the note above
+// profile-form's submit handler for the full reasoning) — the ONLY thing
+// that still holds one back for actual admin review is an active
+// SafeSearch flag (checkImageSafeSearch in index.js) sitting on it right
+// now. Shared by both the users and businesses paths since the flag
+// field/shape is identical on either collection.
+function isCurrentlySafeSearchFlagged(data) {
+  return data?.safeSearchFlag?.flagged === true;
+}
+
 async function flagForReview() {
   try {
     await setDoc(doc(db, "reviewQueue", currentUid), {
@@ -2978,10 +2982,18 @@ function renderDashboard(data) {
   } else {
     badge.innerHTML = `<span class="badge badge--pending">Pending review</span>`;
   }
-  // Once actually approved the "may take up to 24 hours" promise has
-  // already been kept — the badge above says "Live" at that point, this
-  // would just be stale noise sitting under it.
-  document.getElementById("profile-approval-notice").style.display = data.approved ? "none" : "block";
+  // Profiles auto-approve now (see profile-form's submit handler) — the
+  // only time this notice has anything meaningful to say is while a
+  // SafeSearch flag is actively holding the profile back. A blank/
+  // not-yet-saved profile has no real delay to explain anymore, so it
+  // just stays hidden until there's something to say.
+  const approvalNotice = document.getElementById("profile-approval-notice");
+  if (isCurrentlySafeSearchFlagged(data)) {
+    approvalNotice.textContent = "A photo on your profile was flagged by our automated content check — an admin needs to take a look before it's fully live again.";
+    approvalNotice.style.display = "block";
+  } else {
+    approvalNotice.style.display = "none";
+  }
 
   const postTextEl = document.getElementById("post-text");
   if (!profileFormPopulated) {
@@ -3116,18 +3128,30 @@ document.getElementById("profile-form").addEventListener("submit", async (e) => 
     postWordCount: words,
     lastEditedAt: serverTimestamp(),
   };
-  if (currentUserData.everApproved) update.approved = false;
-  if (currentUserData.rejected) update.rejected = false;
+  // Auto-approve by default — admin review is no longer required for
+  // every submission, only for a profile a SafeSearch flag is actively
+  // sitting on right now (checkImageSafeSearch in index.js sets that
+  // flag/un-approves independently the moment a flagged photo lands, so
+  // this only needs to check the CURRENT flag state here, not re-run any
+  // detection itself).
+  const flagged = isCurrentlySafeSearchFlagged(currentUserData);
+  if (flagged) {
+    update.approved = false;
+  } else {
+    update.approved = true;
+    update.everApproved = true;
+    update.rejected = false;
+  }
 
   try {
     await updateDoc(doc(db, "users", currentUid), update);
-    const queued = await flagForReview();
-    if (!queued) {
-      showMessage(msg, "Saved, but we couldn't add you to the admin review queue — try logging out and back in, then save again.", "error");
+    if (flagged) {
+      const queued = await flagForReview();
+      showMessage(msg, queued
+        ? "Saved — a photo on your profile was flagged for review, so an admin needs to take a look before it's fully live."
+        : "Saved, but we couldn't add you to the admin review queue — try logging out and back in, then save again.", queued ? "success" : "error");
     } else {
-      showMessage(msg, currentUserData.everApproved
-        ? "Saved — this will need admin review again before it's live."
-        : "Saved — the admin will review your whole profile before it goes live.", "success");
+      showMessage(msg, "Saved — your profile and post are live!", "success");
     }
   } catch (err) {
     showMessage(msg, err.message, "error");
@@ -3256,17 +3280,21 @@ imageInput.addEventListener("change", async () => {
     }
 
     const newImage = { id: imageId, storagePath: path, url, uploadedAt: Timestamp.now() };
+    // Uploading a fresh photo doesn't itself pull the profile back to
+    // review anymore — checkImageSafeSearch (index.js) is what actually
+    // decides that, a moment later, once Vision has scored the image.
+    // Only carry forward a flag that's ALREADY sitting on the profile
+    // from a previous upload; this new one hasn't been scored yet.
     const update = { images: [newImage], lastImageEditedAt: serverTimestamp() };
-    if (currentUserData.everApproved) update.approved = false;
-    if (currentUserData.rejected) update.rejected = false;
+    const flagged = isCurrentlySafeSearchFlagged(currentUserData);
+    if (!flagged) {
+      update.approved = true;
+      update.everApproved = true;
+      update.rejected = false;
+    }
 
     await updateDoc(doc(db, "users", currentUid), update);
-    const queued = await flagForReview();
-    if (!queued) {
-      showMessage(msg, "Uploaded, but we couldn't add you to the admin review queue — try logging out and back in, then save again.", "error");
-    } else {
-      showMessage(msg, "Uploaded — waiting on admin approval.", "success");
-    }
+    showMessage(msg, "Uploaded!", "success");
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
@@ -3930,7 +3958,16 @@ function renderAdminCard(uid, data) {
       return;
     }
     try {
-      await updateDoc(doc(db, "users", uid), { approved: true, everApproved: true, rejected: false });
+      // Clearing safeSearchFlag.flagged here matters, not just cosmetic —
+      // firestore.rules' self-approve branch checks THIS field before
+      // ever letting the member approve their own future edits again.
+      // Leaving it true after an admin has already cleared this one would
+      // permanently lock them into needing admin review forever, even
+      // once the flagged photo is long gone. Keeps the rest of the record
+      // (reason/fileName/checkedAt) intact as a history of what happened.
+      const update = { approved: true, everApproved: true, rejected: false };
+      if (data.safeSearchFlag?.flagged) update.safeSearchFlag = { ...data.safeSearchFlag, flagged: false };
+      await updateDoc(doc(db, "users", uid), update);
       await deleteDoc(doc(db, "reviewQueue", uid));
       card.remove();
     } catch (err) {
@@ -6664,8 +6701,12 @@ document.getElementById("business-form").addEventListener("submit", async (e) =>
         town,
         description,
         image: null,
-        approved: false,
-        everApproved: false,
+        // Auto-approved by default — see the note on profile-form's
+        // submit handler for the full reasoning. Nothing to flag yet on
+        // brand-new creation (no logo uploaded here), so this is always
+        // the non-flagged path.
+        approved: true,
+        everApproved: true,
         createdAt: serverTimestamp(),
         lastEditedAt: serverTimestamp(),
         ...promoFields,
@@ -6676,16 +6717,27 @@ document.getElementById("business-form").addEventListener("submit", async (e) =>
       // businessPaidUntil to be set at all, so deleting it beforehand would
       // have made that write fail.
       if (hadPromo) await deleteDoc(doc(db, "businessPromoWhitelist", emailLower)).catch(() => {});
+      showMessage(msg, "Saved — your listing is live! It'll appear in the directory once payment is confirmed (see below).", "success");
     } else {
       const update = { name, phone, town, description, lastEditedAt: serverTimestamp() };
-      if (currentMyBusinessData.everApproved) update.approved = false;
-      if (currentMyBusinessData.rejected) update.rejected = false;
+      const flagged = isCurrentlySafeSearchFlagged(currentMyBusinessData);
+      if (flagged) {
+        update.approved = false;
+      } else {
+        update.approved = true;
+        update.everApproved = true;
+        update.rejected = false;
+      }
       await updateDoc(doc(db, "businesses", currentUid), update);
+      if (flagged) {
+        const queued = await flagBusinessForReview();
+        showMessage(msg, queued
+          ? "Saved — the logo on this listing was flagged for review, so an admin needs to take a look before it's fully live."
+          : "Saved, but we couldn't add it to the review queue — try logging out and back in, then save again.", queued ? "success" : "error");
+      } else {
+        showMessage(msg, "Saved — your listing is live!", "success");
+      }
     }
-    const queued = await flagBusinessForReview();
-    showMessage(msg, queued
-      ? "Saved — an admin will review it before it appears in the directory."
-      : "Saved, but we couldn't add it to the review queue — try logging out and back in, then save again.", queued ? "success" : "error");
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
@@ -6719,23 +6771,34 @@ document.getElementById("business-image-input").addEventListener("change", async
     if (!currentMyBusinessData) {
       // No listing yet — create a bare-bones one now so the photo has
       // somewhere to live; they can fill in the rest of the form after.
+      // Auto-approved like every other first-time creation — this new
+      // logo hasn't been scored by SafeSearch yet, but neither has a
+      // brand-new profile's first photo (see imageInput's handler above),
+      // same accepted tradeoff either way.
       await setDoc(doc(db, "businesses", currentUid), {
         ownerUid: currentUid,
         name: "", phone: "", town: "", description: "",
         image: newImage,
-        approved: false,
-        everApproved: false,
+        approved: true,
+        everApproved: true,
         createdAt: serverTimestamp(),
         lastEditedAt: serverTimestamp(),
       });
+      showMessage(msg, "Uploaded!", "success");
     } else {
+      // Only carry forward a flag already sitting on the listing from a
+      // PREVIOUS image — this new one hasn't been scored yet, same
+      // reasoning as imageInput's handler above.
       const update = { image: newImage, lastEditedAt: serverTimestamp() };
-      if (currentMyBusinessData.everApproved) update.approved = false;
-      if (currentMyBusinessData.rejected) update.rejected = false;
+      const flagged = isCurrentlySafeSearchFlagged(currentMyBusinessData);
+      if (!flagged) {
+        update.approved = true;
+        update.everApproved = true;
+        update.rejected = false;
+      }
       await updateDoc(doc(db, "businesses", currentUid), update);
+      showMessage(msg, "Uploaded!", "success");
     }
-    await flagBusinessForReview();
-    showMessage(msg, "Uploaded — an admin will review it before it goes live, usually within 24 hours.", "success");
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
@@ -6900,7 +6963,12 @@ function renderBusinessAdminCard(uid, data) {
 
   card.querySelector('[data-action="approve"]').addEventListener("click", async () => {
     try {
-      await updateDoc(doc(db, "businesses", uid), { approved: true, everApproved: true, rejected: false });
+      // See the matching comment on renderAdminCard's approve handler —
+      // same reasoning, same rules dependency (firestore.rules'
+      // businesses/{uid} self-approve branch).
+      const update = { approved: true, everApproved: true, rejected: false };
+      if (data.safeSearchFlag?.flagged) update.safeSearchFlag = { ...data.safeSearchFlag, flagged: false };
+      await updateDoc(doc(db, "businesses", uid), update);
       await deleteDoc(doc(db, "businessReviewQueue", uid));
       card.remove();
     } catch (err) {
