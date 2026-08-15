@@ -32,20 +32,15 @@
 // Run with: npx playwright test admin-delete-restore.spec.js
 
 const { test, expect } = require("@playwright/test");
-const { verifyEmailByAddress, admin, makeAdmin } = require("../emulatorAdmin");
+const { getUidForGoogleSignIn: verifyEmailByAddress, admin, makeAdmin } = require("../emulatorAdmin");
+const { signUpWithGoogle, logInWithGoogle } = require("../googleAuthHelper");
 
 const STAMP = Date.now();
 
 async function signUpTarget(browser, email, name) {
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto("/index.html");
-  await page.getByRole("button", { name: "Sign up" }).click();
-  await page.locator("#signup-email").fill(email);
-  await page.locator("#signup-password").fill("TestPass123!");
-  await page.locator("#signup-age-confirm").check();
-  await page.locator("#signup-terms-confirm").check();
-  await page.locator("#form-signup button[type=submit]").click();
+  await signUpWithGoogle(page, { email, displayName: name });
   const uid = await verifyEmailByAddress(email);
   await context.close(); // before the admin-SDK write below — see file header
   await admin.firestore().collection("users").doc(uid).set(
@@ -85,13 +80,7 @@ test.describe.serial("Admin profile delete/restore", () => {
   test("Sign up an admin and grant admin rights", async ({ browser }) => {
     adminContext = await browser.newContext();
     adminPage = await adminContext.newPage();
-    await adminPage.goto("/index.html");
-    await adminPage.getByRole("button", { name: "Sign up" }).click();
-    await adminPage.locator("#signup-email").fill(`admdel.admin.${STAMP}@test.town`);
-    await adminPage.locator("#signup-password").fill("TestPass123!");
-    await adminPage.locator("#signup-age-confirm").check();
-    await adminPage.locator("#signup-terms-confirm").check();
-    await adminPage.locator("#form-signup button[type=submit]").click();
+    await signUpWithGoogle(adminPage, { email: `admdel.admin.${STAMP}@test.town`, displayName: "AdminDel Admin" });
     adminUid = await verifyEmailByAddress(`admdel.admin.${STAMP}@test.town`);
     await admin.firestore().collection("users").doc(adminUid).set(
       { approved: true, agreedToTerms: true, profile: { name: "AdminDel Admin" } },
@@ -144,11 +133,14 @@ test.describe.serial("Admin profile delete/restore", () => {
 
   test("B can no longer sign in while deleted", async ({ browser }) => {
     const page = await (await browser.newContext()).newPage();
-    await page.goto("/index.html");
-    await page.locator("#login-email").fill(b.email);
-    await page.locator("#login-password").fill("TestPass123!");
-    await page.locator("#form-login button[type=submit]").click();
-    await expect(page.locator("#login-message")).toContainText("disabled");
+    // signInWithPopup itself rejects with auth/user-disabled for a
+    // disabled account — friendlyAuthError() has no specific case for
+    // that code, so it falls through to err.message, which Firebase's own
+    // SDK phrases as "...account has been disabled..." — still contains
+    // "disabled", same assertion as before, just off #google-signin-
+    // message instead of the removed #login-message.
+    await logInWithGoogle(page, { email: b.email });
+    await expect(page.locator("#google-signin-message")).toContainText("disabled");
     await expect(page.locator("#nav-dashboard")).toBeHidden();
   });
 

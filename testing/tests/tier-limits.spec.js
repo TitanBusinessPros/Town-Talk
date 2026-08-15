@@ -22,20 +22,15 @@
 // Run with: npx playwright test tier-limits.spec.js
 
 const { test, expect } = require("@playwright/test");
-const { verifyEmailByAddress, admin } = require("../emulatorAdmin");
+const { getUidForGoogleSignIn: verifyEmailByAddress, admin } = require("../emulatorAdmin");
+const { signUpWithGoogle } = require("../googleAuthHelper");
 
 function todayNumber() {
   return Math.floor(Date.now() / 86400000);
 }
 
 async function signUp(page, account) {
-  await page.goto("/index.html");
-  await page.getByRole("button", { name: "Sign up" }).click();
-  await page.locator("#signup-email").fill(account.email);
-  await page.locator("#signup-password").fill(account.password);
-  await page.locator("#signup-age-confirm").check();
-  await page.locator("#signup-terms-confirm").check();
-  await page.locator("#form-signup button[type=submit]").click();
+  await signUpWithGoogle(page, { email: account.email, displayName: account.name });
 }
 
 // Skips the profile-form/admin-approval UI entirely (already covered by

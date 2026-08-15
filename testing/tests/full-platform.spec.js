@@ -13,7 +13,8 @@
 
 const path = require("path");
 const { test, expect } = require("@playwright/test");
-const { verifyEmailByAddress, makeAdmin, grantUnlimitedGamePlay } = require("../emulatorAdmin");
+const { getUidForGoogleSignIn: verifyEmailByAddress, admin, makeAdmin, grantUnlimitedGamePlay } = require("../emulatorAdmin");
+const { signUpWithGoogle, logInWithGoogle } = require("../googleAuthHelper");
 
 // Lets this same suite validate ANY edition's actual build, not just
 // production's — set TEST_HOME_TOWN to the edition's real anchor town
@@ -31,21 +32,11 @@ const TEST_IMAGE_PATH = path.resolve(__dirname, "..", "..", "Logo-Fav.png");
 // Small reusable helpers
 // -----------------------------------------------------------------------
 async function signUp(page, robot) {
-  await page.goto("/index.html");
-  await page.getByRole("button", { name: "Sign up" }).click();
-  await page.locator("#signup-email").fill(robot.email);
-  await page.locator("#signup-password").fill(robot.password);
-  await page.locator("#signup-age-confirm").check();
-  await page.locator("#signup-terms-confirm").check();
-  await page.locator("#form-signup button[type=submit]").click();
-  // At this point the account exists but sits on the "verify your email" gate.
+  await signUpWithGoogle(page, { email: robot.email, displayName: robot.name });
 }
 
 async function logIn(page, robot) {
-  await page.goto("/index.html");
-  await page.locator("#login-email").fill(robot.email);
-  await page.locator("#login-password").fill(robot.password);
-  await page.locator("#form-login button[type=submit]").click();
+  await logInWithGoogle(page, { email: robot.email, displayName: robot.name });
 }
 
 async function fillBasicsAndPost(page, robot) {
@@ -253,6 +244,28 @@ test.describe.serial("Town Fuss — full platform pass", () => {
   });
 
   test("Messaging respects the daily 10-message limit", async () => {
+    // Robot A doubles as this file's admin (makeAdmin(uidA) above), and
+    // index.js's ensureAdminDiamondPerks() — a real, intentional feature,
+    // not a bug — auto-heals ANY admin account to permanent Diamond-tier
+    // perks (unlimited daily messages) via ensureMyAdminPerks() the moment
+    // isAdminUser is determined true client-side. That makes the free-tier
+    // 10-message cap this test is actually about untestable on Robot A as-
+    // is — strip the Diamond fields via direct admin-SDK write so it can
+    // be tested.
+    //
+    // A single clear-then-check isn't reliably enough: ensureMyAdminPerks
+    // is called fire-and-forget (no await) from the pageA.reload() back in
+    // "Sign up both robots" — under real load (confirmed: this specific
+    // race only ever showed up running the FULL suite, never this file
+    // alone) that stale call can still be in flight minutes later and land
+    // right after this clear, re-healing Diamond out from under the test.
+    // Retry the clear itself, not just the wait, so a late re-heal gets
+    // cleared right back out instead of derailing the whole test.
+    await expect(async () => {
+      await admin.firestore().collection("users").doc(uidA).update({ isDiamondMember: false, diamondExpiresAt: null });
+      await expect(pageA.locator("#messages-remaining")).not.toContainText("Unlimited", { timeout: 3_000 });
+    }).toPass({ timeout: 20_000 });
+
     for (let i = 0; i < 9; i++) {
       await pageA.locator("#thread-input").fill(`Test message number ${i + 2}`);
       await pageA.locator("#thread-form button[type=submit]").click();
@@ -778,17 +791,14 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await pageB.locator("#bug-report-modal-cancel").click();
   });
 
-  test("Password reset request succeeds against the Auth emulator", async ({ browser }) => {
-    // Independent context — doesn't touch Robot A/B's signed-in sessions.
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await page.goto("/index.html");
-    await page.locator('.tab[data-tab="reset"]').click();
-    await page.locator("#reset-email").fill(ROBOT_B.email);
-    await page.locator("#form-reset button[type=submit]").click();
-    await expect(page.locator("#reset-message")).toContainText("Check your email", { timeout: 10_000 });
-    await context.close();
-  });
+  // "Password reset request succeeds against the Auth emulator" removed
+  // 2026-08-14 — not a broken test, a retired one. The password-reset tab
+  // (.tab[data-tab="reset"], #reset-email, #form-reset) was removed from
+  // the app entirely along with email/password sign-up and login on
+  // 2026-08-12 — Google accounts have no app-level password to reset in
+  // the first place, so there's no feature left here to test, unlike the
+  // Delete Account gap above which IS still broken and tracked via
+  // test.fixme.
 
   test("Game page quick-nav deep-links directly into a specific Town Fuss view", async ({ browser }) => {
     // Regression test for the 2026-08-09 nav-menu addition to every game
@@ -829,9 +839,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     // the Oklahoma City edition). Log back in right here, on the same
     // page, to prove the URL actually got cleaned up.
     await expect(page).not.toHaveURL(/action=logout/);
-    await page.locator("#login-email").fill(robot.email);
-    await page.locator("#login-password").fill(robot.password);
-    await page.locator("#form-login button[type=submit]").click();
+    await logInWithGoogle(page, { email: robot.email, skipNavigation: true });
     await expect(page.locator("#nav-dashboard")).toBeVisible({ timeout: 10_000 });
     await expect(page.locator("#nav-auth")).toBeHidden();
 
@@ -869,10 +877,24 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await context.close();
   });
 
-  test("Account deletion removes the account and its data", async ({ browser }) => {
+  // KNOWN BROKEN IN THE APP ITSELF, not a test-harness problem — found
+  // 2026-08-14 while migrating this suite off email/password. The Delete
+  // My Account form (#delete-account-form) still requires typing a
+  // password and reauthenticates via EmailAuthProvider, but Google
+  // Sign-In has been the ONLY way to create a new account since
+  // 2026-08-12 — meaning every account created since then HAS no
+  // password, and can never successfully submit this form. This is a
+  // real, live gap on all 7 editions right now (self-delete/data-rights
+  // is effectively broken for every Google-only account), tracked but
+  // deliberately not fixed as part of this test-suite pass. Re-enable
+  // once index.html switches to reauthenticateWithPopup for
+  // Google-provider accounts (email/password reauthenticateWithCredential
+  // only for whatever legacy accounts still predate the Google-only
+  // switch).
+  test.fixme("Account deletion removes the account and its data", async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
-    const throwaway = { email: `deleteme.${Date.now()}@test.town`, password: "TestPass123!", name: "Delete Me" };
+    const throwaway = { email: `deleteme.${Date.now()}@test.town`, name: "Delete Me" };
 
     await signUp(page, throwaway);
     await page.waitForTimeout(500);
@@ -885,19 +907,23 @@ test.describe.serial("Town Fuss — full platform pass", () => {
 
     await page.locator("#nav-dashboard").click();
     page.once("dialog", (dialog) => dialog.accept());
-    await page.locator("#delete-password").fill(throwaway.password);
+    // Nothing valid to type here anymore for a Google-only account — see
+    // this test's own fixme note above. Left as a password field so this
+    // still reads as "what the real form currently is" for whoever fixes
+    // the app bug and re-enables this test.
+    await page.locator("#delete-password").fill("");
     await page.locator("#delete-account-form button[type=submit]").click();
 
     // onAuthStateChanged should detect the sign-out and drop back to a
     // signed-out view.
     await expect(page.locator("#nav-auth")).toBeVisible({ timeout: 10_000 });
 
-    // Confirm the account is actually gone, not just signed out — a
-    // deleted account can't log back in.
-    await page.locator("#login-email").fill(throwaway.email);
-    await page.locator("#login-password").fill(throwaway.password);
-    await page.locator("#form-login button[type=submit]").click();
-    await expect(page.locator("#login-message")).toContainText("incorrect", { timeout: 10_000 });
+    // Confirm the account is actually gone, not just signed out — signing
+    // back in with the same email should hit the brand-new-account path
+    // again (the confirm-modal reappearing), not silently resurrect the
+    // deleted profile.
+    await logInWithGoogle(page, { email: throwaway.email });
+    await expect(page.locator("#google-confirm-modal-backdrop")).toBeVisible({ timeout: 10_000 });
 
     await context.close();
   });

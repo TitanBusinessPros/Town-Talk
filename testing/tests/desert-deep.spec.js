@@ -14,18 +14,13 @@
 // Run with: npx playwright test desert-deep.spec.js
 
 const { test, expect } = require("@playwright/test");
-const { verifyEmailByAddress, admin } = require("../emulatorAdmin");
+const { getUidForGoogleSignIn: verifyEmailByAddress, admin } = require("../emulatorAdmin");
+const { signUpWithGoogle } = require("../googleAuthHelper");
 
 const P1 = { email: `desert.p1.${Date.now()}@test.town`, password: "TestPass123!" };
 
 async function signUp(page, robot) {
-  await page.goto("/index.html");
-  await page.getByRole("button", { name: "Sign up" }).click();
-  await page.locator("#signup-email").fill(robot.email);
-  await page.locator("#signup-password").fill(robot.password);
-  await page.locator("#signup-age-confirm").check();
-  await page.locator("#signup-terms-confirm").check();
-  await page.locator("#form-signup button[type=submit]").click();
+  await signUpWithGoogle(page, { email: robot.email, displayName: robot.name });
 }
 
 function readVar(page, name) {

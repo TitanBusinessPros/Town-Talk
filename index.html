@@ -612,6 +612,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
          the second, leaving signup silently incomplete. Merged 2026-08-07. -->
     <section class="card" style="margin-top:2rem">
       <h2>Complete your profile <span id="post-status-badge"></span></h2>
+      <p class="field-hint" id="profile-approval-notice">Profiles can take up to 24 hours for an admin to approve. You'll get an email as soon as yours is.</p>
       <form id="profile-form">
         <label for="display-name">Display name</label>
         <input id="display-name" type="text" maxlength="40" placeholder="What should neighbors call you?" required />
@@ -2973,6 +2974,10 @@ function renderDashboard(data) {
   } else {
     badge.innerHTML = `<span class="badge badge--pending">Pending review</span>`;
   }
+  // Once actually approved the "may take up to 24 hours" promise has
+  // already been kept — the badge above says "Live" at that point, this
+  // would just be stale noise sitting under it.
+  document.getElementById("profile-approval-notice").style.display = data.approved ? "none" : "block";
 
   const postTextEl = document.getElementById("post-text");
   if (!profileFormPopulated) {

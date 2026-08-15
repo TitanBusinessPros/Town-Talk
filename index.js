@@ -134,13 +134,40 @@ async function sendSignupAlertEmail(name) {
     },
     body: JSON.stringify({
       from: "Town Fuss <noreply@townfuss.com>",
-      to: "titanbusinesspros@gmail.com",
+      to: "townfussok@gmail.com",
       subject: `New sign-up — ${editionName}`,
       html: `<p>${name} just signed up on the <strong>${editionName}</strong> edition and is waiting on approval.</p>`,
     }),
   });
   if (!resp.ok) {
     console.error("Signup alert email failed:", resp.status, await resp.text().catch(() => ""));
+  }
+}
+
+// The other direction of sendSignupAlertEmail above — this one goes to the
+// actual member, not the admin, once THEIR profile clears review. Only
+// the approval path sends anything; a rejection deliberately gets no
+// email (rejected still shows a clear in-app badge — see
+// renderDashboard's post-status-badge — that's enough, and a rejection
+// email reads a lot harsher landing in someone's inbox than the same
+// thing shown in-app).
+async function sendProfileApprovedEmail(toEmail, name) {
+  const editionName = EDITION_DISPLAY_NAMES[process.env.GCLOUD_PROJECT] || process.env.GCLOUD_PROJECT;
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey.value()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Town Fuss <noreply@townfuss.com>",
+      to: toEmail,
+      subject: `Your Town Fuss profile is approved!`,
+      html: `<p>Hi ${name}, your profile on the <strong>${editionName}</strong> edition of Town Fuss has been approved and is now live. Come say hi to your neighbors!</p>`,
+    }),
+  });
+  if (!resp.ok) {
+    console.error("Profile-approved email failed:", resp.status, await resp.text().catch(() => ""));
   }
 }
 
@@ -335,7 +362,7 @@ exports.onNewSignup = onDocumentCreated(
 
     const name = newUser.profile?.name || "A new user";
 
-    // Email alert (titanbusinesspros@gmail.com, every edition) and the
+    // Email alert (townfussok@gmail.com, every edition) and the
     // existing admin push notifications run independently — a failure
     // in one should never block or hide a failure in the other.
     sendSignupAlertEmail(name).catch((err) => console.error(`onNewSignup(${uid}): signup alert email failed:`, err));
@@ -355,6 +382,32 @@ exports.onNewSignup = onDocumentCreated(
             clickAction: "/index.html?admin=pending",
           })
         )
+    );
+  }
+);
+
+// -----------------------------------------------------------------------
+// Emails the MEMBER once an admin approves their profile — the promise
+// made on the Dashboard's "may take up to 24 hours" notice (see
+// index.html's profile-approval-notice). Fires on any approved: false/
+// undefined -> true transition, not just the very first one, so a
+// resubmission-driven re-approval after an edit gets its own email too —
+// matches that same notice's wording literally ("once approved"), not
+// just "once, the first time ever". Deliberately does nothing for a
+// rejection — see sendProfileApprovedEmail's own comment for why.
+// -----------------------------------------------------------------------
+exports.onProfileApproved = onDocumentUpdated(
+  { document: "users/{uid}", secrets: [resendApiKey] },
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+    if (before.approved === true || after.approved !== true) return; // not a real false/undefined -> true transition
+    if (!after.email) return;
+
+    const name = after.profile?.name || "there";
+    await sendProfileApprovedEmail(after.email, name).catch((err) =>
+      console.error(`onProfileApproved(${event.params.uid}): approval email failed:`, err)
     );
   }
 );

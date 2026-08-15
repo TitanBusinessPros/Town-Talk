@@ -73,6 +73,37 @@ async function verifyEmailByAddress(email, retries = 10, delayMs = 500) {
   throw new Error(`users/${uid} never got its real signup fields (email/createdAt) within 15000ms`);
 }
 
+// Google-provider accounts have no "verify your email" gate (Google
+// accounts are inherently already verified, and the Auth emulator's mock
+// Google sign-in reflects that same emailVerified: true automatically) —
+// so this is verifyEmailByAddress() minus the updateUser() step, kept as
+// its own function rather than folded together since one flips a flag
+// that genuinely doesn't apply to the other. Same race and same fix as
+// verifyEmailByAddress's own comment: signInWithPopup resolving and
+// index.html's own users/{uid} write landing are two separate async
+// steps, so this returns the uid only once the real doc — not just the
+// beforeSignInBlocking lastKnownIp-only stub — actually exists.
+async function getUidForGoogleSignIn(email, retries = 10, delayMs = 500) {
+  let uid;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const user = await admin.auth().getUserByEmail(email);
+      uid = user.uid;
+      break;
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  const start = Date.now();
+  while (Date.now() - start < 15000) {
+    const snap = await admin.firestore().collection("users").doc(uid).get();
+    if (snap.exists && snap.data().email) return uid;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  throw new Error(`users/${uid} never got its real signup fields (email/createdAt) within 15000ms`);
+}
+
 async function makeAdmin(uid) {
   await admin.firestore().collection("admins").doc(uid).set({ grantedByTestSetup: true });
 }
@@ -91,4 +122,4 @@ async function grantUnlimitedGamePlay(uid) {
   );
 }
 
-module.exports = { admin, verifyEmailByAddress, makeAdmin, grantUnlimitedGamePlay };
+module.exports = { admin, verifyEmailByAddress, getUidForGoogleSignIn, makeAdmin, grantUnlimitedGamePlay };

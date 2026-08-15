@@ -13,23 +13,15 @@
 
 const path = require("path");
 const { test, expect } = require("@playwright/test");
-const { verifyEmailByAddress, admin } = require("../emulatorAdmin");
+const { getUidForGoogleSignIn: verifyEmailByAddress, admin } = require("../emulatorAdmin");
+const { signUpWithGoogle } = require("../googleAuthHelper");
 
 const P1 = { email: `fg.p1.${Date.now()}@test.town`, password: "TestPass123!" };
 const P2 = { email: `fg.p2.${Date.now()}@test.town`, password: "TestPass123!" };
 const SCREENSHOT_DIR = path.resolve(__dirname, "..", "test-results");
 
 async function signUp(page, robot) {
-  await page.goto("/index.html");
-  await page.getByRole("button", { name: "Sign up" }).click();
-  await page.locator("#signup-email").fill(robot.email);
-  await page.locator("#signup-password").fill(robot.password);
-  await page.locator("#signup-age-confirm").check();
-  await page.locator("#signup-terms-confirm").check();
-  await page.locator("#form-signup button[type=submit]").click();
-  // Verification happens after BOTH signups in the test body, not here —
-  // createUserWithEmailAndPassword is async, so calling verifyEmailByAddress
-  // immediately after the click races the account actually existing yet.
+  await signUpWithGoogle(page, { email: robot.email, displayName: robot.name });
 }
 
 // Same real-mouse-drag approach as full-platform.spec.js's dragFrisbee(),

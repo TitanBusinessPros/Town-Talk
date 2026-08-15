@@ -15,7 +15,8 @@
 // Run with: npx playwright test chatsponsor-townfounder.spec.js
 
 const { test, expect } = require("@playwright/test");
-const { verifyEmailByAddress, admin } = require("../emulatorAdmin");
+const { getUidForGoogleSignIn: verifyEmailByAddress, admin } = require("../emulatorAdmin");
+const { signUpWithGoogle } = require("../googleAuthHelper");
 
 // Lets this suite validate any edition's real build — these two need to
 // be two DIFFERENT real towns that exist on whichever edition is running
@@ -27,14 +28,8 @@ const slug = (t) => t.toLowerCase().replace(/\s+/g, "-") + "-chat";
 const TOWN_1_ROOM_ID = slug(TOWN_1);
 const TOWN_2_ROOM_ID = slug(TOWN_2);
 
-async function signUp(page, email, password = "TestPass123!") {
-  await page.goto("/index.html");
-  await page.getByRole("button", { name: "Sign up" }).click();
-  await page.locator("#signup-email").fill(email);
-  await page.locator("#signup-password").fill(password);
-  await page.locator("#signup-age-confirm").check();
-  await page.locator("#signup-terms-confirm").check();
-  await page.locator("#form-signup button[type=submit]").click();
+async function signUp(page, email) {
+  await signUpWithGoogle(page, { email });
 }
 
 async function waitForRealSignupDoc(uid, timeoutMs = 15000) {
