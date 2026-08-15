@@ -172,16 +172,24 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await fillBasicsAndPost(pageA, ROBOT_A);
   });
 
-  test("Admin (Robot A) approves both profiles", async () => {
+  test("Both robots' profiles auto-approve instantly — nothing waits in the admin queue", async () => {
+    // Profiles auto-approve unless SafeSearch flags something (see
+    // #profile-form's submit handler, added 2026-08-15) — a normal
+    // submission like both robots' just did never reaches the admin
+    // queue at all anymore, so there's nothing here to click Approve on.
+    // Scoped to the two robots specifically, not a blanket empty-queue
+    // check (either "#admin-queue has 0 cards total" or "#admin-empty is
+    // visible") — a long-lived local emulator can carry unrelated leftover
+    // queue entries from other test runs, which would make either of those
+    // broader checks fail for reasons that have nothing to do with these
+    // two robots. Note #admin-queue itself is a bare <div> with no set
+    // height, so it collapses to a zero-size box (and reads as "not
+    // visible" to Playwright) whenever it happens to be empty — not
+    // something to assert on directly either way.
     await pageA.locator("#nav-admin").click();
-    await expect(pageA.locator("#admin-queue")).toBeVisible();
-    // Approve every card currently in the queue (both robots' submissions).
-    const approveButtons = pageA.locator('#admin-queue button:has-text("Approve")');
-    const count = await approveButtons.count();
-    for (let i = 0; i < count; i++) {
-      await pageA.locator('#admin-queue button:has-text("Approve")').first().click();
-      await pageA.waitForTimeout(500); // let the card removal settle between clicks
-    }
+    await pageA.waitForTimeout(1000); // let loadAdminQueue()'s fetch settle before checking
+    await expect(pageA.locator("#admin-queue .admin-card", { hasText: ROBOT_A.name })).toHaveCount(0);
+    await expect(pageA.locator("#admin-queue .admin-card", { hasText: ROBOT_B.name })).toHaveCount(0);
     await pageA.locator("#nav-dashboard").click();
   });
 
@@ -542,11 +550,15 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await pageA.waitForTimeout(500);
   });
 
-  test("Robot B uploads a profile photo", async () => {
-    // Robot B, not A — uploading a new photo un-approves the profile
-    // pending re-review (everApproved gate), and test 28 later needs to
-    // find Robot A via directory search, which only shows approved
-    // profiles. Robot B's approval status isn't checked again after this.
+  test("Robot B uploads a profile photo and stays approved — no admin action needed", async () => {
+    // Robot B, not A — test 28 later needs to find Robot A via directory
+    // search, which only shows approved profiles, so Robot A is left
+    // untouched. A clean (non-flagged) photo re-upload auto-approves
+    // immediately now (see imageInput's change handler, updated
+    // 2026-08-15) instead of pulling the profile back to the admin queue
+    // for manual re-review — checkImageSafeSearch (index.js) is the only
+    // thing that can still pull it back, a moment later, if Vision
+    // actually flags the image; this logo never does.
     // pageB is still on ww.html from the last game test — #nav-dashboard
     // only exists on index.html.
     await pageB.goto("/index.html");
@@ -554,26 +566,25 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await pageB.locator("#image-input").setInputFiles(TEST_IMAGE_PATH);
     await expect(pageB.locator("#image-message")).toContainText("Uploaded", { timeout: 15_000 });
     await expect(pageB.locator("#image-slots img")).toBeVisible({ timeout: 10_000 });
-  });
 
-  test("Admin re-approves Robot B after the photo re-upload", async () => {
-    // A photo re-upload on an already-approved profile sets approved:false
-    // pending re-review (see the "everApproved" comment above the image
-    // upload handler in index.html) — and since 2026-08-05,
-    // updateProtectedNavVisibility() correctly hides the ENTIRE protected
-    // nav (including Business) for any unapproved account, not just
-    // Feed/Directory as before. Without this re-approval step, the next
-    // test's click on #nav-business hits an element that's legitimately
-    // hidden — the app was behaving correctly, this test just predates
-    // that hardening and never accounted for it.
-    // pageA is still on frisbeegolf.html from the earlier Frisbee Golf
-    // test — #nav-admin only exists on index.html.
+    // Confirm it really did stay approved (badge still says live, not
+    // pending) instead of just assuming the auto-approve code ran. Matches
+    // either "Live on public feed" or the locked variant "Live · editable
+    // again in Nd" — Robot B's profile-form submission earlier already
+    // started its own 30-day edit lock (editLockInfo, unrelated to this
+    // photo upload), so the locked wording is the one actually showing.
+    await expect(pageB.locator("#post-status-badge")).toContainText(/Live/, { timeout: 10_000 });
+
+    // updateProtectedNavVisibility() hides the ENTIRE protected nav
+    // (including Business) for any unapproved account — the next test
+    // clicks #nav-business, so confirm that's still visible here rather
+    // than finding out indirectly from that test failing.
+    await expect(pageB.locator("#nav-business")).toBeVisible();
+
+    // And nothing shows up in the admin queue for Robot B either.
     await pageA.goto("/index.html");
     await pageA.locator("#nav-admin").click();
-    const bizOwnerCard = pageA.locator("#admin-queue .admin-card", { hasText: ROBOT_B.name });
-    await expect(bizOwnerCard).toBeVisible({ timeout: 10_000 });
-    await bizOwnerCard.locator('button:has-text("Approve")').click();
-    await expect(bizOwnerCard).toHaveCount(0, { timeout: 10_000 });
+    await expect(pageA.locator("#admin-queue .admin-card", { hasText: ROBOT_B.name })).toHaveCount(0, { timeout: 10_000 });
   });
 
   test("Robot B creates a business listing with a logo", async () => {
@@ -591,13 +602,24 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await pageB.locator("#biz-description").fill("Worms, lures, and lake gossip since this morning.");
     await pageB.locator("#business-form button[type=submit]").click();
     await expect(pageB.locator("#business-form-message")).toContainText("Saved", { timeout: 10_000 });
-    await expect(pageB.locator("#business-status-badge")).toContainText("Pending review");
+    // Content auto-approves instantly on creation (nothing to flag yet —
+    // no logo uploaded here), but that was never the same thing as paid —
+    // the listing still needs an admin to confirm payment before it's
+    // actually visible in the public directory (see loadBusinessDirectory's
+    // businessPaidUntil filter, added 2026-08-15).
+    await expect(pageB.locator("#business-status-badge")).toContainText("awaiting payment");
 
     await pageB.locator("#business-image-input").setInputFiles(TEST_IMAGE_PATH);
     await expect(pageB.locator("#business-image-message")).toContainText("Uploaded", { timeout: 15_000 });
   });
 
   test("Admin approves the business listing and marks it paid", async () => {
+    // Content is already auto-approved (see the previous test) — the
+    // listing shows up here because it's still unpaid, not because it
+    // needs content review. Creating a listing queues it for payment
+    // follow-up (flagBusinessForReview() in the business-form submit
+    // handler) the same way a SafeSearch flag would, so this same admin
+    // queue/card UI covers both reasons a listing might need attention.
     // pageA is still on ww.html from the WynneWars turn test.
     await pageA.goto("/index.html");
     await pageA.locator("#nav-admin").click();

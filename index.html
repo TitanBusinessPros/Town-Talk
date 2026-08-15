@@ -6605,12 +6605,26 @@ function renderMyBusiness(data) {
   }
 
   emptyHint.style.display = "none";
-  if (data.approved) {
-    statusBadge.innerHTML = `<span class="badge badge--approved">Live in directory</span>`;
-  } else if (data.rejected) {
+
+  // Content approval (SafeSearch-gated, see business-form's submit handler)
+  // and directory visibility are two separate things now — a listing can
+  // be fully content-approved and still correctly hidden from the public
+  // directory (see loadBusinessDirectory's businessPaidUntil filter) until
+  // an admin confirms payment. The badge here has to reflect BOTH, not
+  // just "approved", or it tells the owner their listing is live when it
+  // actually isn't yet — confirmed live 2026-08-15: content auto-approval
+  // meant every brand-new listing showed "Live in directory" immediately,
+  // even completely unpaid ones.
+  const paidUntilMs = data.businessPaidUntil ? (data.businessPaidUntil.seconds ? data.businessPaidUntil.seconds * 1000 : 0) : 0;
+  const isPaid = paidUntilMs > Date.now();
+  if (data.rejected) {
     statusBadge.innerHTML = `<span class="badge badge--rejected">Rejected — edit and save to request another review</span>`;
-  } else {
+  } else if (!data.approved) {
     statusBadge.innerHTML = `<span class="badge badge--pending">Pending review</span>`;
+  } else if (!isPaid) {
+    statusBadge.innerHTML = `<span class="badge badge--pending">Approved — awaiting payment to appear in the directory</span>`;
+  } else {
+    statusBadge.innerHTML = `<span class="badge badge--approved">Live in directory</span>`;
   }
 
   if (document.activeElement !== nameEl) nameEl.value = data.name || "";
@@ -6624,8 +6638,6 @@ function renderMyBusiness(data) {
     imageSlot.innerHTML = `<span class="slot-label">+ Add logo/photo</span>`;
   }
 
-  const paidUntilMs = data.businessPaidUntil ? (data.businessPaidUntil.seconds ? data.businessPaidUntil.seconds * 1000 : 0) : 0;
-  const isPaid = paidUntilMs > Date.now();
   paymentStatus.style.display = "block";
   if (isPaid) {
     const paidUntilStr = new Date(paidUntilMs).toLocaleDateString();
@@ -6728,7 +6740,20 @@ document.getElementById("business-form").addEventListener("submit", async (e) =>
       // businessPaidUntil to be set at all, so deleting it beforehand would
       // have made that write fail.
       if (hadPromo) await deleteDoc(doc(db, "businessPromoWhitelist", emailLower)).catch(() => {});
-      showMessage(msg, "Saved — your listing is live! It'll appear in the directory once payment is confirmed (see below).", "success");
+      // Content is auto-approved, but that was never the same thing as
+      // paid — a brand-new listing still needs an admin to see it and
+      // confirm payment before loadBusinessDirectory's query will show it
+      // publicly (see that query's own comment). A promo-whitelisted
+      // listing already has businessPaidUntil set above, so it doesn't
+      // need to sit in the queue waiting on anything.
+      if (!hadPromo) await flagBusinessForReview();
+      showMessage(
+        msg,
+        hadPromo
+          ? "Saved — your listing is live in the directory!"
+          : "Saved! It'll appear in the directory once payment is confirmed by an admin (see below).",
+        "success"
+      );
     } else {
       const update = { name, phone, town, description, lastEditedAt: serverTimestamp() };
       const flagged = isCurrentlySafeSearchFlagged(currentMyBusinessData);
@@ -6795,7 +6820,11 @@ document.getElementById("business-image-input").addEventListener("change", async
         createdAt: serverTimestamp(),
         lastEditedAt: serverTimestamp(),
       });
-      showMessage(msg, "Uploaded!", "success");
+      // Same reasoning as the business-form submit handler's isNewListing
+      // branch — content-approved isn't paid, so this still needs an
+      // admin's attention before it shows up in the public directory.
+      await flagBusinessForReview();
+      showMessage(msg, "Uploaded! It'll appear in the directory once payment is confirmed by an admin.", "success");
     } else {
       // Only carry forward a flag already sitting on the listing from a
       // PREVIOUS image — this new one hasn't been scored yet, same
@@ -6834,7 +6863,17 @@ async function loadBusinessDirectory() {
   grid.innerHTML = "";
   empty.style.display = "none";
 
-  const snap = await getDocs(query(collection(db, "businesses"), where("approved", "==", true))).catch((err) => {
+  // approved alone isn't enough to be visible here — that only means the
+  // content passed SafeSearch (see business-form's submit handler); it no
+  // longer implies payment the way it used to when an admin manually
+  // flipped it after invoicing. businessPaidUntil is the actual "have they
+  // paid" signal, so both are required — a business that's content-clean
+  // but never paid (or whose year lapsed) correctly stays out of the
+  // public directory either way. Same composite index expireBusinessListings
+  // (index.js) already uses, just the other side of the range.
+  const snap = await getDocs(
+    query(collection(db, "businesses"), where("approved", "==", true), where("businessPaidUntil", ">", Timestamp.now()))
+  ).catch((err) => {
     empty.textContent = `Couldn't load businesses: ${err.message}`;
     empty.style.display = "block";
     return null;
