@@ -98,11 +98,11 @@ const visionClient = new vision.ImageAnnotatorClient();
 // cold-start/cost behavior consistent across all of them.
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
-// Resend (resend.com) — used only for the admin new-signup email alert
-// (onNewSignup below). Same verified townfuss.com domain as before;
-// destroying the old secret didn't touch the domain verification itself,
-// which lives on Resend's side, not Firebase's.
-const resendApiKey = defineSecret("RESEND_API_KEY");
+// Resend (resend.com) is no longer used anywhere in this file — the
+// account/API key was removed 2026-08-15 (it was only ever wired up for
+// a handful of admin-facing emails, all of which now either have no email
+// at all or hand a link back to the admin to send themselves — see
+// notifyAdminsOfSignup, checkImageSafeSearch, and inviteDailyRewardSponsor).
 
 // Human-readable name per edition, keyed by Firebase project ID
 // (process.env.GCLOUD_PROJECT) — this file is shared source deployed
@@ -127,77 +127,13 @@ function centralDateString(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(date);
 }
 
-async function sendSignupAlertEmail(name) {
-  const editionName = EDITION_DISPLAY_NAMES[process.env.GCLOUD_PROJECT] || process.env.GCLOUD_PROJECT;
-  const resp = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey.value()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "Town Fuss <noreply@townfuss.com>",
-      to: "townfussok@gmail.com",
-      subject: `New sign-up — ${editionName}`,
-      html: `<p>${name} just signed up on the <strong>${editionName}</strong> edition and is waiting on approval.</p>`,
-    }),
-  });
-  if (!resp.ok) {
-    console.error("Signup alert email failed:", resp.status, await resp.text().catch(() => ""));
-  }
-}
-
-// The other direction of sendSignupAlertEmail above — this one goes to the
-// actual member, not the admin, once THEIR profile clears review. Only
-// the approval path sends anything; a rejection deliberately gets no
-// email (rejected still shows a clear in-app badge — see
-// renderDashboard's post-status-badge — that's enough, and a rejection
-// email reads a lot harsher landing in someone's inbox than the same
-// thing shown in-app).
-async function sendProfileApprovedEmail(toEmail, name) {
-  const editionName = EDITION_DISPLAY_NAMES[process.env.GCLOUD_PROJECT] || process.env.GCLOUD_PROJECT;
-  const resp = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey.value()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "Town Fuss <noreply@townfuss.com>",
-      to: toEmail,
-      subject: `Your Town Fuss profile is approved!`,
-      html: `<p>Hi ${name}, your profile on the <strong>${editionName}</strong> edition of Town Fuss has been approved and is now live. Come say hi to your neighbors!</p>`,
-    }),
-  });
-  if (!resp.ok) {
-    console.error("Profile-approved email failed:", resp.status, await resp.text().catch(() => ""));
-  }
-}
-
-// Alerts townfussok@gmail.com whenever checkImageSafeSearch flags a
-// photo — separate from the existing admin push notification (same
-// belt-and-suspenders pattern as sendSignupAlertEmail's email-plus-push),
-// and specifically names which EDITION the flagged profile/business is
-// sitting in, since an admin managing all 7 has no other way to tell
-// from a bare push notification alone.
-async function sendSafeSearchFlagAlertEmail(name, reason, editionName, kind) {
-  const resp = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey.value()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "Town Fuss <noreply@townfuss.com>",
-      to: "townfussok@gmail.com",
-      subject: `Flagged ${kind} photo — ${editionName}`,
-      html: `<p>A ${kind} photo for <strong>${name}</strong> on the <strong>${editionName}</strong> edition was flagged by SafeSearch (${reason}) and pulled for admin review.</p>`,
-    }),
-  });
-  if (!resp.ok) {
-    console.error("SafeSearch flag alert email failed:", resp.status, await resp.text().catch(() => ""));
-  }
-}
+// sendSignupAlertEmail, sendProfileApprovedEmail, and
+// sendSafeSearchFlagAlertEmail (all Resend-based) were removed 2026-08-15
+// along with the RESEND_API_KEY secret. The admin push notifications that
+// already ran alongside each of them (notifyAdminsOfSignup's admin push,
+// checkImageSafeSearch's admin push) cover the same ground with no email
+// dependency; the member-facing profile-approved email had the in-app
+// status badge (renderDashboard's post-status-badge) doing the same job.
 
 // -----------------------------------------------------------------------
 // Shared helper: given a recipient uid + a notification payload, look up
@@ -374,73 +310,68 @@ exports.onBlackjackInvite = makeGameInviteTrigger("blackjackGames");
 exports.onAirHockeyInvite = makeGameInviteTrigger("airHockeyGames");
 
 // -----------------------------------------------------------------------
-// 2. New signup notification — fires once per new user doc and pushes
-// every admin, so approvals don't sit unnoticed in the queue. Admins are
-// just whoever has a doc in the admins/{uid} collection (same source of
-// truth as isAdmin()/requireAdmin() everywhere else); sendPushToUser
-// already respects each admin's own notificationsEnabled toggle, so an
-// admin who doesn't want pushes simply won't get one.
+// 2. New signup notification — pushes every admin once a user actually
+// submits a profile, so approvals don't sit unnoticed in the queue.
+// Admins are just whoever has a doc in the admins/{uid} collection (same
+// source of truth as isAdmin()/requireAdmin() everywhere else);
+// sendPushToUser already respects each admin's own notificationsEnabled
+// toggle, so an admin who doesn't want pushes simply won't get one.
+//
+// Split into two triggers below (onCreate + onUpdate) instead of one,
+// because of how the very first users/{uid} write actually happens:
+// beforeSignInBlocking (way down near the IP-ban logic) stamps
+// lastKnownIp onto users/{uid} on EVERY sign-in, including the very
+// first one right after signup — before the client ever gets to the
+// profile form. That write is a `.set(..., {merge:true})` against a
+// doc that doesn't exist yet, so it's what actually CREATES users/{uid},
+// with nothing on it but lastKnownIp. If this alert fired on create like
+// it used to, it would fire for 100% of signups — bot or human,
+// profile or not — the instant they sign in, which is exactly the
+// "alert with no profile to approve" false alarm this was rewritten to
+// stop. The real profile write (profile-form's submit handler in
+// index.html) always lands afterward as an UPDATE to that same doc, so
+// onProfileSubmitted below is what actually fires the alert now.
+// onNewSignup is kept only as a safety net for some future path that
+// creates users/{uid} with a profile already attached in one write.
 // -----------------------------------------------------------------------
+async function notifyAdminsOfSignup(uid, name) {
+  const adminsSnap = await db.collection("admins").get();
+  console.log(`notifyAdminsOfSignup(${uid}): found ${adminsSnap.size} admin doc(s): [${adminsSnap.docs.map((d) => d.id).join(", ")}]`);
+  if (adminsSnap.empty) return;
+
+  await Promise.all(
+    adminsSnap.docs
+      .filter((doc) => doc.id !== uid) // don't notify an admin about their own signup
+      .map((doc) =>
+        sendPushToUser(doc.id, {
+          type: "signup",
+          title: "Town Fuss — New Sign-Up",
+          body: `${name} just signed up and is waiting on approval.`,
+          clickAction: "/index.html?admin=pending",
+        })
+      )
+  );
+}
+
 exports.onNewSignup = onDocumentCreated(
-  { document: "users/{uid}", secrets: [resendApiKey] },
+  "users/{uid}",
   async (event) => {
     const newUser = event.data?.data();
-    if (!newUser) return;
+    if (!newUser?.profile) return; // no profile yet — just beforeSignInBlocking's IP stamp; see comment above
     const { uid } = event.params;
-
-    const name = newUser.profile?.name || "A new user";
-
-    // Email alert (townfussok@gmail.com, every edition) and the
-    // existing admin push notifications run independently — a failure
-    // in one should never block or hide a failure in the other.
-    sendSignupAlertEmail(name).catch((err) => console.error(`onNewSignup(${uid}): signup alert email failed:`, err));
-
-    const adminsSnap = await db.collection("admins").get();
-    console.log(`onNewSignup(${uid}): found ${adminsSnap.size} admin doc(s): [${adminsSnap.docs.map((d) => d.id).join(", ")}]`);
-    if (adminsSnap.empty) return;
-
-    await Promise.all(
-      adminsSnap.docs
-        .filter((doc) => doc.id !== uid) // don't notify an admin about their own signup
-        .map((doc) =>
-          sendPushToUser(doc.id, {
-            type: "signup",
-            title: "Town Fuss — New Sign-Up",
-            body: `${name} just signed up and is waiting on approval.`,
-            clickAction: "/index.html?admin=pending",
-          })
-        )
-    );
+    await notifyAdminsOfSignup(uid, newUser.profile?.name || "A new user");
   }
 );
 
-// -----------------------------------------------------------------------
-// Emails the MEMBER once an admin approves their profile after a
-// SafeSearch flag — this is now the ONLY case this fires for. Everyone
-// else auto-approves instantly client-side (see index.html's
-// #profile-form handler), which never produces an approved: false/
-// undefined -> true UPDATE for an existing normal doc to react to in the
-// first place. The rare exception is exactly this flow: checkImageSafeSearch
-// flags a photo (approved: false, safeSearchFlag.flagged: true), an admin
-// reviews it and approves (approved: true, safeSearchFlag.flagged: false,
-// same write — see renderAdminCard's approve handler) — that transition is
-// what this watches for. Deliberately does nothing for a rejection — see
-// sendProfileApprovedEmail's own comment for why.
-// -----------------------------------------------------------------------
-exports.onProfileApproved = onDocumentUpdated(
-  { document: "users/{uid}", secrets: [resendApiKey] },
+exports.onProfileSubmitted = onDocumentUpdated(
+  "users/{uid}",
   async (event) => {
     const before = event.data?.before?.data();
     const after = event.data?.after?.data();
     if (!before || !after) return;
-    if (before.safeSearchFlag?.flagged !== true) return; // not a flagged-then-approved transition
-    if (before.approved === true || after.approved !== true) return; // not a real false/undefined -> true transition
-    if (!after.email) return;
-
-    const name = after.profile?.name || "there";
-    await sendProfileApprovedEmail(after.email, name).catch((err) =>
-      console.error(`onProfileApproved(${event.params.uid}): approval email failed:`, err)
-    );
+    if (before.profile || !after.profile) return; // only the first time a profile appears
+    const { uid } = event.params;
+    await notifyAdminsOfSignup(uid, after.profile?.name || "A new user");
   }
 );
 
@@ -472,7 +403,7 @@ exports.onProfileApproved = onDocumentUpdated(
 // outright for Pauls Valley specifically.
 const STORAGE_TRIGGER_REGION = process.env.GCLOUD_PROJECT === "town-talk-87ff7" ? "us-east1" : "us-central1";
 
-exports.checkImageSafeSearch = onObjectFinalized({ region: STORAGE_TRIGGER_REGION, secrets: [resendApiKey] }, async (event) => {
+exports.checkImageSafeSearch = onObjectFinalized({ region: STORAGE_TRIGGER_REGION }, async (event) => {
   const filePath = event.data.name;
   const contentType = event.data.contentType || "";
   if (!contentType.startsWith("image/")) return;
@@ -503,10 +434,6 @@ exports.checkImageSafeSearch = onObjectFinalized({ region: STORAGE_TRIGGER_REGIO
   const reason = flaggedCategories.map((category) => `${category}: ${safe[category]}`).join(", ");
   console.warn(`checkImageSafeSearch: FLAGGED ${filePath} — ${reason}`);
 
-  const docSnap = await db.collection(collection).doc(uid).get().catch(() => null);
-  const name = collection === "users" ? docSnap?.data()?.profile?.name : docSnap?.data()?.name;
-  const editionName = EDITION_DISPLAY_NAMES[process.env.GCLOUD_PROJECT] || process.env.GCLOUD_PROJECT;
-
   await db.collection(collection).doc(uid).set({
     approved: false,
     safeSearchFlag: {
@@ -536,10 +463,6 @@ exports.checkImageSafeSearch = onObjectFinalized({ region: STORAGE_TRIGGER_REGIO
         clickAction: "/index.html?admin=pending",
       })
     )
-  );
-
-  await sendSafeSearchFlagAlertEmail(name || "(no name set)", reason, editionName, collection === "users" ? "profile" : "business").catch((err) =>
-    console.error(`checkImageSafeSearch(${filePath}): flag alert email failed:`, err)
   );
 });
 
@@ -1307,13 +1230,17 @@ exports.dailyRewardsDraw = onSchedule(
 // Fuss account/profile — just a Firebase Auth login (same Auth instance,
 // but no users/{uid} doc, and a dailyRewardSponsorAccounts/{uid} doc
 // instead, which is what firestore.rules' isSponsorFor() actually checks
-// to scope their reads to their own giveaway). Reuses the exact same
-// generatePasswordResetLink() + Resend pattern built earlier for the
-// (since-removed) user-facing password reset — same domain, same secret,
-// just repointed at the sponsor portal page as the continue URL instead
-// of the main app.
+// to scope their reads to their own giveaway).
+//
+// Used to email the sponsor their setup link via Resend; since that
+// account was removed 2026-08-15, this now just returns the link to the
+// calling admin instead (see the #daily-rewards-sponsor-invite handler in
+// index.html), who sends it to the sponsor themselves however they like.
+// Still uses generatePasswordResetLink() under the hood — that part never
+// depended on Resend, it's a plain Admin SDK call that returns a real
+// Firebase-hosted link; Resend was only ever the delivery mechanism.
 // -----------------------------------------------------------------------
-exports.inviteDailyRewardSponsor = onCall({ secrets: [resendApiKey] }, async (request) => {
+exports.inviteDailyRewardSponsor = onCall(async (request) => {
   await requireAdmin(request);
 
   const sponsorId = (request.data?.sponsorId || "").trim();
@@ -1339,33 +1266,13 @@ exports.inviteDailyRewardSponsor = onCall({ secrets: [resendApiKey] }, async (re
     invitedBy: request.auth.uid,
   });
 
-  const editionName = EDITION_DISPLAY_NAMES[process.env.GCLOUD_PROJECT] || process.env.GCLOUD_PROJECT;
   const continueUrl = (request.data?.continueUrl || "").trim() || undefined;
   const link = await getAuth().generatePasswordResetLink(
     email,
     continueUrl ? { url: continueUrl } : undefined
   );
 
-  const resp = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey.value()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: `${editionName} Daily Rewards <noreply@townfuss.com>`,
-      to: email,
-      subject: `${editionName} Daily Rewards — verification access`,
-      html: `<p>You've been invited to verify Daily Rewards winners for <strong>${sponsorSnap.data().companyName}</strong> on ${editionName} Town Fuss.</p>
-<p><a href="${link}">Click here to set your password and get access</a></p>
-<p>Once set, you can log in anytime with this email address and the password you choose.</p>`,
-    }),
-  });
-  if (!resp.ok) {
-    console.error("Sponsor invite email failed:", resp.status, await resp.text().catch(() => ""));
-    throw new HttpsError("internal", "Couldn't send the invite email.");
-  }
-  return { ok: true };
+  return { ok: true, link };
 });
 
 // -----------------------------------------------------------------------

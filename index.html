@@ -7365,14 +7365,33 @@ document.getElementById("sponsor-invite-form").addEventListener("submit", async 
     return;
   }
   try {
-    await httpsCallable(functions, "inviteDailyRewardSponsor")({
+    const result = await httpsCallable(functions, "inviteDailyRewardSponsor")({
       sponsorId,
       email,
       continueUrl: new URL("daily-rewards-verify.html", location.href).href,
     });
-    showMessage(msg, `Invite sent to ${email}.`, "success");
     document.getElementById("sponsor-invite-email").value = "";
     loadSponsorInviteList();
+
+    // No email service wired up anymore (Resend was removed) — the
+    // account is created either way, but the setup link comes back here
+    // for the admin to send to the sponsor themselves (text, personal
+    // email, whatever). Best-effort auto-copy to clipboard; the raw link
+    // is shown either way so it can be selected by hand if that fails.
+    const link = result.data?.link;
+    if (link) {
+      let copied = false;
+      try {
+        await navigator.clipboard.writeText(link);
+        copied = true;
+      } catch {
+        // Clipboard API can be blocked (permissions, non-HTTPS, etc.) —
+        // the link text below still lets the admin copy it manually.
+      }
+      showMessage(msg, `Account created for ${email}.${copied ? " Link copied to clipboard —" : " Send this link to them:"} ${link}`, "success");
+    } else {
+      showMessage(msg, `Account created for ${email}, but no setup link came back — check the sponsor accounts list.`, "error");
+    }
   } catch (err) {
     showMessage(msg, err.message, "error");
   }
