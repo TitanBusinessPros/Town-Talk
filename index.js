@@ -415,14 +415,17 @@ exports.onNewSignup = onDocumentCreated(
 );
 
 // -----------------------------------------------------------------------
-// Emails the MEMBER once an admin approves their profile — the promise
-// made on the Dashboard's "may take up to 24 hours" notice (see
-// index.html's profile-approval-notice). Fires on any approved: false/
-// undefined -> true transition, not just the very first one, so a
-// resubmission-driven re-approval after an edit gets its own email too —
-// matches that same notice's wording literally ("once approved"), not
-// just "once, the first time ever". Deliberately does nothing for a
-// rejection — see sendProfileApprovedEmail's own comment for why.
+// Emails the MEMBER once an admin approves their profile after a
+// SafeSearch flag — this is now the ONLY case this fires for. Everyone
+// else auto-approves instantly client-side (see index.html's
+// #profile-form handler), which never produces an approved: false/
+// undefined -> true UPDATE for an existing normal doc to react to in the
+// first place. The rare exception is exactly this flow: checkImageSafeSearch
+// flags a photo (approved: false, safeSearchFlag.flagged: true), an admin
+// reviews it and approves (approved: true, safeSearchFlag.flagged: false,
+// same write — see renderAdminCard's approve handler) — that transition is
+// what this watches for. Deliberately does nothing for a rejection — see
+// sendProfileApprovedEmail's own comment for why.
 // -----------------------------------------------------------------------
 exports.onProfileApproved = onDocumentUpdated(
   { document: "users/{uid}", secrets: [resendApiKey] },
@@ -430,6 +433,7 @@ exports.onProfileApproved = onDocumentUpdated(
     const before = event.data?.before?.data();
     const after = event.data?.after?.data();
     if (!before || !after) return;
+    if (before.safeSearchFlag?.flagged !== true) return; // not a flagged-then-approved transition
     if (before.approved === true || after.approved !== true) return; // not a real false/undefined -> true transition
     if (!after.email) return;
 
