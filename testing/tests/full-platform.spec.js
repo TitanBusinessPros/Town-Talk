@@ -151,11 +151,37 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await expect(pageB.locator("#profile-form")).toBeVisible({ timeout: 45_000 });
   });
 
+  test("Admin is NOT notified yet — Robot B has signed in but hasn't submitted a profile", async () => {
+    // At this point users/{uidB} only has whatever beforeSignInBlocking's
+    // IP-stamp + index.html's own signup handler wrote (lastKnownIp,
+    // email, createdAt) — no profile field yet, since that only lands once
+    // the profile form below actually gets submitted. onNewSignup (the
+    // create trigger) intentionally skips notifying anyone when profile is
+    // missing — confirms the false-alarm bug fixed 2026-08-15 (every
+    // signup, bot or human, used to trigger this instantly) stays fixed.
+    await pageA.locator("#nav-notifications").click();
+    await expect(pageA.locator(".notif-bell-item", { hasText: ROBOT_B.name })).toHaveCount(0);
+    await pageA.locator("#nav-dashboard").click();
+  });
+
   test("Both robots fill in their profile and submit a post", async () => {
     await fillBasicsAndPost(pageA, ROBOT_A);
     await fillBasicsAndPost(pageB, ROBOT_B);
     await expect(pageA.locator("#profile-message")).toContainText("Saved");
     await expect(pageB.locator("#profile-message")).toContainText("Saved");
+  });
+
+  test("Admin IS notified now that Robot B actually submitted a profile", async () => {
+    // The other half of the same fix: onProfileSubmitted (the update
+    // trigger, fires the first time `profile` appears on the doc) is what
+    // actually sends the alert now — confirming it still arrives once
+    // there's a real profile to approve, not just that it stays silent
+    // forever. Robot A never gets notified about its OWN signup either way
+    // (notifyAdminsOfSignup filters that out), so this only checks for an
+    // entry about Robot B.
+    await pageA.locator("#nav-notifications").click();
+    await expect(pageA.locator(".notif-bell-item", { hasText: ROBOT_B.name })).toContainText("signed up", { timeout: 20_000 });
+    await pageA.locator("#nav-dashboard").click();
   });
 
   test("Post-form rejects a too-long post and a post with a phone number", async () => {

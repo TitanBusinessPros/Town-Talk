@@ -328,11 +328,24 @@ exports.onAirHockeyInvite = makeGameInviteTrigger("airHockeyGames");
 // it used to, it would fire for 100% of signups — bot or human,
 // profile or not — the instant they sign in, which is exactly the
 // "alert with no profile to approve" false alarm this was rewritten to
-// stop. The real profile write (profile-form's submit handler in
-// index.html) always lands afterward as an UPDATE to that same doc, so
-// onProfileSubmitted below is what actually fires the alert now.
-// onNewSignup is kept only as a safety net for some future path that
-// creates users/{uid} with a profile already attached in one write.
+// stop. onNewSignup is kept only as a safety net for some future path
+// that creates users/{uid} with a real name already attached in one write.
+//
+// The actual signal is profile.NAME specifically, not merely the
+// presence of a `profile` object — signInWithPopup's own handler (the
+// very next write after the IP-stamp, still well before anyone reaches
+// the profile form) already sets `profile: { name: "", neighborhood: "" }`
+// as a blank starting draft, same shape watchUserDoc's self-heal path
+// uses. That object is truthy, so a plain `!after.profile` check (what
+// this shipped with 2026-08-15) treated the blank draft as "already had
+// a profile" — firing the alert immediately with the "A new user"
+// fallback, then skipping the REAL submission later because `before.profile`
+// was already truthy by then. Caught this the same day via the
+// permanent Playwright spec added right after (see full-platform.spec.js's
+// two "Admin is/isn't notified" tests) — the profile-form's own submit
+// handler always requires a non-empty trimmed name before it'll write at
+// all, so before/after on .name specifically is the correct, unambiguous
+// transition to watch instead.
 // -----------------------------------------------------------------------
 async function notifyAdminsOfSignup(uid, name) {
   const adminsSnap = await db.collection("admins").get();
@@ -357,9 +370,9 @@ exports.onNewSignup = onDocumentCreated(
   "users/{uid}",
   async (event) => {
     const newUser = event.data?.data();
-    if (!newUser?.profile) return; // no profile yet — just beforeSignInBlocking's IP stamp; see comment above
+    if (!newUser?.profile?.name) return; // no real name yet — just the IP stamp (or a blank draft profile); see comment above
     const { uid } = event.params;
-    await notifyAdminsOfSignup(uid, newUser.profile?.name || "A new user");
+    await notifyAdminsOfSignup(uid, newUser.profile.name);
   }
 );
 
@@ -369,9 +382,9 @@ exports.onProfileSubmitted = onDocumentUpdated(
     const before = event.data?.before?.data();
     const after = event.data?.after?.data();
     if (!before || !after) return;
-    if (before.profile || !after.profile) return; // only the first time a profile appears
+    if (before.profile?.name || !after.profile?.name) return; // only the first time a REAL (non-blank) name appears
     const { uid } = event.params;
-    await notifyAdminsOfSignup(uid, after.profile?.name || "A new user");
+    await notifyAdminsOfSignup(uid, after.profile.name);
   }
 );
 
