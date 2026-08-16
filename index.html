@@ -1173,7 +1173,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div class="view-header">
       <p class="eyebrow">Legal</p>
       <h1>Terms of Service</h1>
-      <p class="field-hint">Last updated: July 25, 2026</p>
+      <p class="field-hint">Last updated: August 16, 2026</p>
     </div>
 
     <div class="card" style="text-align:left; max-width:760px; margin:0 auto;">
@@ -1192,7 +1192,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       <p>2.5 You may delete your account at any time through your dashboard. Deletion is permanent. Your profile, posts, photos, and message history tied to that account will be removed from public view, subject to our data-retention and legal obligations.</p>
 
       <h3>3. User Content and Conduct</h3>
-      <p>3.1 All profile information, posts, photos, and other content are subject to review and approval by our administrators before appearing publicly. We reserve the right, at our sole discretion and for any reason or no reason, to reject, remove, edit, or require changes to any content, or to suspend or terminate any account, without prior notice or liability.</p>
+      <p>3.1 Profile information, business listings, and photos you submit are generally made visible automatically. Uploaded photos are automatically screened for explicit, violent, or otherwise inappropriate content before this happens; content that is flagged by this automated screening, or later reported by another user, is held or removed pending manual review by an administrator. Regardless of whether content was auto-approved, reviewed, or previously approved, we reserve the right, at our sole discretion and for any reason or no reason, to reject, remove, edit, or require changes to any content, or to suspend or terminate any account, at any time and without prior notice or liability.</p>
       <p>3.2 You agree not to post, upload, send, or otherwise transmit any content that:</p>
       <ul style="text-align:left; color:var(--text-muted); line-height:1.7;">
         <li>is obscene, profane, hateful, discriminatory, harassing, threatening, or violent;</li>
@@ -1267,39 +1267,40 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div class="view-header">
       <p class="eyebrow">Legal</p>
       <h1>Privacy Policy</h1>
-      <p class="field-hint">Last updated: August 6, 2026</p>
+      <p class="field-hint">Last updated: August 16, 2026</p>
     </div>
 
     <div class="card" style="text-align:left; max-width:760px; margin:0 auto;">
       <p>This Privacy Policy explains what information Town Fuss ("the Service"), operated by Titan Business Pros LLC ("Company," "we," "us," or "our"), collects, why we collect it, who we share it with, and the choices you have. By using the Service you agree to the collection and use of information as described here. This Policy should be read together with our <a href="#" id="privacy-terms-link">Terms of Service</a>.</p>
 
       <h3>1. Information We Collect</h3>
-      <p>1.1 Account information. When you create an account, we collect your email address and password (stored by our authentication provider, Firebase Authentication, in hashed form — we never see or store your plaintext password). If you sign in with Google instead, we receive your name, email address, and profile photo from Google, limited to basic profile information. We also record your self-reported confirmation that you are 18 or older, and the date you agreed to our Terms of Service. We do not independently verify age or identity.</p>
-      <p>1.2 Profile content. Anything you choose to add to your profile — display name, town/neighborhood, uploaded photos, and post/bio text — is collected and, once approved, shown to other approved members.</p>
-      <p>1.3 IP address. We record the IP address associated with your device on every sign-in. This is used specifically to enforce account bans: if an administrator removes an account for a serious violation, the associated IP address is blocked from creating or signing into any account going forward. We retain a record of blocked IP addresses, including when the block was applied and which administrator applied it.</p>
-      <p>1.4 Communications. We collect the content of private messages you send to other members, messages you post in town chat rooms (which are visible to other members of that room, not private), and any reports you file about another user or their content, including the reason selected, any additional details you provide, and the message text quoted in the report, if applicable.</p>
-      <p>1.5 Payment information. We use Stripe to process payments for Gold and Diamond memberships and business listings. We never receive or store your card number or other raw payment details — Stripe handles that directly. We do store a Stripe-issued customer identifier, your membership tier, and payment/renewal dates, so we know what you've paid for and when it expires.</p>
-      <p>1.6 Usage and device information. We record when you were last active, your game statistics (scores, wins, losses) if you play, and — if you enable notifications — a device push-notification token used to deliver alerts. This token identifies your device/browser for notification delivery only.</p>
-      <p>1.7 Automated collection. The Service uses Google reCAPTCHA in the background on every page to help distinguish real users from automated bots and abuse. reCAPTCHA collects device and interaction signals as part of that process, governed by Google's own privacy policy.</p>
+      <p>1.1 Account information. Town Fuss accounts are created and signed into using Google Sign-In only — we do not offer a separate email/password signup, and we never see or store a password. When you sign in with Google, we receive your name, email address, and profile photo from Google, limited to basic profile information. We also record your self-reported confirmation that you are 18 or older, and the date you agreed to our Terms of Service. We do not independently verify age or identity.</p>
+      <p>1.2 Profile content. Anything you choose to add to your profile — display name, town/neighborhood, uploaded photos, and post/bio text — is collected and shown to other approved members once your profile is visible (see Section 1.3 for how photo uploads are screened, and our Terms of Service for how content becomes visible).</p>
+      <p>1.3 Automated photo screening. Photos you upload to your profile or a business listing are automatically scanned using Google Cloud Vision's SafeSearch detection before being shown publicly, to check for explicit, violent, or otherwise inappropriate content. Uploads that are not flagged are made visible automatically; flagged uploads are held for manual review by an administrator, who is alerted along with the reason the upload was flagged.</p>
+      <p>1.4 IP address. We record the IP address associated with your device on every sign-in. This is used specifically to enforce account bans: if an administrator removes an account for a serious violation, the associated IP address is blocked from creating or signing into any account going forward. We retain a record of blocked IP addresses, including when the block was applied and which administrator applied it.</p>
+      <p>1.5 Communications. We collect the content of private messages you send to other members, messages you post in town chat rooms (which are visible to other members of that room, not private), and any reports you file about another user or their content, including the reason selected, any additional details you provide, and the message text quoted in the report, if applicable.</p>
+      <p>1.6 Payment information. We use Stripe to process payments for Gold and Diamond memberships (monthly or annual) and business listings. We never receive or store your card number or other raw payment details — Stripe handles that directly. We do store a Stripe-issued customer identifier, your membership tier, and payment/renewal dates, so we know what you've paid for and when it expires.</p>
+      <p>1.7 Usage and device information. We record when you were last active, your game statistics (scores, wins, losses) if you play, and — if you enable notifications — a device push-notification token used to deliver alerts. This token identifies your device/browser for notification delivery only.</p>
+      <p>1.8 Automated collection. The Service uses Google reCAPTCHA in the background on every page to help distinguish real users from automated bots and abuse. reCAPTCHA collects device and interaction signals as part of that process, governed by Google's own privacy policy.</p>
 
       <h3>2. How We Use Information</h3>
-      <p>2.1 To create and administer your account, verify your email, and review profiles/content before they appear publicly.</p>
+      <p>2.1 To create and administer your account, verify your email, and automatically or manually review profiles/content, as described in Section 1.3 and our Terms of Service, before they appear publicly.</p>
       <p>2.2 To operate core features: the Feed, Directory, Messages, Friends, Chat Rooms, Business listings, and games.</p>
-      <p>2.3 To enforce these policies and our Terms of Service, including reviewing reports, moderating content, and — for serious violations — disabling an account and blocking the associated IP address from returning.</p>
-      <p>2.4 To send you notifications you've opted into (game invites, first messages, chat reactions) and, if applicable, service-related emails (verification, password reset, payment receipts).</p>
+      <p>2.3 To enforce these policies and our Terms of Service, including automated photo screening, reviewing reports, moderating content, and — for serious violations — disabling an account and blocking the associated IP address from returning.</p>
+      <p>2.4 To send you notifications you've opted into (game invites, first messages, chat reactions) and, if applicable, service-related emails (verification, payment receipts).</p>
       <p>2.5 To process payments and manage memberships and business listings through Stripe.</p>
       <p>2.6 To maintain the security, integrity, and reliability of the Service, including detecting and preventing fraud, abuse, and bot activity.</p>
 
       <h3>3. How We Share Information</h3>
       <p>3.1 We do not sell your personal information.</p>
-      <p>3.2 We share information with service providers who help us operate the Service, each acting under their own privacy and security practices: Google Firebase/Google Cloud (hosting, authentication, database, file storage, and push notifications), Stripe (payment processing), Google reCAPTCHA (bot/abuse detection), and GitHub (hosting the Service's static site).</p>
+      <p>3.2 We share information with service providers who help us operate the Service, each acting under their own privacy and security practices: Google Firebase/Google Cloud (hosting, authentication, database, file storage, push notifications, and automated photo screening via Cloud Vision), Stripe (payment processing), Google reCAPTCHA (bot/abuse detection), and GitHub (hosting the Service's static site).</p>
       <p>3.3 Content you post publicly — an approved profile, a public post, a chat room message — is visible to other approved members of the Service by design.</p>
       <p>3.4 We may disclose information if required by law, subpoena, or other legal process, or if we believe in good faith that disclosure is necessary to protect the rights, property, or safety of the Company, our users, or the public.</p>
       <p>3.5 If the Company is involved in a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction; we will provide notice before your information becomes subject to a different privacy policy.</p>
 
       <h3>4. Data Retention</h3>
       <p>4.1 If your account is deleted (by you or by an administrator), your profile is archived privately for 10 days — during which an administrator may restore it — and then permanently purged, including your Firebase Authentication account.</p>
-      <p>4.2 We maintain a full backup of Authentication account records (email addresses, hashed passwords, and related account metadata) for up to 30 days, for disaster-recovery purposes only. This backup is not accessible to any client application and is stored separately from your public profile.</p>
+      <p>4.2 We maintain a full backup of Authentication account records (email address and related account metadata, as provided by Google Sign-In) for up to 30 days, for disaster-recovery purposes only. This backup is not accessible to any client application and is stored separately from your public profile.</p>
       <p>4.3 Blocked IP address records are retained indefinitely, since their purpose is to permanently prevent a banned individual from rejoining the Service.</p>
       <p>4.4 Messages, chat room posts, and reports are retained for as long as your account (or, for reports, the underlying case) remains open, unless you delete specific content yourself where the Service allows it.</p>
 
