@@ -161,28 +161,8 @@ async function logInAppNotification(uid, { type, title, body, clickAction }) {
   }
 }
 
-// Admin-directed notification types get logged in-app the same as
-// anything else, but only "signup" is allowed to actually buzz an
-// admin's phone — per the admin's own explicit preference (2026-08-16):
-// stay pinged for new signups specifically, but don't get paged for
-// every SafeSearch flag too. "safesearch" is the only OTHER
-// admin-directed type (see checkImageSafeSearch above) — it's never sent
-// to anyone but admins in the first place, so gating on the type alone
-// is enough here, no separate "is this recipient an admin" lookup
-// needed. This deliberately does NOT touch invite/game_invite/message/
-// reaction/reply/daily_reward_win — an admin's own personal activity
-// (a friend's DM, a game invite, a like on their post) pushes exactly
-// like it would for anyone else.
-const ADMIN_ALERT_PUSH_ALLOWLIST = new Set(["signup"]);
-const ADMIN_DIRECTED_TYPES = new Set(["signup", "safesearch"]);
-
 async function sendPushToUser(uid, { type, title, body, clickAction }) {
   await logInAppNotification(uid, { type, title, body, clickAction });
-
-  if (ADMIN_DIRECTED_TYPES.has(type) && !ADMIN_ALERT_PUSH_ALLOWLIST.has(type)) {
-    console.log(`sendPushToUser(${uid}, ${type}): admin-directed type not on the push allowlist — in-app only`);
-    return;
-  }
 
   const userSnap = await db.collection("users").doc(uid).get();
   if (!userSnap.exists) {
