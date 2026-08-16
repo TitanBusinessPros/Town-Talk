@@ -130,11 +130,15 @@ test.describe.serial("Stacking Checkers — deep functional pass", () => {
     // Giving it a moment to settle, then retrying the select-click once
     // if it didn't actually select, covers both the timing race and
     // (redundantly, harmlessly) an ordinary slow-click miss.
-    await pageA.waitForTimeout(1000);
-    await pageA.locator('[data-row="2"][data-col="1"]').click();
-    if (!(await pageA.locator('[data-row="2"][data-col="1"]').getAttribute("class"))?.includes("square-selected")) {
+    // A single one-shot retry wasn't enough under heavy full-suite load
+    // (still flaked some runs) — toPass() keeps retrying the whole
+    // click-and-check on its own backoff schedule until it actually
+    // lands or the budget runs out, rather than trying exactly twice.
+    await expect(async () => {
       await pageA.locator('[data-row="2"][data-col="1"]').click();
-    }
+      const cls = await pageA.locator('[data-row="2"][data-col="1"]').getAttribute("class");
+      expect(cls).toContain("square-selected");
+    }).toPass({ timeout: 15_000 });
     await pageA.locator('[data-row="3"][data-col="0"]').click();
 
     await pageB.waitForTimeout(2000);
