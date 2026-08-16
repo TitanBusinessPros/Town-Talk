@@ -181,9 +181,18 @@ async function sendPushToUser(uid, { type, title, body, clickAction }) {
     return;
   }
 
+  // Real unread count at send time (includes the one logInAppNotification
+  // just added above) — carried in the data payload so the service worker
+  // can set the home-screen icon's badge number correctly even while the
+  // app is fully closed, not just while it's open and the live
+  // watchNotificationBell() listener in index.html can compute it itself.
+  // FCM data payload values must be strings, not numbers.
+  const unreadSnap = await db.collection("users").doc(uid).collection("notifications").where("read", "==", false).count().get();
+  const badgeCount = String(unreadSnap.data().count);
+
   const message = {
     notification: { title, body },
-    data: { click_action: clickAction || "/" },
+    data: { click_action: clickAction || "/", badgeCount },
     tokens,
   };
 

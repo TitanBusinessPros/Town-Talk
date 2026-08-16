@@ -28,6 +28,32 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Explicit background handler — needed for two things a plain
+// notification-payload message can't do on its own: setting the home-
+// screen icon's badge number (Badging API, navigator.setAppBadge/
+// clearAppBadge — added 2026-08-16 so the badge reflects a real unread
+// count instead of relying on however the OS happens to track the
+// notification shade, which wasn't clearing reliably), and reading the
+// badgeCount index.js now includes in the data payload (see
+// sendPushToUser). Defining this handler takes over notification display
+// from Firebase's own default behavior, so this also does what that
+// default would have done — show the actual system notification —
+// itself.
+messaging.onBackgroundMessage((payload) => {
+  const badgeCount = payload.data?.badgeCount;
+  if (badgeCount !== undefined && self.navigator?.setAppBadge) {
+    const n = parseInt(badgeCount, 10);
+    (n > 0 ? self.navigator.setAppBadge(n) : self.navigator.clearAppBadge()).catch(() => {});
+  }
+  const { title, body } = payload.notification || {};
+  if (!title) return; // data-only message, nothing to show
+  self.registration.showNotification(title, {
+    body,
+    icon: "/icons/icon-192.png",
+    data: payload.data,
+  });
+});
+
 // Clicking the notification focuses an existing Town Fuss tab if one is
 // open, or opens a new one otherwise, instead of always spawning a new tab.
 self.addEventListener("notificationclick", (event) => {

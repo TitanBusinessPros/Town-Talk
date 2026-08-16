@@ -6913,6 +6913,19 @@ function renderNotifBellBadge(count) {
     badge.style.display = "none";
     link.classList.remove("has-unread");
   }
+
+  // Home-screen icon badge (Badging API) — same live unread count driving
+  // the in-app bell above, so it's always accurate and clears itself the
+  // moment something gets marked read here, not dependent on the person
+  // finding and dismissing the actual OS notification in their shade
+  // (confirmed real gap 2026-08-16: a delivered push's badge stayed stuck
+  // at 1 even after the admin visited the page and read it in-app,
+  // because those two things had never been connected before). Not every
+  // browser supports this (desktop Firefox, for one) — feature-detect
+  // rather than assume.
+  if (navigator.setAppBadge) {
+    (count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(() => {});
+  }
 }
 
 function watchNotificationBell(uid) {
