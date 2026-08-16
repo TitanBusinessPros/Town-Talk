@@ -245,7 +245,16 @@ const EDITIONS = {
       messagingSenderId: "220339095620",
       appId: "1:220339095620:web:c38a7d61123d316d05d411",
     },
-    vapidKey: "BBFN-1SZuxWlfm4cAQf_NHecI1eILnv7cYVDT3Q7gQDI0kFFFt3RReAEyvunlyj_GX9759dNCUPGoNbqQHTmPgI",
+    // Regenerated 2026-08-16 — the original key (same string on both the
+    // Firebase Console display and in this file, confirmed identical, and
+    // confirmed working correctly for both Installations and FCM
+    // registration when called directly via REST) still failed
+    // specifically at the browser's own pushManager.subscribe() step with
+    // "messaging/token-subscribe-failed" on two separate devices. Root
+    // cause was never pinned down remotely — everything server-side
+    // checked out, so this was likely a Firebase-side key-pairing glitch
+    // invisible from the outside, not a config mistake in this repo.
+    vapidKey: "BOPOkfLZQQHK61YrThwAB9dbBIpAKhEHdS2azg6KRt3CH7VnyA5DWX3y9bXMKqYPNkutdxScuBiFgEuUOimeZ0U",
     otherEditions: [
       { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
       { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },

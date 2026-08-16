@@ -1157,8 +1157,19 @@ onAuthStateChanged(auth, async (user) => {
   if (!jumpedIntoGame && !isAnyViewAlreadyShown()) showView("mode-select");
 });
 
+// Was missing view-waiting/view-leaderboard — only checked the actual
+// game wrapper, so the async init chain (checkForActiveGame, a real
+// Firestore round-trip) resolving late could forcibly showView(
+// "mode-select") right out from under someone who'd already navigated to
+// the waiting room or the leaderboard. Same bug class already fixed in
+// hearts.html/war.html on 2026-08-02 and in stacking-checkers.html
+// 2026-08-16 (where it showed up as a genuinely reproducible test
+// failure) — applying the same full-coverage fix here preemptively,
+// since this file has the identical narrow check.
 function isAnyViewAlreadyShown() {
-  return document.getElementById("seaWarWrapper").style.display === "flex";
+  return document.getElementById("seaWarWrapper").style.display === "flex"
+      || document.getElementById("view-waiting").style.display === "block"
+      || document.getElementById("view-leaderboard").style.display === "block";
 }
 
 // ============================= VIEW ROUTER ====================================

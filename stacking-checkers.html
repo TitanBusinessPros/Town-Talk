@@ -1062,8 +1062,22 @@ onAuthStateChanged(auth, async (user) => {
   if (!jumpedIntoGame && !isAnyViewAlreadyShown()) showView("mode-select");
 });
 
+// Was missing view-difficulty/view-waiting/view-leaderboard — only
+// checked the actual game wrapper, so the async init chain above
+// (reconcileFinishedStackGames + checkForActiveGame, both real Firestore
+// round-trips) resolving late could forcibly showView("mode-select")
+// right out from under someone who'd already clicked through to the
+// difficulty picker, the waiting room, or the leaderboard, kicking them
+// back to the start mid-selection. Same bug class already fixed in
+// hearts.html/war.html on 2026-08-02 — this file's own copy of the guard
+// just never got the same full coverage. Confirmed as a real (not just
+// test-only) bug 2026-08-16 via a genuinely reproducible Playwright
+// failure, not sustained-load flakiness.
 function isAnyViewAlreadyShown() {
-  return document.getElementById("stackWrapper").style.display === "flex";
+  return document.getElementById("stackWrapper").style.display === "flex"
+      || document.getElementById("view-difficulty").style.display === "block"
+      || document.getElementById("view-waiting").style.display === "block"
+      || document.getElementById("view-leaderboard").style.display === "block";
 }
 
 // ============================= VIEW ROUTER =================================
