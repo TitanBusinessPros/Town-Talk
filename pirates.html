@@ -2,7 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- maximum-scale=1, user-scalable=no is required here, not just nice-to-
+     have: without it, a real phone's browser (Safari in particular) treats
+     a two-finger pinch as ITS OWN native page-zoom gesture and can consume
+     it before the canvas's touchmove handlers ever see it — the game's own
+     pinch-to-zoom code can be 100% correct and still visibly do nothing,
+     because the browser zoomed the whole fixed-position page instead.
+     touch-action:none on the canvas (see CSS below) narrows this further,
+     but on iOS specifically the viewport meta is the piece that actually
+     stops native pinch-zoom; confirmed as a real gap 2026-08-17 after a
+     pinch/pan fix that only ever ran through synthetic events dispatched
+     directly in JS (bypassing native browser gesture handling entirely)
+     tested fine but still didn't work on an actual phone. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Pirates of No Honor — Town Fuss</title>
 <link rel="icon" type="image/png" href="/Logo-Fav.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -88,6 +100,12 @@
     top: 0;
     left: 0;
     cursor: crosshair;
+    /* Set directly on the canvas, not just inherited from #pirateWrapper's
+       touch-action:none — this is the element real touches actually land
+       on, and touch-action's ancestor-propagation behavior isn't reliable
+       enough across mobile browsers to depend on for the element doing
+       the actual gesture handling. */
+    touch-action: none;
 }
 
 .hud {
