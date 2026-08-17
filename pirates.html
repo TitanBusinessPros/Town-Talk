@@ -296,24 +296,51 @@
     transform: scale(1.1);
 }
 
-.controls-info {
+/* "How to Play" — replaces the old always-on .controls-info bar, which
+   showed mouse/keyboard instructions unconditionally on every device,
+   including phones with no mouse or keyboard at all. Same collapsible
+   header/content pattern as .hud/.build-menu, starts collapsed (it's
+   reference material, not live game state, so it shouldn't cost screen
+   space until someone actually wants it) and its content is filled in by
+   JS with touch-specific or mouse-specific instructions depending on the
+   actual device — see IS_TOUCH_DEVICE below. */
+.help-panel {
     position: absolute;
-    top: 10px;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.7);
-    padding: 8px 15px;
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 10px;
     border: 2px solid #ffd700;
     z-index: 100;
-    font-size: 12px;
-    text-align: center;
+    max-width: min(92vw, 480px);
 }
-
-.controls-info span {
-    margin: 0 10px;
+.help-panel-header {
+    padding: 8px 14px;
+    background: linear-gradient(45deg, #1a472a, #2d5a3d);
+    border-radius: 7px 7px 0 0;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
     color: #ffd700;
+    font-weight: bold;
+    font-size: 13px;
+    white-space: nowrap;
 }
+.help-panel-toggle { font-weight: bold; }
+.help-panel-content {
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #ffd700;
+    text-align: left;
+    max-height: 40vh;
+    overflow-y: auto;
+}
+.help-panel-content.collapsed { display: none; }
+.help-panel-content div { margin: 3px 0; }
 
 .selection-box {
     position: absolute;
@@ -322,18 +349,6 @@
     pointer-events: none;
     z-index: 150;
     display: none;
-}
-
-.zoom-controls {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    padding: 10px;
-    border-radius: 8px;
-    border: 2px solid #ffd700;
-    z-index: 100;
 }
 
 /* Live "who's still standing" strip — online matches only. */
@@ -355,9 +370,13 @@
 .mp-roster .mp-roster-row.me { color: #ffd700; }
 
 .pirate-back-btn {
+    /* Bottom-left is the one corner nothing else ever uses (HUD is
+       top-left, build-menu top-right, help-panel bottom-center, mp-roster
+       bottom-right) — no more guessing a "right: 300px" offset that only
+       happened to clear the build-menu at one particular screen width. */
     position: absolute;
-    top: 10px;
-    right: 300px;
+    bottom: 10px;
+    left: 10px;
     z-index: 110;
     padding: 8px 16px;
     background: #2c3e50;
@@ -368,9 +387,30 @@
     font-weight: bold;
     font-size: 13px;
 }
-@media (max-width: 900px) {
-  .pirate-back-btn { position: static; margin: 6px; }
-  .build-menu { max-width: 90vw; }
+
+/* Narrow screens (most phones in portrait): the HUD and build-menu were
+   sized for a desktop corner each and collide/overflow at ~390px wide —
+   confirmed as the "can't see all the info correctly" complaint
+   2026-08-17. Shrink both, and (see initCollapsiblePanelsForScreenSize()
+   in the script below) start them collapsed on first load so nothing
+   overlaps before the player has even chosen to open one. */
+@media (max-width: 600px) {
+  .hud { min-width: 0; max-width: 46vw; }
+  .hud-header { padding: 8px 10px; }
+  .hud-header-content { gap: 8px; flex-wrap: wrap; }
+  .hud-content { padding: 8px 10px; }
+  .hud-item { font-size: 12px; margin: 4px 0; }
+  .timer { font-size: 16px; }
+
+  .build-menu { max-width: 46vw; }
+  .build-menu-header { padding: 8px 10px; }
+  .build-menu-header h3 { font-size: 13px; }
+  .build-menu-content { padding: 8px 10px; max-height: 55vh; }
+  .build-button { padding: 8px; font-size: 11px; margin: 5px 0; }
+  .button-cost { font-size: 10px; }
+  .button-stats { font-size: 8px; }
+
+  .mp-roster { max-width: 40vw; font-size: 11px; padding: 6px 8px; }
 }
 </style>
 </head>
@@ -548,13 +588,6 @@
             </div>
         </div>
 
-        <div class="controls-info">
-            <span>🖱️ Right-Click Drag: Pan Map</span>
-            <span>⌨️ WASD/Arrows: Move Camera</span>
-            <span>🖱️ Scroll: Zoom</span>
-            <span>📦 Left-Click Drag: Select Multiple Ships</span>
-        </div>
-
         <div class="selection-box" id="selectionBox"></div>
 
         <div class="build-menu">
@@ -602,8 +635,12 @@
 
         <div class="mp-roster" id="mpRoster"></div>
 
-        <div class="zoom-controls">
-            <span style="color: #ffd700; font-size: 14px;">📱 Pinch to zoom, drag empty water to pan | 🖱️ Mouse wheel to zoom, right-click drag to pan</span>
+        <div class="help-panel" id="helpPanel">
+            <div class="help-panel-header" id="helpPanelHeader">
+                <span>❓ How to Play</span>
+                <span class="help-panel-toggle" id="helpPanelToggle">▶</span>
+            </div>
+            <div class="help-panel-content collapsed" id="helpPanelContent"></div>
         </div>
 
         <div class="message-box" id="messageBox">
@@ -915,6 +952,7 @@ let aiSelectedUnits = [];
 
 function aiInitGame() {
   gameState.active = true;
+  collapseHudPanelsIfNarrowScreen();
   gameState.fogOfWar = Array(Math.ceil(MAP_HEIGHT / CELL_SIZE)).fill(null)
     .map(() => Array(Math.ceil(MAP_WIDTH / CELL_SIZE)).fill(true));
 
@@ -1676,6 +1714,7 @@ function mpOpenGame(gameId, asHost) {
   document.getElementById('pirateWrapper').style.display = 'block';
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  collapseHudPanelsIfNarrowScreen();
   document.getElementById('stageLine').style.display = 'none';
   document.getElementById('enemyGoldLine').style.display = 'none';
   document.getElementById('enemyShipCountLine').style.display = 'none';
@@ -1992,13 +2031,13 @@ canvas.addEventListener('mouseup', (e) => {
 
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// Mobile touch handling — three real gestures, not just the one tap
+// Mobile touch handling — four real gestures, not just the one tap
 // handler the source ever had (which is why mobile "did nothing but sit
 // there": there was no way to pan or zoom the map at all, and the
 // "Pinch to Zoom on Mobile" label under the game was never backed by any
 // actual pinch-handling code, in the source OR in the first port of it
 // here — copied the label forward without wiring up the gesture behind
-// it. Confirmed broken live 2026-08-17, fixed for real below:
+// it). Confirmed broken live 2026-08-17, fixed for real below:
 //   1. Two-finger pinch: zoom in/out, anchored on the midpoint between
 //      the two fingers (same anchor-preserving math as the desktop wheel
 //      zoom, just driven by pinch distance instead of scroll delta).
@@ -2006,12 +2045,19 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 //      mobile equivalent of desktop's right-click-drag, which has no
 //      touch equivalent otherwise.
 //   3. One-finger tap on a ship: select it, same as before. One-finger
-//      HOLD (not drag) with units already selected: move them there,
-//      same as before.
+//      HOLD (not drag) on open water WITH units already selected: move
+//      them there, same as before.
+//   4. One-finger HOLD (not drag) on open water with NOTHING selected,
+//      then dragging while still down: draws a box-select over multiple
+//      ships (the touch equivalent of desktop's click-drag box-select,
+//      requested explicitly 2026-08-17 — there was previously no way to
+//      select more than one ship at a time on a phone at all).
 // A single touch starts in 'pending' state and only commits to 'pan'
-// once it's moved more than a few pixels — short of that threshold it's
-// still eligible to resolve as a tap or a long-press-hold instead.
-let touchMode = null; // null | 'pending' | 'pan' | 'pinch'
+// once it's moved more than a few pixels before the hold timer fires —
+// short of that threshold it's still eligible to resolve as a tap, a
+// long-press-move, or (once the hold timer actually fires with nothing
+// selected) a box-select instead.
+let touchMode = null; // null | 'pending' | 'pan' | 'pinch' | 'boxselect'
 let touchHoldTimer = null;
 let pinchStartDist = 0, pinchStartZoom = 1;
 let panLastClientX = 0, panLastClientY = 0;
@@ -2063,8 +2109,19 @@ canvas.addEventListener('touchstart', (e) => {
   touchHoldTimer = setTimeout(() => {
     if (touchMode !== 'pending') return; // moved enough to become a pan in the meantime
     const sel = currentSelectedList();
-    if (sel.length > 0) issueMove(sel, pendingWorldX, pendingWorldY);
-    touchMode = null;
+    if (sel.length > 0) {
+      issueMove(sel, pendingWorldX, pendingWorldY);
+      touchMode = null;
+    } else {
+      // Nothing selected — arm box-select instead of a no-op. Reuses the
+      // exact same selectionBox element and world-space filter desktop's
+      // mousedown/mousemove/mouseup drag-select already uses.
+      touchMode = 'boxselect';
+      selectionBox.style.left = pendingStartScreenX + 'px';
+      selectionBox.style.top = pendingStartScreenY + 'px';
+      selectionBox.style.width = '0px'; selectionBox.style.height = '0px';
+      selectionBox.style.display = 'block';
+    }
   }, 500);
 }, { passive: false });
 
@@ -2098,16 +2155,41 @@ canvas.addEventListener('touchmove', (e) => {
     cam.cameraX = Math.max(0, Math.min(MAP_WIDTH - canvas.width / cam.zoom, cam.cameraX));
     cam.cameraY = Math.max(0, Math.min(MAP_HEIGHT - canvas.height / cam.zoom, cam.cameraY));
     panLastClientX = touch.clientX; panLastClientY = touch.clientY;
+    return;
+  }
+  if (touchMode === 'boxselect') {
+    const screenX = touch.clientX - rect.left, screenY = touch.clientY - rect.top;
+    selectionBox.style.left = Math.min(pendingStartScreenX, screenX) + 'px';
+    selectionBox.style.top = Math.min(pendingStartScreenY, screenY) + 'px';
+    selectionBox.style.width = Math.abs(screenX - pendingStartScreenX) + 'px';
+    selectionBox.style.height = Math.abs(screenY - pendingStartScreenY) + 'px';
   }
 }, { passive: false });
 
 canvas.addEventListener('touchend', (e) => {
   if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; }
+  if (touchMode === 'boxselect' && e.touches.length === 0) {
+    const cam = activeCamera();
+    const rect = canvas.getBoundingClientRect();
+    const boxLeft = parseFloat(selectionBox.style.left), boxTop = parseFloat(selectionBox.style.top);
+    const boxRight = boxLeft + parseFloat(selectionBox.style.width), boxBottom = boxTop + parseFloat(selectionBox.style.height);
+    // Screen-space box -> world-space bounds, same conversion every other
+    // touch/mouse coordinate in this file uses.
+    const minX = boxLeft / cam.zoom + cam.cameraX, maxX = boxRight / cam.zoom + cam.cameraX;
+    const minY = boxTop / cam.zoom + cam.cameraY, maxY = boxBottom / cam.zoom + cam.cameraY;
+    const ships = currentSelectableShips();
+    setSelectedList(ships.filter((ship) => {
+      const cx = ship.x + ship.width / 2, cy = ship.y + ship.height / 2;
+      return cx >= minX && cx <= maxX && cy >= minY && cy <= maxY;
+    }));
+    selectionBox.style.display = 'none';
+  }
   if (e.touches.length === 0) touchMode = null;
   else if (touchMode === 'pinch' && e.touches.length < 2) touchMode = null; // lifted one finger mid-pinch
 });
 canvas.addEventListener('touchcancel', () => {
   if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; }
+  if (touchMode === 'boxselect') selectionBox.style.display = 'none';
   touchMode = null;
 });
 
@@ -2162,6 +2244,53 @@ document.getElementById('buildMenuHeader').addEventListener('click', () => {
   content.classList.toggle('collapsed');
   document.getElementById('buildMenuToggle').textContent = content.classList.contains('collapsed') ? '▶' : '▼';
 });
+
+// "How to Play" — content depends on whether this is actually a touch
+// device, not just screen width (a touch laptop is still primarily
+// mouse/keyboard-driven; the real signal is whether touch events exist
+// at all). Filled in once at load, same content regardless of which mode
+// (AI/Online) is running since the gestures themselves don't differ.
+const IS_TOUCH_DEVICE = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+document.getElementById('helpPanelContent').innerHTML = IS_TOUCH_DEVICE ? `
+  <div><strong>Tap</strong> a ship to select it.</div>
+  <div><strong>Hold</strong> a spot on open water (with a ship selected) to send it there.</div>
+  <div><strong>Hold</strong> a spot on open water (nothing selected), then drag, to draw a box over multiple ships.</div>
+  <div><strong>Drag</strong> one finger on open water to pan the map.</div>
+  <div><strong>Pinch</strong> with two fingers to zoom in/out.</div>
+` : `
+  <div><strong>Left-click</strong> a ship to select it, then left-click open water to send it there.</div>
+  <div><strong>Left-click and drag</strong> on open water to box-select multiple ships.</div>
+  <div><strong>Right-click and drag</strong> to pan the map.</div>
+  <div><strong>Scroll wheel</strong> to zoom in/out.</div>
+  <div><strong>WASD / Arrow keys</strong> also pan the map.</div>
+`;
+document.getElementById('helpPanelHeader').addEventListener('click', () => {
+  const content = document.getElementById('helpPanelContent');
+  content.classList.toggle('collapsed');
+  document.getElementById('helpPanelToggle').textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+});
+
+// Narrow screens (most phones in portrait) collapse the HUD and build
+// menu by default so neither one covers the map before the player has
+// even chosen to open it — same "can't see all the info correctly"
+// complaint the panel-shrinking CSS above addresses, just the other half
+// of the fix (smaller isn't enough on its own if two panels still start
+// pre-opened on a 390px-wide screen). Runs once, right when a match
+// actually starts, not on page load — no point collapsing panels for a
+// menu screen that doesn't have them yet.
+function collapseHudPanelsIfNarrowScreen() {
+  if (!window.matchMedia('(max-width: 600px)').matches) return;
+  const hudContent = document.getElementById('hudContent');
+  const buildMenuContent = document.getElementById('buildMenuContent');
+  if (!hudContent.classList.contains('collapsed')) {
+    hudContent.classList.add('collapsed');
+    document.getElementById('hudToggle').textContent = '▶';
+  }
+  if (!buildMenuContent.classList.contains('collapsed')) {
+    buildMenuContent.classList.add('collapsed');
+    document.getElementById('buildMenuToggle').textContent = '▶';
+  }
+}
 
 // Build-menu buttons dispatch to whichever mode is currently running.
 document.getElementById('buildCommand').addEventListener('click', () => {
@@ -2574,6 +2703,18 @@ window.__pirateDebugCamera = function () {
   if (gameState.active) return { zoom: gameState.zoom, cameraX: gameState.cameraX, cameraY: gameState.cameraY };
   if (mp.active) return { zoom: mp.zoom, cameraX: mp.cameraX, cameraY: mp.cameraY };
   return null;
+};
+window.__pirateDebugSelectedCount = function () {
+  return currentSelectedList().length;
+};
+// Test-only shortcut, same spirit as debugSetAirHockeyScore — skips
+// waiting on real ROUND_TIME gold ticks just to get enough gold on the
+// board to build multiple ships for a box-select test.
+window.__pirateDebugGrantGold = function (amount) {
+  if (gameState.active) gameState.gold += amount;
+};
+window.__pirateDebugShipWorldPositions = function () {
+  return currentSelectableShips().map((s) => ({ x: s.x, y: s.y, width: s.width, height: s.height }));
 };
 
 // ============================= AUTH =========================================
