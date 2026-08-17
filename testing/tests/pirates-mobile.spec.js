@@ -263,6 +263,7 @@ test.describe("Pirates of No Honor — mobile touch (pinch-zoom, drag-to-pan, bo
     const content = await page.locator("#helpPanelContent").innerHTML();
     expect(content).toContain("Tap");
     expect(content).toContain("Pinch");
+    expect(content).toContain("gold every 30s"); // requested 2026-08-18, matches ROUND_TIME
     expect(content.toLowerCase()).not.toContain("left-click");
     expect(content.toLowerCase()).not.toContain("right-click");
     expect(content.toLowerCase()).not.toContain("scroll wheel");

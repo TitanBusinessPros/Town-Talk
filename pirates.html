@@ -365,9 +365,10 @@
     font-size: 13px;
     max-width: 240px;
 }
-.mp-roster .mp-roster-row { display: flex; justify-content: space-between; gap: 10px; margin: 4px 0; }
+.mp-roster .mp-roster-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0; }
 .mp-roster .mp-roster-row.dead { opacity: 0.4; text-decoration: line-through; }
 .mp-roster .mp-roster-row.me { color: #ffd700; }
+.mp-roster-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(255,255,255,0.6); vertical-align: middle; }
 
 .pirate-back-btn {
     /* Bottom-left is the one corner nothing else ever uses (HUD is
@@ -835,12 +836,28 @@ function drawWaves(cam) {
   }
 }
 
-function drawUnit(unit, defaultImage, cam, isSelected) {
+// One color per player, maximally distinct (standard RTS convention —
+// same rough Blue/Red/Green/Yellow set most strategy games default to)
+// so up to 4 real players can tell whose ship is whose at a glance
+// instead of everyone-who-isn't-me looking identical. Requested
+// 2026-08-18 specifically for Online (Ranked) matches with more than one
+// opponent; also applied to vs Computer below (Blue you, Red the AI) so
+// the two modes share one consistent visual language rather than the AI
+// campaign looking like a completely different color scheme.
+const PLAYER_COLORS = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f']; // Blue, Red, Green, Yellow
+
+function drawUnit(unit, defaultImage, cam, isSelected, teamColor) {
   const screenX = (unit.x - cam.cameraX) * cam.zoom;
   const screenY = (unit.y - cam.cameraY) * cam.zoom;
   const width = unit.width * cam.zoom;
   const height = unit.height * cam.zoom;
   if (screenX <= -width || screenX >= canvas.width || screenY <= -height || screenY >= canvas.height) return;
+
+  if (teamColor) {
+    ctx.strokeStyle = teamColor;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(screenX - 3, screenY - 3, width + 6, height + 6);
+  }
 
   let shipImage = defaultImage;
   if (unit.shipType) {
@@ -861,17 +878,27 @@ function drawUnit(unit, defaultImage, cam, isSelected) {
     ctx.fillRect(screenX, screenY - 12 * cam.zoom, barWidth * hpPercent, barHeight);
   }
   if (isSelected) {
+    // Drawn OVER the team-color ring, at a slightly larger offset, so the
+    // gold "you selected this" highlight stays visually dominant even on
+    // top of a team ring in the same rough color family (e.g. yellow team).
     ctx.strokeStyle = '#ffd700';
     ctx.lineWidth = 3;
-    ctx.strokeRect(screenX - 5, screenY - 5, width + 10, height + 10);
+    ctx.strokeRect(screenX - 6, screenY - 6, width + 12, height + 12);
   }
 }
 
-function drawBuilding(building, cam) {
+function drawBuilding(building, cam, teamColor) {
   const screenX = (building.x - cam.cameraX) * cam.zoom;
   const screenY = (building.y - cam.cameraY) * cam.zoom;
   const width = building.width * cam.zoom;
   const height = building.height * cam.zoom;
+
+  if (teamColor) {
+    ctx.strokeStyle = teamColor;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(screenX - 3, screenY - 3, width + 6, height + 6);
+  }
+
   const img = building.type === 'base' ? images.base
     : building.type === 'command' ? images.commandCenter
     : building.type === 'dock' ? images.navyDock
@@ -1324,12 +1351,12 @@ function aiGameLoop() {
   });
 
   drawWaves(gameState);
-  drawBuilding(gameState.playerBase, gameState);
-  if (!aiIsInFog(gameState.enemyBase.x, gameState.enemyBase.y)) drawBuilding(gameState.enemyBase, gameState);
-  gameState.playerBuildings.forEach((b) => drawBuilding(b, gameState));
-  gameState.enemyBuildings.forEach((b) => { if (!aiIsInFog(b.x, b.y)) drawBuilding(b, gameState); });
-  gameState.playerShips.forEach((ship) => drawUnit(ship, images.playerShip, gameState, aiSelectedUnits.includes(ship)));
-  gameState.enemyShips.forEach((ship) => { if (!aiIsInFog(ship.x, ship.y)) drawUnit(ship, images.enemyShip, gameState, false); });
+  drawBuilding(gameState.playerBase, gameState, PLAYER_COLORS[0]);
+  if (!aiIsInFog(gameState.enemyBase.x, gameState.enemyBase.y)) drawBuilding(gameState.enemyBase, gameState, PLAYER_COLORS[1]);
+  gameState.playerBuildings.forEach((b) => drawBuilding(b, gameState, PLAYER_COLORS[0]));
+  gameState.enemyBuildings.forEach((b) => { if (!aiIsInFog(b.x, b.y)) drawBuilding(b, gameState, PLAYER_COLORS[1]); });
+  gameState.playerShips.forEach((ship) => drawUnit(ship, images.playerShip, gameState, aiSelectedUnits.includes(ship), PLAYER_COLORS[0]));
+  gameState.enemyShips.forEach((ship) => { if (!aiIsInFog(ship.x, ship.y)) drawUnit(ship, images.enemyShip, gameState, false, PLAYER_COLORS[1]); });
   gameState.ghostShips.forEach((ghost) => { if (!aiIsInFog(ghost.x, ghost.y)) drawUnit(ghost, images.ghostShip, gameState, false); });
   gameState.treasureChests.forEach((t) => { if (!aiIsInFog(t.x, t.y)) drawPowerupSprite(t, images.treasureChest, gameState); });
   gameState.healthIslands.forEach((h) => { if (!aiIsInFog(h.x, h.y)) drawPowerupSprite(h, images.healthIsland, gameState); });
@@ -1757,9 +1784,15 @@ function mpMyLivePlayer() {
 
 function mpRenderRoster(players) {
   const el = document.getElementById('mpRoster');
+  // A colored dot next to each name is what actually makes the per-player
+  // ship/building color coding (see PLAYER_COLORS/teamColor above) useful
+  // — a ring around a ship only tells you "not the same team as that
+  // other ring" unless something on screen also says which color belongs
+  // to which name.
   el.innerHTML = (players || []).map((p) => {
     const cls = 'mp-roster-row' + (!p.alive ? ' dead' : '') + (p.uid === currentUid ? ' me' : '');
-    return `<div class="${cls}">${escapeHtml(p.name)}${p.uid === currentUid ? ' (you)' : ''}<span>${Math.max(0, p.baseHp)} HP</span></div>`;
+    const dot = `<span class="mp-roster-dot" style="background:${PLAYER_COLORS[p.seat]};"></span>`;
+    return `<div class="${cls}">${dot}${escapeHtml(p.name)}${p.uid === currentUid ? ' (you)' : ''}<span>${Math.max(0, p.baseHp)} HP</span></div>`;
   }).join('');
 }
 
@@ -1791,14 +1824,16 @@ function mpRenderCommon(status, players, ghostShips, treasureChests, healthIslan
   players.forEach((p) => {
     if (!p.alive && p.uid !== (myPlayer && myPlayer.uid)) return;
     if (p.uid !== (myPlayer && myPlayer.uid) && mpIsInFog(fog, p.baseX, p.baseY)) return;
-    drawBuilding({ x: p.baseX, y: p.baseY, width: 150, height: 150, type: 'base', hp: p.baseHp, maxHp: p.baseMaxHp }, mp);
-    p.buildings.forEach((b) => { if (p.uid === (myPlayer && myPlayer.uid) || !mpIsInFog(fog, b.x, b.y)) drawBuilding(b, mp); });
+    const teamColor = PLAYER_COLORS[p.seat];
+    drawBuilding({ x: p.baseX, y: p.baseY, width: 150, height: 150, type: 'base', hp: p.baseHp, maxHp: p.baseMaxHp }, mp, teamColor);
+    p.buildings.forEach((b) => { if (p.uid === (myPlayer && myPlayer.uid) || !mpIsInFog(fog, b.x, b.y)) drawBuilding(b, mp, teamColor); });
   });
   players.forEach((p) => {
     const img = p.uid === (myPlayer && myPlayer.uid) ? images.playerShip : images.enemyShip;
+    const teamColor = PLAYER_COLORS[p.seat];
     p.ships.forEach((ship) => {
       if (p.uid !== (myPlayer && myPlayer.uid) && mpIsInFog(fog, ship.x, ship.y)) return;
-      drawUnit(ship, img, mp, selectedUnits.includes(ship));
+      drawUnit(ship, img, mp, selectedUnits.includes(ship), teamColor);
     });
   });
   ghostShips.forEach((g) => { if (!mpIsInFog(fog, g.x, g.y)) drawUnit(g, images.ghostShip, mp, false); });
@@ -2277,12 +2312,16 @@ document.getElementById('helpPanelContent').innerHTML = IS_TOUCH_DEVICE ? `
   <div><strong>Hold</strong> a spot on open water (nothing selected), then drag, to draw a box over multiple ships.</div>
   <div><strong>Drag</strong> one finger on open water to pan the map.</div>
   <div><strong>Pinch</strong> with two fingers to zoom in/out.</div>
+  <div>💰 You get <strong>+100 gold every ${ROUND_TIME}s</strong> — use it to build ships and buildings.</div>
+  <div>🎨 In Online matches, each player's ships and buildings are outlined in their own color — check the roster in the corner to see who's who.</div>
 ` : `
   <div><strong>Left-click</strong> a ship to select it, then left-click open water to send it there.</div>
   <div><strong>Left-click and drag</strong> on open water to box-select multiple ships.</div>
   <div><strong>Right-click and drag</strong> to pan the map.</div>
   <div><strong>Scroll wheel</strong> to zoom in/out.</div>
   <div><strong>WASD / Arrow keys</strong> also pan the map.</div>
+  <div>💰 You get <strong>+100 gold every ${ROUND_TIME}s</strong> — use it to build ships and buildings.</div>
+  <div>🎨 In Online matches, each player's ships and buildings are outlined in their own color — check the roster in the corner to see who's who.</div>
 `;
 document.getElementById('helpPanelHeader').addEventListener('click', () => {
   const content = document.getElementById('helpPanelContent');
