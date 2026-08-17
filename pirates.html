@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pirates of No Honor — Town Fuss</title>
+<link rel="icon" type="image/png" href="/Logo-Fav.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================================================
+   SITE-CHROME — hub/mode-select/waiting-room/leaderboard, same pattern as
+   war.html/hearts.html/stacking-checkers.html. Scoped under #site-chrome so
+   it can never collide with the game's own CSS below.
+   =========================================================================== */
+#site-chrome {
+  --ink-900: #fbf6ef; --ink-800: #ffffff; --ink-700: #f3e9db; --paper-050: #2b2420;
+  --amber-500: #c1502e; --amber-600: #9c3f22; --line: #e8dbc8; --text-muted: #8a7c6c;
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius: 14px; --radius-sm: 8px;
+  background: var(--ink-900); color: var(--paper-050); min-height: 100vh;
+}
+#site-chrome a { color: var(--amber-500); }
+#site-chrome h1, #site-chrome h2, #site-chrome h3 { font-family: var(--font-display); font-weight: 600; text-align: center; margin: 0 0 0.5em; color: var(--paper-050); }
+#site-chrome p { color: var(--text-muted); line-height: 1.6; }
+#site-chrome .page { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+#site-chrome .header-bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--line); background: var(--ink-800); }
+#site-chrome .header-bar a.brand { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; text-decoration: none; color: var(--paper-050); }
+#site-chrome .header-nav { display: flex; gap: 1.25rem; font-size: 0.9rem; }
+#site-chrome .header-nav button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; padding: 0; }
+#site-chrome .header-nav button.active { color: var(--amber-500); font-weight: 600; }
+#site-chrome .uicard { background: var(--ink-800); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+#site-chrome .eyebrow { font-family: var(--font-mono); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--amber-500); text-align: center; display: block; margin-bottom: 0.5rem; }
+#site-chrome button.site-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.6rem 1.1rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 600; cursor: pointer; background: var(--amber-500); color: #fff; }
+#site-chrome button.site-btn:hover { background: var(--amber-600); }
+#site-chrome button.site-btn.secondary { background: transparent; border: 1px solid var(--line); color: var(--paper-050); }
+#site-chrome button.site-btn.small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+#site-chrome .table-row, #site-chrome .invite-row, #site-chrome .friend-row, #site-chrome .leader-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--line); }
+#site-chrome .table-row > span:first-child, #site-chrome .invite-row > span:first-child, #site-chrome .friend-row > span:first-child, #site-chrome .leader-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+#site-chrome .table-row > span:last-child, #site-chrome .invite-row > span:last-child, #site-chrome .friend-row > span:last-child, #site-chrome .leader-row > span:last-child { flex: 0 0 auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+#site-chrome .table-row:last-child, #site-chrome .invite-row:last-child, #site-chrome .friend-row:last-child, #site-chrome .leader-row:last-child { border-bottom: none; }
+#site-chrome .leader-rank { font-family: var(--font-mono); font-weight: 700; color: var(--amber-500); width: 2rem; }
+#site-chrome .empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+#site-chrome .site-message { margin-top: 0.75rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.85rem; }
+#site-chrome .site-message.error { background: rgba(163,40,47,0.12); color: #7a1f22; }
+#site-chrome .site-message.success { background: rgba(66,183,42,0.12); color: #2e8b1f; }
+#site-chrome .field-hint { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.3rem; }
+#site-chrome .mode-tile { max-width: 340px; margin: 0 auto 1rem; text-align: center; cursor: pointer; }
+.site-quicknav { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; align-items: center; padding: 0.6rem 1.5rem; background: var(--ink-800); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.78rem; }
+.site-quicknav a { color: var(--text-muted); text-decoration: none; white-space: nowrap; }
+.site-quicknav a:hover { color: var(--paper-050); }
+
+/* ===========================================================================
+   GAME — Pirates of No Honor, adapted from the standalone build supplied
+   for this platform (Pirates-1-done.html). #pirateWrapper stands in for the
+   source's own `body` rule so it can sit as a sibling of #site-chrome
+   instead of colliding with it — same trick used for stacking-checkers.html
+   (#stackWrapper) and pong.html/blocks.html. The source's own #startScreen
+   splash was dropped entirely: #site-chrome's mode-select view now does
+   that job, consistently with every other game page, instead of a second
+   redundant "Start Game" screen living inside the game's own markup.
+   =========================================================================== */
+#pirateWrapper {
+    display: none;
+    position: fixed;
+    inset: 0;
+    font-family: 'Arial Black', Arial, sans-serif;
+    background: #1a1a2e;
+    color: #fff;
+    overflow: hidden;
+    touch-action: none;
+    z-index: 500;
+}
+
+#gameContainer {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: crosshair;
+}
+
+.hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 10px;
+    border: 3px solid #ffd700;
+    z-index: 100;
+    min-width: 250px;
+}
+
+.hud-header {
+    padding: 12px 15px;
+    background: linear-gradient(45deg, #1a472a, #2d5a3d);
+    border-radius: 7px 7px 0 0;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hud-header-content {
+    display: flex;
+    gap: 15px;
+}
+
+.hud-toggle {
+    color: #ffd700;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.hud-content {
+    padding: 15px;
+}
+
+.hud-content.collapsed {
+    display: none;
+}
+
+.hud-item {
+    margin: 8px 0;
+    font-size: 16px;
+    text-shadow: 2px 2px 4px #000;
+}
+
+.timer {
+    font-size: 24px;
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.gold {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.stage {
+    color: #4ecdc4;
+    font-weight: bold;
+}
+
+.build-menu {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 10px;
+    border: 3px solid #ffd700;
+    z-index: 100;
+    max-width: 280px;
+}
+
+.build-menu-header {
+    padding: 15px;
+    background: linear-gradient(45deg, #8b4513, #a0522d);
+    border-radius: 7px 7px 0 0;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.build-menu-header h3 {
+    color: #ffd700;
+    margin: 0;
+    font-size: 18px;
+}
+
+.build-menu-toggle {
+    color: #ffd700;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.build-menu-content {
+    padding: 15px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.build-menu-content.collapsed {
+    display: none;
+}
+
+.build-button {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+    background: linear-gradient(45deg, #8b4513, #a0522d);
+    color: #ffd700;
+    border: 2px solid #ffd700;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+    transition: all 0.3s;
+    text-align: left;
+}
+
+.build-button:hover:not(:disabled) {
+    background: linear-gradient(45deg, #a0522d, #cd853f);
+    transform: scale(1.05);
+}
+
+.build-button:disabled {
+    background: #555;
+    color: #888;
+    border-color: #666;
+    cursor: not-allowed;
+    transform: scale(1);
+}
+
+.button-cost {
+    font-size: 11px;
+    color: #ffd700;
+    display: block;
+    margin-top: 4px;
+}
+
+.button-stats {
+    font-size: 10px;
+    color: #aaa;
+    display: block;
+    margin-top: 2px;
+}
+
+.message-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.95);
+    padding: 30px;
+    border-radius: 15px;
+    border: 4px solid #ffd700;
+    z-index: 200;
+    text-align: center;
+    display: none;
+    max-width: 90vw;
+}
+
+.message-box h2 {
+    color: #ffd700;
+    margin-bottom: 20px;
+    font-size: 32px;
+    text-shadow: 3px 3px 6px #000;
+}
+
+.message-box button {
+    padding: 15px 40px;
+    margin: 10px;
+    background: linear-gradient(45deg, #2ecc71, #27ae60);
+    color: white;
+    border: 3px solid #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 18px;
+    transition: all 0.3s;
+}
+
+.message-box button:hover {
+    background: linear-gradient(45deg, #27ae60, #229954);
+    transform: scale(1.1);
+}
+
+.controls-info {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 8px 15px;
+    border-radius: 8px;
+    border: 2px solid #ffd700;
+    z-index: 100;
+    font-size: 12px;
+    text-align: center;
+}
+
+.controls-info span {
+    margin: 0 10px;
+    color: #ffd700;
+}
+
+.selection-box {
+    position: absolute;
+    border: 2px dashed #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+    pointer-events: none;
+    z-index: 150;
+    display: none;
+}
+
+.zoom-controls {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    border-radius: 8px;
+    border: 2px solid #ffd700;
+    z-index: 100;
+}
+
+/* Live "who's still standing" strip — online matches only. */
+.mp-roster {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    border: 2px solid #ffd700;
+    padding: 10px 12px;
+    z-index: 100;
+    display: none;
+    font-size: 13px;
+    max-width: 240px;
+}
+.mp-roster .mp-roster-row { display: flex; justify-content: space-between; gap: 10px; margin: 4px 0; }
+.mp-roster .mp-roster-row.dead { opacity: 0.4; text-decoration: line-through; }
+.mp-roster .mp-roster-row.me { color: #ffd700; }
+
+.pirate-back-btn {
+    position: absolute;
+    top: 10px;
+    right: 300px;
+    z-index: 110;
+    padding: 8px 16px;
+    background: #2c3e50;
+    color: #fff;
+    border: 2px solid #ffd700;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+}
+@media (max-width: 900px) {
+  .pirate-back-btn { position: static; margin: 6px; }
+  .build-menu { max-width: 90vw; }
+}
+</style>
+</head>
+<body>
+
+<div id="site-chrome">
+  <header class="header-bar">
+    <a class="brand" href="index.html">Town Fuss</a>
+    <nav class="header-nav">
+      <button id="nav-hub" class="active">Games</button>
+      <button id="nav-waiting" style="display:none;">Waiting Room</button>
+      <button id="nav-leaderboard" style="display:none;">Leaderboard</button>
+    </nav>
+  </header>
+  <nav class="site-quicknav" aria-label="Town Fuss">
+    <a href="index.html?view=feed">Feed</a>
+    <a href="index.html?view=directory">Profiles</a>
+    <a href="index.html?view=messages">Messages</a>
+    <a href="index.html?view=friends">Friends</a>
+    <a href="index.html?view=chatrooms">Chat Rooms</a>
+    <a href="chess.html">Games</a>
+    <a href="#" id="quicknav-invite-friend">Invite a Friend</a>
+    <a href="index.html?view=business">Business</a>
+    <a href="index.html?view=pricing">Pricing</a>
+    <a href="index.html?view=report-issue">Report Issue</a>
+    <a href="index.html?view=dashboard">🔔 Notifications</a>
+    <a href="index.html?view=dashboard">Your page</a>
+    <a href="index.html?action=logout">Log out</a>
+  </nav>
+
+  <script>
+  // Invite a Friend — identical copy to every other game page (see
+  // stacking-checkers.html for the full reasoning comment on why this is a
+  // plain script, not a module, and why it's text+url only).
+  (function () {
+    var btn = document.getElementById("quicknav-invite-friend");
+    if (!btn) return;
+    btn.addEventListener("click", async function (e) {
+      e.preventDefault();
+      if (currentUid) {
+        updateDoc(doc(db, "users", currentUid), {
+          "dailyRewards.shareClickDate": new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date()),
+        }).catch(() => {});
+      }
+      var inviteUrl = location.origin + "/";
+      var shareText = "Come join me on Town Fuss!";
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "Town Fuss", text: shareText, url: inviteUrl });
+          return;
+        } catch (err) {
+          if (err && err.name === "AbortError") return;
+        }
+      }
+      var original = btn.textContent;
+      try {
+        await navigator.clipboard.writeText(shareText + " " + inviteUrl);
+        btn.textContent = "Link copied!";
+      } catch (err) {
+        btn.textContent = "Copy: " + inviteUrl;
+      }
+      setTimeout(function () { btn.textContent = original; }, 4000);
+    });
+  })();
+  </script>
+
+  <main class="page">
+
+    <div id="page-loading" class="uicard" style="text-align:center;">
+      <p>Loading…</p>
+    </div>
+
+    <div id="signed-out-notice" class="uicard" style="display:none; text-align:center;">
+      <h2>Sign in on Town Fuss first</h2>
+      <p>You need a Town Fuss account to play Pirates of No Honor online and appear on the leaderboard.</p>
+      <a href="index.html"><button type="button" class="site-btn">Go to Town Fuss</button></a>
+    </div>
+
+    <div id="not-approved-notice" class="uicard" style="display:none; text-align:center;">
+      <h2>Waiting on admin approval</h2>
+      <p>Your Town Fuss profile hasn't been approved yet — games, including practice modes, unlock once an admin reviews your profile.</p>
+      <a href="index.html"><button type="button" class="site-btn">Back to Town Fuss</button></a>
+    </div>
+
+    <div id="app-content" style="display:none;">
+
+      <!-- ================= MODE SELECT ================= -->
+      <section id="view-mode-select">
+        <span class="eyebrow">Pirates of No Honor</span>
+        <h1>How do you want to play?</h1>
+        <img src="/pirates-assets/P-Logo.png" alt="" style="display:block; max-width:220px; width:100%; margin:0 auto 1.5rem; border-radius:12px;" />
+        <div class="uicard mode-tile" id="mode-tile-ai">
+          <h2 style="font-size:1.05rem;">🤖 Play vs Computer</h2>
+          <p class="field-hint" style="text-align:center;">10-stage naval campaign, same device</p>
+        </div>
+        <div class="uicard mode-tile" id="mode-tile-online">
+          <h2 style="font-size:1.05rem;">🌐 Play Online (Ranked)</h2>
+          <p class="field-hint" style="text-align:center;">Up to 4 players, one shared map, last base standing wins</p>
+        </div>
+      </section>
+
+      <!-- ================= WAITING ROOM ================= -->
+      <section id="view-waiting" style="display:none;">
+        <button type="button" class="site-btn secondary small" id="back-to-hub-btn" style="margin-bottom:1rem;">&larr; Back</button>
+        <span class="eyebrow">Pirates of No Honor</span>
+        <h1>Waiting Room</h1>
+        <p style="text-align:center;">Join an open table, invite a friend, or wait for someone to challenge you — 2 to 4 players.</p>
+        <p class="field-hint" id="pirates-play-remaining" style="text-align:center;">Loading your daily limit...</p>
+
+        <div class="uicard">
+          <h2 style="text-align:left;">Open tables</h2>
+          <p style="text-align:left;">Anyone can join one of these.</p>
+          <button type="button" class="site-btn" id="create-table-btn">+ Create a table</button>
+          <div id="my-open-table-wrap" style="display:none; margin-top:1rem;">
+            <div class="table-row">
+              <span id="my-open-table-label">Your table — waiting for more players</span>
+              <button type="button" class="site-btn secondary small" id="cancel-my-table-btn">Cancel</button>
+            </div>
+          </div>
+          <div id="open-tables-list" style="margin-top:1rem;"></div>
+          <div id="open-tables-empty" class="empty-state" style="display:none;">No open tables right now — create one!</div>
+        </div>
+
+        <div class="uicard">
+          <h2 style="text-align:left;">Invites waiting on you</h2>
+          <div id="my-invites-list"></div>
+          <div id="my-invites-empty" class="empty-state" style="display:none;">No pending invites.</div>
+        </div>
+
+        <div class="uicard">
+          <h2 style="text-align:left;">Invite a friend</h2>
+          <p style="text-align:left;">Only shows people you're already friends with on Town Fuss.</p>
+          <div id="friends-invite-list"></div>
+          <div id="friends-invite-empty" class="empty-state" style="display:none;">Add some friends on Town Fuss first.</div>
+        </div>
+
+        <div id="waiting-message" class="site-message" style="display:none;"></div>
+      </section>
+
+      <!-- ================= LEADERBOARD ================= -->
+      <section id="view-leaderboard" style="display:none;">
+        <span class="eyebrow">Pirates of No Honor</span>
+        <h1>Leaderboard</h1>
+        <p style="text-align:center;">Win an online match = 3 points. Only Online (Ranked) games count.</p>
+        <div class="uicard">
+          <div id="leaderboard-list"></div>
+          <div id="leaderboard-empty" class="empty-state" style="display:none;">No games played yet — be the first!</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ================= GAME (adapted from the standalone build) ================= -->
+<div id="pirateWrapper">
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+
+        <button type="button" class="pirate-back-btn" id="pirate-back-btn">&larr; Back to Games</button>
+
+        <div class="hud">
+            <div class="hud-header" id="hudHeader">
+                <div class="hud-header-content">
+                    <div class="hud-item stage" id="stageLine">Stage: <span id="stageNum">1</span></div>
+                    <div class="hud-item timer">Time: <span id="timeLeft">30</span>s</div>
+                </div>
+                <span class="hud-toggle" id="hudToggle">▼</span>
+            </div>
+            <div class="hud-content" id="hudContent">
+                <div class="hud-item gold">Your Gold: <span id="goldAmount">100</span></div>
+                <div class="hud-item" id="enemyGoldLine" style="color: #ff6b6b;">Enemy Gold: <span id="enemyGold">100</span></div>
+                <div class="hud-item">Your Ships: <span id="shipCount">0</span></div>
+                <div class="hud-item" id="enemyShipCountLine" style="color: #ff6b6b;">Enemy Ships: <span id="enemyShipCount">0</span></div>
+            </div>
+        </div>
+
+        <div class="controls-info">
+            <span>🖱️ Right-Click Drag: Pan Map</span>
+            <span>⌨️ WASD/Arrows: Move Camera</span>
+            <span>🖱️ Scroll: Zoom</span>
+            <span>📦 Left-Click Drag: Select Multiple Ships</span>
+        </div>
+
+        <div class="selection-box" id="selectionBox"></div>
+
+        <div class="build-menu">
+            <div class="build-menu-header" id="buildMenuHeader">
+                <h3>Build Menu</h3>
+                <span class="build-menu-toggle" id="buildMenuToggle">▼</span>
+            </div>
+            <div class="build-menu-content" id="buildMenuContent">
+                <button class="build-button" id="buildCommand">
+                    Build Command Center
+                    <span class="button-cost">Cost: 100 Gold</span>
+                </button>
+                <button class="build-button" id="buildDock" disabled>
+                    Build Navy Dock
+                    <span class="button-cost">Cost: 100 Gold</span>
+                </button>
+                <button class="build-button" id="buildIsland" disabled>
+                    Build Pirate Island
+                    <span class="button-cost">Cost: 200 Gold</span>
+                    <span class="button-stats">HP: 50 | Attack: 10 | Range: 300</span>
+                </button>
+                <hr style="border-color: #ffd700; margin: 10px 0;">
+                <button class="build-button" id="buildMiniShip" disabled>
+                    Little Mini Ship
+                    <span class="button-cost">Cost: 75 Gold</span>
+                    <span class="button-stats">HP: 50 | Attack: 5 | Range: 200 | Moves after attack</span>
+                </button>
+                <button class="build-button" id="buildDestroyer" disabled>
+                    Pirate Destroyer
+                    <span class="button-cost">Cost: 150 Gold</span>
+                    <span class="button-stats">HP: 100 | Attack: 15 | Range: 300</span>
+                </button>
+                <button class="build-button" id="buildQueenShip" disabled>
+                    Pirate Queen Ship
+                    <span class="button-cost">Cost: 300 Gold</span>
+                    <span class="button-stats">HP: 250 | Attack: 20 | Range: 700</span>
+                </button>
+                <button class="build-button" id="buildKingShip" disabled>
+                    King Pirate Ship
+                    <span class="button-cost">Cost: 500 Gold</span>
+                    <span class="button-stats">HP: 350 | Attack: 30 | Range: 1000</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="mp-roster" id="mpRoster"></div>
+
+        <div class="zoom-controls">
+            <span style="color: #ffd700; font-size: 14px;">Pinch to Zoom on Mobile | Mouse Wheel on Desktop</span>
+        </div>
+
+        <div class="message-box" id="messageBox">
+            <h2 id="messageTitle"></h2>
+            <p id="messageText" style="font-size: 18px; margin: 20px 0;"></p>
+            <button id="messageBtn">Continue</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
+  collection, getDocs, addDoc, query, where, orderBy, writeBatch, runTransaction, connectFirestoreEmulator,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// =========================================================================
+// EDITION CONFIGURATION — the only edition-specific value on this page.
+// Cloning to a new regional edition: paste that edition's Firebase project
+// config here (same values as index.html's EDITION CONFIGURATION block).
+// =========================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
+  authDomain: "town-talk-87ff7.firebaseapp.com",
+  projectId: "town-talk-87ff7",
+  storageBucket: "town-talk-87ff7.firebasestorage.app",
+  messagingSenderId: "95719537435",
+  appId: "1:95719537435:web:b496db2c2144adb3c831be",
+};
+// =========================================================================
+// END EDITION CONFIGURATION
+// =========================================================================
+
+const app = initializeApp(firebaseConfig);
+// No App Check — same reasoning as war.html/hearts.html/stacking-checkers.html:
+// no callable-Functions usage here.
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
+
+let currentUid = null;
+let currentUserName = "Neighbor";
+let currentUserData = {};
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+function todayNumber() { return Math.floor(Date.now() / 86400000); }
+
+// ===========================================================================
+// GAME ENGINE — a close port of the standalone build supplied for this
+// platform (Pirates-1-done.html), with four real fixes made along the way:
+//   1. Assets now load from /pirates-assets/ (this repo) instead of the
+//      source's external `github.com/.../raw/main/*` URLs — the source
+//      depended on an outside repo staying up forever; this doesn't.
+//      Sprites were also resized/recompressed on the way in (40.7MB of
+//      1024-1536px source PNGs -> 1.1MB) since they were never drawn
+//      anywhere near that size (see optimize-pirates.js in the export this
+//      was built from) — visually identical, just not absurdly oversized.
+//   2. ROUND_TIME was hardcoded to 5 seconds with a comment saying
+//      "currently 5 seconds for testing" — a debug value left in, not a
+//      real balance choice. 30s gives an actual base-building round.
+//   3. Two separate 'touchstart' listeners were registered on canvas,
+//      doing overlapping/conflicting things on every single tap — merged
+//      into one.
+//   4. A stray `console.log` fired on every cannonball hit — removed.
+// Everything else below (build menu, combat, fog of war, camera/zoom/pan,
+// the whole 10-stage vs-AI campaign) is unchanged in behavior from the
+// source and only runs when gameState.mode === 'ai'. Online (Ranked) is a
+// separate engine further down (MULTIPLAYER ENGINE) that reuses the same
+// drawing primitives (drawUnit/drawBuilding/drawWaves/drawFogOfWar) against
+// its own state shape, rather than trying to force one human vs. one AI
+// enemy into also representing up to 3 real opponents.
+// ===========================================================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const MAP_WIDTH = 4000;
+const MAP_HEIGHT = 3000;
+const CELL_SIZE = 50;
+const ATTACK_RANGE = 300;
+const ISLAND_RANGE = 300;
+const GHOST_RANGE = 500;
+const ROUND_TIME = 30; // seconds per gold-tick round, both AI and Online modes
+
+const images = {};
+const imageUrls = {
+  playerShip: '/pirates-assets/P-Ship-1.png',
+  enemyShip: '/pirates-assets/P-Ship-2.png',
+  miniShip: '/pirates-assets/P-Ship-3.png',
+  queenShip: '/pirates-assets/P-Ship-4.png',
+  kingShip: '/pirates-assets/P-Ship-5.png',
+  island: '/pirates-assets/P-Island-1.png',
+  cannonball: '/pirates-assets/C-Ball.png',
+  base: '/pirates-assets/Pirate-Base.png',
+  commandCenter: '/pirates-assets/P-Command-Center.png',
+  navyDock: '/pirates-assets/P-Navy-Dock.png',
+  ghostShip: '/pirates-assets/G-Pirate.png',
+  bgTile: '/pirates-assets/BG-Tile-1.png',
+  treasureChest: '/pirates-assets/Treasure-Chest.png',
+  healthIsland: '/pirates-assets/Health-Island.png',
+  kingIsland: '/pirates-assets/King-island.png',
+};
+for (const key in imageUrls) {
+  images[key] = new Image();
+  images[key].src = imageUrls[key];
+}
+
+const bgMusic = new Audio('/pirates-assets/P-song-2.mp3');
+bgMusic.loop = true;
+bgMusic.volume = 0.3;
+
+const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function initAudio() { if (!audioCtx) audioCtx = new AudioContextCtor(); }
+
+function playCannonSound() {
+  if (!audioCtx) initAudio();
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  oscillator.frequency.value = 80;
+  oscillator.type = 'sine';
+  gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+  oscillator.start(audioCtx.currentTime);
+  oscillator.stop(audioCtx.currentTime + 0.15);
+}
+function playTreasureSound() {
+  if (!audioCtx) initAudio();
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+  oscillator.type = 'sine';
+  gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+  oscillator.start(audioCtx.currentTime);
+  oscillator.stop(audioCtx.currentTime + 0.3);
+}
+function playPowerupSound() {
+  if (!audioCtx) initAudio();
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  oscillator.frequency.setValueAtTime(300, audioCtx.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+  oscillator.type = 'triangle';
+  gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+  oscillator.start(audioCtx.currentTime);
+  oscillator.stop(audioCtx.currentTime + 0.4);
+}
+
+// -------------------------- SHARED DRAWING PRIMITIVES ----------------------
+// Pure functions of (unit/building + camera + zoom) — used by BOTH the
+// AI-mode engine below and the multiplayer engine further down, so a ship
+// looks and behaves visually the same in either mode.
+function drawWaves(cam) {
+  ctx.fillStyle = '#1e3a5f';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (images.bgTile && images.bgTile.complete && images.bgTile.naturalWidth) {
+    const tileWidth = images.bgTile.width;
+    const tileHeight = images.bgTile.height;
+    const startX = Math.floor(cam.cameraX / tileWidth) * tileWidth;
+    const startY = Math.floor(cam.cameraY / tileHeight) * tileHeight;
+    for (let y = startY; y < cam.cameraY + canvas.height / cam.zoom + tileHeight; y += tileHeight) {
+      for (let x = startX; x < cam.cameraX + canvas.width / cam.zoom + tileWidth; x += tileWidth) {
+        const screenX = (x - cam.cameraX) * cam.zoom;
+        const screenY = (y - cam.cameraY) * cam.zoom;
+        ctx.drawImage(images.bgTile, screenX, screenY, tileWidth * cam.zoom, tileHeight * cam.zoom);
+      }
+    }
+  }
+}
+
+function drawUnit(unit, defaultImage, cam, isSelected) {
+  const screenX = (unit.x - cam.cameraX) * cam.zoom;
+  const screenY = (unit.y - cam.cameraY) * cam.zoom;
+  const width = unit.width * cam.zoom;
+  const height = unit.height * cam.zoom;
+  if (screenX <= -width || screenX >= canvas.width || screenY <= -height || screenY >= canvas.height) return;
+
+  let shipImage = defaultImage;
+  if (unit.shipType) {
+    if (unit.shipType === 'mini') shipImage = images.miniShip;
+    else if (unit.shipType === 'destroyer') shipImage = images.playerShip;
+    else if (unit.shipType === 'queen') shipImage = images.queenShip;
+    else if (unit.shipType === 'king') shipImage = images.kingShip;
+  }
+  if (shipImage && shipImage.complete) ctx.drawImage(shipImage, screenX, screenY, width, height);
+
+  if (unit.hp !== undefined && unit.maxHp !== undefined) {
+    const barWidth = width;
+    const barHeight = 6 * cam.zoom;
+    const hpPercent = Math.max(0, unit.hp / unit.maxHp);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(screenX, screenY - 12 * cam.zoom, barWidth, barHeight);
+    ctx.fillStyle = hpPercent > 0.5 ? '#2ecc71' : hpPercent > 0.25 ? '#f39c12' : '#e74c3c';
+    ctx.fillRect(screenX, screenY - 12 * cam.zoom, barWidth * hpPercent, barHeight);
+  }
+  if (isSelected) {
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(screenX - 5, screenY - 5, width + 10, height + 10);
+  }
+}
+
+function drawBuilding(building, cam) {
+  const screenX = (building.x - cam.cameraX) * cam.zoom;
+  const screenY = (building.y - cam.cameraY) * cam.zoom;
+  const width = building.width * cam.zoom;
+  const height = building.height * cam.zoom;
+  const img = building.type === 'base' ? images.base
+    : building.type === 'command' ? images.commandCenter
+    : building.type === 'dock' ? images.navyDock
+    : building.type === 'island' ? images.island
+    : null;
+  if (img && img.complete) ctx.drawImage(img, screenX, screenY, width, height);
+
+  if (building.hp !== undefined && building.maxHp !== undefined) {
+    const barWidth = width;
+    const barHeight = 8 * cam.zoom;
+    const hpPercent = Math.max(0, building.hp / building.maxHp);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(screenX, screenY - 15 * cam.zoom, barWidth, barHeight);
+    ctx.fillStyle = hpPercent > 0.5 ? '#2ecc71' : hpPercent > 0.25 ? '#f39c12' : '#e74c3c';
+    ctx.fillRect(screenX, screenY - 15 * cam.zoom, barWidth * hpPercent, barHeight);
+  }
+}
+
+function drawPowerupSprite(p, img, cam) {
+  const screenX = (p.x - cam.cameraX) * cam.zoom;
+  const screenY = (p.y - cam.cameraY) * cam.zoom;
+  if (img && img.complete) ctx.drawImage(img, screenX, screenY, p.width * cam.zoom, p.height * cam.zoom);
+}
+
+function showMessage(title, text, callback) {
+  document.getElementById('messageTitle').textContent = title;
+  document.getElementById('messageText').textContent = text;
+  document.getElementById('messageBox').style.display = 'block';
+  document.getElementById('messageBtn').onclick = () => {
+    document.getElementById('messageBox').style.display = 'none';
+    if (callback) callback();
+  };
+}
+
+function randomSpawnPoint(margin) {
+  return {
+    x: Math.random() * (MAP_WIDTH - margin * 2) + margin,
+    y: Math.random() * (MAP_HEIGHT - margin * 2) + margin,
+  };
+}
+
+// ===========================================================================
+// AI-MODE ENGINE (single player vs. the built-in AI, 10-stage campaign) —
+// unchanged from the source in behavior. gameState here always means "the
+// human player"; enemyState always means the single AI opponent.
+// ===========================================================================
+let gameState = {
+  active: false,
+  stage: 1,
+  gold: 100,
+  timeLeft: ROUND_TIME,
+  playerBase: null,
+  enemyBase: null,
+  playerShips: [],
+  enemyShips: [],
+  playerBuildings: [],
+  enemyBuildings: [],
+  ghostShips: [],
+  cannonballs: [],
+  hasCommandCenter: false,
+  hasNavyDock: false,
+  cameraX: 0,
+  cameraY: 0,
+  fogOfWar: [],
+  gameRunning: true,
+  attackCooldowns: new Map(),
+  waveOffset: 0,
+  zoom: 1,
+  roundInterval: null,
+  placingIsland: false,
+  islandCooldowns: new Map(),
+  treasureChests: [],
+  healthIslands: [],
+  kingIslands: [],
+};
+let enemyState = { gold: 100, hasCommandCenter: false, hasNavyDock: false };
+let aiSelectedUnits = [];
+
+function aiInitGame() {
+  gameState.active = true;
+  gameState.fogOfWar = Array(Math.ceil(MAP_HEIGHT / CELL_SIZE)).fill(null)
+    .map(() => Array(Math.ceil(MAP_WIDTH / CELL_SIZE)).fill(true));
+
+  gameState.playerBase = { x: 200, y: MAP_HEIGHT / 2, width: 150, height: 150, type: 'base', owner: 'player', hp: 500, maxHp: 500 };
+  gameState.enemyBase = { x: MAP_WIDTH - 350, y: MAP_HEIGHT / 2, width: 150, height: 150, type: 'base', owner: 'enemy', hp: 200, maxHp: 200 };
+  gameState.cameraX = gameState.playerBase.x - canvas.width / 2;
+  gameState.cameraY = gameState.playerBase.y - canvas.height / 2;
+
+  aiGenerateGhostShips();
+  aiGeneratePowerups();
+  aiUpdateHUD();
+  aiUpdateBuildButtons();
+  aiStartRound(true);
+  requestAnimationFrame(aiGameLoop);
+}
+
+function aiGeneratePowerups() {
+  gameState.treasureChests = Array.from({ length: 3 }, () => ({ ...randomSpawnPoint(300), width: 60, height: 60 }));
+  gameState.healthIslands = Array.from({ length: 10 }, () => ({ ...randomSpawnPoint(300), width: 80, height: 80 }));
+  gameState.kingIslands = [{ ...randomSpawnPoint(400), width: 100, height: 100 }];
+}
+
+function aiGenerateGhostShips() {
+  gameState.ghostShips = [];
+  const numGhosts = gameState.stage;
+  for (let i = 0; i < numGhosts; i++) {
+    const { x, y } = randomSpawnPoint(200);
+    const distToPlayer = Math.hypot(x - gameState.playerBase.x, y - gameState.playerBase.y);
+    const distToEnemy = Math.hypot(x - gameState.enemyBase.x, y - gameState.enemyBase.y);
+    if (distToPlayer > 600 && distToEnemy > 600) {
+      gameState.ghostShips.push({ x, y, width: 80, height: 80, hp: 200, maxHp: 200, damage: 20, range: GHOST_RANGE, type: 'ghost' });
+    }
+  }
+}
+
+function aiCheckPowerupCollection() {
+  [...gameState.playerShips, ...gameState.enemyShips].forEach((ship) => {
+    gameState.treasureChests = gameState.treasureChests.filter((treasure) => {
+      if (Math.hypot(ship.x - treasure.x, ship.y - treasure.y) < 60) {
+        if (ship.owner === 'player') gameState.gold += 500; else enemyState.gold += 500;
+        playTreasureSound();
+        aiUpdateHUD();
+        return false;
+      }
+      return true;
+    });
+    gameState.healthIslands = gameState.healthIslands.filter((health) => {
+      if (Math.hypot(ship.x - health.x, ship.y - health.y) < 60) {
+        ship.hp = ship.maxHp;
+        playPowerupSound();
+        return false;
+      }
+      return true;
+    });
+    gameState.kingIslands = gameState.kingIslands.filter((kingIsland) => {
+      if (Math.hypot(ship.x - kingIsland.x, ship.y - kingIsland.y) < 70) {
+        const owner = ship.owner;
+        const base = owner === 'player' ? gameState.playerBase : gameState.enemyBase;
+        const shipList = owner === 'player' ? gameState.playerShips : gameState.enemyShips;
+        shipList.push({
+          x: base.x + (owner === 'player' ? 200 : -200), y: base.y, width: 110, height: 110,
+          hp: 350, maxHp: 350, damage: 30, range: 1000, owner, moving: false,
+          targetX: null, targetY: null, shipType: 'king', canMoveAfterAttack: false,
+        });
+        playPowerupSound();
+        aiUpdateHUD();
+        return false;
+      }
+      return true;
+    });
+  });
+}
+
+function aiStartRound(isFirst) {
+  gameState.timeLeft = ROUND_TIME;
+  if (!isFirst) { gameState.gold += 100; enemyState.gold += 100; }
+  aiUpdateHUD();
+  if (gameState.roundInterval) clearInterval(gameState.roundInterval);
+  gameState.roundInterval = setInterval(() => {
+    if (!gameState.gameRunning) { clearInterval(gameState.roundInterval); gameState.roundInterval = null; return; }
+    gameState.timeLeft--;
+    aiUpdateHUD();
+    if (gameState.timeLeft <= 0) {
+      clearInterval(gameState.roundInterval);
+      gameState.roundInterval = null;
+      aiEndRound();
+    }
+  }, 1000);
+}
+
+function aiEndRound() {
+  gameState.attackCooldowns.clear();
+  gameState.islandCooldowns.clear();
+  const enemyBaseDestroyed = gameState.enemyBase.hp <= 0;
+  const allGhostsDestroyed = gameState.ghostShips.length === 0;
+  const allEnemyBuildingsDestroyed = gameState.enemyBuildings.length === 0;
+
+  if (enemyBaseDestroyed && allGhostsDestroyed && allEnemyBuildingsDestroyed) {
+    gameState.gameRunning = false;
+    if (gameState.roundInterval) { clearInterval(gameState.roundInterval); gameState.roundInterval = null; }
+    gameState.stage++;
+    if (gameState.stage > 10) {
+      showMessage('Victory!', 'You conquered all 10 stages!', () => { gameState.stage = 1; aiResetGame(); });
+    } else {
+      showMessage(`Stage ${gameState.stage - 1} Complete!`, `Advancing to Stage ${gameState.stage}`, () => aiNextStage());
+    }
+  } else if (gameState.playerBase.hp <= 0) {
+    gameState.gameRunning = false;
+    if (gameState.roundInterval) { clearInterval(gameState.roundInterval); gameState.roundInterval = null; }
+    showMessage('Defeat!', 'Your base was destroyed!', () => aiResetGame());
+  } else {
+    aiStartRound(false);
+  }
+}
+
+function aiNextStage() {
+  gameState.playerShips = []; gameState.enemyShips = []; gameState.cannonballs = [];
+  gameState.playerBuildings = []; gameState.enemyBuildings = [];
+  gameState.playerBase.hp = 500; gameState.enemyBase.hp = 200;
+  gameState.hasCommandCenter = false; gameState.hasNavyDock = false;
+  enemyState.gold = 100; enemyState.hasCommandCenter = false; enemyState.hasNavyDock = false;
+  aiGenerateGhostShips(); aiGeneratePowerups();
+  gameState.gameRunning = true;
+  aiUpdateBuildButtons(); aiUpdateHUD();
+  aiStartRound(true);
+  requestAnimationFrame(aiGameLoop);
+}
+
+function aiResetGame() {
+  gameState.stage = 1; gameState.gold = 100; enemyState.gold = 100;
+  aiNextStage();
+}
+
+function aiUpdateHUD() {
+  document.getElementById('stageNum').textContent = gameState.stage;
+  document.getElementById('goldAmount').textContent = gameState.gold;
+  document.getElementById('enemyGold').textContent = enemyState.gold;
+  document.getElementById('timeLeft').textContent = gameState.timeLeft;
+  document.getElementById('shipCount').textContent = gameState.playerShips.length;
+  document.getElementById('enemyShipCount').textContent = gameState.enemyShips.length;
+}
+
+function aiUpdateBuildButtons() {
+  document.getElementById('buildCommand').disabled = gameState.hasCommandCenter || gameState.gold < 100;
+  document.getElementById('buildDock').disabled = !gameState.hasCommandCenter || gameState.hasNavyDock || gameState.gold < 100;
+  document.getElementById('buildIsland').disabled = !gameState.hasCommandCenter || gameState.gold < 200;
+  document.getElementById('buildMiniShip').disabled = !gameState.hasNavyDock || gameState.gold < 75;
+  document.getElementById('buildDestroyer').disabled = !gameState.hasNavyDock || gameState.gold < 150;
+  document.getElementById('buildQueenShip').disabled = !gameState.hasNavyDock || gameState.gold < 300;
+  document.getElementById('buildKingShip').disabled = !gameState.hasNavyDock || gameState.gold < 500;
+}
+
+function aiBuildCommand() {
+  if (gameState.gold >= 100 && !gameState.hasCommandCenter) {
+    gameState.gold -= 100; gameState.hasCommandCenter = true;
+    gameState.playerBuildings.push({ x: gameState.playerBase.x, y: gameState.playerBase.y - 50, width: 100, height: 100, type: 'command', owner: 'player', hp: 300, maxHp: 300 });
+    aiUpdateHUD(); aiUpdateBuildButtons();
+  }
+}
+function aiBuildDock() {
+  if (gameState.gold >= 100 && gameState.hasCommandCenter && !gameState.hasNavyDock) {
+    gameState.gold -= 100; gameState.hasNavyDock = true;
+    gameState.playerBuildings.push({ x: gameState.playerBase.x + 150, y: gameState.playerBase.y, width: 120, height: 100, type: 'dock', owner: 'player', hp: 200, maxHp: 200 });
+    aiUpdateHUD(); aiUpdateBuildButtons();
+  }
+}
+function aiCreateShip(type, cost, hp, damage, range, width, height, canMoveAfterAttack = false) {
+  if (gameState.gold >= cost && gameState.hasNavyDock) {
+    gameState.gold -= cost;
+    const spawnOffset = gameState.playerShips.length % 5;
+    const spawnRow = Math.floor(gameState.playerShips.length / 5);
+    gameState.playerShips.push({
+      x: gameState.playerBase.x + 200 + spawnRow * 100, y: gameState.playerBase.y - 100 + spawnOffset * 60,
+      width, height, hp, maxHp: hp, damage, range, owner: 'player', moving: false,
+      targetX: null, targetY: null, shipType: type, canMoveAfterAttack,
+    });
+    aiUpdateHUD(); aiUpdateBuildButtons();
+  }
+}
+
+function aiEnemyAI() {
+  if (gameState.timeLeft % 5 === 0) {
+    if (!enemyState.hasCommandCenter && enemyState.gold >= 100) {
+      enemyState.gold -= 100; enemyState.hasCommandCenter = true;
+      gameState.enemyBuildings.push({ x: gameState.enemyBase.x, y: gameState.enemyBase.y - 50, width: 100, height: 100, type: 'command', owner: 'enemy', hp: 300, maxHp: 300 });
+    }
+    if (enemyState.hasCommandCenter && !enemyState.hasNavyDock && enemyState.gold >= 100) {
+      enemyState.gold -= 100; enemyState.hasNavyDock = true;
+      gameState.enemyBuildings.push({ x: gameState.enemyBase.x - 150, y: gameState.enemyBase.y, width: 120, height: 100, type: 'dock', owner: 'enemy', hp: 200, maxHp: 200 });
+    }
+    if (enemyState.hasNavyDock && enemyState.gold >= 150) {
+      enemyState.gold -= 150;
+      const spawnOffset = gameState.enemyShips.length % 5;
+      const spawnRow = Math.floor(gameState.enemyShips.length / 5);
+      gameState.enemyShips.push({
+        x: gameState.enemyBase.x - 200 - spawnRow * 100, y: gameState.enemyBase.y - 100 + spawnOffset * 60,
+        width: 70, height: 70, hp: 100, maxHp: 100, damage: 15, range: ATTACK_RANGE, owner: 'enemy', moving: true,
+        targetX: gameState.playerBase.x + Math.random() * 400 - 200, targetY: gameState.playerBase.y + Math.random() * 400 - 200,
+      });
+    }
+    if (enemyState.hasCommandCenter && enemyState.gold >= 200 && Math.random() > 0.7) {
+      enemyState.gold -= 200;
+      gameState.enemyBuildings.push({ x: gameState.enemyBase.x - 300, y: gameState.enemyBase.y + Math.random() * 200 - 100, width: 100, height: 100, type: 'island', owner: 'enemy', range: ISLAND_RANGE, hp: 50, maxHp: 50, damage: 10 });
+    }
+  }
+  gameState.enemyShips.forEach((ship) => {
+    if (ship.moving && ship.targetX !== null) {
+      const dx = ship.targetX - ship.x, dy = ship.targetY - ship.y, dist = Math.hypot(dx, dy);
+      if (dist > 5) { ship.x += (dx / dist) * 2; ship.y += (dy / dist) * 2; }
+      else { ship.targetX = gameState.playerBase.x + Math.random() * 200 - 100; ship.targetY = gameState.playerBase.y + Math.random() * 200 - 100; }
+    }
+  });
+}
+
+function aiAttack(attacker, target, damage = null) {
+  const dmg = damage || attacker.damage || 15;
+  gameState.cannonballs.push({ x: attacker.x, y: attacker.y, targetX: target.x, targetY: target.y, speed: 10, damage: dmg, target });
+  playCannonSound();
+}
+
+function aiProcessCombat() {
+  gameState.playerShips.forEach((ship) => {
+    if (gameState.attackCooldowns.has(ship) || ship.moving) return;
+    let targets = [...gameState.enemyShips, ...gameState.ghostShips];
+    let attacked = false;
+    for (const target of targets) {
+      if (Math.hypot(ship.x - target.x, ship.y - target.y) <= ship.range) { aiAttack(ship, target); gameState.attackCooldowns.set(ship, true); attacked = true; break; }
+    }
+    if (!attacked) {
+      for (const building of gameState.enemyBuildings) {
+        if (Math.hypot(ship.x - building.x, ship.y - building.y) <= ship.range) { aiAttack(ship, building); gameState.attackCooldowns.set(ship, true); attacked = true; break; }
+      }
+    }
+    if (!attacked && Math.hypot(ship.x - gameState.enemyBase.x, ship.y - gameState.enemyBase.y) <= ship.range) {
+      aiAttack(ship, gameState.enemyBase); gameState.attackCooldowns.set(ship, true);
+    }
+  });
+
+  gameState.enemyShips.forEach((ship) => {
+    if (gameState.attackCooldowns.has(ship)) return;
+    let attacked = false;
+    for (const target of gameState.playerShips) {
+      if (Math.hypot(ship.x - target.x, ship.y - target.y) <= ship.range) { aiAttack(ship, target); gameState.attackCooldowns.set(ship, true); ship.moving = false; attacked = true; break; }
+    }
+    if (!attacked) {
+      for (const building of gameState.playerBuildings) {
+        if (Math.hypot(ship.x - building.x, ship.y - building.y) <= ship.range) { aiAttack(ship, building); gameState.attackCooldowns.set(ship, true); ship.moving = false; attacked = true; break; }
+      }
+    }
+    if (!attacked && Math.hypot(ship.x - gameState.playerBase.x, ship.y - gameState.playerBase.y) <= ship.range) {
+      aiAttack(ship, gameState.playerBase); gameState.attackCooldowns.set(ship, true);
+    }
+  });
+
+  gameState.ghostShips.forEach((ghost) => {
+    if (gameState.attackCooldowns.has(ghost)) return;
+    const targets = [...gameState.playerShips, ...gameState.enemyShips];
+    for (const target of targets) {
+      if (Math.hypot(ghost.x - target.x, ghost.y - target.y) <= ghost.range) { aiAttack(ghost, target); gameState.attackCooldowns.set(ghost, true); break; }
+    }
+  });
+
+  gameState.playerBuildings.forEach((building) => {
+    if (building.type !== 'island' || gameState.islandCooldowns.has(building)) return;
+    for (const ship of gameState.enemyShips) {
+      if (gameState.islandCooldowns.has(building)) break;
+      if (Math.hypot(building.x - ship.x, building.y - ship.y) <= building.range) { aiAttack(building, ship, 10); gameState.islandCooldowns.set(building, true); }
+    }
+  });
+  gameState.enemyBuildings.forEach((building) => {
+    if (building.type !== 'island' || gameState.islandCooldowns.has(building)) return;
+    for (const ship of gameState.playerShips) {
+      if (gameState.islandCooldowns.has(building)) break;
+      if (Math.hypot(building.x - ship.x, building.y - ship.y) <= building.range) { aiAttack(building, ship, 10); gameState.islandCooldowns.set(building, true); }
+    }
+  });
+}
+
+function aiUpdateCannonballs() {
+  gameState.cannonballs = gameState.cannonballs.filter((ball) => {
+    const dx = ball.targetX - ball.x, dy = ball.targetY - ball.y, dist = Math.hypot(dx, dy);
+    if (dist < ball.speed) {
+      if (ball.target.hp !== undefined) {
+        ball.target.hp -= ball.damage;
+        if (ball.target.hp <= 0) aiHandleDeath(ball.target);
+      }
+      return false;
+    }
+    ball.x += (dx / dist) * ball.speed; ball.y += (dy / dist) * ball.speed;
+    return true;
+  });
+}
+
+function aiHandleDeath(unit) {
+  if (unit.owner === 'player') {
+    gameState.playerShips = gameState.playerShips.filter((s) => s !== unit);
+    const idx = gameState.playerBuildings.indexOf(unit);
+    if (idx !== -1) {
+      gameState.playerBuildings.splice(idx, 1);
+      if (unit.type === 'command') { gameState.hasCommandCenter = false; gameState.hasNavyDock = false; gameState.playerBuildings = gameState.playerBuildings.filter((b) => b.type !== 'dock'); }
+      else if (unit.type === 'dock') gameState.hasNavyDock = false;
+    }
+  } else if (unit.owner === 'enemy') {
+    gameState.enemyShips = gameState.enemyShips.filter((s) => s !== unit);
+    const idx = gameState.enemyBuildings.indexOf(unit);
+    if (idx !== -1) {
+      gameState.enemyBuildings.splice(idx, 1);
+      if (unit.type === 'command') { enemyState.hasCommandCenter = false; enemyState.hasNavyDock = false; gameState.enemyBuildings = gameState.enemyBuildings.filter((b) => b.type !== 'dock'); }
+      else if (unit.type === 'dock') enemyState.hasNavyDock = false;
+    }
+  } else if (unit.type === 'ghost') {
+    gameState.ghostShips = gameState.ghostShips.filter((s) => s !== unit);
+  }
+  aiUpdateHUD(); aiUpdateBuildButtons();
+}
+
+function aiUpdateFogOfWar() {
+  gameState.fogOfWar = gameState.fogOfWar.map((row) => row.map(() => true));
+  const revealRadius = 400;
+  const radius = Math.ceil(revealRadius / CELL_SIZE);
+  const units = [gameState.playerBase, ...gameState.playerShips, ...gameState.playerBuildings];
+  units.forEach((unit) => {
+    const gridX = Math.floor(unit.x / CELL_SIZE), gridY = Math.floor(unit.y / CELL_SIZE);
+    for (let y = -radius; y <= radius; y++) {
+      for (let x = -radius; x <= radius; x++) {
+        const gx = gridX + x, gy = gridY + y;
+        if (gy >= 0 && gy < gameState.fogOfWar.length && gx >= 0 && gx < gameState.fogOfWar[0].length) {
+          if (Math.hypot(x * CELL_SIZE, y * CELL_SIZE) <= revealRadius) gameState.fogOfWar[gy][gx] = false;
+        }
+      }
+    }
+  });
+}
+function aiIsInFog(x, y) {
+  const gridX = Math.floor(x / CELL_SIZE), gridY = Math.floor(y / CELL_SIZE);
+  if (gridY >= 0 && gridY < gameState.fogOfWar.length && gridX >= 0 && gridX < gameState.fogOfWar[0].length) return gameState.fogOfWar[gridY][gridX];
+  return true;
+}
+function drawFogOfWarGrid(fog, cam) {
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  for (let y = 0; y < fog.length; y++) {
+    for (let x = 0; x < fog[0].length; x++) {
+      if (fog[y][x]) {
+        const screenX = (x * CELL_SIZE - cam.cameraX) * cam.zoom, screenY = (y * CELL_SIZE - cam.cameraY) * cam.zoom, size = CELL_SIZE * cam.zoom;
+        ctx.fillRect(screenX, screenY, size, size);
+      }
+    }
+  }
+}
+
+function aiGameLoop() {
+  if (!gameState.active) return; // torn down (left this mode) — stop the loop for good
+  if (!gameState.gameRunning) { requestAnimationFrame(aiGameLoop); return; }
+
+  handleKeyboardControls(gameState);
+  aiEnemyAI();
+  aiProcessCombat();
+  aiUpdateCannonballs();
+  aiCheckPowerupCollection();
+  aiUpdateFogOfWar();
+  aiUpdateBuildButtons();
+
+  gameState.playerShips.forEach((ship) => {
+    if (ship.moving && ship.targetX !== null) {
+      const dx = ship.targetX - ship.x, dy = ship.targetY - ship.y, dist = Math.hypot(dx, dy);
+      if (dist > 5) { ship.x += (dx / dist) * 2; ship.y += (dy / dist) * 2; }
+      else { ship.moving = false; ship.targetX = null; ship.targetY = null; }
+    }
+  });
+
+  drawWaves(gameState);
+  drawBuilding(gameState.playerBase, gameState);
+  if (!aiIsInFog(gameState.enemyBase.x, gameState.enemyBase.y)) drawBuilding(gameState.enemyBase, gameState);
+  gameState.playerBuildings.forEach((b) => drawBuilding(b, gameState));
+  gameState.enemyBuildings.forEach((b) => { if (!aiIsInFog(b.x, b.y)) drawBuilding(b, gameState); });
+  gameState.playerShips.forEach((ship) => drawUnit(ship, images.playerShip, gameState, aiSelectedUnits.includes(ship)));
+  gameState.enemyShips.forEach((ship) => { if (!aiIsInFog(ship.x, ship.y)) drawUnit(ship, images.enemyShip, gameState, false); });
+  gameState.ghostShips.forEach((ghost) => { if (!aiIsInFog(ghost.x, ghost.y)) drawUnit(ghost, images.ghostShip, gameState, false); });
+  gameState.treasureChests.forEach((t) => { if (!aiIsInFog(t.x, t.y)) drawPowerupSprite(t, images.treasureChest, gameState); });
+  gameState.healthIslands.forEach((h) => { if (!aiIsInFog(h.x, h.y)) drawPowerupSprite(h, images.healthIsland, gameState); });
+  gameState.kingIslands.forEach((k) => { if (!aiIsInFog(k.x, k.y)) drawPowerupSprite(k, images.kingIsland, gameState); });
+  gameState.cannonballs.forEach((ball) => {
+    const screenX = (ball.x - gameState.cameraX) * gameState.zoom, screenY = (ball.y - gameState.cameraY) * gameState.zoom, size = 20 * gameState.zoom;
+    if (images.cannonball.complete) ctx.drawImage(images.cannonball, screenX - size / 2, screenY - size / 2, size, size);
+  });
+  drawFogOfWarGrid(gameState.fogOfWar, gameState);
+
+  requestAnimationFrame(aiGameLoop);
+}
+
+// ===========================================================================
+// MULTIPLAYER ENGINE — Online (Ranked), 2-4 real players on one shared map.
+//
+// Host-authoritative, generalizing the same pattern airhockey.html uses for
+// its 2-player real-time match: the table creator (mp.isHost) runs the
+// actual simulation locally every animation frame and periodically
+// (MP_BROADCAST_MS) writes the full canonical state to the piratesGames/{id}
+// doc. Every other seated player is a read-only renderer: it draws whatever
+// the host last published and never touches players[]/ghostShips/etc.
+// itself. The one thing airhockey.html doesn't need that this does is a way
+// for up to 3 non-host players to actually ACT (build/move) — a continuous
+// paddle-position overwrite doesn't fit a build-menu click, so guests write
+// small, discrete command documents to piratesGames/{id}/commands instead,
+// and the host drains + applies them each tick before re-simulating. The
+// host applies its OWN clicks the same way, just directly in-memory instead
+// of round-tripping through Firestore (see mpSubmitCommand).
+//
+// Camera/zoom/pan/unit-selection are 100% local to each browser and never
+// synced — there's no reason two players need to be looking at the same
+// part of the map, same as any other RTS.
+// ===========================================================================
+const MP_BROADCAST_MS = 200;
+const MP_SPAWNS = [
+  { x: 300, y: 300 }, { x: MAP_WIDTH - 300, y: 300 },
+  { x: 300, y: MAP_HEIGHT - 300 }, { x: MAP_WIDTH - 300, y: MAP_HEIGHT - 300 },
+];
+
+let mp = {
+  active: false,
+  isHost: false,
+  gameId: null,
+  mySeat: -1,
+  cameraX: 0, cameraY: 0, zoom: 1,
+  selectedUnits: [],
+  unsubscribeGame: null,
+  unsubscribeCommands: null,
+  lastBroadcast: 0,
+  // Host-only authoritative state:
+  match: null, // { players:[{uid,name,seat,alive,gold,hasCommandCenter,hasNavyDock,ships,buildings,baseHp,baseMaxHp,baseX,baseY}], ghostShips, treasureChests, healthIslands, kingIslands, cannonballs, timeLeft, status, winner }
+  attackCooldowns: null,
+  islandCooldowns: null,
+  roundInterval: null,
+  // Guest-only mirrored render state:
+  remote: null,
+};
+
+function mpFogFor(myPlayer) {
+  const fog = Array(Math.ceil(MAP_HEIGHT / CELL_SIZE)).fill(null).map(() => Array(Math.ceil(MAP_WIDTH / CELL_SIZE)).fill(true));
+  if (!myPlayer) return fog;
+  const revealRadius = 400;
+  const radius = Math.ceil(revealRadius / CELL_SIZE);
+  const units = [{ x: myPlayer.baseX, y: myPlayer.baseY }, ...myPlayer.ships, ...myPlayer.buildings];
+  units.forEach((unit) => {
+    const gridX = Math.floor(unit.x / CELL_SIZE), gridY = Math.floor(unit.y / CELL_SIZE);
+    for (let y = -radius; y <= radius; y++) {
+      for (let x = -radius; x <= radius; x++) {
+        const gx = gridX + x, gy = gridY + y;
+        if (gy >= 0 && gy < fog.length && gx >= 0 && gx < fog[0].length) {
+          if (Math.hypot(x * CELL_SIZE, y * CELL_SIZE) <= revealRadius) fog[gy][gx] = false;
+        }
+      }
+    }
+  });
+  return fog;
+}
+function mpIsInFog(fog, x, y) {
+  const gridX = Math.floor(x / CELL_SIZE), gridY = Math.floor(y / CELL_SIZE);
+  if (gridY >= 0 && gridY < fog.length && gridX >= 0 && gridX < fog[0].length) return fog[gridY][gridX];
+  return true;
+}
+
+// -------- HOST: initialize + simulate --------
+function mpHostStartMatch(gameId, lobbyPlayers) {
+  // Transition the host into the game view (sets mp.active/isHost/gameId,
+  // hides site-chrome, shows the canvas, starts watching the commands
+  // subcollection) SYNCHRONOUSLY, before anything below reads mp.gameId or
+  // schedules the tick loop. The lobby's own onSnapshot listener will also
+  // eventually see status:'active' and call this again — harmless, since
+  // mpOpenGame() unsubscribes its previous listener before resubscribing —
+  // but the host can't wait for that network round-trip: mpHostTick()
+  // below bails out for good (no further requestAnimationFrame) the very
+  // first time it sees mp.active/isHost still false, so those two flags
+  // have to already be true before its first call, not just eventually.
+  mpOpenGame(gameId, true);
+
+  const players = lobbyPlayers.map((p, seat) => ({
+    uid: p.uid, name: p.name, seat, alive: true, gold: 100,
+    hasCommandCenter: false, hasNavyDock: false, ships: [], buildings: [],
+    baseX: MP_SPAWNS[seat].x, baseY: MP_SPAWNS[seat].y, baseHp: 500, baseMaxHp: 500,
+  }));
+  const numGhosts = players.length * 2;
+  const ghostShips = [];
+  for (let i = 0; i < numGhosts; i++) {
+    const { x, y } = randomSpawnPoint(200);
+    const tooClose = players.some((p) => Math.hypot(x - p.baseX, y - p.baseY) < 600);
+    if (!tooClose) ghostShips.push({ id: `g${i}`, x, y, width: 80, height: 80, hp: 200, maxHp: 200, damage: 20, range: GHOST_RANGE, type: 'ghost' });
+  }
+  mp.match = {
+    players,
+    ghostShips,
+    treasureChests: Array.from({ length: players.length + 2 }, (_, i) => ({ id: `t${i}`, ...randomSpawnPoint(300), width: 60, height: 60 })),
+    healthIslands: Array.from({ length: players.length * 3 }, (_, i) => ({ id: `h${i}`, ...randomSpawnPoint(300), width: 80, height: 80 })),
+    kingIslands: Array.from({ length: 2 }, (_, i) => ({ id: `k${i}`, ...randomSpawnPoint(400), width: 100, height: 100 })),
+    cannonballs: [],
+    timeLeft: ROUND_TIME,
+    status: 'active',
+    winner: null,
+  };
+  mp.attackCooldowns = new Map();
+  mp.islandCooldowns = new Map();
+
+  if (mp.roundInterval) clearInterval(mp.roundInterval);
+  mp.roundInterval = setInterval(() => {
+    if (!mp.match || mp.match.status !== 'active') return;
+    mp.match.timeLeft--;
+    if (mp.match.timeLeft <= 0) {
+      mp.match.timeLeft = ROUND_TIME;
+      mp.match.players.forEach((p) => { if (p.alive) p.gold += 100; });
+    }
+  }, 1000);
+
+  updateDoc(doc(db, "piratesGames", gameId), {
+    status: 'active',
+    players: players.map(mpSerializePlayer),
+    ghostShips, treasureChests: mp.match.treasureChests, healthIslands: mp.match.healthIslands, kingIslands: mp.match.kingIslands,
+    cannonballs: [], timeLeft: ROUND_TIME, winner: null, updatedAt: serverTimestamp(),
+  }).catch((err) => console.error("Couldn't start Pirates match:", err));
+
+  requestAnimationFrame(mpHostTick);
+}
+
+// Firestore-safe copy of a live player object (no Map/Set, no undefined).
+function mpSerializePlayer(p) {
+  return {
+    uid: p.uid, name: p.name, seat: p.seat, alive: p.alive, gold: p.gold,
+    hasCommandCenter: p.hasCommandCenter, hasNavyDock: p.hasNavyDock,
+    ships: p.ships, buildings: p.buildings, baseX: p.baseX, baseY: p.baseY,
+    baseHp: p.baseHp, baseMaxHp: p.baseMaxHp,
+  };
+}
+
+function mpPlayerByUid(uid) { return mp.match.players.find((p) => p.uid === uid); }
+
+function mpApplyCommand(uid, cmd) {
+  const p = mpPlayerByUid(uid);
+  if (!p || !p.alive) return;
+  if (cmd.type === 'build') {
+    if (cmd.building === 'command' && !p.hasCommandCenter && p.gold >= 100) {
+      p.gold -= 100; p.hasCommandCenter = true;
+      p.buildings.push({ x: p.baseX, y: p.baseY - 50, width: 100, height: 100, type: 'command', owner: uid, hp: 300, maxHp: 300 });
+    } else if (cmd.building === 'dock' && p.hasCommandCenter && !p.hasNavyDock && p.gold >= 100) {
+      p.gold -= 100; p.hasNavyDock = true;
+      p.buildings.push({ x: p.baseX + 150, y: p.baseY, width: 120, height: 100, type: 'dock', owner: uid, hp: 200, maxHp: 200 });
+    } else if (cmd.building === 'island' && p.hasCommandCenter && p.gold >= 200) {
+      const distFromBase = Math.hypot(cmd.x - p.baseX, cmd.y - p.baseY);
+      if (distFromBase <= 1000) {
+        p.gold -= 200;
+        p.buildings.push({ x: cmd.x - 50, y: cmd.y - 50, width: 100, height: 100, type: 'island', owner: uid, range: ISLAND_RANGE, hp: 50, maxHp: 50, damage: 10 });
+      }
+    } else if (cmd.building === 'ship') {
+      const specs = {
+        mini: { cost: 75, hp: 50, damage: 5, range: 200, width: 50, height: 50, canMoveAfterAttack: true },
+        destroyer: { cost: 150, hp: 100, damage: 15, range: 300, width: 70, height: 70 },
+        queen: { cost: 300, hp: 250, damage: 20, range: 700, width: 90, height: 90 },
+        king: { cost: 500, hp: 350, damage: 30, range: 1000, width: 110, height: 110 },
+      };
+      const spec = specs[cmd.shipType];
+      if (spec && p.hasNavyDock && p.gold >= spec.cost) {
+        p.gold -= spec.cost;
+        const spawnOffset = p.ships.length % 5, spawnRow = Math.floor(p.ships.length / 5);
+        p.ships.push({
+          x: p.baseX + 200 + spawnRow * 100, y: p.baseY - 100 + spawnOffset * 60,
+          width: spec.width, height: spec.height, hp: spec.hp, maxHp: spec.hp, damage: spec.damage, range: spec.range,
+          owner: uid, moving: false, targetX: null, targetY: null, shipType: cmd.shipType, canMoveAfterAttack: !!spec.canMoveAfterAttack,
+        });
+      }
+    }
+  } else if (cmd.type === 'move') {
+    (cmd.shipIndexes || []).forEach((i) => {
+      const ship = p.ships[i];
+      if (ship) { ship.targetX = cmd.x; ship.targetY = cmd.y; ship.moving = true; }
+    });
+  }
+}
+
+function mpHostTick(ts) {
+  if (!mp.active || !mp.isHost) return;
+  if (mp.match && mp.match.status === 'active') {
+    const m = mp.match;
+
+    // Movement
+    m.players.forEach((p) => {
+      p.ships.forEach((ship) => {
+        if (ship.moving && ship.targetX !== null) {
+          const dx = ship.targetX - ship.x, dy = ship.targetY - ship.y, dist = Math.hypot(dx, dy);
+          if (dist > 5) { ship.x += (dx / dist) * 2; ship.y += (dy / dist) * 2; }
+          else { ship.moving = false; ship.targetX = null; ship.targetY = null; }
+        }
+      });
+    });
+
+    mpProcessCombat(m);
+    mpUpdateCannonballs(m);
+    mpCheckPowerups(m);
+
+    // Win check: exactly one (or zero) player left alive ends the match.
+    const aliveCount = m.players.filter((p) => p.alive).length;
+    if (aliveCount <= 1 && m.status === 'active') {
+      m.status = 'finished';
+      m.winner = (m.players.find((p) => p.alive) || {}).uid || null;
+      if (mp.roundInterval) { clearInterval(mp.roundInterval); mp.roundInterval = null; }
+    }
+
+    if (ts - mp.lastBroadcast >= MP_BROADCAST_MS || m.status === 'finished') {
+      mp.lastBroadcast = ts;
+      updateDoc(doc(db, "piratesGames", mp.gameId), {
+        players: m.players.map(mpSerializePlayer),
+        ghostShips: m.ghostShips, treasureChests: m.treasureChests, healthIslands: m.healthIslands, kingIslands: m.kingIslands,
+        cannonballs: m.cannonballs, timeLeft: m.timeLeft, status: m.status, winner: m.winner,
+        updatedAt: serverTimestamp(),
+      }).catch((err) => console.error("Pirates broadcast failed:", err));
+    }
+  }
+
+  mpRenderFromLocalMatch();
+  if (mp.active) requestAnimationFrame(mpHostTick);
+}
+
+function mpProcessCombat(m) {
+  const allShips = () => m.players.flatMap((p) => p.alive ? p.ships.map((s) => ({ s, ownerUid: p.uid })) : []);
+  const allBuildings = () => m.players.flatMap((p) => p.alive ? p.buildings.map((b) => ({ b, ownerUid: p.uid })) : []);
+
+  m.players.forEach((p) => {
+    if (!p.alive) return;
+    p.ships.forEach((ship) => {
+      if (mp.attackCooldowns.has(ship) || ship.moving) return;
+      let attacked = false;
+      for (const { s: target, ownerUid } of allShips()) {
+        if (ownerUid === p.uid) continue;
+        if (Math.hypot(ship.x - target.x, ship.y - target.y) <= ship.range) { mpAttack(m, ship, target); mp.attackCooldowns.set(ship, true); attacked = true; break; }
+      }
+      if (!attacked) {
+        for (const ghost of m.ghostShips) {
+          if (Math.hypot(ship.x - ghost.x, ship.y - ghost.y) <= ship.range) { mpAttack(m, ship, ghost); mp.attackCooldowns.set(ship, true); attacked = true; break; }
+        }
+      }
+      if (!attacked) {
+        for (const { b: building, ownerUid } of allBuildings()) {
+          if (ownerUid === p.uid) continue;
+          if (Math.hypot(ship.x - building.x, ship.y - building.y) <= ship.range) { mpAttack(m, ship, building); mp.attackCooldowns.set(ship, true); attacked = true; break; }
+        }
+      }
+      if (!attacked) {
+        for (const other of m.players) {
+          if (other.uid === p.uid || !other.alive) continue;
+          if (Math.hypot(ship.x - other.baseX, ship.y - other.baseY) <= ship.range) {
+            mpAttackBase(m, ship, other); mp.attackCooldowns.set(ship, true); break;
+          }
+        }
+      }
+    });
+    p.buildings.forEach((building) => {
+      if (building.type !== 'island' || mp.islandCooldowns.has(building)) return;
+      for (const { s: target, ownerUid } of allShips()) {
+        if (ownerUid === p.uid) continue;
+        if (mp.islandCooldowns.has(building)) break;
+        if (Math.hypot(building.x - target.x, building.y - target.y) <= building.range) { mpAttack(m, building, target, 10); mp.islandCooldowns.set(building, true); }
+      }
+    });
+  });
+
+  m.ghostShips.forEach((ghost) => {
+    if (mp.attackCooldowns.has(ghost)) return;
+    for (const { s: target } of allShips()) {
+      if (Math.hypot(ghost.x - target.x, ghost.y - target.y) <= ghost.range) { mpAttack(m, ghost, target); mp.attackCooldowns.set(ghost, true); break; }
+    }
+  });
+}
+
+function mpAttack(m, attacker, target, damage = null) {
+  m.cannonballs.push({ x: attacker.x, y: attacker.y, targetX: target.x, targetY: target.y, speed: 10, damage: damage || attacker.damage || 15, targetRef: target });
+}
+function mpAttackBase(m, attacker, targetPlayer) {
+  m.cannonballs.push({ x: attacker.x, y: attacker.y, targetX: targetPlayer.baseX, targetY: targetPlayer.baseY, speed: 10, damage: attacker.damage || 15, targetBaseUid: targetPlayer.uid });
+}
+
+function mpUpdateCannonballs(m) {
+  m.cannonballs = m.cannonballs.filter((ball) => {
+    const dx = ball.targetX - ball.x, dy = ball.targetY - ball.y, dist = Math.hypot(dx, dy);
+    if (dist < ball.speed) {
+      if (ball.targetBaseUid) {
+        const p = mpPlayerByUid(ball.targetBaseUid);
+        if (p) { p.baseHp -= ball.damage; if (p.baseHp <= 0) { p.baseHp = 0; p.alive = false; } }
+      } else if (ball.targetRef && ball.targetRef.hp !== undefined) {
+        ball.targetRef.hp -= ball.damage;
+        if (ball.targetRef.hp <= 0) mpHandleDeath(m, ball.targetRef);
+      }
+      return false;
+    }
+    ball.x += (dx / dist) * ball.speed; ball.y += (dy / dist) * ball.speed;
+    return true;
+  });
+}
+
+function mpHandleDeath(m, unit) {
+  if (unit.type === 'ghost') { m.ghostShips = m.ghostShips.filter((g) => g !== unit); return; }
+  m.players.forEach((p) => {
+    const shipIdx = p.ships.indexOf(unit);
+    if (shipIdx !== -1) { p.ships.splice(shipIdx, 1); return; }
+    const bIdx = p.buildings.indexOf(unit);
+    if (bIdx !== -1) {
+      p.buildings.splice(bIdx, 1);
+      if (unit.type === 'command') { p.hasCommandCenter = false; p.hasNavyDock = false; p.buildings = p.buildings.filter((b) => b.type !== 'dock'); }
+      else if (unit.type === 'dock') p.hasNavyDock = false;
+    }
+  });
+}
+
+function mpCheckPowerups(m) {
+  const allShipsWithOwner = m.players.filter((p) => p.alive).flatMap((p) => p.ships.map((s) => ({ s, p })));
+  allShipsWithOwner.forEach(({ s: ship, p }) => {
+    m.treasureChests = m.treasureChests.filter((t) => {
+      if (Math.hypot(ship.x - t.x, ship.y - t.y) < 60) { p.gold += 500; return false; }
+      return true;
+    });
+    m.healthIslands = m.healthIslands.filter((h) => {
+      if (Math.hypot(ship.x - h.x, ship.y - h.y) < 60) { ship.hp = ship.maxHp; return false; }
+      return true;
+    });
+    m.kingIslands = m.kingIslands.filter((k) => {
+      if (Math.hypot(ship.x - k.x, ship.y - k.y) < 70) {
+        p.ships.push({ x: p.baseX + 200, y: p.baseY, width: 110, height: 110, hp: 350, maxHp: 350, damage: 30, range: 1000, owner: p.uid, moving: false, targetX: null, targetY: null, shipType: 'king', canMoveAfterAttack: false });
+        return false;
+      }
+      return true;
+    });
+  });
+}
+
+// -------- Commands: guest -> host relay --------
+function mpSubmitCommand(cmd) {
+  if (mp.isHost) {
+    mpApplyCommand(currentUid, cmd);
+    return;
+  }
+  addDoc(collection(db, "piratesGames", mp.gameId, "commands"), { fromUid: currentUid, ...cmd, createdAt: serverTimestamp() })
+    .catch((err) => console.error("Couldn't send Pirates command:", err));
+}
+
+function mpHostWatchCommands() {
+  if (mp.unsubscribeCommands) mp.unsubscribeCommands();
+  mp.unsubscribeCommands = onSnapshot(collection(db, "piratesGames", mp.gameId, "commands"), (snap) => {
+    snap.docChanges().forEach((change) => {
+      if (change.type !== 'added') return;
+      const cmd = change.doc.data();
+      if (mp.match) mpApplyCommand(cmd.fromUid, cmd);
+      deleteDoc(change.doc.ref).catch(() => {});
+    });
+  }, (err) => console.error("Pirates command watch failed:", err));
+}
+
+// -------- GUEST (and host-own-render): draw whatever the latest synced state is --------
+function mpOpenGame(gameId, asHost) {
+  mp.active = true;
+  mp.isHost = asHost;
+  mp.gameId = gameId;
+  mp.selectedUnits = [];
+  document.getElementById('site-chrome').style.display = 'none';
+  document.getElementById('pirateWrapper').style.display = 'block';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.getElementById('stageLine').style.display = 'none';
+  document.getElementById('enemyGoldLine').style.display = 'none';
+  document.getElementById('enemyShipCountLine').style.display = 'none';
+  document.getElementById('mpRoster').style.display = 'block';
+
+  if (mp.unsubscribeGame) mp.unsubscribeGame();
+  mp.unsubscribeGame = onSnapshot(doc(db, "piratesGames", gameId), (snap) => {
+    if (!snap.exists()) { mpLeaveGame(); return; }
+    const g = snap.data();
+    mp.remote = g;
+    mp.mySeat = (g.players || []).findIndex((p) => p.uid === currentUid);
+    if (mp.mySeat === -1) mp.mySeat = 0;
+    if (g.status === 'active' && g.players) {
+      mp.cameraX = mp.cameraX || (g.players[mp.mySeat].baseX - canvas.width / 2);
+      mp.cameraY = mp.cameraY || (g.players[mp.mySeat].baseY - canvas.height / 2);
+    }
+    mpRecordStats(gameId, g);
+    if (!mp.isHost) mpRenderFromRemote();
+  }, (err) => console.error("Pirates game watch failed:", err));
+
+  if (asHost) {
+    mpHostWatchCommands();
+  } else {
+    requestAnimationFrame(mpGuestRafPump); // keeps handleKeyboardControls panning smooth for guests between snapshots
+  }
+}
+
+function mpGuestRafPump() {
+  if (!mp.active || mp.isHost) return;
+  handleKeyboardControls(mp);
+  if (mp.remote) mpRenderFromRemote();
+  requestAnimationFrame(mpGuestRafPump);
+}
+
+function mpMyLivePlayer() {
+  if (mp.isHost && mp.match) return mp.match.players[mp.mySeat];
+  if (mp.remote && mp.remote.players) return mp.remote.players[mp.mySeat];
+  return null;
+}
+
+function mpRenderRoster(players) {
+  const el = document.getElementById('mpRoster');
+  el.innerHTML = (players || []).map((p) => {
+    const cls = 'mp-roster-row' + (!p.alive ? ' dead' : '') + (p.uid === currentUid ? ' me' : '');
+    return `<div class="${cls}">${escapeHtml(p.name)}${p.uid === currentUid ? ' (you)' : ''}<span>${Math.max(0, p.baseHp)} HP</span></div>`;
+  }).join('');
+}
+
+function mpRenderCommon(status, players, ghostShips, treasureChests, healthIslands, kingIslands, cannonballs, timeLeft, winner, selectedUnits) {
+  const myPlayer = players[mp.mySeat];
+  const fog = mpFogFor(myPlayer);
+  document.getElementById('timeLeft').textContent = timeLeft;
+  document.getElementById('goldAmount').textContent = myPlayer ? myPlayer.gold : 0;
+  document.getElementById('shipCount').textContent = myPlayer ? myPlayer.ships.length : 0;
+  mpRenderRoster(players);
+
+  const buildCommand = document.getElementById('buildCommand');
+  const buildDock = document.getElementById('buildDock');
+  const buildIsland = document.getElementById('buildIsland');
+  const buildMiniShip = document.getElementById('buildMiniShip');
+  const buildDestroyer = document.getElementById('buildDestroyer');
+  const buildQueenShip = document.getElementById('buildQueenShip');
+  const buildKingShip = document.getElementById('buildKingShip');
+  const alive = myPlayer && myPlayer.alive;
+  buildCommand.disabled = !alive || myPlayer.hasCommandCenter || myPlayer.gold < 100;
+  buildDock.disabled = !alive || !myPlayer.hasCommandCenter || myPlayer.hasNavyDock || myPlayer.gold < 100;
+  buildIsland.disabled = !alive || !myPlayer.hasCommandCenter || myPlayer.gold < 200;
+  buildMiniShip.disabled = !alive || !myPlayer.hasNavyDock || myPlayer.gold < 75;
+  buildDestroyer.disabled = !alive || !myPlayer.hasNavyDock || myPlayer.gold < 150;
+  buildQueenShip.disabled = !alive || !myPlayer.hasNavyDock || myPlayer.gold < 300;
+  buildKingShip.disabled = !alive || !myPlayer.hasNavyDock || myPlayer.gold < 500;
+
+  drawWaves(mp);
+  players.forEach((p) => {
+    if (!p.alive && p.uid !== (myPlayer && myPlayer.uid)) return;
+    if (p.uid !== (myPlayer && myPlayer.uid) && mpIsInFog(fog, p.baseX, p.baseY)) return;
+    drawBuilding({ x: p.baseX, y: p.baseY, width: 150, height: 150, type: 'base', hp: p.baseHp, maxHp: p.baseMaxHp }, mp);
+    p.buildings.forEach((b) => { if (p.uid === (myPlayer && myPlayer.uid) || !mpIsInFog(fog, b.x, b.y)) drawBuilding(b, mp); });
+  });
+  players.forEach((p) => {
+    const img = p.uid === (myPlayer && myPlayer.uid) ? images.playerShip : images.enemyShip;
+    p.ships.forEach((ship) => {
+      if (p.uid !== (myPlayer && myPlayer.uid) && mpIsInFog(fog, ship.x, ship.y)) return;
+      drawUnit(ship, img, mp, selectedUnits.includes(ship));
+    });
+  });
+  ghostShips.forEach((g) => { if (!mpIsInFog(fog, g.x, g.y)) drawUnit(g, images.ghostShip, mp, false); });
+  treasureChests.forEach((t) => { if (!mpIsInFog(fog, t.x, t.y)) drawPowerupSprite(t, images.treasureChest, mp); });
+  healthIslands.forEach((h) => { if (!mpIsInFog(fog, h.x, h.y)) drawPowerupSprite(h, images.healthIsland, mp); });
+  kingIslands.forEach((k) => { if (!mpIsInFog(fog, k.x, k.y)) drawPowerupSprite(k, images.kingIsland, mp); });
+  cannonballs.forEach((ball) => {
+    const screenX = (ball.x - mp.cameraX) * mp.zoom, screenY = (ball.y - mp.cameraY) * mp.zoom, size = 20 * mp.zoom;
+    if (images.cannonball.complete) ctx.drawImage(images.cannonball, screenX - size / 2, screenY - size / 2, size, size);
+  });
+  drawFogOfWarGrid(fog, mp);
+
+  if (status === 'finished' && !mp.finishedShown) {
+    mp.finishedShown = true;
+    const won = winner === currentUid;
+    showMessage(won ? 'Victory!' : 'Defeat', won ? 'Your fleet took the seas! +3 points.' : (winner ? 'Another crew claimed the seas.' : 'Everyone went down together.'), () => mpLeaveGame());
+  }
+}
+
+function mpRenderFromLocalMatch() {
+  if (!mp.match) return;
+  mpRenderCommon(mp.match.status, mp.match.players, mp.match.ghostShips, mp.match.treasureChests, mp.match.healthIslands, mp.match.kingIslands, mp.match.cannonballs, mp.match.timeLeft, mp.match.winner, mp.selectedUnits);
+}
+function mpRenderFromRemote() {
+  const g = mp.remote;
+  if (!g || !g.players) return;
+  mpRenderCommon(g.status, g.players, g.ghostShips || [], g.treasureChests || [], g.healthIslands || [], g.kingIslands || [], g.cannonballs || [], g.timeLeft, g.winner, mp.selectedUnits);
+}
+
+function mpLeaveGame() {
+  mp.active = false;
+  if (mp.unsubscribeGame) { mp.unsubscribeGame(); mp.unsubscribeGame = null; }
+  if (mp.unsubscribeCommands) { mp.unsubscribeCommands(); mp.unsubscribeCommands = null; }
+  if (mp.roundInterval) { clearInterval(mp.roundInterval); mp.roundInterval = null; }
+  mp.match = null; mp.remote = null; mp.gameId = null; mp.finishedShown = false; mp.cameraX = 0; mp.cameraY = 0;
+  document.getElementById('pirateWrapper').style.display = 'none';
+  document.getElementById('mpRoster').style.display = 'none';
+  document.getElementById('stageLine').style.display = '';
+  document.getElementById('enemyGoldLine').style.display = '';
+  document.getElementById('enemyShipCountLine').style.display = '';
+  document.getElementById('site-chrome').style.display = 'block';
+  showView('waiting');
+}
+
+// -------- Stats / leaderboard --------
+async function mpRecordStats(gameId, g) {
+  if (!g || g.status !== 'finished') return;
+  if (g.statsRecorded && g.statsRecorded[currentUid]) return;
+  if (!(g.participants || []).includes(currentUid)) return;
+  const won = g.winner === currentUid;
+  try {
+    await updateDoc(doc(db, "piratesGames", gameId), { [`statsRecorded.${currentUid}`]: true });
+    const userSnap = await getDoc(doc(db, "users", currentUid));
+    const data = userSnap.exists() ? userSnap.data() : {};
+    await updateDoc(doc(db, "users", currentUid), {
+      piratesPoints: (data.piratesPoints || 0) + (won ? 3 : 0),
+      piratesWins: (data.piratesWins || 0) + (won ? 1 : 0),
+      piratesLosses: (data.piratesLosses || 0) + (won ? 0 : 1),
+    });
+  } catch (err) {
+    console.error("Couldn't record Pirates stats:", err);
+  }
+}
+async function reconcileFinishedPiratesGames() {
+  try {
+    const q = query(collection(db, "piratesGames"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    for (const docSnap of snap.docs) {
+      const g = docSnap.data();
+      if (g.status === 'finished' && !(g.statsRecorded && g.statsRecorded[currentUid])) await mpRecordStats(docSnap.id, g);
+    }
+  } catch (err) {
+    console.error("Couldn't reconcile finished Pirates games:", err);
+  }
+}
+async function loadPiratesLeaderboard() {
+  const list = document.getElementById("leaderboard-list");
+  const empty = document.getElementById("leaderboard-empty");
+  list.innerHTML = "";
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("approved", "==", true)));
+    const ranked = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data();
+      const points = d.piratesPoints || 0, wins = d.piratesWins || 0, losses = d.piratesLosses || 0;
+      if (points > 0 || wins > 0 || losses > 0) ranked.push({ name: d.profile?.name || "Neighbor", points, wins, losses });
+    });
+    ranked.sort((a, b) => b.points - a.points || b.wins - a.wins);
+    if (ranked.length === 0) { empty.style.display = "block"; return; }
+    empty.style.display = "none";
+    ranked.forEach((p, i) => {
+      const row = document.createElement("div");
+      row.className = "leader-row";
+      row.innerHTML = `<span class="leader-rank">#${i + 1}</span><span style="flex:1;">${escapeHtml(p.name)}</span><span>${p.points} pts (${p.wins}W-${p.losses}L)</span>`;
+      list.appendChild(row);
+    });
+  } catch (err) {
+    console.error("Couldn't load Pirates leaderboard:", err);
+    empty.style.display = "block";
+  }
+}
+
+// ===========================================================================
+// SHARED INPUT — mouse/touch/wheel/keyboard. Works against whichever mode is
+// active (gameState for AI, mp for Online) via the small dispatch helpers
+// below, so there's exactly one set of event listeners on the canvas.
+// ===========================================================================
+function activeCamera() { return gameState.active ? gameState : mp; }
+function isGameActive() { return gameState.active || mp.active; }
+
+let isDragging = false, isSelecting = false;
+let dragStartX, dragStartY, dragStartScreenX, dragStartScreenY;
+const selectionBox = document.getElementById('selectionBox');
+
+function currentSelectableShips() {
+  if (gameState.active) return gameState.playerShips;
+  const me = mpMyLivePlayer();
+  return me ? me.ships : [];
+}
+function currentSelectedList() {
+  return gameState.active ? aiSelectedUnits : mp.selectedUnits;
+}
+function setSelectedList(list) {
+  if (gameState.active) aiSelectedUnits = list; else mp.selectedUnits = list;
+}
+
+function issueMove(ships, targetX, targetY) {
+  if (gameState.active) {
+    ships.forEach((s) => { s.targetX = targetX; s.targetY = targetY; s.moving = true; });
+    return;
+  }
+  const me = mpMyLivePlayer();
+  if (!me) return;
+  const idxs = ships.map((s) => me.ships.indexOf(s)).filter((i) => i !== -1);
+  if (idxs.length) mpSubmitCommand({ type: 'move', shipIndexes: idxs, x: targetX, y: targetY });
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  if (!isGameActive()) return;
+  const cam = activeCamera();
+  const rect = canvas.getBoundingClientRect();
+  const screenX = e.clientX - rect.left, screenY = e.clientY - rect.top;
+  const mouseX = screenX / cam.zoom + cam.cameraX, mouseY = screenY / cam.zoom + cam.cameraY;
+
+  if (e.button === 2) { isDragging = true; dragStartX = e.clientX; dragStartY = e.clientY; e.preventDefault(); return; }
+  if (e.button !== 0) return;
+
+  if (gameState.active && gameState.placingIsland) {
+    const distFromBase = Math.hypot(mouseX - gameState.playerBase.x, mouseY - gameState.playerBase.y);
+    if (distFromBase <= 1000) {
+      gameState.gold -= 200;
+      gameState.playerBuildings.push({ x: mouseX - 50, y: mouseY - 50, width: 100, height: 100, type: 'island', owner: 'player', range: ISLAND_RANGE, hp: 50, maxHp: 50, damage: 10 });
+      aiUpdateHUD(); aiUpdateBuildButtons();
+    } else {
+      showMessage('Too far!', 'Island must be placed within 1000 range of your base!');
+    }
+    gameState.placingIsland = false; canvas.style.cursor = 'crosshair';
+    return;
+  }
+  if (mp.active && mp.placingIsland) {
+    mpSubmitCommand({ type: 'build', building: 'island', x: mouseX, y: mouseY });
+    mp.placingIsland = false; canvas.style.cursor = 'crosshair';
+    return;
+  }
+
+  const ships = currentSelectableShips();
+  let clicked = null;
+  for (const ship of ships) {
+    if (mouseX >= ship.x && mouseX <= ship.x + ship.width && mouseY >= ship.y && mouseY <= ship.y + ship.height) { clicked = ship; break; }
+  }
+
+  if (clicked) {
+    const sel = currentSelectedList();
+    if (e.shiftKey) { if (!sel.includes(clicked)) setSelectedList([...sel, clicked]); }
+    else setSelectedList([clicked]);
+  } else if (currentSelectedList().length > 0) {
+    window.pirateCheckDeselect = { x: mouseX, y: mouseY };
+    issueMove(currentSelectedList(), mouseX, mouseY);
+  } else {
+    isSelecting = true;
+    dragStartScreenX = screenX; dragStartScreenY = screenY; dragStartX = mouseX; dragStartY = mouseY;
+    selectionBox.style.left = screenX + 'px'; selectionBox.style.top = screenY + 'px';
+    selectionBox.style.width = '0px'; selectionBox.style.height = '0px'; selectionBox.style.display = 'block';
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!isGameActive()) return;
+  const cam = activeCamera();
+  if (isDragging) {
+    const dx = (e.clientX - dragStartX) / cam.zoom, dy = (e.clientY - dragStartY) / cam.zoom;
+    cam.cameraX -= dx; cam.cameraY -= dy;
+    cam.cameraX = Math.max(0, Math.min(MAP_WIDTH - canvas.width / cam.zoom, cam.cameraX));
+    cam.cameraY = Math.max(0, Math.min(MAP_HEIGHT - canvas.height / cam.zoom, cam.cameraY));
+    dragStartX = e.clientX; dragStartY = e.clientY;
+  } else if (isSelecting) {
+    const rect = canvas.getBoundingClientRect();
+    const currentScreenX = e.clientX - rect.left, currentScreenY = e.clientY - rect.top;
+    selectionBox.style.left = Math.min(dragStartScreenX, currentScreenX) + 'px';
+    selectionBox.style.top = Math.min(dragStartScreenY, currentScreenY) + 'px';
+    selectionBox.style.width = Math.abs(currentScreenX - dragStartScreenX) + 'px';
+    selectionBox.style.height = Math.abs(currentScreenY - dragStartScreenY) + 'px';
+  }
+});
+
+canvas.addEventListener('mouseup', (e) => {
+  if (!isGameActive()) { isDragging = false; return; }
+  const cam = activeCamera();
+  if (window.pirateCheckDeselect) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = (e.clientX - rect.left) / cam.zoom + cam.cameraX, mouseY = (e.clientY - rect.top) / cam.zoom + cam.cameraY;
+    if (Math.hypot(mouseX - window.pirateCheckDeselect.x, mouseY - window.pirateCheckDeselect.y) < 10) setSelectedList([]);
+    window.pirateCheckDeselect = null;
+  }
+  if (isSelecting) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = (e.clientX - rect.left) / cam.zoom + cam.cameraX, mouseY = (e.clientY - rect.top) / cam.zoom + cam.cameraY;
+    const minX = Math.min(dragStartX, mouseX), maxX = Math.max(dragStartX, mouseX);
+    const minY = Math.min(dragStartY, mouseY), maxY = Math.max(dragStartY, mouseY);
+    const ships = currentSelectableShips();
+    setSelectedList(ships.filter((ship) => {
+      const cx = ship.x + ship.width / 2, cy = ship.y + ship.height / 2;
+      return cx >= minX && cx <= maxX && cy >= minY && cy <= maxY;
+    }));
+    selectionBox.style.display = 'none';
+    isSelecting = false;
+  }
+  isDragging = false;
+});
+
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// Single merged touch handler (the source had two competing 'touchstart'
+// listeners doing overlapping work — tap-to-select and long-press-to-move
+// are combined here instead).
+let touchHoldTimer = null;
+canvas.addEventListener('touchstart', (e) => {
+  if (!isGameActive()) return;
+  e.preventDefault();
+  const cam = activeCamera();
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  const touchX = (touch.clientX - rect.left) / cam.zoom + cam.cameraX, touchY = (touch.clientY - rect.top) / cam.zoom + cam.cameraY;
+
+  const ships = currentSelectableShips();
+  let clicked = null;
+  for (const ship of ships) {
+    if (touchX >= ship.x && touchX <= ship.x + ship.width && touchY >= ship.y && touchY <= ship.y + ship.height) { clicked = ship; break; }
+  }
+  if (clicked) {
+    setSelectedList([clicked]);
+    return;
+  }
+
+  touchHoldTimer = setTimeout(() => {
+    const sel = currentSelectedList();
+    if (sel.length > 0) issueMove(sel, touchX, touchY);
+  }, 500);
+}, { passive: false });
+canvas.addEventListener('touchend', () => { if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; } });
+canvas.addEventListener('touchmove', () => { if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; } });
+
+canvas.addEventListener('wheel', (e) => {
+  if (!isGameActive()) return;
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  zoomToPoint(activeCamera(), e.clientX - rect.left, e.clientY - rect.top, e.deltaY > 0 ? -0.1 : 0.1);
+});
+
+function zoomToPoint(cam, screenX, screenY, zoomDelta) {
+  const oldZoom = cam.zoom;
+  const newZoom = Math.max(0.3, Math.min(2, oldZoom + zoomDelta));
+  if (newZoom === oldZoom) return;
+  const worldX = screenX / oldZoom + cam.cameraX, worldY = screenY / oldZoom + cam.cameraY;
+  cam.zoom = newZoom;
+  cam.cameraX = worldX - screenX / newZoom;
+  cam.cameraY = worldY - screenY / newZoom;
+  cam.cameraX = Math.max(0, Math.min(MAP_WIDTH - canvas.width / cam.zoom, cam.cameraX));
+  cam.cameraY = Math.max(0, Math.min(MAP_HEIGHT - canvas.height / cam.zoom, cam.cameraY));
+}
+
+const heldKeys = {};
+window.addEventListener('keydown', (e) => {
+  heldKeys[e.key] = true;
+  if (e.key === 'Escape') setSelectedList([]);
+});
+window.addEventListener('keyup', (e) => { heldKeys[e.key] = false; });
+
+function handleKeyboardControls(cam) {
+  const panSpeed = 10 / cam.zoom;
+  if (heldKeys['ArrowLeft'] || heldKeys['a'] || heldKeys['A']) cam.cameraX -= panSpeed;
+  if (heldKeys['ArrowRight'] || heldKeys['d'] || heldKeys['D']) cam.cameraX += panSpeed;
+  if (heldKeys['ArrowUp'] || heldKeys['w'] || heldKeys['W']) cam.cameraY -= panSpeed;
+  if (heldKeys['ArrowDown'] || heldKeys['s'] || heldKeys['S']) cam.cameraY += panSpeed;
+  cam.cameraX = Math.max(0, Math.min(MAP_WIDTH - canvas.width / cam.zoom, cam.cameraX));
+  cam.cameraY = Math.max(0, Math.min(MAP_HEIGHT - canvas.height / cam.zoom, cam.cameraY));
+}
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+document.getElementById('hudHeader').addEventListener('click', () => {
+  const content = document.getElementById('hudContent');
+  content.classList.toggle('collapsed');
+  document.getElementById('hudToggle').textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+});
+document.getElementById('buildMenuHeader').addEventListener('click', () => {
+  const content = document.getElementById('buildMenuContent');
+  content.classList.toggle('collapsed');
+  document.getElementById('buildMenuToggle').textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+});
+
+// Build-menu buttons dispatch to whichever mode is currently running.
+document.getElementById('buildCommand').addEventListener('click', () => {
+  if (gameState.active) aiBuildCommand();
+  else mpSubmitCommand({ type: 'build', building: 'command' });
+});
+document.getElementById('buildDock').addEventListener('click', () => {
+  if (gameState.active) aiBuildDock();
+  else mpSubmitCommand({ type: 'build', building: 'dock' });
+});
+document.getElementById('buildIsland').addEventListener('click', () => {
+  if (gameState.active) { gameState.placingIsland = true; canvas.style.cursor = 'crosshair'; }
+  else { mp.placingIsland = true; canvas.style.cursor = 'crosshair'; }
+});
+document.getElementById('buildMiniShip').addEventListener('click', () => {
+  if (gameState.active) aiCreateShip('mini', 75, 50, 5, 200, 50, 50, true);
+  else mpSubmitCommand({ type: 'build', building: 'ship', shipType: 'mini' });
+});
+document.getElementById('buildDestroyer').addEventListener('click', () => {
+  if (gameState.active) aiCreateShip('destroyer', 150, 100, 15, 300, 70, 70, false);
+  else mpSubmitCommand({ type: 'build', building: 'ship', shipType: 'destroyer' });
+});
+document.getElementById('buildQueenShip').addEventListener('click', () => {
+  if (gameState.active) aiCreateShip('queen', 300, 250, 20, 700, 90, 90, false);
+  else mpSubmitCommand({ type: 'build', building: 'ship', shipType: 'queen' });
+});
+document.getElementById('buildKingShip').addEventListener('click', () => {
+  if (gameState.active) aiCreateShip('king', 500, 350, 30, 1000, 110, 110, false);
+  else mpSubmitCommand({ type: 'build', building: 'ship', shipType: 'king' });
+});
+
+document.getElementById('pirate-back-btn').addEventListener('click', () => {
+  if (gameState.active) {
+    gameState.active = false;
+    gameState.gameRunning = false;
+    if (gameState.roundInterval) { clearInterval(gameState.roundInterval); gameState.roundInterval = null; }
+    document.getElementById('pirateWrapper').style.display = 'none';
+    document.getElementById('site-chrome').style.display = 'block';
+    showView('mode-select');
+    return;
+  }
+  if (mp.active) {
+    if (mp.isHost && mp.roundInterval) clearInterval(mp.roundInterval);
+    mpLeaveGame();
+  }
+});
+
+// ===========================================================================
+// SITE-CHROME WIRING — mode select, waiting room (2-4 players), leaderboard.
+// The lobby (createTable/joinTable/players[]/participants[]/statsRecorded
+// map, 2-4 flexible seats) mirrors war.html's exactly, just on the
+// piratesGames collection.
+// ===========================================================================
+let unsubscribeOpenTables = null, unsubscribeMyInvites = null, unsubscribeMyActiveGame = null;
+let unsubscribeGamePlayLimit = null;
+let currentGamePlayLimit = { day: 0, count: 0 };
+let myOpenTableId = null;
+
+function showView(name) {
+  ["mode-select", "waiting", "leaderboard"].forEach((v) => {
+    document.getElementById(`view-${v}`).style.display = v === name ? "block" : "none";
+  });
+  document.getElementById("nav-hub").classList.toggle("active", name === "mode-select");
+  document.getElementById("nav-waiting").classList.toggle("active", name === "waiting");
+  document.getElementById("nav-leaderboard").classList.toggle("active", name === "leaderboard");
+  const inMultiplayer = name === "waiting" || name === "leaderboard";
+  document.getElementById("nav-waiting").style.display = inMultiplayer ? "inline" : "none";
+  document.getElementById("nav-leaderboard").style.display = inMultiplayer ? "inline" : "none";
+  if (name === "waiting") watchWaitingRoom();
+  else {
+    if (unsubscribeOpenTables) unsubscribeOpenTables();
+    if (unsubscribeMyInvites) unsubscribeMyInvites();
+    if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+  }
+  if (name === "leaderboard") loadPiratesLeaderboard();
+}
+
+document.getElementById("nav-hub").addEventListener("click", () => { location.href = "chess.html"; });
+document.getElementById("nav-waiting").addEventListener("click", () => showView("waiting"));
+document.getElementById("nav-leaderboard").addEventListener("click", () => showView("leaderboard"));
+document.getElementById("back-to-hub-btn").addEventListener("click", () => showView("mode-select"));
+
+document.getElementById("mode-tile-ai").addEventListener("click", () => {
+  document.getElementById('site-chrome').style.display = 'none';
+  document.getElementById('pirateWrapper').style.display = 'block';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  bgMusic.play().catch(() => {});
+  initAudio();
+  aiInitGame();
+});
+document.getElementById("mode-tile-online").addEventListener("click", () => showView("waiting"));
+
+function myDailyTierLimit() {
+  if (currentUserData?.isDiamondMember) return Infinity;
+  if (currentUserData?.isGoldMember) return 15;
+  return 5;
+}
+function watchGamePlayLimit(uid) {
+  if (unsubscribeGamePlayLimit) unsubscribeGamePlayLimit();
+  unsubscribeGamePlayLimit = onSnapshot(doc(db, "gamePlayLimits", uid), (snap) => {
+    currentGamePlayLimit = snap.exists() ? snap.data() : { day: todayNumber(), count: 0 };
+    renderGamePlayRemaining();
+  });
+}
+function renderGamePlayRemaining() {
+  const el = document.getElementById("pirates-play-remaining");
+  if (!el) return;
+  const limit = myDailyTierLimit();
+  if (limit === Infinity) { el.textContent = "Unlimited online games today (Diamond member)"; return; }
+  const sameDay = currentGamePlayLimit.day === todayNumber();
+  const remaining = sameDay ? Math.max(0, limit - currentGamePlayLimit.count) : limit;
+  el.textContent = `${remaining} / ${limit} online games left today`;
+}
+async function reserveGamePlaySlot(msg) {
+  const limit = myDailyTierLimit();
+  const limitRef = doc(db, "gamePlayLimits", currentUid);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  const data = limitSnap && limitSnap.exists() ? limitSnap.data() : { day: todayNumber(), count: 0 };
+  const sameDay = data.day === todayNumber();
+  const remaining = sameDay ? limit - data.count : limit;
+  if (remaining <= 0) {
+    showMessage2(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+    return { ok: false };
+  }
+  return { ok: true, limitRef, count: sameDay ? data.count + 1 : 1 };
+}
+function showMessage2(el, text, type) {
+  el.textContent = text;
+  el.className = `site-message ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 4000);
+}
+
+async function createTable(inviteToUid, inviteToName) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    if (inviteToUid && !(await checkInviteCooldown(inviteToUid, inviteToName, msg))) return;
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+    const gameRef = doc(collection(db, "piratesGames"));
+    const batch = writeBatch(db);
+    batch.set(gameRef, {
+      player1Uid: currentUid,
+      player1Name: currentUserName,
+      players: [{ uid: currentUid, name: currentUserName }],
+      participants: [currentUid],
+      inviteTo: inviteToUid || null,
+      inviteToName: inviteToName || null,
+      status: "open",
+      winner: null,
+      statsRecorded: {},
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    if (inviteToUid) {
+      const limitRef = doc(db, "gameInviteLimits", `${currentUid}_piratesGames_${inviteToUid}`);
+      batch.set(limitRef, { inviterUid: currentUid, game: "piratesGames", inviteeUid: inviteToUid, lastInvitedAt: serverTimestamp() });
+    }
+    batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    await batch.commit();
+    if (inviteToUid) showMessage2(msg, `Invite sent to ${inviteToName}.`, "success");
+    else openLobbyGame(gameRef.id);
+  } catch (err) {
+    if (inviteToUid && err.code === "permission-denied") {
+      showMessage2(msg, `You can invite ${inviteToName} again in about an hour, or you've reached your daily game limit.`, "error");
+      return;
+    }
+    if (err.code === "permission-denied") {
+      showMessage2(msg, "You've reached your daily limit of online games. Upgrade to Gold or Diamond for more plays, or check back tomorrow.", "error");
+      return;
+    }
+    showMessage2(msg, err.message, "error");
+  }
+}
+
+async function joinTable(gameId) {
+  const msg = document.getElementById("waiting-message");
+  try {
+    const gamePlaySlot = await reserveGamePlaySlot(msg);
+    if (!gamePlaySlot.ok) return;
+    const gameRef = doc(db, "piratesGames", gameId);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(gameRef);
+      if (!snap.exists()) throw new Error("That table no longer exists.");
+      const g = snap.data();
+      if (g.status !== "open") throw new Error("That table already started.");
+      if (g.participants.includes(currentUid)) throw new Error("You're already seated at that table.");
+      const maxSeats = g.inviteTo ? 2 : 4;
+      if (g.participants.length >= maxSeats) throw new Error("That table is full.");
+      tx.update(gameRef, {
+        players: [...g.players, { uid: currentUid, name: currentUserName }],
+        participants: [...g.participants, currentUid],
+        updatedAt: serverTimestamp(),
+      });
+    });
+    await setDoc(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
+    openLobbyGame(gameId);
+  } catch (err) {
+    showMessage2(msg, err.message, "error");
+  }
+}
+
+// -------- Lobby (pre-match) watch: shown while status === 'open' --------
+let lobbyGameId = null;
+let unsubscribeLobby = null;
+
+function openLobbyGame(gameId) {
+  lobbyGameId = gameId;
+  if (unsubscribeLobby) unsubscribeLobby();
+  unsubscribeLobby = onSnapshot(doc(db, "piratesGames", gameId), (snap) => {
+    if (!snap.exists()) { lobbyGameId = null; showView("waiting"); return; }
+    const g = snap.data();
+    if (g.status === "open") {
+      renderLobbyWaiting(gameId, g);
+    } else if (g.status === "active" || g.status === "finished") {
+      if (unsubscribeLobby) { unsubscribeLobby(); unsubscribeLobby = null; }
+      lobbyGameId = null;
+      mpOpenGame(gameId, g.player1Uid === currentUid);
+    }
+  }, (err) => console.error("Pirates lobby watch failed:", err));
+}
+
+function renderLobbyWaiting(gameId, g) {
+  const msg = document.getElementById("waiting-message");
+  const isHost = g.player1Uid === currentUid;
+  showMessage2(
+    msg,
+    `${g.players.length}/4 seated. ${isHost ? "Start once you have at least 2 players." : "Waiting for the host to start..."}`,
+    "success"
+  );
+  msg.style.display = "block";
+  if (!document.getElementById("mp-start-btn")) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "site-btn";
+    btn.id = "mp-start-btn";
+    btn.textContent = "Start Match";
+    btn.style.marginTop = "0.75rem";
+    msg.insertAdjacentElement("afterend", btn);
+    btn.addEventListener("click", async () => {
+      const snap = await getDoc(doc(db, "piratesGames", gameId));
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.player1Uid !== currentUid || data.players.length < 2) return;
+      mpHostStartMatch(gameId, data.players);
+    });
+  }
+  document.getElementById("mp-start-btn").style.display = isHost && g.players.length >= 2 ? "inline-flex" : "none";
+}
+
+// A plain "participants array-contains me" query, status filtered
+// CLIENT-SIDE rather than with a Firestore where("status","in",[...]) —
+// every other game collection's rules in this codebase were only ever
+// proven against single-value where("status","==",...) filters (see the
+// extensive .get(field,default) comments on every match block above), and
+// the "in" operator combined with those same defensive accessors hit a
+// real "Null value error" during list-query rule validation on the
+// Firestore emulator, confirmed live 2026-08-16 — not a guess, reproduced
+// via a failing onSnapshot with that exact error. Filtering status after
+// the fact sidesteps the query shape entirely instead of chasing a rules
+// rewrite for a validator edge case nothing else here has ever needed to.
+function myOpenOrActivePiratesQuery() {
+  return query(collection(db, "piratesGames"), where("participants", "array-contains", currentUid));
+}
+function firstOpenOrActiveDoc(snap) {
+  return snap.docs.find((d) => { const s = d.data().status; return s === "open" || s === "active"; });
+}
+
+async function checkForActiveGame() {
+  const snap = await getDocs(myOpenOrActivePiratesQuery()).catch(() => null);
+  const d = snap && firstOpenOrActiveDoc(snap);
+  if (d) {
+    const g = d.data();
+    if (g.status === "open") openLobbyGame(d.id); else mpOpenGame(d.id, g.player1Uid === currentUid);
+    return true;
+  }
+  return false;
+}
+
+function watchWaitingRoom() {
+  if (unsubscribeOpenTables) unsubscribeOpenTables();
+  if (unsubscribeMyInvites) unsubscribeMyInvites();
+  if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
+
+  unsubscribeMyActiveGame = onSnapshot(myOpenOrActivePiratesQuery(), (snap) => {
+    if (mp.active || lobbyGameId) return;
+    const d = firstOpenOrActiveDoc(snap);
+    if (!d) return;
+    const g = d.data();
+    if (g.status === "open") openLobbyGame(d.id); else mpOpenGame(d.id, g.player1Uid === currentUid);
+  }, (err) => console.error("My active game watch failed:", err));
+
+  const openQ = query(collection(db, "piratesGames"), where("status", "==", "open"), where("inviteTo", "==", null));
+  unsubscribeOpenTables = onSnapshot(openQ, (snap) => {
+    const list = document.getElementById("open-tables-list");
+    const empty = document.getElementById("open-tables-empty");
+    const myTableWrap = document.getElementById("my-open-table-wrap");
+    list.innerHTML = "";
+    let shown = 0;
+    myOpenTableId = null;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.player1Uid === currentUid) {
+        myOpenTableId = docSnap.id;
+        document.getElementById("my-open-table-label").textContent = `Your table — ${g.players.length}/4 joined, waiting for more players`;
+        return;
+      }
+      shown++;
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")}'s table (${g.players.length}/4 players)</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "site-btn small"; btn.textContent = "Join";
+      btn.addEventListener("click", () => joinTable(docSnap.id));
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+    myTableWrap.style.display = myOpenTableId ? "block" : "none";
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("Open tables watch failed:", err));
+
+  const inviteQ = query(collection(db, "piratesGames"), where("inviteTo", "==", currentUid));
+  unsubscribeMyInvites = onSnapshot(inviteQ, (snap) => {
+    const list = document.getElementById("my-invites-list");
+    const empty = document.getElementById("my-invites-empty");
+    list.innerHTML = "";
+    let shown = 0;
+    snap.forEach((docSnap) => {
+      const g = docSnap.data();
+      if (g.status !== "open") return;
+      shown++;
+      const row = document.createElement("div");
+      row.className = "invite-row";
+      row.innerHTML = `<span>${escapeHtml(g.player1Name || "Neighbor")} invited you to play (${g.players.length}/2 seated)</span>`;
+      const actions = document.createElement("span");
+      const acceptBtn = document.createElement("button");
+      acceptBtn.type = "button"; acceptBtn.className = "site-btn small"; acceptBtn.textContent = "Accept";
+      acceptBtn.addEventListener("click", () => joinTable(docSnap.id));
+      const declineBtn = document.createElement("button");
+      declineBtn.type = "button"; declineBtn.className = "site-btn secondary small"; declineBtn.textContent = "Decline";
+      declineBtn.addEventListener("click", () =>
+        updateDoc(doc(db, "piratesGames", docSnap.id), { inviteTo: null, inviteToName: null }).catch(() => {})
+      );
+      actions.appendChild(acceptBtn); actions.appendChild(declineBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+    empty.style.display = shown === 0 ? "block" : "none";
+  }, (err) => console.error("My invites watch failed:", err));
+
+  loadFriendsToInvite();
+  renderGamePlayRemaining();
+}
+
+async function loadFriendsToInvite() {
+  const list = document.getElementById("friends-invite-list");
+  const empty = document.getElementById("friends-invite-empty");
+  list.innerHTML = "";
+  try {
+    const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
+    const snap = await getDocs(q);
+    let shown = 0;
+    for (const docSnap of snap.docs) {
+      const d = docSnap.data();
+      if (d.status !== "accepted") continue;
+      const otherUid = (d.participants || []).find((p) => p !== currentUid);
+      const otherName = (d.participantNames && d.participantNames[otherUid]) || "Neighbor";
+      shown++;
+      const row = document.createElement("div");
+      row.className = "friend-row";
+      row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "site-btn small"; btn.textContent = "Invite to play";
+      btn.addEventListener("click", () => createTable(otherUid, otherName));
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+    empty.style.display = shown === 0 ? "block" : "none";
+  } catch (err) {
+    console.error("Couldn't load friends list:", err);
+  }
+}
+
+document.getElementById("create-table-btn").addEventListener("click", () => createTable(null, null));
+document.getElementById("cancel-my-table-btn").addEventListener("click", async () => {
+  if (!myOpenTableId) return;
+  try { await deleteDoc(doc(db, "piratesGames", myOpenTableId)); }
+  catch (err) { alert(`Couldn't cancel table: ${err.message}`); }
+});
+
+const INVITE_COOLDOWN_MS = 60 * 60 * 1000;
+async function checkInviteCooldown(inviteToUid, inviteToName, msg) {
+  const limitRef = doc(db, "gameInviteLimits", `${currentUid}_piratesGames_${inviteToUid}`);
+  const limitSnap = await getDoc(limitRef).catch(() => null);
+  if (!limitSnap || !limitSnap.exists()) return true;
+  const last = limitSnap.data().lastInvitedAt;
+  const lastMs = last?.seconds ? last.seconds * 1000 : 0;
+  const elapsedMs = Date.now() - lastMs;
+  if (elapsedMs >= INVITE_COOLDOWN_MS) return true;
+  const minsLeft = Math.max(1, Math.ceil((INVITE_COOLDOWN_MS - elapsedMs) / 60000));
+  showMessage2(msg, `You can invite ${inviteToName} again in about ${minsLeft} minute(s).`, "error");
+  return false;
+}
+
+// ============================= AUTH =========================================
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    const graceDeadline = Date.now() + 1200;
+    while (!auth.currentUser && Date.now() < graceDeadline) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    user = auth.currentUser;
+  }
+  if (!user) {
+    document.getElementById("signed-out-notice").style.display = "block";
+    document.getElementById("page-loading").style.display = "none";
+    document.getElementById("app-content").style.display = "none";
+    document.getElementById("not-approved-notice").style.display = "none";
+    return;
+  }
+  currentUid = user.uid;
+  document.getElementById("signed-out-notice").style.display = "none";
+  document.getElementById("page-loading").style.display = "none";
+
+  const snap = await getDoc(doc(db, "users", currentUid)).catch(() => null);
+  if (snap && snap.exists()) {
+    currentUserData = snap.data();
+    currentUserName = currentUserData.profile?.name || "Neighbor";
+  }
+
+  let isAdminUser = false;
+  if (!currentUserData.approved) {
+    const adminSnap = await getDoc(doc(db, "admins", currentUid)).catch(() => null);
+    isAdminUser = !!(adminSnap && adminSnap.exists());
+  }
+  if (!currentUserData.approved && !isAdminUser) {
+    document.getElementById("not-approved-notice").style.display = "block";
+    document.getElementById("app-content").style.display = "none";
+    return;
+  }
+  document.getElementById("not-approved-notice").style.display = "none";
+  document.getElementById("app-content").style.display = "block";
+
+  updateDoc(doc(db, "users", currentUid), {
+    "dailyRewards.gamePlayedDate": new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date()),
+  }).catch(() => {});
+
+  watchGamePlayLimit(currentUid);
+  await reconcileFinishedPiratesGames();
+  const jumpedIntoGame = await checkForActiveGame();
+  if (!jumpedIntoGame) showView("mode-select");
+});
+</script>
+</body>
+</html>

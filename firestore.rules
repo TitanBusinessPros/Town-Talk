@@ -770,6 +770,76 @@ service cloud.firestore {
                         ));
     }
 
+    // Pirates of No Honor — same flexible 2-4 model as warGames (a direct
+    // invite caps at 2, an open table caps at 4), for the exact same
+    // reason: each player's base/ships/gold are independent, so there's no
+    // structural need for every seat to be filled. Unlike warGames, the
+    // actual match isn't resolved via a single client transaction — it's a
+    // real-time RTS, so the table creator (player1Uid) runs the simulation
+    // as "host" and periodically writes the full authoritative state
+    // (players[], ghostShips, powerups, etc. — same top-level doc, no
+    // content validated, same trust model as every other game here); every
+    // other seated player is a read-only "guest" that renders whatever the
+    // host publishes and sends its own build/move clicks as tiny documents
+    // in the commands subcollection below instead of writing game state
+    // directly (guests are never given write access to the parent game
+    // doc's simulation fields — only the host and read-only bookkeeping
+    // like statsRecorded are ever written by a non-host participant).
+    match /piratesGames/{gameId} {
+      allow read: if isSignedIn() && (
+        (resource.data.get('status', null) == 'open' && resource.data.get('inviteTo', null) == null) ||
+        (resource.data.get('inviteTo', null) == request.auth.uid) ||
+        (request.auth.uid in resource.data.get('participants', []))
+      );
+      allow create: if isSignedIn()
+                    && (isApproved(request.auth.uid) || isAdmin())
+                    && request.resource.data.player1Uid == request.auth.uid
+                    && request.resource.data.status == 'open'
+                    && request.resource.data.participants == [request.auth.uid]
+                    && (
+                         request.resource.data.inviteTo == null
+                         || !exists(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_piratesGames_' + request.resource.data.inviteTo))
+                         || request.time > get(/databases/$(database)/documents/gameInviteLimits/$(request.auth.uid + '_piratesGames_' + request.resource.data.inviteTo)).data.lastInvitedAt + duration.value(1, 'h')
+                       );
+      // Once active, only the host (player1Uid) may write the simulation
+      // fields — but every participant still needs `update` for their own
+      // statsRecorded.{uid} flag once the match finishes, so this can't be
+      // narrowed to "host only" outright. Real per-field write protection
+      // (host-only for everything except statsRecorded) isn't expressible
+      // without a much more complex rule than every other game here uses,
+      // so this follows the same "trust the seated players" model as
+      // warGames' hands/message/lastReveal fields.
+      allow update: if isSignedIn()
+                    && (
+                      request.auth.uid in resource.data.participants
+                      || request.auth.uid == resource.data.player1Uid
+                      || request.auth.uid == resource.data.inviteTo
+                      || ((isApproved(request.auth.uid) || isAdmin())
+                          && resource.data.status == 'open'
+                          && resource.data.inviteTo == null
+                          && resource.data.participants.size() < 4)
+                    );
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.status == 'open' && (
+                          request.auth.uid == resource.data.player1Uid
+                          || request.auth.uid == resource.data.inviteTo
+                        ));
+
+      // Guest -> host command relay. A seated player writes their own
+      // build/move clicks here; the host's client drains new documents
+      // each simulation tick, applies them, then deletes them. Only the
+      // AUTHOR may create their own command, and only the host may ever
+      // read/delete the queue (guests don't need to see each other's
+      // pending clicks, and only the host consumes them).
+      match /commands/{commandId} {
+        allow create: if isSignedIn()
+                      && request.auth.uid in get(/databases/$(database)/documents/piratesGames/$(gameId)).data.participants
+                      && request.resource.data.fromUid == request.auth.uid;
+        allow read, delete: if isSignedIn()
+                      && request.auth.uid == get(/databases/$(database)/documents/piratesGames/$(gameId)).data.player1Uid;
+      }
+    }
+
     // Hearts always needs exactly 4 players, so — unlike every other game's
     // invite semantics — a direct invite here does NOT restrict who else
     // can join; it's a courtesy nudge (still reuses the generic Cloud

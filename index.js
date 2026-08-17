@@ -655,7 +655,7 @@ const GAME_POINT_FIELDS_DESC = [
   "heartsPoints", "seaWarPoints", "stackCheckersPoints", "warPoints",
   "blocksHighScore", "deepSeaHighScore", "desertHighScore", "dodgeHighScore",
   "neonDriftHighScore", "titanSpaceHighScore", "sudokuBestStreak",
-  "gravitySlingScore", "match3BestEfficiency", "pongWins",
+  "gravitySlingScore", "match3BestEfficiency", "pongWins", "piratesPoints",
 ];
 // Lower number = better rank (elapsed time) — sort ascending instead.
 const GAME_TIME_FIELDS_ASC = ["gtfBestTimeMs"];
