@@ -2052,11 +2052,19 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 //      ships (the touch equivalent of desktop's click-drag box-select,
 //      requested explicitly 2026-08-17 — there was previously no way to
 //      select more than one ship at a time on a phone at all).
+//   5. One-finger TAP (not a hold) on open water WITH units selected:
+//      deselects them. Added the same day as #4 above, after live
+//      testing found #4 was practically unreachable — box-select only
+//      arms when nothing is selected, but touch had no way at all to GET
+//      back to "nothing selected" once any ship had ever been tapped
+//      (a quick tap on water previously did nothing; only a 500ms hold
+//      issued a move). This is the missing exit, not a new box-select
+//      bug — see touchend.
 // A single touch starts in 'pending' state and only commits to 'pan'
 // once it's moved more than a few pixels before the hold timer fires —
-// short of that threshold it's still eligible to resolve as a tap, a
-// long-press-move, or (once the hold timer actually fires with nothing
-// selected) a box-select instead.
+// short of that threshold it's still eligible to resolve as a tap
+// (select / deselect), a long-press-move, or (once the hold timer
+// actually fires with nothing selected) a box-select instead.
 let touchMode = null; // null | 'pending' | 'pan' | 'pinch' | 'boxselect'
 let touchHoldTimer = null;
 let pinchStartDist = 0, pinchStartZoom = 1;
@@ -2168,6 +2176,17 @@ canvas.addEventListener('touchmove', (e) => {
 
 canvas.addEventListener('touchend', (e) => {
   if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; }
+  // A quick TAP (not a hold — the 500ms timer never got the chance to
+  // fire, so touchMode is still 'pending') on open water with units
+  // currently selected deselects them. Without this there was no way
+  // back to "nothing selected" on touch once any ship had ever been
+  // tapped — box-select only arms when nothing is selected (see
+  // touchstart), so in practice it could never actually be reached once
+  // you'd selected anything at all. Confirmed as the real blocker
+  // 2026-08-17: the fix isn't box-select itself, it's this missing exit.
+  if (touchMode === 'pending' && currentSelectedList().length > 0) {
+    setSelectedList([]);
+  }
   if (touchMode === 'boxselect' && e.touches.length === 0) {
     const cam = activeCamera();
     const rect = canvas.getBoundingClientRect();
@@ -2254,6 +2273,7 @@ const IS_TOUCH_DEVICE = 'ontouchstart' in window || navigator.maxTouchPoints > 0
 document.getElementById('helpPanelContent').innerHTML = IS_TOUCH_DEVICE ? `
   <div><strong>Tap</strong> a ship to select it.</div>
   <div><strong>Hold</strong> a spot on open water (with a ship selected) to send it there.</div>
+  <div><strong>Tap</strong> open water (with a ship selected) to deselect it.</div>
   <div><strong>Hold</strong> a spot on open water (nothing selected), then drag, to draw a box over multiple ships.</div>
   <div><strong>Drag</strong> one finger on open water to pan the map.</div>
   <div><strong>Pinch</strong> with two fingers to zoom in/out.</div>

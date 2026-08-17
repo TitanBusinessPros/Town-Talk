@@ -187,6 +187,75 @@ test.describe("Pirates of No Honor — mobile touch (pinch-zoom, drag-to-pan, bo
     }).toBe(2);
   });
 
+  test("Tapping open water with a ship selected deselects it, unblocking box-select afterward", async ({ page }) => {
+    // Reproduces the exact real bug report 2026-08-17: box-select only
+    // ever arms when nothing is selected, but before this fix there was
+    // no way to get back to "nothing selected" on touch once any ship
+    // had been tapped — a quick tap on open water did nothing at all, so
+    // box-select was permanently unreachable in practice the moment a
+    // player selected their first ship.
+    await signUpAndEnterAiMode(page, "Pirate Mobile Deselect");
+    await page.locator("#buildMenuHeader").click();
+    await page.evaluate(() => window.__pirateDebugGrantGold(1000));
+    await expect(page.locator("#buildCommand")).toBeEnabled({ timeout: 5_000 });
+    await page.locator("#buildCommand").click();
+    await expect(page.locator("#buildDock")).toBeEnabled({ timeout: 5_000 });
+    await page.locator("#buildDock").click();
+    await expect(page.locator("#buildMiniShip")).toBeEnabled({ timeout: 5_000 });
+    await page.locator("#buildMiniShip").click();
+    await page.locator("#buildMiniShip").click();
+    await expect.poll(() => page.evaluate(() => window.__pirateDebugShipWorldPositions().length), { timeout: 5_000 }).toBe(2);
+
+    const points = await page.evaluate(() => {
+      const cam = window.__pirateDebugCamera();
+      const ships = window.__pirateDebugShipWorldPositions();
+      const toScreen = (s) => ({ x: (s.x + s.width / 2 - cam.cameraX) * cam.zoom, y: (s.y + s.height / 2 - cam.cameraY) * cam.zoom });
+      const first = toScreen(ships[0]);
+      const xs = ships.map((s) => (s.x - cam.cameraX) * cam.zoom);
+      const ys = ships.map((s) => (s.y - cam.cameraY) * cam.zoom);
+      return {
+        firstShip: first,
+        emptyWater: { x: first.x + 250, y: first.y + 250 }, // well clear of either ship
+        box: {
+          left: Math.min(...xs) - 30, top: Math.min(...ys) - 30,
+          right: Math.max(...xs.map((x, i) => x + ships[i].width)) + 30,
+          bottom: Math.max(...ys.map((y, i) => y + ships[i].height)) + 30,
+        },
+      };
+    });
+
+    // 1) Tap the ship to select it.
+    await dispatchTouchSequence(page, [
+      { type: "touchstart", points: [[1, points.firstShip.x, points.firstShip.y]] },
+      { type: "touchend", points: [] },
+    ]);
+    await expect.poll(() => page.evaluate(() => window.__pirateDebugSelectedCount())).toBe(1);
+
+    // 2) A quick TAP (not a hold) on open water should deselect it.
+    await dispatchTouchSequence(page, [
+      { type: "touchstart", points: [[1, points.emptyWater.x, points.emptyWater.y]] },
+      { type: "touchend", points: [] },
+    ]);
+    await expect.poll(() => page.evaluate(() => window.__pirateDebugSelectedCount()), {
+      message: "a quick tap on open water should have deselected the ship",
+      timeout: 3_000,
+    }).toBe(0);
+
+    // 3) With nothing selected, hold-then-drag should now reach
+    // box-select and pick up both ships — proving the deselect actually
+    // unblocked it, not just that deselect alone works in isolation.
+    await dispatchTouchSequence(page, [{ type: "touchstart", points: [[1, points.box.left, points.box.top]] }]);
+    await page.waitForTimeout(600);
+    await dispatchTouchSequence(page, [
+      { type: "touchmove", points: [[1, points.box.right, points.box.bottom]] },
+      { type: "touchend", points: [] },
+    ]);
+    await expect.poll(() => page.evaluate(() => window.__pirateDebugSelectedCount()), {
+      message: "box-select should now be reachable and select both ships",
+      timeout: 5_000,
+    }).toBe(2);
+  });
+
   test("Help panel starts collapsed, shows touch instructions (not mouse ones), and toggles open", async ({ page }) => {
     await signUpAndEnterAiMode(page, "Pirate Mobile Help");
 
