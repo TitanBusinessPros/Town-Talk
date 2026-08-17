@@ -492,6 +492,14 @@ function main() {
     "m3game.html", "match3.html", "neon-drift.html", "pong.html",
     "sea-war.html", "stacking-checkers.html", "sudoku.html",
     "titanspace.html", "war.html", "daily-rewards-verify.html",
+    // pirates.html was never added here when the game shipped 2026-08-16 —
+    // exactly the same bug class the comment above warns about (missing a
+    // new game from this list silently leaves it pointed at production).
+    // Confirmed live on all 6 non-Pauls-Valley editions 2026-08-18: every
+    // one of them was serving Pauls Valley's own firebaseConfig on
+    // pirates.html specifically, while index.html/every other game file
+    // was already correct.
+    "pirates.html",
   ];
   for (const f of SIMPLE_CONFIG_FILES) {
     const p = path.join(BUILD_DIR, f);
