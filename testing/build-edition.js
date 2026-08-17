@@ -254,7 +254,14 @@ const EDITIONS = {
     // cause was never pinned down remotely — everything server-side
     // checked out, so this was likely a Firebase-side key-pairing glitch
     // invisible from the outside, not a config mistake in this repo.
-    vapidKey: "BOPOkfLZQQHK61YrThwAB9dbBIpAKhEHdS2azg6KRt3CH7VnyA5DWX3y9bXMKqYPNkutdxScuBiFgEuUOimeZ0U",
+    // Regenerated a second time 2026-08-18 — the underlying push failure
+    // was later traced to App Check's exchangeRecaptchaV3Token returning
+    // "App attestation failed" (confirmed live, reproduced directly, and
+    // confirmed happening identically on Pauls Valley too, ruling out a
+    // Prague-specific cause) — this key swap is unlikely to fix that
+    // particular failure on its own, but the user regenerated it via
+    // Firebase Console and asked for the codebase updated to match.
+    vapidKey: "BDQy5sTzrJrNbBR5v3mVuzDYhdRP8Fz6JmNhUeFhYbVTkPvgNMf3ipvXKcJVXTQpq54iEdAdH7FEtQWIVdOLyVI",
     otherEditions: [
       { name: "Pauls Valley Edition", url: "https://www.townfuss.com" },
       { name: "Eufaula Lake Edition", url: "https://eufaula.townfuss.com" },
