@@ -585,7 +585,7 @@
         <div class="mp-roster" id="mpRoster"></div>
 
         <div class="zoom-controls">
-            <span style="color: #ffd700; font-size: 14px;">Pinch to Zoom on Mobile | Mouse Wheel on Desktop</span>
+            <span style="color: #ffd700; font-size: 14px;">📱 Pinch to zoom, drag empty water to pan | 🖱️ Mouse wheel to zoom, right-click drag to pan</span>
         </div>
 
         <div class="message-box" id="messageBox">
@@ -645,7 +645,7 @@ function todayNumber() { return Math.floor(Date.now() / 86400000); }
 
 // ===========================================================================
 // GAME ENGINE — a close port of the standalone build supplied for this
-// platform (Pirates-1-done.html), with four real fixes made along the way:
+// platform (Pirates-1-done.html), with real fixes made along the way:
 //   1. Assets now load from /pirates-assets/ (this repo) instead of the
 //      source's external `github.com/.../raw/main/*` URLs — the source
 //      depended on an outside repo staying up forever; this doesn't.
@@ -656,10 +656,16 @@ function todayNumber() { return Math.floor(Date.now() / 86400000); }
 //   2. ROUND_TIME was hardcoded to 5 seconds with a comment saying
 //      "currently 5 seconds for testing" — a debug value left in, not a
 //      real balance choice. 30s gives an actual base-building round.
-//   3. Two separate 'touchstart' listeners were registered on canvas,
-//      doing overlapping/conflicting things on every single tap — merged
-//      into one.
-//   4. A stray `console.log` fired on every cannonball hit — removed.
+//   3. A stray `console.log` fired on every cannonball hit — removed.
+//   4. Mobile had NO way to pan or zoom the map at all — the source's own
+//      "Pinch to Zoom on Mobile" label was never backed by any actual
+//      pinch-handling code (in the source OR in the first pass of this
+//      port), and there was no touch equivalent of desktop's right-click
+//      drag-to-pan either, so on a phone the map was just stuck wherever
+//      it first centered. Confirmed broken live 2026-08-17. Real
+//      two-finger pinch-zoom and one-finger drag-to-pan were added (see
+//      the touch handlers below), alongside the original single
+//      tap-to-select / hold-to-move gestures, not just relabeled.
 // Everything else below (build menu, combat, fog of war, camera/zoom/pan,
 // the whole 10-stage vs-AI campaign) is unchanged in behavior from the
 // source and only runs when gameState.mode === 'ai'. Online (Ranked) is a
@@ -1968,35 +1974,124 @@ canvas.addEventListener('mouseup', (e) => {
 
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// Single merged touch handler (the source had two competing 'touchstart'
-// listeners doing overlapping work — tap-to-select and long-press-to-move
-// are combined here instead).
+// Mobile touch handling — three real gestures, not just the one tap
+// handler the source ever had (which is why mobile "did nothing but sit
+// there": there was no way to pan or zoom the map at all, and the
+// "Pinch to Zoom on Mobile" label under the game was never backed by any
+// actual pinch-handling code, in the source OR in the first port of it
+// here — copied the label forward without wiring up the gesture behind
+// it. Confirmed broken live 2026-08-17, fixed for real below:
+//   1. Two-finger pinch: zoom in/out, anchored on the midpoint between
+//      the two fingers (same anchor-preserving math as the desktop wheel
+//      zoom, just driven by pinch distance instead of scroll delta).
+//   2. One-finger drag starting on EMPTY ocean: pan the camera — the
+//      mobile equivalent of desktop's right-click-drag, which has no
+//      touch equivalent otherwise.
+//   3. One-finger tap on a ship: select it, same as before. One-finger
+//      HOLD (not drag) with units already selected: move them there,
+//      same as before.
+// A single touch starts in 'pending' state and only commits to 'pan'
+// once it's moved more than a few pixels — short of that threshold it's
+// still eligible to resolve as a tap or a long-press-hold instead.
+let touchMode = null; // null | 'pending' | 'pan' | 'pinch'
 let touchHoldTimer = null;
+let pinchStartDist = 0, pinchStartZoom = 1;
+let panLastClientX = 0, panLastClientY = 0;
+let pendingStartScreenX = 0, pendingStartScreenY = 0, pendingWorldX = 0, pendingWorldY = 0;
+const TOUCH_PAN_THRESHOLD = 10; // px of on-screen movement before a single touch commits to panning
+
+function touchDistance(t0, t1) {
+  return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+}
+function touchMidpoint(t0, t1, rect) {
+  return { x: (t0.clientX + t1.clientX) / 2 - rect.left, y: (t0.clientY + t1.clientY) / 2 - rect.top };
+}
+
 canvas.addEventListener('touchstart', (e) => {
   if (!isGameActive()) return;
   e.preventDefault();
+  if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; }
   const cam = activeCamera();
-  const touch = e.touches[0];
   const rect = canvas.getBoundingClientRect();
-  const touchX = (touch.clientX - rect.left) / cam.zoom + cam.cameraX, touchY = (touch.clientY - rect.top) / cam.zoom + cam.cameraY;
+
+  if (e.touches.length === 2) {
+    touchMode = 'pinch';
+    pinchStartDist = touchDistance(e.touches[0], e.touches[1]);
+    pinchStartZoom = cam.zoom;
+    return;
+  }
+  if (e.touches.length !== 1) return;
+
+  const touch = e.touches[0];
+  const screenX = touch.clientX - rect.left, screenY = touch.clientY - rect.top;
+  const worldX = screenX / cam.zoom + cam.cameraX, worldY = screenY / cam.zoom + cam.cameraY;
 
   const ships = currentSelectableShips();
   let clicked = null;
   for (const ship of ships) {
-    if (touchX >= ship.x && touchX <= ship.x + ship.width && touchY >= ship.y && touchY <= ship.y + ship.height) { clicked = ship; break; }
+    if (worldX >= ship.x && worldX <= ship.x + ship.width && worldY >= ship.y && worldY <= ship.y + ship.height) { clicked = ship; break; }
   }
   if (clicked) {
     setSelectedList([clicked]);
+    touchMode = null;
     return;
   }
 
+  touchMode = 'pending';
+  pendingStartScreenX = screenX; pendingStartScreenY = screenY;
+  pendingWorldX = worldX; pendingWorldY = worldY;
+  panLastClientX = touch.clientX; panLastClientY = touch.clientY;
+
   touchHoldTimer = setTimeout(() => {
+    if (touchMode !== 'pending') return; // moved enough to become a pan in the meantime
     const sel = currentSelectedList();
-    if (sel.length > 0) issueMove(sel, touchX, touchY);
+    if (sel.length > 0) issueMove(sel, pendingWorldX, pendingWorldY);
+    touchMode = null;
   }, 500);
 }, { passive: false });
-canvas.addEventListener('touchend', () => { if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; } });
-canvas.addEventListener('touchmove', () => { if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; } });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (!isGameActive()) return;
+  e.preventDefault();
+  const cam = activeCamera();
+  const rect = canvas.getBoundingClientRect();
+
+  if (touchMode === 'pinch' && e.touches.length === 2) {
+    const dist = touchDistance(e.touches[0], e.touches[1]);
+    if (pinchStartDist > 0) {
+      const mid = touchMidpoint(e.touches[0], e.touches[1], rect);
+      const targetZoom = Math.max(0.3, Math.min(2, pinchStartZoom * (dist / pinchStartDist)));
+      zoomToPoint(cam, mid.x, mid.y, targetZoom - cam.zoom);
+    }
+    return;
+  }
+  if (e.touches.length !== 1) return;
+  const touch = e.touches[0];
+
+  if (touchMode === 'pending') {
+    const screenX = touch.clientX - rect.left, screenY = touch.clientY - rect.top;
+    if (Math.hypot(screenX - pendingStartScreenX, screenY - pendingStartScreenY) <= TOUCH_PAN_THRESHOLD) return;
+    touchMode = 'pan';
+    if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; }
+  }
+  if (touchMode === 'pan') {
+    const dx = (touch.clientX - panLastClientX) / cam.zoom, dy = (touch.clientY - panLastClientY) / cam.zoom;
+    cam.cameraX -= dx; cam.cameraY -= dy;
+    cam.cameraX = Math.max(0, Math.min(MAP_WIDTH - canvas.width / cam.zoom, cam.cameraX));
+    cam.cameraY = Math.max(0, Math.min(MAP_HEIGHT - canvas.height / cam.zoom, cam.cameraY));
+    panLastClientX = touch.clientX; panLastClientY = touch.clientY;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+  if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; }
+  if (e.touches.length === 0) touchMode = null;
+  else if (touchMode === 'pinch' && e.touches.length < 2) touchMode = null; // lifted one finger mid-pinch
+});
+canvas.addEventListener('touchcancel', () => {
+  if (touchHoldTimer) { clearTimeout(touchHoldTimer); touchHoldTimer = null; }
+  touchMode = null;
+});
 
 canvas.addEventListener('wheel', (e) => {
   if (!isGameActive()) return;
@@ -2453,6 +2548,15 @@ async function checkInviteCooldown(inviteToUid, inviteToName, msg) {
   showMessage2(msg, `You can invite ${inviteToName} again in about ${minsLeft} minute(s).`, "error");
   return false;
 }
+
+// Testing hook — same pattern as airhockey.html's debugSetAirHockeyScore:
+// a small, permanent, clearly-labeled accessor so Playwright can assert on
+// real camera/zoom state instead of only on what's visually rendered.
+window.__pirateDebugCamera = function () {
+  if (gameState.active) return { zoom: gameState.zoom, cameraX: gameState.cameraX, cameraY: gameState.cameraY };
+  if (mp.active) return { zoom: mp.zoom, cameraX: mp.cameraX, cameraY: mp.cameraY };
+  return null;
+};
 
 // ============================= AUTH =========================================
 onAuthStateChanged(auth, async (user) => {
