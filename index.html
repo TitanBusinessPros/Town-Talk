@@ -581,7 +581,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div class="view-header">
       <p class="eyebrow">Your private dashboard</p>
       <h1>Your page</h1>
-      <p>Fill this in whenever you're ready. Nothing here is visible to anyone else until the admin approves it.</p>
+      <p>Fill this in whenever you're ready — it goes live automatically once you save, unless a photo you upload is flagged by our automated screening, in which case an admin reviews it first.</p>
       <p class="field-hint" style="margin-top:0.5rem;">Heads up: accounts with no login for 30 days may be removed to keep the community active. Just logging in resets the clock — no other action needed.</p>
     </div>
 
@@ -668,7 +668,7 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 
     <section class="card" style="margin-top:1.5rem">
       <h2>Your photos</h2>
-      <p>You get 1 profile photo, and you can update it once a week. Every new photo needs admin approval before it appears publicly. No nudity or images showing sensitive body parts will be accepted!</p>
+      <p>You get 1 profile photo, and you can update it once a week. Every new photo goes live automatically unless our automated screening flags it, in which case an admin reviews it first. No nudity or images showing sensitive body parts will be accepted!</p>
       <div class="image-slots" id="image-slots"></div>
       <input type="file" id="image-input" accept="image/*" style="display:none" />
       <div id="image-message" class="message" style="display:none"></div>
@@ -2045,7 +2045,7 @@ async function enableNotifications() {
     // policy as everything else) — never show that as a raw permission
     // error to someone who hasn't been approved yet.
     if (err.code === "permission-denied") {
-      showMessage(msg, "Notifications will be available once your profile is approved by an admin.", "error");
+      showMessage(msg, "Notifications will be available once your profile is approved.", "error");
     } else {
       showMessage(msg, `Couldn't turn on notifications: ${err.message}`, "error");
     }
@@ -2060,7 +2060,7 @@ async function disableNotifications() {
     showMessage(msg, "Notifications turned off.", "success");
   } catch (err) {
     if (err.code === "permission-denied") {
-      showMessage(msg, "Notifications will be available once your profile is approved by an admin.", "error");
+      showMessage(msg, "Notifications will be available once your profile is approved.", "error");
     } else {
       showMessage(msg, err.message, "error");
     }
@@ -2080,7 +2080,7 @@ function renderNotifToggle(data) {
   // toggle and hitting a permission error.
   if (!data?.approved) {
     checkbox.disabled = true;
-    hint.textContent = "Available once your profile is approved by an admin.";
+    hint.textContent = "Available once your profile is approved.";
   } else {
     checkbox.disabled = false;
     hint.textContent = enabled
@@ -4494,7 +4494,7 @@ document.getElementById("thread-form").addEventListener("submit", async (e) => {
   if (!text || !activeOtherUid) return;
 
   if (!currentUserData?.approved && !isAdminUser) {
-    showMessage(msg, "Your profile is still waiting on admin approval — you'll be able to message people once it's approved.", "error");
+    showMessage(msg, "You'll be able to message people once your profile is approved — fill out your profile if you haven't yet, or check back if a photo is still under review.", "error");
     return;
   }
   if (remainingToday() <= 0) {
@@ -6311,7 +6311,7 @@ document.getElementById("chatroom-form").addEventListener("submit", async (e) =>
   if (!text || !activeChatRoom) return;
 
   if (!currentUserData?.approved && !isAdminUser) {
-    showMessage(msg, "Your profile is still waiting on admin approval — you'll be able to post here once it's approved.", "error");
+    showMessage(msg, "You'll be able to post here once your profile is approved — fill out your profile if you haven't yet, or check back if a photo is still under review.", "error");
     return;
   }
   if (chatRemainingToday() <= 0) {
