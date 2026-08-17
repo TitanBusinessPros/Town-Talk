@@ -802,6 +802,14 @@
 .site-quicknav { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; align-items: center; padding: 0.6rem 1.5rem; background: var(--ink-800); border-bottom: 1px solid var(--line); font-family: var(--font-mono); font-size: 0.78rem; }
 .site-quicknav a { color: var(--text-muted); text-decoration: none; white-space: nowrap; }
 .site-quicknav a:hover { color: var(--paper-050); }
+
+/* Narrow screens: the nav wraps onto its own lines by design, but the
+   last (often shortest, e.g. "Log out") line was left-aligned like the
+   rest instead of sitting centered under the ones above it -- requested
+   2026-08-18. Desktop is untouched on purpose. */
+@media (max-width: 600px) {
+  .site-quicknav { justify-content: center; text-align: center; }
+}
 </style>
 </head>
 <body class="warm-theme">
