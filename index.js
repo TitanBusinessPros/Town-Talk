@@ -1775,7 +1775,19 @@ exports.outreachListLeads = onCall(async (request) => {
     .map((d) => ({ ...d.data(), email: d.id, source: "manual" }))
     .filter((lead) => !alreadyContacted.has(lead.email));
 
-  const combined = [...businessLeads, ...manualLeads];
+  // Businesses found via a town search (outreachGenerateLeads) and
+  // checked off into this week's queue. Carries candidateId so
+  // outreachCreateDraft can mark the specific candidate doc "drafted"
+  // once a real draft exists for it, not just the sentLog entry.
+  const queuedSnap = await db.collection("outreachCandidates").where("status", "==", "queued").get();
+  const queuedLeads = queuedSnap.docs
+    .map((d) => {
+      const data = d.data();
+      return { name: data.companyName || "", phone: data.phone || "", town: data.town || "", email: (data.email || "").toLowerCase(), source: "town-search", candidateId: d.id };
+    })
+    .filter((lead) => lead.email && !alreadyContacted.has(lead.email));
+
+  const combined = [...businessLeads, ...manualLeads, ...queuedLeads];
   const seen = new Set();
   const deduped = combined.filter((lead) => {
     if (seen.has(lead.email)) return false;
@@ -1812,6 +1824,7 @@ exports.outreachCreateDraft = onCall(
     const to = (request.data?.to || "").trim();
     const subject = (request.data?.subject || "").trim();
     const body = (request.data?.body || "").trim();
+    const candidateId = (request.data?.candidateId || "").trim(); // set when this lead came from a town search
     if (!to || !subject || !body) throw new HttpsError("invalid-argument", "to, subject, and body are all required.");
 
     const oAuth2Client = new OAuth2Client(gmailOAuthClientId.value(), gmailOAuthClientSecret.value());
@@ -1833,6 +1846,9 @@ exports.outreachCreateDraft = onCall(
       throw new HttpsError("internal", `Gmail API error (${gmailRes.status}): ${errBody}`);
     }
     await db.collection("outreachSentLog").doc(to.toLowerCase()).set({ draftedAt: Timestamp.now(), subject });
+    if (candidateId) {
+      await db.collection("outreachCandidates").doc(candidateId).set({ status: "drafted" }, { merge: true }).catch(() => {});
+    }
 
     return { ok: true };
   }
@@ -1877,5 +1893,159 @@ exports.outreachStatus = onRequest(async (req, res) => {
   const paused = snap.exists ? !!snap.data().paused : false;
   res.set("Cache-Control", "no-store");
   res.json({ paused });
+});
+
+// ---------------------------------------------------------------------
+// Town-search lead generation (Google Places API "New") — every doc this
+// writes to outreachCandidates starts life with status:"candidate" (raw,
+// unreviewed). Checking a box on the page and clicking "Add to queue"
+// flips it to status:"queued", which is what outreachListLeads (above)
+// actually reads from. status:"drafted" is set by outreachCreateDraft
+// once a real Gmail Draft exists for it. Nothing here ever guesses an
+// email — see tryFindEmailOnWebsite: best-effort scrape of the business's
+// own site only, left blank on any failure, per the explicit "if not
+// found no need to guess, we'll confirm ourselves" instruction.
+// ---------------------------------------------------------------------
+const googlePlacesApiKey = defineSecret("GOOGLE_PLACES_API_KEY");
+const OUTREACH_CANDIDATE_BATCH_SIZE = 60; // matches the Mon-Sat/10-a-day weekly send plan (6 x 10)
+
+async function tryFindEmailOnWebsite(url) {
+  if (!url) return "";
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, { signal: controller.signal, redirect: "follow" });
+    clearTimeout(timeout);
+    if (!res.ok) return "";
+    const html = await res.text();
+    const mailtoMatch = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    if (mailtoMatch) return mailtoMatch[1].toLowerCase();
+    const textMatch = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    return textMatch ? textMatch[0].toLowerCase() : "";
+  } catch {
+    return ""; // timed out, blocked, broken site, whatever — leave blank, never guess
+  }
+}
+
+exports.outreachGenerateLeads = onCall({ secrets: [googlePlacesApiKey], timeoutSeconds: 300 }, async (request) => {
+  await requireAdmin(request);
+
+  const town = (request.data?.town || "").trim();
+  if (!town) throw new HttpsError("invalid-argument", "A town/city is required.");
+  const count = Math.min(Math.max(parseInt(request.data?.count, 10) || OUTREACH_CANDIDATE_BATCH_SIZE, 1), OUTREACH_CANDIDATE_BATCH_SIZE);
+
+  // Dedup against every business ever found before (any status), keyed by
+  // website when available (most reliable), else phone — so re-running a
+  // search for the same town, or hitting "generate 60 more," doesn't keep
+  // re-adding the same businesses.
+  const existingSnap = await db.collection("outreachCandidates").get();
+  const seenWebsites = new Set();
+  const seenPhones = new Set();
+  existingSnap.docs.forEach((d) => {
+    const data = d.data();
+    if (data.website) seenWebsites.add(data.website);
+    if (data.phone) seenPhones.add(data.phone);
+  });
+
+  const apiKey = googlePlacesApiKey.value();
+  const fieldMask = "places.id,places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.nationalPhoneNumber,places.websiteUri,nextPageToken";
+  const found = [];
+  let pageToken = null;
+  let pages = 0;
+  const maxPages = Math.ceil(count / 20);
+
+  while (found.length < count && pages < maxPages) {
+    const reqBody = pageToken ? { textQuery: `businesses in ${town}`, pageToken } : { textQuery: `businesses in ${town}`, pageSize: 20 };
+    const placesRes = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": fieldMask },
+      body: JSON.stringify(reqBody),
+    });
+    if (!placesRes.ok) {
+      const errText = await placesRes.text().catch(() => "");
+      throw new HttpsError("internal", `Places API error (${placesRes.status}): ${errText}`);
+    }
+    const placesData = await placesRes.json();
+    for (const place of placesData.places || []) {
+      const phone = place.internationalPhoneNumber || place.nationalPhoneNumber || "";
+      const website = place.websiteUri || "";
+      if ((website && seenWebsites.has(website)) || (!website && phone && seenPhones.has(phone))) continue;
+      found.push({
+        companyName: place.displayName?.text || "",
+        phone,
+        website,
+        address: place.formattedAddress || "",
+      });
+      if (website) seenWebsites.add(website);
+      if (phone) seenPhones.add(phone);
+      if (found.length >= count) break;
+    }
+    pageToken = placesData.nextPageToken || null;
+    pages++;
+    if (!pageToken) break;
+    // Places API pageTokens need a brief moment before they're valid —
+    // same quirk the legacy Places API had; a short delay avoids an
+    // INVALID_ARGUMENT on the very next request.
+    if (pageToken) await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  // Best-effort email lookup, one site at a time — sequential, not
+  // Promise.all, so a slow/hanging site can't blow up the whole batch's
+  // total function runtime beyond what the 5s-per-site timeout already
+  // bounds it to.
+  const now = Timestamp.now();
+  const batch = db.batch();
+  for (const lead of found) {
+    const email = await tryFindEmailOnWebsite(lead.website);
+    const ref = db.collection("outreachCandidates").doc();
+    batch.set(ref, { ...lead, email, town, status: "candidate", searchedAt: now });
+  }
+  await batch.commit();
+
+  return { created: found.length, requested: count };
+});
+
+exports.outreachListCandidates = onCall(async (request) => {
+  await requireAdmin(request);
+  const status = (request.data?.status || "candidate").trim();
+  const snap = await db.collection("outreachCandidates").where("status", "==", status).get();
+  const candidates = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  candidates.sort((a, b) => (b.searchedAt?.toMillis?.() || 0) - (a.searchedAt?.toMillis?.() || 0));
+  return { candidates };
+});
+
+// Bulk status change — the "Add checked to this week's queue" button
+// (candidate -> queued) and also usable to discard ones you don't want
+// (candidate -> rejected) without deleting the record, so a rejected
+// business doesn't get re-suggested by a future search of the same town.
+exports.outreachSetCandidateStatus = onCall(async (request) => {
+  await requireAdmin(request);
+  const ids = Array.isArray(request.data?.ids) ? request.data.ids : [];
+  const status = (request.data?.status || "").trim();
+  if (ids.length === 0 || !["queued", "candidate", "rejected"].includes(status)) {
+    throw new HttpsError("invalid-argument", "ids (non-empty array) and a valid status are required.");
+  }
+  const batch = db.batch();
+  ids.forEach((id) => batch.set(db.collection("outreachCandidates").doc(id), { status }, { merge: true }));
+  await batch.commit();
+  return { ok: true, updated: ids.length };
+});
+
+// Lets you fill in/correct a candidate's email (or phone/website/address)
+// after looking it up yourself — Places API never guesses an email, so
+// this is how a blank one gets confirmed and made usable before it can
+// show up in outreachListLeads (which requires a non-blank email).
+exports.outreachUpdateCandidate = onCall(async (request) => {
+  await requireAdmin(request);
+  const id = (request.data?.id || "").trim();
+  if (!id) throw new HttpsError("invalid-argument", "id is required.");
+  const update = {};
+  for (const field of ["email", "phone", "website", "address", "companyName"]) {
+    if (typeof request.data?.[field] === "string") update[field] = request.data[field].trim();
+  }
+  if (update.email) update.email = update.email.toLowerCase();
+  if (Object.keys(update).length === 0) throw new HttpsError("invalid-argument", "Nothing to update.");
+  await db.collection("outreachCandidates").doc(id).set(update, { merge: true });
+  return { ok: true };
 });
 
