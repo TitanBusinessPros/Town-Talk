@@ -1711,3 +1711,130 @@ exports.syncAdminClaim = onDocumentWritten("admins/{uid}", async (event) => {
   });
 });
 
+// ============================= OUTREACH ADMIN ===============================
+// Backs the separate townfuss-outreach-admin webpage/repo (not part of this
+// site) — admin-only tools to draft cold-outreach emails to Town Fuss
+// businesses. Deliberately callable-only, no new Firestore rules: every
+// read/write here goes through requireAdmin() + the Admin SDK, so the
+// client never touches outreachManualLeads/outreachSentLog directly.
+//
+// Superseded the local-script version of this (a `node leads.js` /
+// `node draft.js` CLI in a separate outreach/ folder, built earlier the
+// same day) after the user found running scripts in a terminal too
+// clunky for daily use — this is the same logic, server-side, driven by
+// buttons on a webpage instead.
+// google-auth-library, not the full googleapis package: googleapis's
+// require() generates client code for every Google API and was slow
+// enough to load that Firebase's own deploy-time backend-discovery step
+// hit its 10-second timeout and refused to deploy at all ("Cannot
+// determine backend specification"). This only needs OAuth2 token
+// refresh + one Gmail REST endpoint, called directly via fetch below.
+const { OAuth2Client } = require("google-auth-library");
+
+const gmailOAuthClientId = defineSecret("GMAIL_OAUTH_CLIENT_ID");
+const gmailOAuthClientSecret = defineSecret("GMAIL_OAUTH_CLIENT_SECRET");
+const gmailRefreshToken = defineSecret("GMAIL_REFRESH_TOKEN");
+const OUTREACH_FROM_ADDRESS = "info@titanbusinesspros.com"; // verified Send-As alias under titanbuesinesspros@gmail.com
+const OUTREACH_DAILY_BATCH_SIZE = 10;
+
+// Lists today's candidate leads — read-only, writes nothing. This is
+// Checkpoint 1 (see the outreach admin page): nobody is marked contacted
+// just by showing up in this list, only once outreachCreateDraft actually
+// runs for them.
+exports.outreachListLeads = onCall(async (request) => {
+  await requireAdmin(request);
+
+  const sentSnap = await db.collection("outreachSentLog").get();
+  const alreadyContacted = new Set(sentSnap.docs.map((d) => d.id));
+
+  // Same "filter rejected/paid in JS, not in the query" reasoning as the
+  // local leads.js had: most business docs never get a `rejected` field
+  // written at all, and Firestore's `!=` excludes docs missing the field
+  // entirely, which would silently drop almost every real lead.
+  const bizSnap = await db.collection("businesses").get();
+  const now = Date.now();
+  const businessLeads = [];
+  for (const docSnap of bizSnap.docs) {
+    const data = docSnap.data();
+    if (data.rejected === true) continue;
+    const paidUntilMs = data.businessPaidUntil?.toMillis ? data.businessPaidUntil.toMillis() : 0;
+    if (paidUntilMs > now) continue; // already paid — not a lead
+    let email;
+    try {
+      const userRecord = await getAuth().getUser(docSnap.id);
+      email = (userRecord.email || "").toLowerCase();
+    } catch {
+      continue; // orphaned listing with no matching auth user — skip
+    }
+    if (!email || alreadyContacted.has(email)) continue;
+    businessLeads.push({ name: data.name || "", phone: data.phone || "", town: data.town || "", email, source: "unpaid-business-listing" });
+  }
+
+  const manualSnap = await db.collection("outreachManualLeads").get();
+  const manualLeads = manualSnap.docs
+    .map((d) => ({ ...d.data(), email: d.id, source: "manual" }))
+    .filter((lead) => !alreadyContacted.has(lead.email));
+
+  const combined = [...businessLeads, ...manualLeads];
+  const seen = new Set();
+  const deduped = combined.filter((lead) => {
+    if (seen.has(lead.email)) return false;
+    seen.add(lead.email);
+    return true;
+  });
+
+  return { leads: deduped.slice(0, OUTREACH_DAILY_BATCH_SIZE), totalCandidatesFound: deduped.length };
+});
+
+// Adds a lead you know about yourself — the webpage's replacement for the
+// old leads.csv file. Keyed by lowercased email so re-adding the same
+// person just updates their info instead of duplicating.
+exports.outreachAddManualLead = onCall(async (request) => {
+  await requireAdmin(request);
+  const email = (request.data?.email || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) throw new HttpsError("invalid-argument", "A valid email is required.");
+  const name = (request.data?.name || "").trim();
+  const town = (request.data?.town || "").trim();
+  const notes = (request.data?.notes || "").trim();
+  await db.collection("outreachManualLeads").doc(email).set({ name, town, notes, addedAt: Timestamp.now() });
+  return { ok: true };
+});
+
+// Checkpoint 2's backend: creates a real Gmail Draft, From the verified
+// Send-As alias. This is also the ONLY place a lead gets marked contacted
+// (outreachSentLog) — dropping someone at Checkpoint 1 leaves no trace of
+// them, same guarantee the local-script version had.
+exports.outreachCreateDraft = onCall(
+  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken] },
+  async (request) => {
+    await requireAdmin(request);
+
+    const to = (request.data?.to || "").trim();
+    const subject = (request.data?.subject || "").trim();
+    const body = (request.data?.body || "").trim();
+    if (!to || !subject || !body) throw new HttpsError("invalid-argument", "to, subject, and body are all required.");
+
+    const oAuth2Client = new OAuth2Client(gmailOAuthClientId.value(), gmailOAuthClientSecret.value());
+    oAuth2Client.setCredentials({ refresh_token: gmailRefreshToken.value() });
+    const { token: accessToken } = await oAuth2Client.getAccessToken();
+
+    const headers = [`From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`, `To: ${to}`, `Subject: ${subject}`, "Content-Type: text/plain; charset=UTF-8"].join(
+      "\r\n"
+    );
+    const raw = Buffer.from(`${headers}\r\n\r\n${body}`).toString("base64url");
+
+    const gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ message: { raw } }),
+    });
+    if (!gmailRes.ok) {
+      const errBody = await gmailRes.text().catch(() => "");
+      throw new HttpsError("internal", `Gmail API error (${gmailRes.status}): ${errBody}`);
+    }
+    await db.collection("outreachSentLog").doc(to.toLowerCase()).set({ draftedAt: Timestamp.now(), subject });
+
+    return { ok: true };
+  }
+);
+
