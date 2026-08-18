@@ -5,65 +5,111 @@
  * approved outreach drafts. This file is NOT deployed automatically —
  * Apps Script projects live at script.google.com, not in this repo. Copy
  * this into a new script bound to titanbusinesspros@gmail.com (see
- * outreach/README.md Step 3) and keep this file in sync if you edit it
- * there, so there's always a tracked backup of the logic.
+ * outreach/README.md) and keep this file in sync if you edit it there,
+ * so there's always a tracked backup of the logic.
  *
- * What it does: sends one approved draft at 9:00 AM Central, then
- * reschedules itself to run again exactly 10 minutes later, and so on
- * until the day's approved queue is empty. A plain recurring
- * everyMinutes(10) trigger was considered first, but Apps Script doesn't
- * guarantee those land on exact clock boundaries (Google's own docs note
- * actual firing can drift by several minutes) — self-chaining single-shot
- * triggers give an exact 9:00 start and exact 10-minute gaps between
- * sends, which is what was actually asked for.
+ * ARCHITECTURE CHANGE 2026-08-19: the start time is now configurable from
+ * the admin webpage (Controls section) instead of fixed at 9:00 AM. Apps
+ * Script's time-based triggers bake their fire time in at the moment
+ * you CREATE them — a trigger literally can't read a variable each day —
+ * so a single "daily at 9am" trigger can't respond to the webpage
+ * changing the time. Instead, a "watcher" trigger fires every 15 minutes,
+ * checks the currently configured start time from outreachStatus, and
+ * kicks off the day's send-chain the first time it notices that time has
+ * passed. Once a day's chain has started, it self-chains exactly like
+ * before (one send every 10 minutes) — only the START of each day is now
+ * flexible, not the 10-minute spacing between sends within a day.
+ *
+ * If you installed the OLD version of this script (a single fixed 9am
+ * trigger), just run installWatcherTrigger() once — it cleans up the old
+ * trigger automatically before installing the new one.
  */
 
 const APPROVED_LABEL = "Outreach/Approved";
 const SENT_LABEL = "Outreach/Sent"; // applied after sending, so a draft is never sent twice
 const FROM_ALIAS = "info@titanbusinesspros.com"; // must already be verified under Send-As
 const GAP_MINUTES = 10;
-const HANDLER_NAME = "sendNextApprovedDraft";
-// Plain HTTPS endpoint (index.js's outreachStatus), no auth needed — just
-// a yes/no on whether the "day off" pause button is currently on.
+const CHAIN_HANDLER = "sendNextApprovedDraft";
+const WATCHER_HANDLER = "checkAndMaybeStart";
+const WATCHER_INTERVAL_MINUTES = 15;
+// Plain HTTPS endpoint (index.js's outreachStatus), no auth needed —
+// returns { paused, startTime } where startTime is "HH:MM" 24-hour, Central.
 const STATUS_URL = "https://us-central1-town-talk-87ff7.cloudfunctions.net/outreachStatus";
+const LAST_STARTED_KEY = "outreach_last_started_date"; // Script Property, e.g. "2026-08-19"
 
-function sendNextApprovedDraft() {
-  // Whether or not there's anything to send, clear any trigger THIS run
-  // itself is currently sitting under before deciding whether to chain a
-  // new one — avoids ever having two chains running at once.
-  deleteOwnTriggers();
+function fetchStatus() {
+  const res = UrlFetchApp.fetch(STATUS_URL, { muteHttpExceptions: true });
+  return JSON.parse(res.getContentText());
+}
 
-  // Hard rule, not a toggle: never send on Sunday. Script's time zone must
-  // be set to America/Chicago (see installDailyStartTrigger's comment) for
-  // "Sunday" here to mean Sunday in Central time, not UTC.
-  const dayOfWeek = new Date().getDay(); // 0 = Sunday
-  if (dayOfWeek === 0) {
-    Logger.log("It's Sunday — outreach never sends on Sundays. Skipping, no chain scheduled.");
+function todayDateString() {
+  // Script's own time zone (must be America/Chicago, see installWatcherTrigger)
+  // is what Session.getScriptTimeZone() reflects, so this is a Central-time date.
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+/**
+ * Runs every 15 minutes, all day, every day. Does almost nothing on most
+ * firings — only actually starts a send-chain the first time, each day,
+ * that it notices the configured start time has passed.
+ */
+function checkAndMaybeStart() {
+  const dayOfWeek = new Date().getDay(); // 0 = Sunday — hard rule, not a toggle
+  if (dayOfWeek === 0) return;
+
+  let status;
+  try {
+    status = fetchStatus();
+  } catch (err) {
+    Logger.log("checkAndMaybeStart: couldn't reach outreachStatus (" + err.message + ") — skipping this check.");
     return;
   }
+  if (status.paused) return;
 
-  // The "day off" button on the admin page — checked fresh on every single
-  // firing (not just the 9:00 AM start), so toggling it mid-morning stops
-  // an in-progress chain immediately rather than waiting for tomorrow.
+  const today = todayDateString();
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty(LAST_STARTED_KEY) === today) return; // already started today's chain
+
+  const [startHour, startMinute] = (status.startTime || "09:00").split(":").map(Number);
+  const now = new Date();
+  const startTimeToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, startMinute);
+  if (now < startTimeToday) return; // configured time hasn't arrived yet today
+
+  props.setProperty(LAST_STARTED_KEY, today);
+  Logger.log(`Starting today's send-chain (configured start time ${status.startTime} has passed).`);
+  sendNextApprovedDraft();
+}
+
+/**
+ * Sends exactly one approved-and-unsent draft, then — if more are waiting
+ * — schedules itself to run again in exactly GAP_MINUTES. Called either
+ * by checkAndMaybeStart() (the first send of the day) or by its own
+ * previous firing (every send after that).
+ */
+function sendNextApprovedDraft() {
+  // Clear any leftover chain trigger before deciding whether to schedule
+  // a new one — avoids ever having two chains running at once.
+  ScriptApp.getProjectTriggers()
+    .filter((t) => t.getHandlerFunction() === CHAIN_HANDLER)
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+
+  // Re-check pause here too (not just in checkAndMaybeStart) — this is
+  // what lets toggling the pause button mid-morning stop an in-progress
+  // chain immediately, rather than waiting for tomorrow.
   try {
-    const statusRes = UrlFetchApp.fetch(STATUS_URL, { muteHttpExceptions: true });
-    const status = JSON.parse(statusRes.getContentText());
+    const status = fetchStatus();
     if (status.paused) {
-      Logger.log("Outreach is paused (day-off button is on) — skipping, no chain scheduled.");
+      Logger.log("Outreach is paused (day-off button is on) — stopping the chain here.");
       return;
     }
   } catch (err) {
-    // If the status check itself fails (network hiccup, function down),
-    // fail SAFE — don't send. A skipped morning is a much smaller problem
-    // than sending real emails while we can't even confirm we're not
-    // supposed to be paused.
-    Logger.log("Couldn't reach outreachStatus (" + err.message + ") — skipping this run as a precaution.");
+    Logger.log("Couldn't reach outreachStatus (" + err.message + ") — stopping this chain as a precaution.");
     return;
   }
 
   const approved = GmailApp.getUserLabelByName(APPROVED_LABEL);
   if (!approved) {
-    Logger.log(`Label "${APPROVED_LABEL}" doesn't exist yet — run outreach/draft.js at least once first.`);
+    Logger.log(`Label "${APPROVED_LABEL}" doesn't exist yet — create it in Gmail first.`);
     return;
   }
   let sentLabel = GmailApp.getUserLabelByName(SENT_LABEL);
@@ -95,10 +141,8 @@ function sendNextApprovedDraft() {
     }
   }
 
-  // More than 1 left after this one (pending includes the one just
-  // handled) means there's a next draft to chain to.
   if (pending.length > 1) {
-    ScriptApp.newTrigger(HANDLER_NAME)
+    ScriptApp.newTrigger(CHAIN_HANDLER)
       .timeBased()
       .after(GAP_MINUTES * 60 * 1000)
       .create();
@@ -107,27 +151,29 @@ function sendNextApprovedDraft() {
   }
 }
 
-function deleteOwnTriggers() {
-  ScriptApp.getProjectTriggers()
-    .filter((t) => t.getHandlerFunction() === HANDLER_NAME)
-    .forEach((t) => ScriptApp.deleteTrigger(t));
-}
-
 /**
- * Run this ONCE manually (Apps Script editor > select this function >
- * Run) to install the daily 9:00 AM Central starting trigger. Re-running
- * it is safe — it clears any previous trigger for this function first, so
- * it never doubles up. IMPORTANT: also set the script's time zone to
- * America/Chicago first (Project Settings, in the Apps Script editor's
- * left sidebar) so "9:00 AM" means Central, not UTC or Pacific.
+ * Run this ONCE (Apps Script editor > select this function > Run) to
+ * install the 15-minute watcher. Safe to re-run any time — it clears any
+ * previous watcher AND any old-style fixed-9am trigger first, so it never
+ * doubles up regardless of which version you had installed before.
+ * IMPORTANT: also set the script's time zone to America/Chicago first
+ * (gear icon > Project Settings, left sidebar) — this is what makes the
+ * webpage's start-time setting mean Central time, not UTC or Pacific.
  */
-function installDailyStartTrigger() {
-  deleteOwnTriggers();
-  ScriptApp.newTrigger(HANDLER_NAME)
+function installWatcherTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter((t) => t.getHandlerFunction() === WATCHER_HANDLER || t.getHandlerFunction() === CHAIN_HANDLER)
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger(WATCHER_HANDLER)
     .timeBased()
-    .atHour(9)
-    .nearMinute(0)
-    .everyDays(1)
+    .everyMinutes(WATCHER_INTERVAL_MINUTES)
     .create();
-  Logger.log("Daily 9:00 AM Central starting trigger installed. Each morning it sends the first approved draft, then self-chains every 10 minutes until that day's approved queue is empty.");
+
+  Logger.log(
+    `Watcher installed: checks every ${WATCHER_INTERVAL_MINUTES} minutes whether today's configured start ` +
+      `time (set on the webpage, defaults to 09:00) has passed, and starts the send-chain the first time it ` +
+      `has each day. Because it only checks every ${WATCHER_INTERVAL_MINUTES} minutes, the actual first send ` +
+      `of the day may land up to ${WATCHER_INTERVAL_MINUTES} minutes after your configured time, not the exact minute.`
+  );
 }

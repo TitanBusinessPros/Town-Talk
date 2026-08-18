@@ -1866,11 +1866,14 @@ exports.outreachCreateDraft = onCall(
 // ---------------------------------------------------------------------
 const OUTREACH_SETTINGS_DOC = () => db.collection("outreachSettings").doc("config");
 
+const OUTREACH_DEFAULT_START_TIME = "09:00"; // 24hr, Central — matches the Apps Script's configured timezone
+const START_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
 exports.outreachGetSettings = onCall(async (request) => {
   await requireAdmin(request);
   const snap = await OUTREACH_SETTINGS_DOC().get();
   const data = snap.exists ? snap.data() : {};
-  return { paused: !!data.paused, campaignNotes: data.campaignNotes || "" };
+  return { paused: !!data.paused, campaignNotes: data.campaignNotes || "", startTime: data.startTime || OUTREACH_DEFAULT_START_TIME };
 });
 
 exports.outreachSetSettings = onCall(async (request) => {
@@ -1878,6 +1881,12 @@ exports.outreachSetSettings = onCall(async (request) => {
   const update = {};
   if (typeof request.data?.paused === "boolean") update.paused = request.data.paused;
   if (typeof request.data?.campaignNotes === "string") update.campaignNotes = request.data.campaignNotes.slice(0, 4000);
+  if (typeof request.data?.startTime === "string") {
+    if (!START_TIME_PATTERN.test(request.data.startTime)) {
+      throw new HttpsError("invalid-argument", "startTime must be 24-hour HH:MM, e.g. 09:00 or 14:30.");
+    }
+    update.startTime = request.data.startTime;
+  }
   if (Object.keys(update).length === 0) throw new HttpsError("invalid-argument", "Nothing to update.");
   await OUTREACH_SETTINGS_DOC().set(update, { merge: true });
   return { ok: true };
@@ -1886,13 +1895,14 @@ exports.outreachSetSettings = onCall(async (request) => {
 // Plain HTTPS endpoint (no Firebase Auth) — Apps Script's UrlFetchApp
 // calls this as a server-to-server request, not from a browser, so there's
 // no Firebase ID token to attach and no admin gate here. Deliberately
-// exposes nothing sensitive: just a yes/no on whether sending is paused,
-// same as an "is the store open" sign, not a data endpoint.
+// exposes nothing sensitive: just whether sending is paused and what time
+// it should start, same as an "is the store open, and when" sign, not a
+// data endpoint.
 exports.outreachStatus = onRequest(async (req, res) => {
   const snap = await OUTREACH_SETTINGS_DOC().get();
-  const paused = snap.exists ? !!snap.data().paused : false;
+  const data = snap.exists ? snap.data() : {};
   res.set("Cache-Control", "no-store");
-  res.json({ paused });
+  res.json({ paused: !!data.paused, startTime: data.startTime || OUTREACH_DEFAULT_START_TIME });
 });
 
 // ---------------------------------------------------------------------
