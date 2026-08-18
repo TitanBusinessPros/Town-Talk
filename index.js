@@ -1734,7 +1734,7 @@ const { OAuth2Client } = require("google-auth-library");
 const gmailOAuthClientId = defineSecret("GMAIL_OAUTH_CLIENT_ID");
 const gmailOAuthClientSecret = defineSecret("GMAIL_OAUTH_CLIENT_SECRET");
 const gmailRefreshToken = defineSecret("GMAIL_REFRESH_TOKEN");
-const OUTREACH_FROM_ADDRESS = "info@titanbusinesspros.com"; // verified Send-As alias under titanbuesinesspros@gmail.com
+const OUTREACH_FROM_ADDRESS = "info@titanbusinesspros.com"; // verified Send-As alias under titanbusinesspros@gmail.com
 const OUTREACH_DAILY_BATCH_SIZE = 10;
 
 // Lists today's candidate leads — read-only, writes nothing. This is
@@ -1837,4 +1837,45 @@ exports.outreachCreateDraft = onCall(
     return { ok: true };
   }
 );
+
+// ---------------------------------------------------------------------
+// Outreach settings: a pause toggle ("day off" button) and a free-form
+// "what are we selling" note, both editable from the webpage, both read
+// by something other than a browser click — the pause flag by the Apps
+// Script sender (see outreachStatus below), the campaign note by Claude
+// each time it writes that week's email copy (a manual step, not an API
+// call — keeps this at $0, see the plan). One doc, not per-field
+// documents, since both are always read/written together from the same
+// "Controls" section of the page.
+// ---------------------------------------------------------------------
+const OUTREACH_SETTINGS_DOC = () => db.collection("outreachSettings").doc("config");
+
+exports.outreachGetSettings = onCall(async (request) => {
+  await requireAdmin(request);
+  const snap = await OUTREACH_SETTINGS_DOC().get();
+  const data = snap.exists ? snap.data() : {};
+  return { paused: !!data.paused, campaignNotes: data.campaignNotes || "" };
+});
+
+exports.outreachSetSettings = onCall(async (request) => {
+  await requireAdmin(request);
+  const update = {};
+  if (typeof request.data?.paused === "boolean") update.paused = request.data.paused;
+  if (typeof request.data?.campaignNotes === "string") update.campaignNotes = request.data.campaignNotes.slice(0, 4000);
+  if (Object.keys(update).length === 0) throw new HttpsError("invalid-argument", "Nothing to update.");
+  await OUTREACH_SETTINGS_DOC().set(update, { merge: true });
+  return { ok: true };
+});
+
+// Plain HTTPS endpoint (no Firebase Auth) — Apps Script's UrlFetchApp
+// calls this as a server-to-server request, not from a browser, so there's
+// no Firebase ID token to attach and no admin gate here. Deliberately
+// exposes nothing sensitive: just a yes/no on whether sending is paused,
+// same as an "is the store open" sign, not a data endpoint.
+exports.outreachStatus = onRequest(async (req, res) => {
+  const snap = await OUTREACH_SETTINGS_DOC().get();
+  const paused = snap.exists ? !!snap.data().paused : false;
+  res.set("Cache-Control", "no-store");
+  res.json({ paused });
+});
 
