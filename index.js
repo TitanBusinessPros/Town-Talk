@@ -1733,7 +1733,15 @@ const { OAuth2Client } = require("google-auth-library");
 
 const gmailOAuthClientId = defineSecret("GMAIL_OAUTH_CLIENT_ID");
 const gmailOAuthClientSecret = defineSecret("GMAIL_OAUTH_CLIENT_SECRET");
-const gmailRefreshToken = defineSecret("GMAIL_REFRESH_TOKEN");
+const gmailRefreshToken = defineSecret("GMAIL_REFRESH_TOKEN"); // titanbusinesspros@gmail.com
+// Second sending account (pollysfarmok@gmail.com) — same identity
+// (info@titanbusinesspros.com shown to recipients either way), just a
+// second Gmail account to draft/send from so daily volume isn't capped at
+// one account's worth. Reuses the SAME OAuth client id/secret above —
+// only the refresh token differs per-account, since a token represents
+// one specific account's permission grant and can't be shared across
+// accounts (see the chat explanation of why this can't be skipped).
+const gmailRefreshToken2 = defineSecret("GMAIL2_REFRESH_TOKEN");
 const OUTREACH_FROM_ADDRESS = "info@titanbusinesspros.com"; // verified Send-As alias under titanbusinesspros@gmail.com
 const OUTREACH_DAILY_BATCH_SIZE = 10;
 
@@ -1817,7 +1825,7 @@ exports.outreachAddManualLead = onCall(async (request) => {
 // (outreachSentLog) — dropping someone at Checkpoint 1 leaves no trace of
 // them, same guarantee the local-script version had.
 exports.outreachCreateDraft = onCall(
-  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken] },
+  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2] },
   async (request) => {
     await requireAdmin(request);
 
@@ -1825,10 +1833,12 @@ exports.outreachCreateDraft = onCall(
     const subject = (request.data?.subject || "").trim();
     const body = (request.data?.body || "").trim();
     const candidateId = (request.data?.candidateId || "").trim(); // set when this lead came from a town search
+    const sender = request.data?.sender === "secondary" ? "secondary" : "primary"; // which Gmail account drafts this
     if (!to || !subject || !body) throw new HttpsError("invalid-argument", "to, subject, and body are all required.");
 
+    const refreshToken = sender === "secondary" ? gmailRefreshToken2.value() : gmailRefreshToken.value();
     const oAuth2Client = new OAuth2Client(gmailOAuthClientId.value(), gmailOAuthClientSecret.value());
-    oAuth2Client.setCredentials({ refresh_token: gmailRefreshToken.value() });
+    oAuth2Client.setCredentials({ refresh_token: refreshToken });
     const { token: accessToken } = await oAuth2Client.getAccessToken();
 
     const headers = [`From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`, `To: ${to}`, `Subject: ${subject}`, "Content-Type: text/plain; charset=UTF-8"].join(
