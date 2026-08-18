@@ -16,9 +16,10 @@
  * changing the time. Instead, a "watcher" trigger fires every 15 minutes,
  * checks the currently configured start time from outreachStatus, and
  * kicks off the day's send-chain the first time it notices that time has
- * passed. Once a day's chain has started, it self-chains exactly like
- * before (one send every 10 minutes) — only the START of each day is now
- * flexible, not the 10-minute spacing between sends within a day.
+ * passed. Once a day's chain has started, it self-chains roughly every
+ * 10 minutes (randomized a few minutes each time — see
+ * GAP_JITTER_MINUTES — so sends don't land at a suspiciously exact,
+ * bot-like clockwork interval).
  *
  * If you installed the OLD version of this script (a single fixed 9am
  * trigger), just run installWatcherTrigger() once — it cleans up the old
@@ -29,6 +30,7 @@ const APPROVED_LABEL = "Outreach/Approved";
 const SENT_LABEL = "Outreach/Sent"; // applied after sending, so a draft is never sent twice
 const FROM_ALIAS = "info@titanbusinesspros.com"; // must already be verified under Send-As
 const GAP_MINUTES = 10;
+const GAP_JITTER_MINUTES = 3; // +/- this many minutes of randomness on top of GAP_MINUTES
 const CHAIN_HANDLER = "sendNextApprovedDraft";
 const WATCHER_HANDLER = "checkAndMaybeStart";
 const WATCHER_INTERVAL_MINUTES = 15;
@@ -82,9 +84,12 @@ function checkAndMaybeStart() {
 
 /**
  * Sends exactly one approved-and-unsent draft, then — if more are waiting
- * — schedules itself to run again in exactly GAP_MINUTES. Called either
- * by checkAndMaybeStart() (the first send of the day) or by its own
- * previous firing (every send after that).
+ * — schedules itself to run again roughly GAP_MINUTES later (randomized a
+ * bit, see GAP_JITTER_MINUTES, so sends don't land at a suspiciously
+ * mechanical exact interval — a human clicking Send doesn't do it on the
+ * dot every 10 minutes, so this shouldn't look like they do either).
+ * Called either by checkAndMaybeStart() (the first send of the day) or by
+ * its own previous firing (every send after that).
  */
 function sendNextApprovedDraft() {
   // Clear any leftover chain trigger before deciding whether to schedule
@@ -142,10 +147,17 @@ function sendNextApprovedDraft() {
   }
 
   if (pending.length > 1) {
+    // Math.random() * 2 - 1 gives a value in [-1, 1); scaling by
+    // GAP_JITTER_MINUTES spreads that across [-3, +3) minutes, so the
+    // actual gap lands somewhere around 7-13 minutes, never the same
+    // twice in a row.
+    const jitterMs = (Math.random() * 2 - 1) * GAP_JITTER_MINUTES * 60 * 1000;
+    const delayMs = GAP_MINUTES * 60 * 1000 + jitterMs;
     ScriptApp.newTrigger(CHAIN_HANDLER)
       .timeBased()
-      .after(GAP_MINUTES * 60 * 1000)
+      .after(delayMs)
       .create();
+    Logger.log(`Next send scheduled in ~${Math.round(delayMs / 60000)} minutes.`);
   } else {
     Logger.log("That was the last approved draft for today — chain stops here.");
   }
