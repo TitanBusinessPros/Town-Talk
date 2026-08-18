@@ -45,6 +45,57 @@ const WATCHER_INTERVAL_MINUTES = 15;
 // token, and none of them expose or accept anything sensitive.
 const FUNCTIONS_BASE = "https://us-central1-town-talk-87ff7.cloudfunctions.net";
 const LAST_STARTED_KEY = "outreach_last_started_date"; // Script Property, e.g. "2026-08-19"
+const LOG_SHEET_ID_KEY = "outreach_log_sheet_id"; // Script Property — set the first time getOrCreateLogSheet() runs
+
+// Progress tracking, one spreadsheet per agent (this account creates and
+// owns its own — nothing shared with the other agent's account). Uses
+// Apps Script's native SpreadsheetApp, NOT the Sheets API/OAuth route —
+// deliberately, so this needed zero new Google permission grant beyond
+// what installWatcherTrigger already asked for. Only logs actual SENDS
+// (not draft-creation, which happens in the Cloud Function, not here) —
+// "progress" in the sense of "did this really go out," the milestone
+// that matters most.
+function getOrCreateLogSheet() {
+  const props = PropertiesService.getScriptProperties();
+  const existingId = props.getProperty(LOG_SHEET_ID_KEY);
+  if (existingId) {
+    try {
+      return SpreadsheetApp.openById(existingId).getSheets()[0];
+    } catch (err) {
+      Logger.log(`(${AGENT_ID}) Stored log sheet id ${existingId} couldn't be opened (${err.message}) — creating a new one.`);
+    }
+  }
+  const ss = SpreadsheetApp.create(`Town Fuss Outreach Log — ${AGENT_ID}`);
+  const sheet = ss.getSheets()[0];
+  sheet.appendRow(["Date/Time (Central)", "To", "Subject", "Status"]);
+  sheet.setFrozenRows(1);
+  props.setProperty(LOG_SHEET_ID_KEY, ss.getId());
+  Logger.log(`(${AGENT_ID}) Created log sheet: ${ss.getUrl()}`);
+  return sheet;
+}
+
+function logToSheet(to, subject, status) {
+  try {
+    const sheet = getOrCreateLogSheet();
+    const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+    sheet.appendRow([timestamp, to, subject, status]);
+  } catch (err) {
+    // Never let a logging failure break the actual send/chain — this is
+    // a record-keeping nice-to-have, not something that should be able
+    // to stop real emails from going out.
+    Logger.log(`(${AGENT_ID}) Couldn't log to sheet (${err.message}) — send itself was not affected.`);
+  }
+}
+
+/**
+ * Run this once, any time, to print the log sheet's URL to the execution
+ * log without needing to send anything first — creates it if it doesn't
+ * exist yet.
+ */
+function printLogSheetUrl() {
+  const sheet = getOrCreateLogSheet();
+  Logger.log(`(${AGENT_ID}) Log sheet: ${sheet.getParent().getUrl()}`);
+}
 
 function fetchJson(url) {
   const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
@@ -179,9 +230,11 @@ function sendNextApprovedDraft() {
       GmailApp.sendEmail(msg.getTo(), msg.getSubject(), msg.getPlainBody(), { from: FROM_ALIAS });
       thread.addLabel(sentLabel);
       Logger.log(`(${AGENT_ID}) Sent to ${msg.getTo()}`);
+      logToSheet(msg.getTo(), msg.getSubject(), "sent");
     } catch (err) {
       Logger.log(`(${AGENT_ID}) Failed to send to ${msg.getTo()}: ${err.message} — will still move on to the next one rather than get stuck retrying.`);
       thread.addLabel(sentLabel); // mark as handled even on failure, so a bad address doesn't jam the whole day's queue
+      logToSheet(msg.getTo(), msg.getSubject(), `failed: ${err.message}`);
     }
   }
 
