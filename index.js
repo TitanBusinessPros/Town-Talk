@@ -1745,6 +1745,25 @@ const gmailRefreshToken2 = defineSecret("GMAIL2_REFRESH_TOKEN");
 const OUTREACH_FROM_ADDRESS = "info@titanbusinesspros.com"; // verified Send-As alias under titanbusinesspros@gmail.com
 const OUTREACH_DAILY_BATCH_SIZE = 10;
 
+// Registry of every sending account this system knows about — the single
+// source of truth the webpage, the lock/status endpoints, and
+// outreachCreateDraft all read from, instead of "primary"/"secondary"
+// being hardcoded in three different places.
+//
+// TO ADD A THIRD (or fourth, etc.) AGENT LATER:
+//   1. `firebase functions:secrets:set GMAIL3_REFRESH_TOKEN` (after that
+//      account's own OAuth authorization, same as accounts 1 and 2).
+//   2. `const gmailRefreshToken3 = defineSecret("GMAIL3_REFRESH_TOKEN");`
+//   3. Add one line below: `tertiary: { label: "...@gmail.com", secret: gmailRefreshToken3 },`
+//      and add gmailRefreshToken3 to outreachCreateDraft's `secrets: [...]` array.
+// That's it — the settings/lock functions, and the webpage's per-agent
+// controls, all read this list and don't need any other change.
+const OUTREACH_AGENTS = {
+  primary: { label: "titanbusinesspros@gmail.com", secret: gmailRefreshToken },
+  secondary: { label: "pollysfarmok@gmail.com", secret: gmailRefreshToken2 },
+};
+const OUTREACH_LOCK_STALE_MS = 3 * 60 * 60 * 1000; // 3 hours — see outreachAcquireLock
+
 // Lists today's candidate leads — read-only, writes nothing. This is
 // Checkpoint 1 (see the outreach admin page): nobody is marked contacted
 // just by showing up in this list, only once outreachCreateDraft actually
@@ -1833,12 +1852,11 @@ exports.outreachCreateDraft = onCall(
     const subject = (request.data?.subject || "").trim();
     const body = (request.data?.body || "").trim();
     const candidateId = (request.data?.candidateId || "").trim(); // set when this lead came from a town search
-    const sender = request.data?.sender === "secondary" ? "secondary" : "primary"; // which Gmail account drafts this
+    const sender = OUTREACH_AGENTS[request.data?.sender] ? request.data.sender : "primary"; // which Gmail account drafts this
     if (!to || !subject || !body) throw new HttpsError("invalid-argument", "to, subject, and body are all required.");
 
-    const refreshToken = sender === "secondary" ? gmailRefreshToken2.value() : gmailRefreshToken.value();
     const oAuth2Client = new OAuth2Client(gmailOAuthClientId.value(), gmailOAuthClientSecret.value());
-    oAuth2Client.setCredentials({ refresh_token: refreshToken });
+    oAuth2Client.setCredentials({ refresh_token: OUTREACH_AGENTS[sender].secret.value() });
     const { token: accessToken } = await oAuth2Client.getAccessToken();
 
     const headers = [`From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`, `To: ${to}`, `Subject: ${subject}`, "Content-Type: text/plain; charset=UTF-8"].join(
@@ -1865,16 +1883,24 @@ exports.outreachCreateDraft = onCall(
 );
 
 // ---------------------------------------------------------------------
-// Outreach settings: a pause toggle ("day off" button) and a free-form
-// "what are we selling" note, both editable from the webpage, both read
-// by something other than a browser click — the pause flag by the Apps
-// Script sender (see outreachStatus below), the campaign note by Claude
-// each time it writes that week's email copy (a manual step, not an API
-// call — keeps this at $0, see the plan). One doc, not per-field
-// documents, since both are always read/written together from the same
-// "Controls" section of the page.
+// Outreach settings — TWO separate concerns sharing one doc:
+//   1. campaignNotes: one global "what are we selling" note (Claude reads
+//      this before writing each batch of copy, regardless of which agent
+//      it's for — the pitch doesn't change per sending account).
+//   2. agents.{agentId}: per-agent pause + daily start time, one entry per
+//      OUTREACH_AGENTS key. Each agent's own Apps Script polls its own
+//      entry via outreachAgentStatus?agent=X.
+//
+// A SEPARATE doc (outreachSettings/lock) enforces that only ONE agent's
+// send-chain is ever actively running at a time, even though each agent
+// has its own independent start time — see outreachAcquireLock/
+// outreachReleaseLock. Without this, two agents whose start times happen
+// to land close together could both be mid-chain simultaneously, both
+// sending as the same info@titanbusinesspros.com identity at once, which
+// is exactly the "looks coordinated/automated" pattern worth avoiding.
 // ---------------------------------------------------------------------
 const OUTREACH_SETTINGS_DOC = () => db.collection("outreachSettings").doc("config");
+const OUTREACH_LOCK_DOC = () => db.collection("outreachSettings").doc("lock");
 
 const OUTREACH_DEFAULT_START_TIME = "09:00"; // 24hr, Central — matches the Apps Script's configured timezone
 const START_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -1883,36 +1909,119 @@ exports.outreachGetSettings = onCall(async (request) => {
   await requireAdmin(request);
   const snap = await OUTREACH_SETTINGS_DOC().get();
   const data = snap.exists ? snap.data() : {};
-  return { paused: !!data.paused, campaignNotes: data.campaignNotes || "", startTime: data.startTime || OUTREACH_DEFAULT_START_TIME };
+  const agentsData = data.agents || {};
+  const agents = Object.entries(OUTREACH_AGENTS).map(([id, def]) => ({
+    id,
+    label: def.label,
+    paused: !!agentsData[id]?.paused,
+    startTime: agentsData[id]?.startTime || OUTREACH_DEFAULT_START_TIME,
+  }));
+  return { campaignNotes: data.campaignNotes || "", agents };
 });
 
 exports.outreachSetSettings = onCall(async (request) => {
   await requireAdmin(request);
   const update = {};
-  if (typeof request.data?.paused === "boolean") update.paused = request.data.paused;
   if (typeof request.data?.campaignNotes === "string") update.campaignNotes = request.data.campaignNotes.slice(0, 4000);
-  if (typeof request.data?.startTime === "string") {
-    if (!START_TIME_PATTERN.test(request.data.startTime)) {
-      throw new HttpsError("invalid-argument", "startTime must be 24-hour HH:MM, e.g. 09:00 or 14:30.");
+
+  const agentId = request.data?.agent;
+  if (agentId !== undefined) {
+    if (!OUTREACH_AGENTS[agentId]) throw new HttpsError("invalid-argument", `Unknown agent "${agentId}".`);
+    const agentUpdate = {};
+    if (typeof request.data?.paused === "boolean") agentUpdate.paused = request.data.paused;
+    if (typeof request.data?.startTime === "string") {
+      if (!START_TIME_PATTERN.test(request.data.startTime)) {
+        throw new HttpsError("invalid-argument", "startTime must be 24-hour HH:MM, e.g. 09:00 or 14:30.");
+      }
+      agentUpdate.startTime = request.data.startTime;
     }
-    update.startTime = request.data.startTime;
+    if (Object.keys(agentUpdate).length === 0) throw new HttpsError("invalid-argument", "Nothing to update for that agent.");
+    // Nested-map merge: {agents: {primary: {paused: true}}} with
+    // merge:true only touches agents.primary.paused — Firestore's set()
+    // merges nested maps recursively, unlike update(), so this can't
+    // accidentally clobber agents.secondary or agents.primary.startTime.
+    update.agents = { [agentId]: agentUpdate };
   }
+
   if (Object.keys(update).length === 0) throw new HttpsError("invalid-argument", "Nothing to update.");
   await OUTREACH_SETTINGS_DOC().set(update, { merge: true });
   return { ok: true };
 });
 
-// Plain HTTPS endpoint (no Firebase Auth) — Apps Script's UrlFetchApp
-// calls this as a server-to-server request, not from a browser, so there's
-// no Firebase ID token to attach and no admin gate here. Deliberately
-// exposes nothing sensitive: just whether sending is paused and what time
-// it should start, same as an "is the store open, and when" sign, not a
-// data endpoint.
-exports.outreachStatus = onRequest(async (req, res) => {
+// Plain HTTPS endpoints (no Firebase Auth) — each agent's Apps Script
+// calls these as server-to-server requests, not from a browser, so
+// there's no Firebase ID token to attach and no admin gate. Deliberately
+// exposes/mutates nothing sensitive: a pause flag, a start time, and a
+// "who's currently sending" lock — no PII, same trust level as the
+// original single-agent outreachStatus this replaces.
+exports.outreachAgentStatus = onRequest(async (req, res) => {
+  const agentId = OUTREACH_AGENTS[req.query.agent] ? req.query.agent : null;
+  if (!agentId) {
+    res.status(400).json({ error: `Unknown or missing agent. Known agents: ${Object.keys(OUTREACH_AGENTS).join(", ")}` });
+    return;
+  }
   const snap = await OUTREACH_SETTINGS_DOC().get();
-  const data = snap.exists ? snap.data() : {};
+  const agentData = (snap.exists ? snap.data().agents : null)?.[agentId] || {};
   res.set("Cache-Control", "no-store");
-  res.json({ paused: !!data.paused, startTime: data.startTime || OUTREACH_DEFAULT_START_TIME });
+  res.json({ paused: !!agentData.paused, startTime: agentData.startTime || OUTREACH_DEFAULT_START_TIME });
+});
+
+// Called once by an agent's Apps Script right before it wants to start
+// today's send-chain. Atomic (Firestore transaction) so two agents
+// starting within the same watcher tick can't both think they got it.
+// A lock older than OUTREACH_LOCK_STALE_MS is treated as abandoned (e.g.
+// an Apps Script execution that errored out before releasing) and can be
+// claimed by anyone — self-healing rather than requiring manual cleanup.
+exports.outreachAcquireLock = onRequest(async (req, res) => {
+  const agentId = OUTREACH_AGENTS[req.query.agent] ? req.query.agent : null;
+  if (!agentId) {
+    res.status(400).json({ error: `Unknown or missing agent. Known agents: ${Object.keys(OUTREACH_AGENTS).join(", ")}` });
+    return;
+  }
+  res.set("Cache-Control", "no-store");
+  try {
+    const acquired = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(OUTREACH_LOCK_DOC());
+      const data = snap.exists ? snap.data() : {};
+      const heldBy = data.heldBy || null;
+      const lockedAtMs = data.lockedAt?.toMillis ? data.lockedAt.toMillis() : 0;
+      const isStale = heldBy && Date.now() - lockedAtMs > OUTREACH_LOCK_STALE_MS;
+      if (heldBy && heldBy !== agentId && !isStale) return false; // someone else genuinely holds it
+      tx.set(OUTREACH_LOCK_DOC(), { heldBy: agentId, lockedAt: Timestamp.now() });
+      return true;
+    });
+    const lockSnap = acquired ? null : await OUTREACH_LOCK_DOC().get();
+    res.json({ acquired, heldBy: acquired ? agentId : lockSnap?.data()?.heldBy || null });
+  } catch (err) {
+    console.error("outreachAcquireLock failed:", err);
+    res.status(500).json({ acquired: false, error: err.message });
+  }
+});
+
+// Called when an agent's send-chain has nothing left to send (or stops
+// early, e.g. pause flipped on mid-chain). Only releases if THIS agent is
+// actually the current holder, so a late/duplicate release call from one
+// agent can't accidentally free a lock a different agent has since
+// legitimately acquired.
+exports.outreachReleaseLock = onRequest(async (req, res) => {
+  const agentId = OUTREACH_AGENTS[req.query.agent] ? req.query.agent : null;
+  if (!agentId) {
+    res.status(400).json({ error: `Unknown or missing agent. Known agents: ${Object.keys(OUTREACH_AGENTS).join(", ")}` });
+    return;
+  }
+  res.set("Cache-Control", "no-store");
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(OUTREACH_LOCK_DOC());
+      if (snap.exists && snap.data().heldBy === agentId) {
+        tx.set(OUTREACH_LOCK_DOC(), { heldBy: null, lockedAt: Timestamp.now() });
+      }
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("outreachReleaseLock failed:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // ---------------------------------------------------------------------

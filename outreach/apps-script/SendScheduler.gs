@@ -4,44 +4,67 @@
  * Reference copy of the Apps Script that actually sends the day's
  * approved outreach drafts. This file is NOT deployed automatically —
  * Apps Script projects live at script.google.com, not in this repo. Copy
- * this into a new script bound to titanbusinesspros@gmail.com (see
+ * this into a new script bound to the sending account (see
  * outreach/README.md) and keep this file in sync if you edit it there,
  * so there's always a tracked backup of the logic.
  *
- * ARCHITECTURE CHANGE 2026-08-19: the start time is now configurable from
- * the admin webpage (Controls section) instead of fixed at 9:00 AM. Apps
- * Script's time-based triggers bake their fire time in at the moment
- * you CREATE them — a trigger literally can't read a variable each day —
- * so a single "daily at 9am" trigger can't respond to the webpage
- * changing the time. Instead, a "watcher" trigger fires every 15 minutes,
- * checks the currently configured start time from outreachStatus, and
- * kicks off the day's send-chain the first time it notices that time has
- * passed. Once a day's chain has started, it self-chains roughly every
- * 10 minutes (randomized a few minutes each time — see
- * GAP_JITTER_MINUTES — so sends don't land at a suspiciously exact,
- * bot-like clockwork interval).
+ * MULTI-AGENT ARCHITECTURE 2026-08-19: this system can run more than one
+ * sending account (e.g. titanbusinesspros@gmail.com AND
+ * pollysfarmok@gmail.com), each with its OWN pause button and start time,
+ * but they must never both be actively sending at once — both show the
+ * same From address (info@titanbusinesspros.com), so two agents sending
+ * at the same time would look like the same identity sending through two
+ * different mail paths simultaneously. A shared "lock" on the backend
+ * (outreachAcquireLock/outreachReleaseLock) enforces this: before
+ * starting today's chain, an agent must successfully acquire the lock;
+ * if another agent already holds it, this agent just waits and checks
+ * again on its next 15-minute tick, for as long as it takes.
  *
- * If you installed the OLD version of this script (a single fixed 9am
- * trigger), just run installWatcherTrigger() once — it cleans up the old
- * trigger automatically before installing the new one.
+ * SET AGENT_ID BELOW to match which account this specific copy of the
+ * script is bound to — "primary" for titanbusinesspros@gmail.com,
+ * "secondary" for pollysfarmok@gmail.com, "tertiary" for a future third
+ * account, etc. This is the ONLY line that should differ between the
+ * separate copies of this script pasted into each account's Apps Script
+ * project — everything else is identical code.
  */
+
+const AGENT_ID = "primary"; // <-- CHANGE THIS to "secondary" (etc.) for other accounts' copies of this script
 
 const APPROVED_LABEL = "Outreach/Approved";
 const SENT_LABEL = "Outreach/Sent"; // applied after sending, so a draft is never sent twice
-const FROM_ALIAS = "info@titanbusinesspros.com"; // must already be verified under Send-As
+const FROM_ALIAS = "info@titanbusinesspros.com"; // must already be verified under Send-As, same for every agent
 const GAP_MINUTES = 10;
 const GAP_JITTER_MINUTES = 3; // +/- this many minutes of randomness on top of GAP_MINUTES
 const CHAIN_HANDLER = "sendNextApprovedDraft";
 const WATCHER_HANDLER = "checkAndMaybeStart";
 const WATCHER_INTERVAL_MINUTES = 15;
-// Plain HTTPS endpoint (index.js's outreachStatus), no auth needed —
-// returns { paused, startTime } where startTime is "HH:MM" 24-hour, Central.
-const STATUS_URL = "https://us-central1-town-talk-87ff7.cloudfunctions.net/outreachStatus";
+// Base URL for all three plain HTTPS endpoints in index.js — each call
+// appends ?agent=AGENT_ID. No Firebase Auth token involved; these are
+// deliberately unauthenticated server-to-server endpoints (see index.js's
+// comments on them) since Apps Script has no way to attach a Firebase ID
+// token, and none of them expose or accept anything sensitive.
+const FUNCTIONS_BASE = "https://us-central1-town-talk-87ff7.cloudfunctions.net";
 const LAST_STARTED_KEY = "outreach_last_started_date"; // Script Property, e.g. "2026-08-19"
 
-function fetchStatus() {
-  const res = UrlFetchApp.fetch(STATUS_URL, { muteHttpExceptions: true });
+function fetchJson(url) {
+  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
   return JSON.parse(res.getContentText());
+}
+
+function fetchStatus() {
+  return fetchJson(`${FUNCTIONS_BASE}/outreachAgentStatus?agent=${AGENT_ID}`);
+}
+
+function tryAcquireLock() {
+  return fetchJson(`${FUNCTIONS_BASE}/outreachAcquireLock?agent=${AGENT_ID}`);
+}
+
+function releaseLock() {
+  try {
+    fetchJson(`${FUNCTIONS_BASE}/outreachReleaseLock?agent=${AGENT_ID}`);
+  } catch (err) {
+    Logger.log(`releaseLock failed (${err.message}) — a stale lock older than 3 hours self-heals on the backend regardless, so this isn't fatal.`);
+  }
 }
 
 function todayDateString() {
@@ -53,17 +76,20 @@ function todayDateString() {
 /**
  * Runs every 15 minutes, all day, every day. Does almost nothing on most
  * firings — only actually starts a send-chain the first time, each day,
- * that it notices the configured start time has passed.
+ * that BOTH (a) it notices this agent's configured start time has passed,
+ * AND (b) it successfully acquires the cross-agent lock. If another agent
+ * currently holds the lock, this just tries again next tick — for as long
+ * as it takes, there's no timeout or giving up for the day.
  */
 function checkAndMaybeStart() {
-  const dayOfWeek = new Date().getDay(); // 0 = Sunday — hard rule, not a toggle
+  const dayOfWeek = new Date().getDay(); // 0 = Sunday — hard rule, not a toggle, applies to every agent
   if (dayOfWeek === 0) return;
 
   let status;
   try {
     status = fetchStatus();
   } catch (err) {
-    Logger.log("checkAndMaybeStart: couldn't reach outreachStatus (" + err.message + ") — skipping this check.");
+    Logger.log(`checkAndMaybeStart (${AGENT_ID}): couldn't reach outreachAgentStatus (${err.message}) — skipping this check.`);
     return;
   }
   if (status.paused) return;
@@ -75,10 +101,16 @@ function checkAndMaybeStart() {
   const [startHour, startMinute] = (status.startTime || "09:00").split(":").map(Number);
   const now = new Date();
   const startTimeToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, startMinute);
-  if (now < startTimeToday) return; // configured time hasn't arrived yet today
+  if (now < startTimeToday) return; // this agent's configured time hasn't arrived yet today
+
+  const lockResult = tryAcquireLock();
+  if (!lockResult.acquired) {
+    Logger.log(`(${AGENT_ID}) Start time has passed, but agent "${lockResult.heldBy}" is currently sending — will check again in ${WATCHER_INTERVAL_MINUTES} minutes.`);
+    return; // don't mark today as started — keep retrying every tick until the lock frees up
+  }
 
   props.setProperty(LAST_STARTED_KEY, today);
-  Logger.log(`Starting today's send-chain (configured start time ${status.startTime} has passed).`);
+  Logger.log(`(${AGENT_ID}) Starting today's send-chain (configured start time ${status.startTime} has passed, lock acquired).`);
   sendNextApprovedDraft();
 }
 
@@ -86,35 +118,41 @@ function checkAndMaybeStart() {
  * Sends exactly one approved-and-unsent draft, then — if more are waiting
  * — schedules itself to run again roughly GAP_MINUTES later (randomized a
  * bit, see GAP_JITTER_MINUTES, so sends don't land at a suspiciously
- * mechanical exact interval — a human clicking Send doesn't do it on the
- * dot every 10 minutes, so this shouldn't look like they do either).
- * Called either by checkAndMaybeStart() (the first send of the day) or by
- * its own previous firing (every send after that).
+ * mechanical exact interval). Releases the cross-agent lock on every path
+ * that means "not continuing right now" — that's what lets the next
+ * eligible agent start as soon as this one is truly done, not a fixed
+ * time later.
  */
 function sendNextApprovedDraft() {
   // Clear any leftover chain trigger before deciding whether to schedule
-  // a new one — avoids ever having two chains running at once.
+  // a new one — avoids ever having two chains running at once for THIS
+  // agent (separate from the cross-agent lock, which prevents two
+  // different agents' chains overlapping).
   ScriptApp.getProjectTriggers()
     .filter((t) => t.getHandlerFunction() === CHAIN_HANDLER)
     .forEach((t) => ScriptApp.deleteTrigger(t));
 
   // Re-check pause here too (not just in checkAndMaybeStart) — this is
-  // what lets toggling the pause button mid-morning stop an in-progress
-  // chain immediately, rather than waiting for tomorrow.
+  // what lets toggling this agent's pause button mid-morning stop an
+  // in-progress chain immediately, rather than waiting for tomorrow.
+  let status;
   try {
-    const status = fetchStatus();
-    if (status.paused) {
-      Logger.log("Outreach is paused (day-off button is on) — stopping the chain here.");
-      return;
-    }
+    status = fetchStatus();
   } catch (err) {
-    Logger.log("Couldn't reach outreachStatus (" + err.message + ") — stopping this chain as a precaution.");
+    Logger.log(`(${AGENT_ID}) Couldn't reach outreachAgentStatus (${err.message}) — stopping this chain as a precaution.`);
+    releaseLock();
+    return;
+  }
+  if (status.paused) {
+    Logger.log(`(${AGENT_ID}) Paused mid-chain — stopping here.`);
+    releaseLock();
     return;
   }
 
   const approved = GmailApp.getUserLabelByName(APPROVED_LABEL);
   if (!approved) {
-    Logger.log(`Label "${APPROVED_LABEL}" doesn't exist yet — create it in Gmail first.`);
+    Logger.log(`(${AGENT_ID}) Label "${APPROVED_LABEL}" doesn't exist yet — create it in Gmail first.`);
+    releaseLock();
     return;
   }
   let sentLabel = GmailApp.getUserLabelByName(SENT_LABEL);
@@ -128,7 +166,8 @@ function sendNextApprovedDraft() {
   const pending = approved.getThreads().filter((t) => !sentThreadIds.has(t.getId()));
 
   if (pending.length === 0) {
-    Logger.log("No approved-and-unsent drafts found — nothing to do, chain stops here for today.");
+    Logger.log(`(${AGENT_ID}) No approved-and-unsent drafts found — nothing to do, chain stops here for today.`);
+    releaseLock();
     return;
   }
 
@@ -139,9 +178,9 @@ function sendNextApprovedDraft() {
     try {
       GmailApp.sendEmail(msg.getTo(), msg.getSubject(), msg.getPlainBody(), { from: FROM_ALIAS });
       thread.addLabel(sentLabel);
-      Logger.log(`Sent to ${msg.getTo()}`);
+      Logger.log(`(${AGENT_ID}) Sent to ${msg.getTo()}`);
     } catch (err) {
-      Logger.log(`Failed to send to ${msg.getTo()}: ${err.message} — will still move on to the next one in ${GAP_MINUTES} minutes rather than get stuck retrying.`);
+      Logger.log(`(${AGENT_ID}) Failed to send to ${msg.getTo()}: ${err.message} — will still move on to the next one rather than get stuck retrying.`);
       thread.addLabel(sentLabel); // mark as handled even on failure, so a bad address doesn't jam the whole day's queue
     }
   }
@@ -150,32 +189,38 @@ function sendNextApprovedDraft() {
     // Math.random() * 2 - 1 gives a value in [-1, 1); scaling by
     // GAP_JITTER_MINUTES spreads that across [-3, +3) minutes, so the
     // actual gap lands somewhere around 7-13 minutes, never the same
-    // twice in a row.
+    // twice in a row. Lock stays held — we're continuing the chain.
     const jitterMs = (Math.random() * 2 - 1) * GAP_JITTER_MINUTES * 60 * 1000;
     const delayMs = GAP_MINUTES * 60 * 1000 + jitterMs;
     ScriptApp.newTrigger(CHAIN_HANDLER)
       .timeBased()
       .after(delayMs)
       .create();
-    Logger.log(`Next send scheduled in ~${Math.round(delayMs / 60000)} minutes.`);
+    Logger.log(`(${AGENT_ID}) Next send scheduled in ~${Math.round(delayMs / 60000)} minutes.`);
   } else {
-    Logger.log("That was the last approved draft for today — chain stops here.");
+    Logger.log(`(${AGENT_ID}) That was the last approved draft for today — chain stops here.`);
+    releaseLock();
   }
 }
 
-/**
- * Run this ONCE (Apps Script editor > select this function > Run) to
- * install the 15-minute watcher. Safe to re-run any time — it clears any
- * previous watcher AND any old-style fixed-9am trigger first, so it never
- * doubles up regardless of which version you had installed before.
- * IMPORTANT: also set the script's time zone to America/Chicago first
- * (gear icon > Project Settings, left sidebar) — this is what makes the
- * webpage's start-time setting mean Central time, not UTC or Pacific.
- */
-function installWatcherTrigger() {
+function deleteOwnTriggers() {
   ScriptApp.getProjectTriggers()
     .filter((t) => t.getHandlerFunction() === WATCHER_HANDLER || t.getHandlerFunction() === CHAIN_HANDLER)
     .forEach((t) => ScriptApp.deleteTrigger(t));
+}
+
+/**
+ * Run this ONCE per account (Apps Script editor > select this function >
+ * Run) to install the 15-minute watcher. Safe to re-run any time — it
+ * clears any previous watcher/chain trigger for THIS script first, so it
+ * never doubles up. IMPORTANT: also set the script's time zone to
+ * America/Chicago first (gear icon > Project Settings, left sidebar), and
+ * double-check AGENT_ID above matches which account this copy belongs to
+ * — a wrong AGENT_ID would make this account check (and lock/release)
+ * the wrong agent's settings.
+ */
+function installWatcherTrigger() {
+  deleteOwnTriggers();
 
   ScriptApp.newTrigger(WATCHER_HANDLER)
     .timeBased()
@@ -183,9 +228,8 @@ function installWatcherTrigger() {
     .create();
 
   Logger.log(
-    `Watcher installed: checks every ${WATCHER_INTERVAL_MINUTES} minutes whether today's configured start ` +
-      `time (set on the webpage, defaults to 09:00) has passed, and starts the send-chain the first time it ` +
-      `has each day. Because it only checks every ${WATCHER_INTERVAL_MINUTES} minutes, the actual first send ` +
-      `of the day may land up to ${WATCHER_INTERVAL_MINUTES} minutes after your configured time, not the exact minute.`
+    `(${AGENT_ID}) Watcher installed: checks every ${WATCHER_INTERVAL_MINUTES} minutes whether this agent's ` +
+      `configured start time has passed AND the cross-agent lock is free, and starts the send-chain the first ` +
+      `time both are true each day.`
   );
 }
