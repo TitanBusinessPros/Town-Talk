@@ -1839,10 +1839,42 @@ exports.outreachAddManualLead = onCall(async (request) => {
   return { ok: true };
 });
 
+const OUTREACH_APPROVED_LABEL_NAME = "Outreach/Approved";
+
+// Finds the Gmail label's internal ID (needed to apply it via the API —
+// unlike the Apps Script side, which can look labels up by name
+// directly), creating it if it somehow doesn't exist yet on this account.
+async function ensureApprovedLabelId(accessToken) {
+  const listRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/labels", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!listRes.ok) throw new HttpsError("internal", `Gmail API error listing labels (${listRes.status}): ${await listRes.text().catch(() => "")}`);
+  const listData = await listRes.json();
+  const existing = (listData.labels || []).find((l) => l.name === OUTREACH_APPROVED_LABEL_NAME);
+  if (existing) return existing.id;
+
+  const createRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/labels", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name: OUTREACH_APPROVED_LABEL_NAME, labelListVisibility: "labelShow", messageListVisibility: "show" }),
+  });
+  if (!createRes.ok) throw new HttpsError("internal", `Gmail API error creating label (${createRes.status}): ${await createRes.text().catch(() => "")}`);
+  return (await createRes.json()).id;
+}
+
 // Checkpoint 2's backend: creates a real Gmail Draft, From the verified
-// Send-As alias. This is also the ONLY place a lead gets marked contacted
-// (outreachSentLog) — dropping someone at Checkpoint 1 leaves no trace of
-// them, same guarantee the local-script version had.
+// Send-As alias, and immediately labels it Outreach/Approved itself — the
+// review already happened on the webpage (editing subject/body before
+// this is even called), so there's no reason to also require a separate
+// trip into Gmail just to click a label. This is also the ONLY place a
+// lead gets marked contacted (outreachSentLog) — dropping someone at
+// Checkpoint 1 leaves no trace of them, same guarantee the local-script
+// version had.
+//
+// IMPORTANT BEHAVIOR CHANGE: because this now auto-labels, clicking
+// "Create drafts" is the real commit point — the agent's automatic
+// sender WILL pick this up and send it once that agent is active and its
+// start time has passed. Review the text before clicking, not after.
 exports.outreachCreateDraft = onCall(
   { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2] },
   async (request) => {
@@ -1873,6 +1905,26 @@ exports.outreachCreateDraft = onCall(
       const errBody = await gmailRes.text().catch(() => "");
       throw new HttpsError("internal", `Gmail API error (${gmailRes.status}): ${errBody}`);
     }
+    const draftData = await gmailRes.json();
+
+    // Auto-approve: apply the label right now, server-side, instead of
+    // making the human do it by hand in Gmail afterward.
+    const labelId = await ensureApprovedLabelId(accessToken);
+    const messageId = draftData.message?.id;
+    if (messageId) {
+      const modifyRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ addLabelIds: [labelId] }),
+      });
+      if (!modifyRes.ok) {
+        // Draft exists, just isn't auto-labeled — not worth failing the
+        // whole call over, but worth surfacing so it doesn't silently
+        // never send. Caller can still label it by hand as a fallback.
+        console.error(`outreachCreateDraft: draft created but auto-label failed (${modifyRes.status}): ${await modifyRes.text().catch(() => "")}`);
+      }
+    }
+
     await db.collection("outreachSentLog").doc(to.toLowerCase()).set({ draftedAt: Timestamp.now(), subject });
     if (candidateId) {
       await db.collection("outreachCandidates").doc(candidateId).set({ status: "drafted" }, { merge: true }).catch(() => {});
