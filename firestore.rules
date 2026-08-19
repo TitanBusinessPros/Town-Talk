@@ -1269,5 +1269,21 @@ service cloud.firestore {
       allow read: if isAdmin() || isOwner(uid);
       allow write: if isAdmin();
     }
+
+    // Outreach admin page (separate repo, townfuss-outreach.web.app) —
+    // read-only for the live "next send" countdown and per-lead sent
+    // confirmation. Every write to both of these comes from Cloud
+    // Functions (Admin SDK, bypasses rules) or the Apps Script senders
+    // (plain HTTPS endpoints, also Admin SDK on the receiving end) —
+    // never directly from a browser, so there's no client write case to
+    // allow here at all.
+    match /outreachSettings/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /outreachSentEvents/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
   }
 }

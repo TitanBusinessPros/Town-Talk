@@ -2076,6 +2076,60 @@ exports.outreachReleaseLock = onRequest(async (req, res) => {
   }
 });
 
+// Called by an agent's Apps Script right after it schedules its next
+// timed trigger (or to clear the countdown once a chain stops). Lets the
+// admin webpage show a real, accurate "next send in MM:SS" — computed
+// from an actual scheduled timestamp Apps Script reports, not a guess —
+// via a live Firestore listener (see outreachSettings/{doc} read rule).
+exports.outreachReportNextSend = onRequest(async (req, res) => {
+  const agentId = OUTREACH_AGENTS[req.query.agent] ? req.query.agent : null;
+  if (!agentId) {
+    res.status(400).json({ error: `Unknown or missing agent. Known agents: ${Object.keys(OUTREACH_AGENTS).join(", ")}` });
+    return;
+  }
+  res.set("Cache-Control", "no-store");
+  try {
+    // nextAt is either an ISO timestamp string (a send is scheduled) or
+    // absent/null (chain stopped — clears any stale countdown on the page).
+    const nextAtIso = req.query.nextAt || null;
+    const nextSendAt = nextAtIso ? Timestamp.fromDate(new Date(nextAtIso)) : null;
+    await OUTREACH_SETTINGS_DOC().set({ agents: { [agentId]: { nextSendAt } } }, { merge: true });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("outreachReportNextSend failed:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Called by an agent's Apps Script right after each real send attempt
+// (success or failure) — the actual "did it really go out" confirmation
+// the webpage's per-lead status shows, via a live Firestore listener
+// matched on the recipient email. Separate from outreachSentLog (which
+// only tracks "drafted," for dedup) and the per-agent Google Sheet (which
+// is for the account owner to eyeball, not for the webpage to query).
+exports.outreachRecordSent = onRequest(async (req, res) => {
+  const agentId = OUTREACH_AGENTS[req.query.agent] ? req.query.agent : null;
+  const to = (req.query.to || "").trim().toLowerCase();
+  if (!agentId || !to) {
+    res.status(400).json({ error: "agent and to are both required." });
+    return;
+  }
+  res.set("Cache-Control", "no-store");
+  try {
+    await db.collection("outreachSentEvents").add({
+      agent: agentId,
+      to,
+      subject: (req.query.subject || "").slice(0, 300),
+      status: (req.query.status || "sent").slice(0, 300),
+      sentAt: Timestamp.now(),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("outreachRecordSent failed:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------
 // Town-search lead generation (Google Places API "New") — every doc this
 // writes to outreachCandidates starts life with status:"candidate" (raw,

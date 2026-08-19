@@ -44,7 +44,6 @@ const WATCHER_INTERVAL_MINUTES = 15;
 // comments on them) since Apps Script has no way to attach a Firebase ID
 // token, and none of them expose or accept anything sensitive.
 const FUNCTIONS_BASE = "https://us-central1-town-talk-87ff7.cloudfunctions.net";
-const LAST_STARTED_KEY = "outreach_last_started_date"; // Script Property, e.g. "2026-08-19"
 const LOG_SHEET_ID_KEY = "outreach_log_sheet_id"; // Script Property — set the first time getOrCreateLogSheet() runs
 
 // Progress tracking, one spreadsheet per agent (this account creates and
@@ -118,19 +117,49 @@ function releaseLock() {
   }
 }
 
-function todayDateString() {
-  // Script's own time zone (must be America/Chicago, see installWatcherTrigger)
-  // is what Session.getScriptTimeZone() reflects, so this is a Central-time date.
-  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+// Reports the actual scheduled next-send timestamp (or clears it, when
+// called with null) so the admin webpage can show a real, accurate
+// "next send in MM:SS" countdown via a live Firestore listener — not a
+// guess computed on the page, the literal time this script just
+// scheduled itself for.
+function reportNextSend(nextDate) {
+  try {
+    const url = nextDate
+      ? `${FUNCTIONS_BASE}/outreachReportNextSend?agent=${AGENT_ID}&nextAt=${encodeURIComponent(nextDate.toISOString())}`
+      : `${FUNCTIONS_BASE}/outreachReportNextSend?agent=${AGENT_ID}`;
+    fetchJson(url);
+  } catch (err) {
+    Logger.log(`(${AGENT_ID}) reportNextSend failed (${err.message}) — countdown on the page may be stale, sending itself isn't affected.`);
+  }
+}
+
+// Confirms a real send attempt (success or failure) to the webpage's
+// live per-lead status — separate from logToSheet (for the account
+// owner) and the Sent Gmail label (for dedup).
+function reportSentEvent(to, subject, status) {
+  try {
+    const params = `agent=${AGENT_ID}&to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&status=${encodeURIComponent(status)}`;
+    fetchJson(`${FUNCTIONS_BASE}/outreachRecordSent?${params}`);
+  } catch (err) {
+    Logger.log(`(${AGENT_ID}) reportSentEvent failed (${err.message}) — webpage confirmation may be missing, the actual send isn't affected.`);
+  }
 }
 
 /**
  * Runs every 15 minutes, all day, every day. Does almost nothing on most
- * firings — only actually starts a send-chain the first time, each day,
- * that BOTH (a) it notices this agent's configured start time has passed,
- * AND (b) it successfully acquires the cross-agent lock. If another agent
- * currently holds the lock, this just tries again next tick — for as long
- * as it takes, there's no timeout or giving up for the day.
+ * firings — only actually starts a send-chain when BOTH (a) this agent's
+ * configured start time has passed for today, AND (b) it successfully
+ * acquires the cross-agent lock. If another agent currently holds the
+ * lock, this just tries again next tick — for as long as it takes.
+ *
+ * NOT limited to "once per day" — a bug in an earlier version tracked a
+ * single "already started today" flag, which meant a SECOND lead
+ * approved later the same day (after an earlier batch had already run
+ * and finished) never got picked up at all, silently, until the next
+ * calendar day. Removed: sendNextApprovedDraft() already no-ops safely
+ * when there's nothing approved-and-unsent to send, so there's no real
+ * downside to just checking fresh every tick once the start time has
+ * passed, all day.
  */
 function checkAndMaybeStart() {
   const dayOfWeek = new Date().getDay(); // 0 = Sunday — hard rule, not a toggle, applies to every agent
@@ -145,10 +174,6 @@ function checkAndMaybeStart() {
   }
   if (status.paused) return;
 
-  const today = todayDateString();
-  const props = PropertiesService.getScriptProperties();
-  if (props.getProperty(LAST_STARTED_KEY) === today) return; // already started today's chain
-
   const [startHour, startMinute] = (status.startTime || "09:00").split(":").map(Number);
   const now = new Date();
   const startTimeToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, startMinute);
@@ -157,11 +182,10 @@ function checkAndMaybeStart() {
   const lockResult = tryAcquireLock();
   if (!lockResult.acquired) {
     Logger.log(`(${AGENT_ID}) Start time has passed, but agent "${lockResult.heldBy}" is currently sending — will check again in ${WATCHER_INTERVAL_MINUTES} minutes.`);
-    return; // don't mark today as started — keep retrying every tick until the lock frees up
+    return; // keep retrying every tick until the lock frees up
   }
 
-  props.setProperty(LAST_STARTED_KEY, today);
-  Logger.log(`(${AGENT_ID}) Starting today's send-chain (configured start time ${status.startTime} has passed, lock acquired).`);
+  Logger.log(`(${AGENT_ID}) Starting a send-chain (configured start time ${status.startTime} has passed, lock acquired).`);
   sendNextApprovedDraft();
 }
 
@@ -192,11 +216,13 @@ function sendNextApprovedDraft() {
   } catch (err) {
     Logger.log(`(${AGENT_ID}) Couldn't reach outreachAgentStatus (${err.message}) — stopping this chain as a precaution.`);
     releaseLock();
+    reportNextSend(null);
     return;
   }
   if (status.paused) {
     Logger.log(`(${AGENT_ID}) Paused mid-chain — stopping here.`);
     releaseLock();
+    reportNextSend(null);
     return;
   }
 
@@ -204,6 +230,7 @@ function sendNextApprovedDraft() {
   if (!approved) {
     Logger.log(`(${AGENT_ID}) Label "${APPROVED_LABEL}" doesn't exist yet — create it in Gmail first.`);
     releaseLock();
+    reportNextSend(null);
     return;
   }
   let sentLabel = GmailApp.getUserLabelByName(SENT_LABEL);
@@ -219,6 +246,7 @@ function sendNextApprovedDraft() {
   if (pending.length === 0) {
     Logger.log(`(${AGENT_ID}) No approved-and-unsent drafts found — nothing to do, chain stops here for today.`);
     releaseLock();
+    reportNextSend(null);
     return;
   }
 
@@ -231,10 +259,12 @@ function sendNextApprovedDraft() {
       thread.addLabel(sentLabel);
       Logger.log(`(${AGENT_ID}) Sent to ${msg.getTo()}`);
       logToSheet(msg.getTo(), msg.getSubject(), "sent");
+      reportSentEvent(msg.getTo(), msg.getSubject(), "sent");
     } catch (err) {
       Logger.log(`(${AGENT_ID}) Failed to send to ${msg.getTo()}: ${err.message} — will still move on to the next one rather than get stuck retrying.`);
       thread.addLabel(sentLabel); // mark as handled even on failure, so a bad address doesn't jam the whole day's queue
       logToSheet(msg.getTo(), msg.getSubject(), `failed: ${err.message}`);
+      reportSentEvent(msg.getTo(), msg.getSubject(), `failed: ${err.message}`);
     }
   }
 
@@ -245,14 +275,17 @@ function sendNextApprovedDraft() {
     // twice in a row. Lock stays held — we're continuing the chain.
     const jitterMs = (Math.random() * 2 - 1) * GAP_JITTER_MINUTES * 60 * 1000;
     const delayMs = GAP_MINUTES * 60 * 1000 + jitterMs;
+    const nextFireDate = new Date(Date.now() + delayMs);
     ScriptApp.newTrigger(CHAIN_HANDLER)
       .timeBased()
       .after(delayMs)
       .create();
+    reportNextSend(nextFireDate);
     Logger.log(`(${AGENT_ID}) Next send scheduled in ~${Math.round(delayMs / 60000)} minutes.`);
   } else {
     Logger.log(`(${AGENT_ID}) That was the last approved draft for today — chain stops here.`);
     releaseLock();
+    reportNextSend(null);
   }
 }
 
