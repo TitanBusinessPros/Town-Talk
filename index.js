@@ -1902,6 +1902,13 @@ exports.outreachCreateDraft = onCall(
     const candidateId = (request.data?.candidateId || "").trim(); // set when this lead came from a town search
     const sender = OUTREACH_AGENTS[request.data?.sender] ? request.data.sender : "primary"; // which Gmail account drafts this
     if (!to || !subject || !body) throw new HttpsError("invalid-argument", "to, subject, and body are all required.");
+    // Real validation instead of letting a malformed address (e.g. a typo
+    // missing ".com", or a leftover "test"/placeholder value from manual
+    // editing) reach Gmail's API and come back as a confusing raw
+    // "Invalid To header" error with no indication of which field or why.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      throw new HttpsError("invalid-argument", `"${to}" doesn't look like a valid email address — check for typos (like a missing .com) and try again.`);
+    }
 
     const oAuth2Client = new OAuth2Client(gmailOAuthClientId.value(), gmailOAuthClientSecret.value());
     oAuth2Client.setCredentials({ refresh_token: OUTREACH_AGENTS[sender].secret.value() });

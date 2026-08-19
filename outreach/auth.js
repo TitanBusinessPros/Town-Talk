@@ -26,9 +26,20 @@ const TOKEN_PATH = path.join(__dirname, "token.json");
 // calendar.events is requested now even though v1's code doesn't use it
 // yet, so the user doesn't have to redo the consent screen when v2 adds
 // demo-scheduling — see the plan's Step 1.2.
+//
+// gmail.modify added 2026-08-19: outreachCreateDraft's auto-label step
+// (applying Outreach/Approved right after creating a draft) needs this —
+// gmail.compose only covers creating/sending drafts, not modifying labels
+// on an existing message. Missing this scope caused every auto-label
+// attempt to fail with a silent 403 ("insufficient authentication
+// scopes"), which is why nothing was ever actually getting approved for
+// send despite drafts appearing to succeed. Both accounts need to
+// re-run authorize.js once to pick up this scope — an old refresh token
+// can't gain a new permission without a fresh consent.
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.compose",
+  "https://www.googleapis.com/auth/gmail.modify",
   "https://www.googleapis.com/auth/calendar.events",
 ];
 
