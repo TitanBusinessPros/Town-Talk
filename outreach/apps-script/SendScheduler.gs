@@ -177,7 +177,14 @@ function checkAndMaybeStart() {
   const [startHour, startMinute] = (status.startTime || "09:00").split(":").map(Number);
   const now = new Date();
   const startTimeToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, startMinute);
-  if (now < startTimeToday) return; // this agent's configured time hasn't arrived yet today
+  if (now < startTimeToday) {
+    // Report the countdown to the FIRST send too, not just gaps between
+    // later ones — this was the actual gap: nextSendAt only ever got set
+    // once a chain was already mid-flight, so there was no countdown at
+    // all for the (very common) case of "waiting for today's start time."
+    reportNextSend(startTimeToday);
+    return;
+  }
 
   const lockResult = tryAcquireLock();
   if (!lockResult.acquired) {

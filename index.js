@@ -1825,6 +1825,22 @@ exports.outreachListLeads = onCall(async (request) => {
   return { leads: deduped.slice(0, OUTREACH_DAILY_BATCH_SIZE), totalCandidatesFound: deduped.length };
 });
 
+// Permanently removes a lead from ever showing up in "Today's leads to
+// draft" again — WITHOUT drafting or sending anything. Real gap this
+// fixes: leads sourced from Town Fuss's own unpaid business listings had
+// no reject/remove option anywhere (only town-search candidates did, via
+// outreachSetCandidateStatus). Reuses the exact same exclusion mechanism
+// outreachCreateDraft already relies on (an outreachSentLog entry), just
+// marked "skipped" instead of "drafted" so it's clear in the data why
+// that email is excluded.
+exports.outreachSkipLead = onCall(async (request) => {
+  await requireAdmin(request);
+  const email = (request.data?.email || "").trim().toLowerCase();
+  if (!email) throw new HttpsError("invalid-argument", "email is required.");
+  await db.collection("outreachSentLog").doc(email).set({ skippedAt: Timestamp.now(), reason: "manually removed" });
+  return { ok: true };
+});
+
 // Adds a lead you know about yourself — the webpage's replacement for the
 // old leads.csv file. Keyed by lowercased email so re-adding the same
 // person just updates their info instead of duplicating.
@@ -1971,6 +1987,37 @@ exports.outreachGetSettings = onCall(async (request) => {
   return { campaignNotes: data.campaignNotes || "", agents };
 });
 
+// Computes "today at HH:MM" in Central time, correctly, from a Cloud
+// Function that itself runs in UTC — used so the webpage shows a
+// countdown INSTANTLY the moment you set a start time, instead of
+// waiting up to 15 minutes for Apps Script's own next tick to notice and
+// report it. Works by reading Central's current wall-clock date/time via
+// Intl, diffing that (parsed as if it were UTC) against the real UTC now
+// to get today's actual UTC offset, then applying that same offset to
+// the target wall-clock time. Handles CST/CDT automatically since it
+// uses TODAY's real offset, not a hardcoded one.
+function centralTodayAt(hour, minute) {
+  const now = new Date();
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(now)
+      .map((p) => [p.type, p.value])
+  );
+  const centralWallAsUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}Z`);
+  const offsetMs = centralWallAsUtc.getTime() - now.getTime();
+  const targetWallAsUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00Z`);
+  return new Date(targetWallAsUtc.getTime() - offsetMs);
+}
+
 exports.outreachSetSettings = onCall(async (request) => {
   await requireAdmin(request);
   const update = {};
@@ -1980,12 +2027,33 @@ exports.outreachSetSettings = onCall(async (request) => {
   if (agentId !== undefined) {
     if (!OUTREACH_AGENTS[agentId]) throw new HttpsError("invalid-argument", `Unknown agent "${agentId}".`);
     const agentUpdate = {};
-    if (typeof request.data?.paused === "boolean") agentUpdate.paused = request.data.paused;
+    if (typeof request.data?.paused === "boolean") {
+      agentUpdate.paused = request.data.paused;
+      // Pausing mid-countdown shouldn't leave a stale timer on the page —
+      // clear it. sendNextApprovedDraft's own paused-mid-chain check
+      // still stops any actual in-progress chain; this just keeps the
+      // displayed countdown honest in the meantime.
+      if (request.data.paused) agentUpdate.nextSendAt = null;
+    }
     if (typeof request.data?.startTime === "string") {
       if (!START_TIME_PATTERN.test(request.data.startTime)) {
         throw new HttpsError("invalid-argument", "startTime must be 24-hour HH:MM, e.g. 09:00 or 14:30.");
       }
       agentUpdate.startTime = request.data.startTime;
+
+      // Instant countdown feedback — don't make the user wait for Apps
+      // Script's next 15-minute tick just to see the timer start ticking.
+      // Only if not (about to be) paused; a paused agent shouldn't show a
+      // countdown toward a send that isn't actually going to happen.
+      let willBePaused = agentUpdate.paused;
+      if (willBePaused === undefined) {
+        const existing = await OUTREACH_SETTINGS_DOC().get();
+        willBePaused = !!existing.data()?.agents?.[agentId]?.paused;
+      }
+      if (!willBePaused) {
+        const [h, m] = request.data.startTime.split(":").map(Number);
+        agentUpdate.nextSendAt = Timestamp.fromDate(centralTodayAt(h, m));
+      }
     }
     if (Object.keys(agentUpdate).length === 0) throw new HttpsError("invalid-argument", "Nothing to update for that agent.");
     // Nested-map merge: {agents: {primary: {paused: true}}} with
