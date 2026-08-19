@@ -2034,6 +2034,15 @@ exports.outreachSetSettings = onCall(async (request) => {
   if (agentId !== undefined) {
     if (!OUTREACH_AGENTS[agentId]) throw new HttpsError("invalid-argument", `Unknown agent "${agentId}".`);
     const agentUpdate = {};
+    let existingAgentData = null; // fetched lazily, at most once, below
+    async function getExisting() {
+      if (existingAgentData === null) {
+        const snap = await OUTREACH_SETTINGS_DOC().get();
+        existingAgentData = snap.data()?.agents?.[agentId] || {};
+      }
+      return existingAgentData;
+    }
+
     if (typeof request.data?.paused === "boolean") {
       agentUpdate.paused = request.data.paused;
       // Pausing mid-countdown shouldn't leave a stale timer on the page —
@@ -2047,20 +2056,23 @@ exports.outreachSetSettings = onCall(async (request) => {
         throw new HttpsError("invalid-argument", "startTime must be 24-hour HH:MM, e.g. 09:00 or 14:30.");
       }
       agentUpdate.startTime = request.data.startTime;
+    }
 
-      // Instant countdown feedback — don't make the user wait for Apps
-      // Script's next 15-minute tick just to see the timer start ticking.
-      // Only if not (about to be) paused; a paused agent shouldn't show a
-      // countdown toward a send that isn't actually going to happen.
-      let willBePaused = agentUpdate.paused;
-      if (willBePaused === undefined) {
-        const existing = await OUTREACH_SETTINGS_DOC().get();
-        willBePaused = !!existing.data()?.agents?.[agentId]?.paused;
-      }
-      if (!willBePaused) {
-        const [h, m] = request.data.startTime.split(":").map(Number);
-        agentUpdate.nextSendAt = Timestamp.fromDate(centralTodayAt(h, m));
-      }
+    // Instant countdown feedback, computed fresh any time this call could
+    // plausibly change whether a countdown should be showing — either the
+    // start time changed, or paused just flipped to false. Covers a real
+    // gap: setting the start time WHILE paused (a common order — e.g.
+    // right after using the pause button as a safety default) used to
+    // never get a countdown at all, even after unpausing moments later,
+    // because the countdown was only ever computed at the instant
+    // startTime was submitted, checking paused status only at that exact
+    // moment — not retroactively when unpausing later reused the
+    // already-saved start time.
+    const willBePaused = agentUpdate.paused !== undefined ? agentUpdate.paused : !!(await getExisting()).paused;
+    if (!willBePaused && (agentUpdate.startTime || (await getExisting()).startTime)) {
+      const effectiveStartTime = agentUpdate.startTime || (await getExisting()).startTime;
+      const [h, m] = effectiveStartTime.split(":").map(Number);
+      agentUpdate.nextSendAt = Timestamp.fromDate(centralTodayAt(h, m));
     }
     if (Object.keys(agentUpdate).length === 0) throw new HttpsError("invalid-argument", "Nothing to update for that agent.");
     // Nested-map merge: {agents: {primary: {paused: true}}} with
