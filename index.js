@@ -1768,11 +1768,26 @@ const OUTREACH_LOCK_STALE_MS = 3 * 60 * 60 * 1000; // 3 hours — see outreachAc
 // Checkpoint 1 (see the outreach admin page): nobody is marked contacted
 // just by showing up in this list, only once outreachCreateDraft actually
 // runs for them.
-exports.outreachListLeads = onCall(async (request) => {
-  await requireAdmin(request);
-
+// Real unpaid Town Fuss business-listing signups are a legitimate lead
+// source, but per explicit instruction they must NEVER show up in
+// "Today's leads to draft" on their own — only after being explicitly
+// checked into the queue, exactly like every other lead. So instead of
+// handing them straight to Today's list, this upserts each one into
+// outreachCandidates as status:"candidate" (skipped if a candidate with
+// that email already exists) so it appears in "Review new businesses" and
+// needs the same checkbox + "Add to queue" action as everything else.
+//
+// Called from BOTH outreachListLeads and outreachListCandidates — it has
+// to run on whichever one the admin opens first, since "Review new
+// businesses" is where the checkbox actually lives, not "Today's leads."
+async function syncUnpaidBusinessLeadsIntoCandidates() {
   const sentSnap = await db.collection("outreachSentLog").get();
   const alreadyContacted = new Set(sentSnap.docs.map((d) => d.id));
+
+  const existingCandidatesSnap = await db.collection("outreachCandidates").get();
+  const knownCandidateEmails = new Set(
+    existingCandidatesSnap.docs.map((d) => (d.data().email || "").toLowerCase()).filter(Boolean)
+  );
 
   // Same "filter rejected/paid in JS, not in the query" reasoning as the
   // local leads.js had: most business docs never get a `rejected` field
@@ -1780,7 +1795,7 @@ exports.outreachListLeads = onCall(async (request) => {
   // entirely, which would silently drop almost every real lead.
   const bizSnap = await db.collection("businesses").get();
   const now = Date.now();
-  const businessLeads = [];
+  const newCandidateWrites = [];
   for (const docSnap of bizSnap.docs) {
     const data = docSnap.data();
     if (data.rejected === true) continue;
@@ -1793,28 +1808,59 @@ exports.outreachListLeads = onCall(async (request) => {
     } catch {
       continue; // orphaned listing with no matching auth user — skip
     }
-    if (!email || alreadyContacted.has(email)) continue;
-    businessLeads.push({ name: data.name || "", phone: data.phone || "", town: data.town || "", email, source: "unpaid-business-listing" });
+    if (!email || alreadyContacted.has(email) || knownCandidateEmails.has(email)) continue;
+    newCandidateWrites.push(
+      db.collection("outreachCandidates").add({
+        companyName: data.name || "",
+        phone: data.phone || "",
+        town: data.town || "",
+        email,
+        source: "unpaid-business-listing",
+        status: "candidate",
+        searchedAt: Timestamp.now(),
+      })
+    );
+    knownCandidateEmails.add(email);
   }
+  await Promise.all(newCandidateWrites);
+  return alreadyContacted;
+}
+
+exports.outreachListLeads = onCall(async (request) => {
+  await requireAdmin(request);
+
+  const alreadyContacted = await syncUnpaidBusinessLeadsIntoCandidates();
 
   const manualSnap = await db.collection("outreachManualLeads").get();
   const manualLeads = manualSnap.docs
     .map((d) => ({ ...d.data(), email: d.id, source: "manual" }))
     .filter((lead) => !alreadyContacted.has(lead.email));
 
-  // Businesses found via a town search (outreachGenerateLeads) and
-  // checked off into this week's queue. Carries candidateId so
+  // Businesses found via a town search (outreachGenerateLeads), or the
+  // real unpaid-business-listing candidates upserted above, that have
+  // been explicitly checked and moved into this week's queue. This is
+  // now the ONLY way a business shows up here — nothing appears in
+  // Today's leads to draft without being explicitly checked in first,
+  // except manual leads (added one at a time on purpose via the "Add a
+  // lead" form, which is itself an explicit pick). Carries candidateId so
   // outreachCreateDraft can mark the specific candidate doc "drafted"
   // once a real draft exists for it, not just the sentLog entry.
   const queuedSnap = await db.collection("outreachCandidates").where("status", "==", "queued").get();
   const queuedLeads = queuedSnap.docs
     .map((d) => {
       const data = d.data();
-      return { name: data.companyName || "", phone: data.phone || "", town: data.town || "", email: (data.email || "").toLowerCase(), source: "town-search", candidateId: d.id };
+      return {
+        name: data.companyName || "",
+        phone: data.phone || "",
+        town: data.town || "",
+        email: (data.email || "").toLowerCase(),
+        source: data.source || "town-search",
+        candidateId: d.id,
+      };
     })
     .filter((lead) => lead.email && !alreadyContacted.has(lead.email));
 
-  const combined = [...businessLeads, ...manualLeads, ...queuedLeads];
+  const combined = [...manualLeads, ...queuedLeads];
   const seen = new Set();
   const deduped = combined.filter((lead) => {
     if (seen.has(lead.email)) return false;
@@ -2330,6 +2376,11 @@ exports.outreachGenerateLeads = onCall({ secrets: [googlePlacesApiKey], timeoutS
 exports.outreachListCandidates = onCall(async (request) => {
   await requireAdmin(request);
   const status = (request.data?.status || "candidate").trim();
+  // Only sync when viewing "candidate" (i.e. "Review new businesses") —
+  // this is what pulls fresh unpaid Town Fuss business signups in, so the
+  // checkbox to queue them is there without needing to visit "Today's
+  // leads to draft" first.
+  if (status === "candidate") await syncUnpaidBusinessLeadsIntoCandidates();
   const snap = await db.collection("outreachCandidates").where("status", "==", status).get();
   const candidates = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   candidates.sort((a, b) => (b.searchedAt?.toMillis?.() || 0) - (a.searchedAt?.toMillis?.() || 0));
