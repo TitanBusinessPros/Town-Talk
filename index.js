@@ -2612,6 +2612,23 @@ exports.outreachGenerateLeads = onCall({ secrets: [googlePlacesApiKey], timeoutS
     if (pageToken) await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
+  // Real, self-tracked usage — not pulled from Google's own billing API,
+  // which needs a BigQuery export set up first and has a real reporting
+  // lag anyway. This is exact and immediate: `pages` is the literal
+  // number of billable Places API requests this call just made (each
+  // request/page = up to 20 results, billed the same regardless of how
+  // many of those 20 were actually kept — see outreachGetCostSnapshot's
+  // comments for the per-request price). Keyed by the current Central
+  // calendar month — Maps Platform's $200 free credit resets monthly, so
+  // a doc per month means next month automatically starts back at 0 with
+  // no explicit reset logic needed, matching how the real credit works.
+  if (pages > 0) {
+    await db.collection("outreachUsage").doc(`placesApi_${centralYearMonth()}`).set(
+      { requestCount: FieldValue.increment(pages), lastUsedAt: Timestamp.now() },
+      { merge: true }
+    );
+  }
+
   // Best-effort email lookup, one site at a time — sequential, not
   // Promise.all, so a slow/hanging site can't blow up the whole batch's
   // total function runtime beyond what the 5s-per-site timeout already
@@ -2797,5 +2814,96 @@ exports.outreachDeleteCandidates = onCall(async (request) => {
   }
   await batch.commit();
   return { ok: true, deleted: ids.length };
+});
+
+// ---------------------------------------------------------------------
+// Cost tracking — the outreach system's ONE real per-use expense is
+// Places API Text Search calls (outreachGenerateLeads). Everything else
+// (Cloud Functions, Firestore, Gmail API, Apps Script) runs comfortably
+// inside its own free tier at this project's actual volume — confirmed
+// directly with the user, not assumed — so those show as $0.00 rather
+// than being left out, for a complete picture rather than a partial one.
+//
+// Deliberately NOT pulling from Google Cloud's own Billing API: real
+// itemized cost data needs a BigQuery billing export configured first (a
+// separate GCP Console setup step) and has a real day-or-more reporting
+// lag regardless. Self-tracking the one metered call directly, the
+// moment it happens (see the FieldValue.increment in outreachGenerateLeads
+// above), is both simpler and more accurate for this specific project.
+//
+// Places API Text Search pricing: our field mask includes phone number
+// and website, which puts every request in the "Enterprise" SKU —
+// verified 2026-08-20 — $35.00 per 1,000 requests ($0.035/request), not
+// the cheaper "Pro" tier's $32.00 (that would apply without those fields).
+// ---------------------------------------------------------------------
+const PLACES_API_COST_PER_REQUEST_USD = 0.035;
+const MAPS_PLATFORM_MONTHLY_FREE_CREDIT_USD = 200;
+
+function centralYearMonth() {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit" })
+      .formatToParts(new Date())
+      .map((p) => [p.type, p.value])
+  );
+  return `${parts.year}-${parts.month}`;
+}
+
+function firstOfNextMonthCentral() {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit" })
+      .formatToParts(new Date())
+      .map((p) => [p.type, p.value])
+  );
+  const year = Number(parts.year);
+  const month = Number(parts.month); // 1-12
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+}
+
+// Runs at 9 AM and 9 PM Central — a deliberately fixed check-in cadence
+// (not live-updating on every page load) so the number on the page moves
+// on a predictable schedule instead of changing under the admin's cursor.
+exports.outreachUpdateCostSnapshot = onSchedule({ schedule: "0 9,21 * * *", timeZone: "America/Chicago" }, async () => {
+  const usageSnap = await db.collection("outreachUsage").doc(`placesApi_${centralYearMonth()}`).get();
+  const requestCount = usageSnap.exists ? usageSnap.data().requestCount || 0 : 0;
+  const placesApiCostUsd = Math.round(requestCount * PLACES_API_COST_PER_REQUEST_USD * 100) / 100;
+
+  const services = [
+    { name: "Google Places API (town search)", detail: `${requestCount} request(s) × $${PLACES_API_COST_PER_REQUEST_USD.toFixed(3)}`, costUsd: placesApiCostUsd },
+    { name: "Cloud Functions", detail: "within free tier at current volume", costUsd: 0 },
+    { name: "Firestore", detail: "within free tier at current volume", costUsd: 0 },
+    { name: "Gmail API", detail: "free (no per-use cost)", costUsd: 0 },
+    { name: "Google Apps Script", detail: "free (no per-use cost)", costUsd: 0 },
+  ];
+  const totalCostUsd = Math.round(services.reduce((sum, s) => sum + s.costUsd, 0) * 100) / 100;
+
+  await db.collection("outreachUsage").doc("costSnapshot").set({
+    generatedAt: Timestamp.now(),
+    services,
+    totalCostUsd,
+    monthlyFreeCreditUsd: MAPS_PLATFORM_MONTHLY_FREE_CREDIT_USD,
+    remainingCreditUsd: Math.max(0, Math.round((MAPS_PLATFORM_MONTHLY_FREE_CREDIT_USD - placesApiCostUsd) * 100) / 100),
+    resetsOn: firstOfNextMonthCentral(),
+  });
+});
+
+exports.outreachGetCostSnapshot = onCall(async (request) => {
+  await requireAdmin(request);
+  const snap = await db.collection("outreachUsage").doc("costSnapshot").get();
+  if (!snap.exists) {
+    // Hasn't run yet (first 9am/9pm check-in hasn't happened since this
+    // was built) — return honest zeros instead of nothing, with today's
+    // real reset date computed live so the page isn't blank.
+    return {
+      generatedAt: null,
+      services: [],
+      totalCostUsd: 0,
+      monthlyFreeCreditUsd: MAPS_PLATFORM_MONTHLY_FREE_CREDIT_USD,
+      remainingCreditUsd: MAPS_PLATFORM_MONTHLY_FREE_CREDIT_USD,
+      resetsOn: firstOfNextMonthCentral(),
+    };
+  }
+  return snap.data();
 });
 
