@@ -2451,6 +2451,20 @@ exports.outreachBulkAddCandidates = onCall(async (request) => {
     if (data.email) seenEmails.add((data.email || "").toLowerCase());
   }
 
+  // outreachDeleteCandidates marks a deleted candidate's email with a
+  // "deleted from Review new businesses" entry in outreachSentLog so the
+  // unpaid-business-listing sync can't silently resurrect it. That marker
+  // was never meant to permanently block a DELIBERATE re-add — explicitly
+  // re-uploading the same address via CSV is a clear signal it should be
+  // usable again, so that specific marker (and only that one — a real
+  // draftedAt/skippedAt-for-another-reason entry means it was genuinely
+  // contacted or intentionally excluded, and stays blocked) gets cleared
+  // for anything actually being re-added below.
+  const sentLogSnap = await db.collection("outreachSentLog").get();
+  const deletedMarkerEmails = new Set(
+    sentLogSnap.docs.filter((d) => d.data().reason === "deleted from Review new businesses").map((d) => d.id)
+  );
+
   const now = Timestamp.now();
   const batch = db.batch();
   let added = 0;
@@ -2478,6 +2492,9 @@ exports.outreachBulkAddCandidates = onCall(async (request) => {
       source: "csv-import",
       searchedAt: now,
     });
+    if (email && deletedMarkerEmails.has(email)) {
+      batch.delete(db.collection("outreachSentLog").doc(email));
+    }
     if (website) seenWebsites.add(website);
     if (email) seenEmails.add(email);
     added++;
