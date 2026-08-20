@@ -2036,30 +2036,51 @@ exports.outreachListReplies = onCall(
   async (request) => {
     await requireAdmin(request);
 
+    // Real recipients we've actually confirmed sending to — the SAME data
+    // source the webpage's own "Confirmed sent" status already relies on,
+    // and already proven reliable (unlike Gmail's own "Outreach/Sent"
+    // label, which turned out not to reliably land on the sent message —
+    // this avoids depending on that at all). Capped and deduped per
+    // agent+recipient (keep only the most recent) so a repeat-tested
+    // address doesn't get searched more than once.
+    const eventsSnap = await db.collection("outreachSentEvents").where("status", "==", "sent").orderBy("sentAt", "desc").limit(300).get();
+    const seen = new Set();
+    const recipients = []; // [{agent, to}]
+    eventsSnap.docs.forEach((d) => {
+      const data = d.data();
+      const key = `${data.agent}|${data.to}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      recipients.push({ agent: data.agent, to: data.to });
+    });
+
     const threads = [];
-    for (const agentId of Object.keys(OUTREACH_AGENTS)) {
-      let accessToken;
-      try {
-        accessToken = await gmailAccessTokenFor(agentId);
-      } catch (err) {
-        console.error(`outreachListReplies: couldn't get a token for ${agentId}:`, err);
-        continue; // one agent's credentials being off shouldn't blank the whole page
+    const seenThreadIds = new Set();
+    const tokenCache = {};
+    for (const { agent: agentId, to } of recipients) {
+      if (!OUTREACH_AGENTS[agentId]) continue;
+      if (!tokenCache[agentId]) {
+        try {
+          tokenCache[agentId] = await gmailAccessTokenFor(agentId);
+        } catch (err) {
+          console.error(`outreachListReplies: couldn't get a token for ${agentId}:`, err);
+          tokenCache[agentId] = null;
+        }
       }
+      const accessToken = tokenCache[agentId];
+      if (!accessToken) continue;
 
-      const labelsRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/labels", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!labelsRes.ok) continue;
-      const sentLabel = (await labelsRes.json()).labels?.find((l) => l.name === "Outreach/Sent");
-      if (!sentLabel) continue; // this agent hasn't sent anything yet
+      // Gmail's own search, not a custom label — finds the real
+      // conversation with this specific recipient directly.
+      const searchRes = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/threads?q=${encodeURIComponent(`to:${to} OR from:${to}`)}&maxResults=3`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (!searchRes.ok) continue;
+      const searchData = await searchRes.json();
 
-      const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads?labelIds=${sentLabel.id}&maxResults=50`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!listRes.ok) continue;
-      const listData = await listRes.json();
-
-      for (const t of listData.threads || []) {
+      for (const t of searchData.threads || []) {
+        if (seenThreadIds.has(t.id)) continue;
         const threadRes = await fetch(
           `https://gmail.googleapis.com/gmail/v1/users/me/threads/${t.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -2067,6 +2088,7 @@ exports.outreachListReplies = onCall(
         if (!threadRes.ok) continue;
         const messages = (await threadRes.json()).messages || [];
         if (messages.length < 2) continue; // just our original send, no reply yet
+        seenThreadIds.add(t.id);
 
         const last = messages[messages.length - 1];
         const headers = last.payload?.headers || [];
