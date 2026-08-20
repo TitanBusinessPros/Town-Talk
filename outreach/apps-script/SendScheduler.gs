@@ -167,20 +167,30 @@ function reportSentEvent(to, subject, status) {
 }
 
 /**
- * Runs every 15 minutes, all day, every day. Does almost nothing on most
- * firings — only actually starts a send-chain when BOTH (a) this agent's
- * configured start time has passed for today, AND (b) it successfully
- * acquires the cross-agent lock. If another agent currently holds the
- * lock, this just tries again next tick — for as long as it takes.
+ * Runs every 15 minutes UNTIL the day's job is actually done, then SHUTS
+ * ITSELF OFF (see the deleteOwnTriggers() calls in sendNextApprovedDraft)
+ * instead of continuing to check indefinitely. Explicit design choice —
+ * this does NOT run forever in the background; once everything approved
+ * has been sent (or there was nothing approved to send), the watcher
+ * trigger deletes itself. To run a future campaign, re-run
+ * installWatcherTrigger() (Apps Script editor > select it > Run) to
+ * re-arm it — it does not silently come back on its own.
  *
- * NOT limited to "once per day" — a bug in an earlier version tracked a
- * single "already started today" flag, which meant a SECOND lead
- * approved later the same day (after an earlier batch had already run
- * and finished) never got picked up at all, silently, until the next
- * calendar day. Removed: sendNextApprovedDraft() already no-ops safely
- * when there's nothing approved-and-unsent to send, so there's no real
- * downside to just checking fresh every tick once the start time has
- * passed, all day.
+ * Before that point, does almost nothing on most firings — only actually
+ * starts a send-chain when BOTH (a) this agent's configured start time
+ * has passed for today, AND (b) it successfully acquires the cross-agent
+ * lock. If another agent currently holds the lock, this just tries again
+ * next tick — for as long as it takes (or until re-armed, if it shut off
+ * in the meantime).
+ *
+ * NOT limited to "once per day" while it IS running — a bug in an
+ * earlier version tracked a single "already started today" flag, which
+ * meant a SECOND lead approved later the same day (after an earlier
+ * batch had already run and finished) never got picked up at all,
+ * silently, until the next calendar day. Removed: sendNextApprovedDraft()
+ * already no-ops safely when there's nothing approved-and-unsent to
+ * send, so there's no real downside to checking fresh every tick while
+ * the watcher is still armed.
  */
 function checkAndMaybeStart() {
   const dayOfWeek = new Date().getDay(); // 0 = Sunday — hard rule, not a toggle, applies to every agent
@@ -275,10 +285,11 @@ function sendNextApprovedDraft() {
   const pendingThreads = approved.getThreads().filter((t) => !sentThreadIds.has(t.getId()));
 
   if (pendingThreads.length === 0) {
-    Logger.log(`(${AGENT_ID}) No approved-and-unsent drafts found — nothing to do, chain stops here for today.`);
+    Logger.log(`(${AGENT_ID}) No approved-and-unsent drafts found — nothing to do. Job's done for today, shutting the watcher off (see deleteOwnTriggers below) instead of continuing to check every 15 minutes.`);
     releaseLock();
     reportNextSend(null);
     reportSchedule([]); // clear any stale per-lead countdowns too
+    deleteOwnTriggers(); // stops checking entirely — run installWatcherTrigger() again to start a future campaign
     return;
   }
 
@@ -297,10 +308,11 @@ function sendNextApprovedDraft() {
     .sort((a, b) => a.msg.getDate().getTime() - b.msg.getDate().getTime());
 
   if (pending.length === 0) {
-    Logger.log(`(${AGENT_ID}) Approved thread(s) found but no matching draft — nothing to send, chain stops here for today.`);
+    Logger.log(`(${AGENT_ID}) Approved thread(s) found but no matching draft — nothing to send. Job's done for today, shutting the watcher off.`);
     releaseLock();
     reportNextSend(null);
     reportSchedule([]); // clear any stale per-lead countdowns too
+    deleteOwnTriggers(); // stops checking entirely — run installWatcherTrigger() again to start a future campaign
     return;
   }
 
@@ -347,10 +359,11 @@ function sendNextApprovedDraft() {
     reportNextSend(nextFireDate);
     Logger.log(`(${AGENT_ID}) Next send scheduled in ~${Math.round(delayMs / 60000)} minutes.`);
   } else {
-    Logger.log(`(${AGENT_ID}) That was the last approved draft for today — chain stops here.`);
+    Logger.log(`(${AGENT_ID}) That was the last approved draft — job's done, shutting the watcher off instead of continuing to check every 15 minutes.`);
     releaseLock();
     reportNextSend(null);
     reportSchedule([]); // clear any stale per-lead countdowns too
+    deleteOwnTriggers(); // stops checking entirely — run installWatcherTrigger() again to start a future campaign
   }
 }
 
@@ -361,10 +374,13 @@ function deleteOwnTriggers() {
 }
 
 /**
- * Run this ONCE per account (Apps Script editor > select this function >
- * Run) to install the 15-minute watcher. Safe to re-run any time — it
- * clears any previous watcher/chain trigger for THIS script first, so it
- * never doubles up. IMPORTANT: also set the script's time zone to
+ * Run this (Apps Script editor > select this function > Run) to arm the
+ * 15-minute watcher before each campaign. It is NOT a one-time, forever
+ * setup step — the watcher shuts itself off automatically once a day's
+ * approved batch is fully sent (or found empty), so this needs to be
+ * re-run before starting a new one. Safe to re-run any time — it clears
+ * any previous watcher/chain trigger for THIS script first, so it never
+ * doubles up. IMPORTANT: also set the script's time zone to
  * America/Chicago first (gear icon > Project Settings, left sidebar), and
  * double-check AGENT_ID above matches which account this copy belongs to
  * — a wrong AGENT_ID would make this account check (and lock/release)
