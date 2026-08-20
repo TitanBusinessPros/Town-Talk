@@ -2224,6 +2224,73 @@ exports.outreachSendReply = onCall(
   }
 );
 
+// Emails an exported file (any of the 6 formats the admin page's
+// importer/exporter both support) as a real attachment — the file itself
+// is generated client-side (same code the importer already has, just run
+// in reverse), this just attaches whatever bytes it's given and sends.
+// Always sent from the primary account, same From identity as every
+// other outreach email — this isn't tied to a specific campaign/lead.
+exports.outreachEmailExport = onCall(
+  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2] },
+  async (request) => {
+    await requireAdmin(request);
+
+    const to = (request.data?.to || "").trim();
+    const filename = (request.data?.filename || "export.csv").trim();
+    const mimeType = (request.data?.mimeType || "application/octet-stream").trim();
+    const contentBase64 = (request.data?.contentBase64 || "").trim();
+    const count = Number(request.data?.count) || 0;
+    if (!to || !contentBase64) throw new HttpsError("invalid-argument", "to and contentBase64 are both required.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      throw new HttpsError("invalid-argument", `"${to}" doesn't look like a valid email address — check for typos and try again.`);
+    }
+    // Base64 runs ~4/3 the size of the real file; Gmail's actual limit is
+    // 25MB per message including all attachments — capping around 20MB
+    // of real file content leaves headroom for headers/encoding overhead.
+    if (contentBase64.length > 27_000_000) {
+      throw new HttpsError("invalid-argument", "That file is too large to email (Gmail's 25MB limit) — export fewer businesses at once.");
+    }
+
+    const accessToken = await gmailAccessTokenFor("primary");
+    const boundary = `outreach_export_${Date.now()}`;
+    const subject = `Town Fuss — ${count} business(es) exported`;
+    const bodyText = `Attached: ${filename} (${count} business${count === 1 ? "" : "es"}).\n\nSent from the Town Fuss outreach admin page.`;
+    // Wrapped at 76 chars/line per RFC 2045 — Gmail's own API usually
+    // tolerates unwrapped base64, but some other mail clients are strict.
+    const wrappedBase64 = contentBase64.match(/.{1,76}/g)?.join("\r\n") || contentBase64;
+
+    const raw = [
+      `From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`,
+      `To: ${to}`,
+      `Subject: ${encodeMimeHeader(subject)}`,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      "",
+      `--${boundary}`,
+      "Content-Type: text/plain; charset=UTF-8",
+      "",
+      bodyText,
+      "",
+      `--${boundary}`,
+      `Content-Type: ${mimeType}; name="${filename}"`,
+      `Content-Disposition: attachment; filename="${filename}"`,
+      "Content-Transfer-Encoding: base64",
+      "",
+      wrappedBase64,
+      "",
+      `--${boundary}--`,
+    ].join("\r\n");
+
+    const sendRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ raw: Buffer.from(raw).toString("base64url") }),
+    });
+    if (!sendRes.ok) throw new HttpsError("internal", `Gmail API error sending export (${sendRes.status}): ${await sendRes.text().catch(() => "")}`);
+
+    return { ok: true };
+  }
+);
+
 // ---------------------------------------------------------------------
 // Outreach settings — TWO separate concerns sharing one doc:
 //   1. campaignNotes: one global "what are we selling" note (Claude reads
@@ -2530,7 +2597,7 @@ exports.outreachRecordSent = onRequest(async (req, res) => {
 // found no need to guess, we'll confirm ourselves" instruction.
 // ---------------------------------------------------------------------
 const googlePlacesApiKey = defineSecret("GOOGLE_PLACES_API_KEY");
-const OUTREACH_CANDIDATE_BATCH_SIZE = 60; // matches the Mon-Sat/10-a-day weekly send plan (6 x 10)
+const OUTREACH_CANDIDATE_BATCH_SIZE = 100; // matches the largest option (20/50/100) the admin page offers
 
 async function tryFindEmailOnWebsite(url) {
   if (!url) return "";
