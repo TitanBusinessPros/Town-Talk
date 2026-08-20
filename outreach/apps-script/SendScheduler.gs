@@ -133,6 +133,27 @@ function reportNextSend(nextDate) {
   }
 }
 
+// Reports an estimated send time for EVERY pending draft (not just the
+// next one) so the webpage can show a per-lead countdown on each drafted
+// lead, matched by email — not just a single overall "next send" timer.
+function reportSchedule(items) {
+  try {
+    const payload = items.map((it) => ({
+      to: it.msg.getTo(),
+      subject: it.msg.getSubject(),
+      estimatedAt: it.estimatedAt.toISOString(),
+    }));
+    UrlFetchApp.fetch(`${FUNCTIONS_BASE}/outreachReportSchedule?agent=${AGENT_ID}`, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify({ items: payload }),
+      muteHttpExceptions: true,
+    });
+  } catch (err) {
+    Logger.log(`(${AGENT_ID}) reportSchedule failed (${err.message}) — per-lead countdowns on the page may be stale, sending itself isn't affected.`);
+  }
+}
+
 // Confirms a real send attempt (success or failure) to the webpage's
 // live per-lead status — separate from logToSheet (for the account
 // owner) and the Sent Gmail label (for dedup).
@@ -224,12 +245,14 @@ function sendNextApprovedDraft() {
     Logger.log(`(${AGENT_ID}) Couldn't reach outreachAgentStatus (${err.message}) — stopping this chain as a precaution.`);
     releaseLock();
     reportNextSend(null);
+    reportSchedule([]); // clear any stale per-lead countdowns too
     return;
   }
   if (status.paused) {
     Logger.log(`(${AGENT_ID}) Paused mid-chain — stopping here.`);
     releaseLock();
     reportNextSend(null);
+    reportSchedule([]); // clear any stale per-lead countdowns too
     return;
   }
 
@@ -238,6 +261,7 @@ function sendNextApprovedDraft() {
     Logger.log(`(${AGENT_ID}) Label "${APPROVED_LABEL}" doesn't exist yet — create it in Gmail first.`);
     releaseLock();
     reportNextSend(null);
+    reportSchedule([]); // clear any stale per-lead countdowns too
     return;
   }
   let sentLabel = GmailApp.getUserLabelByName(SENT_LABEL);
@@ -248,19 +272,52 @@ function sendNextApprovedDraft() {
   // label once the label is applied to it via the Gmail web UI, which is
   // exactly the manual "approve" step this whole design relies on.
   const sentThreadIds = new Set(sentLabel.getThreads().map((t) => t.getId()));
-  const pending = approved.getThreads().filter((t) => !sentThreadIds.has(t.getId()));
+  const pendingThreads = approved.getThreads().filter((t) => !sentThreadIds.has(t.getId()));
 
-  if (pending.length === 0) {
+  if (pendingThreads.length === 0) {
     Logger.log(`(${AGENT_ID}) No approved-and-unsent drafts found — nothing to do, chain stops here for today.`);
     releaseLock();
     reportNextSend(null);
+    reportSchedule([]); // clear any stale per-lead countdowns too
     return;
   }
 
-  const thread = pending[0];
-  const drafts = GmailApp.getDrafts().filter((d) => d.getMessage().getThread().getId() === thread.getId());
-  if (drafts.length > 0) {
-    const msg = drafts[0].getMessage();
+  // approved.getThreads() has no defined/controllable order of its own —
+  // Gmail's own thread ordering, not draft-creation order. Explicitly
+  // sorting by each draft's own message date (oldest first) is what makes
+  // "sent in the order the drafts were created" true and predictable,
+  // instead of whichever order Gmail happens to hand back.
+  const allDrafts = GmailApp.getDrafts();
+  const pending = pendingThreads
+    .map((t) => {
+      const drafts = allDrafts.filter((d) => d.getMessage().getThread().getId() === t.getId());
+      return drafts.length > 0 ? { thread: t, msg: drafts[0].getMessage() } : null;
+    })
+    .filter((p) => p !== null)
+    .sort((a, b) => a.msg.getDate().getTime() - b.msg.getDate().getTime());
+
+  if (pending.length === 0) {
+    Logger.log(`(${AGENT_ID}) Approved thread(s) found but no matching draft — nothing to send, chain stops here for today.`);
+    releaseLock();
+    reportNextSend(null);
+    reportSchedule([]); // clear any stale per-lead countdowns too
+    return;
+  }
+
+  // Report an estimated send time for EVERY pending draft, not just the
+  // next one — lets the webpage show a countdown on each individual lead,
+  // not just one countdown for the agent overall. Nominal GAP_MINUTES
+  // spacing (no jitter) since jitter is only actually rolled at send
+  // time below — these are estimates for verifying "did it fire roughly
+  // when expected," not exact promises.
+  const scheduleBaseMs = Date.now();
+  reportSchedule(
+    pending.map((p, i) => ({ msg: p.msg, estimatedAt: new Date(scheduleBaseMs + i * GAP_MINUTES * 60 * 1000) }))
+  );
+
+  const thread = pending[0].thread;
+  const msg = pending[0].msg;
+  {
     try {
       GmailApp.sendEmail(msg.getTo(), msg.getSubject(), msg.getPlainBody(), { from: FROM_ALIAS });
       thread.addLabel(sentLabel);
@@ -293,6 +350,7 @@ function sendNextApprovedDraft() {
     Logger.log(`(${AGENT_ID}) That was the last approved draft for today — chain stops here.`);
     releaseLock();
     reportNextSend(null);
+    reportSchedule([]); // clear any stale per-lead countdowns too
   }
 }
 

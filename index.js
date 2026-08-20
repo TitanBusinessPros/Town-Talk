@@ -1856,9 +1856,19 @@ exports.outreachListLeads = onCall(async (request) => {
         email: (data.email || "").toLowerCase(),
         source: data.source || "town-search",
         candidateId: d.id,
+        searchedAtMs: data.searchedAt?.toMillis?.() || 0,
       };
     })
-    .filter((lead) => lead.email && !alreadyContacted.has(lead.email));
+    .filter((lead) => lead.email && !alreadyContacted.has(lead.email))
+    // A plain .where() with no .orderBy() returns Firestore's unspecified
+    // index order, NOT insertion order — this is the real reason a CSV
+    // upload's row order (or a town search's result order) didn't survive
+    // into "Today's leads to draft." Same sort direction "Review new
+    // businesses" already uses (most-recently-added first), so CSV row 1
+    // — which gets the newest timestamp among its batch, see
+    // outreachBulkAddCandidates — ends up first here too.
+    .sort((a, b) => b.searchedAtMs - a.searchedAtMs)
+    .map(({ searchedAtMs, ...lead }) => lead);
 
   const combined = [...manualLeads, ...queuedLeads];
   const seen = new Set();
@@ -2234,6 +2244,40 @@ exports.outreachReportNextSend = onRequest(async (req, res) => {
   }
 });
 
+// Called by an agent's Apps Script every time it starts a chain (or
+// continues one), reporting an ESTIMATED send time for every pending
+// approved draft, not just the next one — this is what lets the webpage
+// show a countdown on each individual drafted lead, matched by email, not
+// just one overall "next send" timer for the agent. POST with a JSON
+// body (not query params — up to 10 to/subject/estimatedAt tuples would
+// be unwieldy and easy to hit URL length limits as a query string).
+// Estimates only (nominal spacing, no jitter) — real jitter is only
+// rolled at the moment each one actually sends, see sendNextApprovedDraft
+// in SendScheduler.gs.
+exports.outreachReportSchedule = onRequest(async (req, res) => {
+  const agentId = OUTREACH_AGENTS[req.query.agent] ? req.query.agent : null;
+  if (!agentId) {
+    res.status(400).json({ error: `Unknown or missing agent. Known agents: ${Object.keys(OUTREACH_AGENTS).join(", ")}` });
+    return;
+  }
+  res.set("Cache-Control", "no-store");
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const schedule = items
+      .filter((it) => it && typeof it.to === "string" && it.estimatedAt)
+      .map((it) => ({
+        to: it.to.toLowerCase(),
+        subject: typeof it.subject === "string" ? it.subject : "",
+        estimatedAt: Timestamp.fromDate(new Date(it.estimatedAt)),
+      }));
+    await OUTREACH_SETTINGS_DOC().set({ agents: { [agentId]: { schedule } } }, { merge: true });
+    res.json({ ok: true, count: schedule.length });
+  } catch (err) {
+    console.error("outreachReportSchedule failed:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Called by an agent's Apps Script right after each real send attempt
 // (success or failure) — the actual "did it really go out" confirmation
 // the webpage's per-lead status shows, via a live Firestore listener
@@ -2465,21 +2509,21 @@ exports.outreachBulkAddCandidates = onCall(async (request) => {
     sentLogSnap.docs.filter((d) => d.data().reason === "deleted from Review new businesses").map((d) => d.id)
   );
 
-  const now = Timestamp.now();
+  const baseMillis = Date.now();
   const batch = db.batch();
   let added = 0;
   let skipped = 0;
-  for (const lead of leads) {
+  leads.forEach((lead, rowIndex) => {
     const companyName = (lead.companyName || "").trim();
     const email = (lead.email || "").trim().toLowerCase();
     const website = (lead.website || "").trim().toLowerCase();
     if (!companyName && !email) {
       skipped++; // not enough to be a usable lead
-      continue;
+      return;
     }
     if ((website && seenWebsites.has(website)) || (email && seenEmails.has(email))) {
       skipped++;
-      continue;
+      return;
     }
     batch.set(db.collection("outreachCandidates").doc(), {
       companyName,
@@ -2490,7 +2534,15 @@ exports.outreachBulkAddCandidates = onCall(async (request) => {
       town: (lead.town || "").trim(),
       status: "candidate",
       source: "csv-import",
-      searchedAt: now,
+      // Every row in one upload used to get the exact SAME timestamp
+      // (one Timestamp.now() for the whole batch), which is why row
+      // order didn't survive anywhere that sorts by searchedAt — ties
+      // sort in whatever arbitrary order Firestore happens to return
+      // them in, not upload order. Descending-by-searchedAt is the
+      // existing sort convention everywhere this is read, so row 0 (the
+      // CSV's first data row) gets the LARGEST timestamp in the batch,
+      // putting it first.
+      searchedAt: Timestamp.fromMillis(baseMillis - rowIndex),
     });
     if (email && deletedMarkerEmails.has(email)) {
       batch.delete(db.collection("outreachSentLog").doc(email));
@@ -2498,7 +2550,7 @@ exports.outreachBulkAddCandidates = onCall(async (request) => {
     if (website) seenWebsites.add(website);
     if (email) seenEmails.add(email);
     added++;
-  }
+  });
   await batch.commit();
   return { added, skipped };
 });
