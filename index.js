@@ -2868,13 +2868,14 @@ async function computeCostBreakdown() {
   const requestCount = usageSnap.exists ? usageSnap.data().requestCount || 0 : 0;
   const placesApiCostUsd = Math.round(requestCount * PLACES_API_COST_PER_REQUEST_USD * 100) / 100;
 
-  const services = [
+  // Only services that actually cost something show up here — Cloud
+  // Functions, Firestore, Gmail API, and Apps Script are all genuinely
+  // free at this project's volume, so they're left out entirely rather
+  // than listed as clutter at $0.00.
+  const allServices = [
     { name: "Google Places API (town search)", detail: `${requestCount} request(s) this month × $${PLACES_API_COST_PER_REQUEST_USD.toFixed(3)} each`, costUsd: placesApiCostUsd },
-    { name: "Cloud Functions", detail: "within free tier at current volume — $0 unless usage grows a lot", costUsd: 0 },
-    { name: "Firestore (database)", detail: "within free tier at current volume — $0 unless usage grows a lot", costUsd: 0 },
-    { name: "Gmail API (sending/reading)", detail: "no per-use cost, ever", costUsd: 0 },
-    { name: "Google Apps Script (the scheduler)", detail: "no per-use cost, ever", costUsd: 0 },
   ];
+  const services = allServices.filter((s) => s.costUsd > 0);
   const totalCostUsd = Math.round(services.reduce((sum, s) => sum + s.costUsd, 0) * 100) / 100;
 
   return {
