@@ -1829,12 +1829,15 @@ async function syncUnpaidBusinessLeadsIntoCandidates() {
 exports.outreachListLeads = onCall(async (request) => {
   await requireAdmin(request);
 
-  const alreadyContacted = await syncUnpaidBusinessLeadsIntoCandidates();
+  // NOTE: this used to filter out anything already in outreachSentLog
+  // (i.e. already drafted/sent before) — removed entirely, permanently,
+  // per explicit repeated instruction. The same email can now be checked
+  // in and drafted again as many times as wanted; nothing here excludes
+  // it based on contact history anymore.
+  await syncUnpaidBusinessLeadsIntoCandidates();
 
   const manualSnap = await db.collection("outreachManualLeads").get();
-  const manualLeads = manualSnap.docs
-    .map((d) => ({ ...d.data(), email: d.id, source: "manual" }))
-    .filter((lead) => !alreadyContacted.has(lead.email));
+  const manualLeads = manualSnap.docs.map((d) => ({ ...d.data(), email: d.id, source: "manual" }));
 
   // Businesses found via a town search (outreachGenerateLeads), or the
   // real unpaid-business-listing candidates upserted above, that have
@@ -1859,7 +1862,7 @@ exports.outreachListLeads = onCall(async (request) => {
         searchedAtMs: data.searchedAt?.toMillis?.() || 0,
       };
     })
-    .filter((lead) => lead.email && !alreadyContacted.has(lead.email))
+    .filter((lead) => lead.email)
     // A plain .where() with no .orderBy() returns Firestore's unspecified
     // index order, NOT insertion order — this is the real reason a CSV
     // upload's row order (or a town search's result order) didn't survive
