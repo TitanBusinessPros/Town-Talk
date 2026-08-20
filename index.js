@@ -2036,33 +2036,31 @@ exports.outreachListReplies = onCall(
   async (request) => {
     await requireAdmin(request);
 
-    // Real recipients we've actually confirmed sending to — the SAME data
-    // source the webpage's own "Confirmed sent" status already relies on,
-    // and already proven reliable (unlike Gmail's own "Outreach/Sent"
-    // label, which turned out not to reliably land on the sent message —
-    // this avoids depending on that at all). Capped and deduped per
-    // agent+recipient (keep only the most recent) so a repeat-tested
-    // address doesn't get searched more than once.
+    // Real sends we've actually confirmed — the SAME data source the
+    // webpage's own "Confirmed sent" status already relies on, and already
+    // proven reliable (unlike Gmail's own "Outreach/Sent" label, which
+    // turned out not to reliably land on the sent message). Keeps the
+    // SUBJECT too, not just the recipient — see below for why that matters.
     // Filtering status in JS instead of a second .where() avoids needing a
     // composite index (status== + orderBy on a different field needs one;
     // a single orderBy alone doesn't) — outreachSentEvents is small enough
     // that this costs nothing meaningful.
     const eventsSnap = await db.collection("outreachSentEvents").orderBy("sentAt", "desc").limit(300).get();
     const seen = new Set();
-    const recipients = []; // [{agent, to}]
+    const sends = []; // [{agent, to, subject}]
     eventsSnap.docs.forEach((d) => {
       const data = d.data();
-      if (data.status !== "sent") return;
-      const key = `${data.agent}|${data.to}`;
+      if (data.status !== "sent" || !data.subject) return;
+      const key = `${data.agent}|${data.to}|${data.subject}`;
       if (seen.has(key)) return;
       seen.add(key);
-      recipients.push({ agent: data.agent, to: data.to });
+      sends.push({ agent: data.agent, to: data.to, subject: data.subject });
     });
 
     const threads = [];
     const seenThreadIds = new Set();
     const tokenCache = {};
-    for (const { agent: agentId, to } of recipients) {
+    for (const { agent: agentId, to, subject } of sends) {
       if (!OUTREACH_AGENTS[agentId]) continue;
       if (!tokenCache[agentId]) {
         try {
@@ -2075,15 +2073,16 @@ exports.outreachListReplies = onCall(
       const accessToken = tokenCache[agentId];
       if (!accessToken) continue;
 
-      // Gmail's own search, not a custom label — finds the real
-      // conversation with this specific recipient directly.
-      const searchRes = await fetch(
-        // maxResults=3 missed real replies for addresses reused many times
-        // across testing (Gmail's relevance ranking can push the actual
-        // reply thread past the top 3) — 10 is cheap and thorough enough.
-        `https://gmail.googleapis.com/gmail/v1/users/me/threads?q=${encodeURIComponent(`to:${to} OR from:${to}`)}&maxResults=10`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      // Scoped to the SPECIFIC outreach email actually sent (recipient AND
+      // exact subject together) — not just "any thread ever involving this
+      // address." A bare to:/from: search matched completely unrelated old
+      // personal threads that happened to include the same address (e.g. a
+      // years-old "All hands meeting" thread), making it look like nearly
+      // everyone had "replied" when almost none of them actually had.
+      const q = `to:${to} subject:"${subject.replace(/"/g, "")}"`;
+      const searchRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads?q=${encodeURIComponent(q)}&maxResults=3`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       if (!searchRes.ok) continue;
       const searchData = await searchRes.json();
 
@@ -2120,14 +2119,37 @@ exports.outreachListReplies = onCall(
       }
     }
 
-    threads.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
-    return { threads };
+    // Exclude threads the admin has explicitly dismissed from this view —
+    // see outreachDismissReplyThreads. Dismissing doesn't touch Gmail at
+    // all, it's purely "stop showing me this one here."
+    const dismissedSnap = await db.collection("outreachDismissedReplyThreads").get();
+    const dismissedIds = new Set(dismissedSnap.docs.map((d) => d.id));
+    const visible = threads.filter((th) => !dismissedIds.has(th.threadId));
+
+    visible.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+    return { threads: visible };
   }
 );
 
 // Sends a real reply within an existing thread — proper In-Reply-To/
 // References headers so Gmail (and the lead's own inbox) thread it
 // correctly instead of it showing up as a disconnected new email.
+
+// "Delete" on the Replies page — doesn't touch Gmail or the actual
+// conversation at all, just stops that thread from showing up in THIS
+// list again (e.g. a false-positive match, or one you've fully wrapped
+// up and don't need to keep seeing). Reversible in principle by deleting
+// the doc directly, though there's no undo button for it in the UI.
+exports.outreachDismissReplyThreads = onCall(async (request) => {
+  await requireAdmin(request);
+  const threadIds = Array.isArray(request.data?.threadIds) ? request.data.threadIds.filter((id) => typeof id === "string" && id) : [];
+  if (threadIds.length === 0) throw new HttpsError("invalid-argument", "threadIds (non-empty array) is required.");
+  const batch = db.batch();
+  threadIds.forEach((id) => batch.set(db.collection("outreachDismissedReplyThreads").doc(id), { dismissedAt: Timestamp.now() }));
+  await batch.commit();
+  return { ok: true, dismissed: threadIds.length };
+});
+
 exports.outreachSendReply = onCall(
   { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2] },
   async (request) => {
