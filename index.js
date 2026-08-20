@@ -1911,6 +1911,18 @@ exports.outreachAddManualLead = onCall(async (request) => {
   return { ok: true };
 });
 
+// Email headers (Subject, display names) are technically restricted to
+// plain ASCII by RFC 5322 — raw UTF-8 bytes (like an em-dash "—") dropped
+// directly into a header line get misinterpreted by mail clients as
+// Latin-1/Windows-1252, producing exactly the "â€”"-style garbled text
+// this fixes. RFC 2047's encoded-word format (=?UTF-8?B?...?=) is the
+// correct way to put non-ASCII text in a header — every mail client
+// understands it, no more guessing. Left alone if already pure ASCII.
+function encodeMimeHeader(value) {
+  if (/^[\x00-\x7F]*$/.test(value)) return value;
+  return `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
+}
+
 const OUTREACH_APPROVED_LABEL_NAME = "Outreach/Approved";
 
 // Finds the Gmail label's internal ID (needed to apply it via the API —
@@ -1970,9 +1982,12 @@ exports.outreachCreateDraft = onCall(
     oAuth2Client.setCredentials({ refresh_token: OUTREACH_AGENTS[sender].secret.value() });
     const { token: accessToken } = await oAuth2Client.getAccessToken();
 
-    const headers = [`From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`, `To: ${to}`, `Subject: ${subject}`, "Content-Type: text/plain; charset=UTF-8"].join(
-      "\r\n"
-    );
+    const headers = [
+      `From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`,
+      `To: ${to}`,
+      `Subject: ${encodeMimeHeader(subject)}`,
+      "Content-Type: text/plain; charset=UTF-8",
+    ].join("\r\n");
     const raw = Buffer.from(`${headers}\r\n\r\n${body}`).toString("base64url");
 
     const gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts", {
@@ -2184,7 +2199,7 @@ exports.outreachSendReply = onCall(
     if (!/^re:/i.test(subject)) subject = `Re: ${subject}`;
 
     const references = [lastReferences, lastMessageId].filter(Boolean).join(" ");
-    const headerLines = [`From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`, `To: ${replyTo}`, `Subject: ${subject}`];
+    const headerLines = [`From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`, `To: ${replyTo}`, `Subject: ${encodeMimeHeader(subject)}`];
     if (lastMessageId) headerLines.push(`In-Reply-To: ${lastMessageId}`);
     if (references) headerLines.push(`References: ${references}`);
     headerLines.push("Content-Type: text/plain; charset=UTF-8");
