@@ -2422,3 +2422,77 @@ exports.outreachUpdateCandidate = onCall(async (request) => {
   return { ok: true };
 });
 
+// Bulk-imports rows from an admin-uploaded CSV (parsed client-side —
+// Company/Phone/Website/Address/Email/Town) into outreachCandidates as
+// status:"candidate", exactly like a town search result — reviewed and
+// checked into the queue the same way, nothing queued or sent just from
+// uploading. Deduped against every existing candidate by website (most
+// reliable) or email, same reasoning as outreachGenerateLeads, so
+// re-uploading the same list twice doesn't create duplicates.
+exports.outreachBulkAddCandidates = onCall(async (request) => {
+  await requireAdmin(request);
+  const leads = Array.isArray(request.data?.leads) ? request.data.leads : [];
+  if (leads.length === 0) throw new HttpsError("invalid-argument", "No rows to import.");
+  if (leads.length > 500) {
+    throw new HttpsError("invalid-argument", "Too many rows at once (500 max per upload, a single Firestore batch's limit) — split the file and upload again.");
+  }
+
+  const existingSnap = await db.collection("outreachCandidates").get();
+  const seenWebsites = new Set();
+  const seenEmails = new Set();
+  for (const d of existingSnap.docs) {
+    const data = d.data();
+    if (data.website) seenWebsites.add(data.website.trim().toLowerCase());
+    if (data.email) seenEmails.add((data.email || "").toLowerCase());
+  }
+
+  const now = Timestamp.now();
+  const batch = db.batch();
+  let added = 0;
+  let skipped = 0;
+  for (const lead of leads) {
+    const companyName = (lead.companyName || "").trim();
+    const email = (lead.email || "").trim().toLowerCase();
+    const website = (lead.website || "").trim().toLowerCase();
+    if (!companyName && !email) {
+      skipped++; // not enough to be a usable lead
+      continue;
+    }
+    if ((website && seenWebsites.has(website)) || (email && seenEmails.has(email))) {
+      skipped++;
+      continue;
+    }
+    batch.set(db.collection("outreachCandidates").doc(), {
+      companyName,
+      phone: (lead.phone || "").trim(),
+      website: (lead.website || "").trim(),
+      address: (lead.address || "").trim(),
+      email,
+      town: (lead.town || "").trim(),
+      status: "candidate",
+      source: "csv-import",
+      searchedAt: now,
+    });
+    if (website) seenWebsites.add(website);
+    if (email) seenEmails.add(email);
+    added++;
+  }
+  await batch.commit();
+  return { added, skipped };
+});
+
+// Permanent delete — different from outreachSetCandidateStatus's
+// "rejected" status, which deliberately keeps the record around so a
+// re-search of the same town or a re-upload of the same CSV doesn't
+// re-suggest it. This is for actually cleaning up junk/duplicate/mistaken
+// entries (e.g. a bad CSV upload) — gone for good, not just hidden.
+exports.outreachDeleteCandidates = onCall(async (request) => {
+  await requireAdmin(request);
+  const ids = Array.isArray(request.data?.ids) ? request.data.ids : [];
+  if (ids.length === 0) throw new HttpsError("invalid-argument", "ids (non-empty array) is required.");
+  const batch = db.batch();
+  ids.forEach((id) => batch.delete(db.collection("outreachCandidates").doc(id)));
+  await batch.commit();
+  return { ok: true, deleted: ids.length };
+});
+
