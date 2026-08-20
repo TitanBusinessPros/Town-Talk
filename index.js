@@ -2013,6 +2013,150 @@ exports.outreachCreateDraft = onCall(
   }
 );
 
+// Shared by the two reply-page functions below — same OAuth2Client
+// pattern outreachCreateDraft already uses, factored out since both new
+// functions need it, unlike outreachCreateDraft which only needed it once.
+async function gmailAccessTokenFor(sender) {
+  const oAuth2Client = new OAuth2Client(gmailOAuthClientId.value(), gmailOAuthClientSecret.value());
+  oAuth2Client.setCredentials({ refresh_token: OUTREACH_AGENTS[sender].secret.value() });
+  const { token } = await oAuth2Client.getAccessToken();
+  return token;
+}
+
+// ---------------------------------------------------------------------
+// Reply page (separate from the main admin page — see replies.html).
+// Lists every sent thread that has gotten a reply, across BOTH agents,
+// so a lead who writes back can actually be seen and answered instead of
+// sitting unnoticed in Gmail. Reuses the exact same OAuth credentials
+// already set up for drafting — gmail.compose (already granted) covers
+// sending a reply too, no new authorization needed from the user.
+// ---------------------------------------------------------------------
+exports.outreachListReplies = onCall(
+  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2] },
+  async (request) => {
+    await requireAdmin(request);
+
+    const threads = [];
+    for (const agentId of Object.keys(OUTREACH_AGENTS)) {
+      let accessToken;
+      try {
+        accessToken = await gmailAccessTokenFor(agentId);
+      } catch (err) {
+        console.error(`outreachListReplies: couldn't get a token for ${agentId}:`, err);
+        continue; // one agent's credentials being off shouldn't blank the whole page
+      }
+
+      const labelsRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/labels", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!labelsRes.ok) continue;
+      const sentLabel = (await labelsRes.json()).labels?.find((l) => l.name === "Outreach/Sent");
+      if (!sentLabel) continue; // this agent hasn't sent anything yet
+
+      const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads?labelIds=${sentLabel.id}&maxResults=50`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!listRes.ok) continue;
+      const listData = await listRes.json();
+
+      for (const t of listData.threads || []) {
+        const threadRes = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/threads/${t.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (!threadRes.ok) continue;
+        const messages = (await threadRes.json()).messages || [];
+        if (messages.length < 2) continue; // just our original send, no reply yet
+
+        const last = messages[messages.length - 1];
+        const headers = last.payload?.headers || [];
+        const getHeader = (name) => headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || "";
+        const fromAddr = getHeader("From");
+        // Whichever message's From ISN'T info@titanbusinesspros.com is the
+        // lead's own address — works whether the very last message is
+        // their reply (the common case) or our own follow-up.
+        const isLastFromUs = fromAddr.toLowerCase().includes(OUTREACH_FROM_ADDRESS.toLowerCase());
+        threads.push({
+          agent: agentId,
+          threadId: t.id,
+          subject: getHeader("Subject"),
+          otherParty: isLastFromUs ? getHeader("To") : fromAddr,
+          snippet: last.snippet || "",
+          lastMessageAt: last.internalDate ? Number(last.internalDate) : 0,
+          unread: (last.labelIds || []).includes("UNREAD"),
+          messageCount: messages.length,
+          awaitingReply: !isLastFromUs, // last message came FROM the lead — needs an answer
+        });
+      }
+    }
+
+    threads.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+    return { threads };
+  }
+);
+
+// Sends a real reply within an existing thread — proper In-Reply-To/
+// References headers so Gmail (and the lead's own inbox) thread it
+// correctly instead of it showing up as a disconnected new email.
+exports.outreachSendReply = onCall(
+  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2] },
+  async (request) => {
+    await requireAdmin(request);
+
+    const agent = OUTREACH_AGENTS[request.data?.agent] ? request.data.agent : null;
+    const threadId = (request.data?.threadId || "").trim();
+    const body = (request.data?.body || "").trim();
+    if (!agent || !threadId || !body) throw new HttpsError("invalid-argument", "agent, threadId, and body are all required.");
+
+    const accessToken = await gmailAccessTokenFor(agent);
+
+    const threadRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Message-ID&metadataHeaders=References`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!threadRes.ok) throw new HttpsError("internal", `Couldn't load that thread (${threadRes.status}): ${await threadRes.text().catch(() => "")}`);
+    const messages = (await threadRes.json()).messages || [];
+    if (messages.length === 0) throw new HttpsError("not-found", "That thread has no messages.");
+
+    const last = messages[messages.length - 1];
+    const headers = last.payload?.headers || [];
+    const getHeader = (name) => headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || "";
+    const lastFrom = getHeader("From");
+    const lastMessageId = getHeader("Message-ID");
+    const lastReferences = getHeader("References");
+    const isLastFromUs = lastFrom.toLowerCase().includes(OUTREACH_FROM_ADDRESS.toLowerCase());
+    // Reply goes to whoever sent the last message — unless that was us,
+    // in which case reply to whoever WE last sent it to instead.
+    const replyTo = isLastFromUs ? getHeader("To") : lastFrom;
+    let subject = getHeader("Subject") || "";
+    if (!/^re:/i.test(subject)) subject = `Re: ${subject}`;
+
+    const references = [lastReferences, lastMessageId].filter(Boolean).join(" ");
+    const headerLines = [`From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`, `To: ${replyTo}`, `Subject: ${subject}`];
+    if (lastMessageId) headerLines.push(`In-Reply-To: ${lastMessageId}`);
+    if (references) headerLines.push(`References: ${references}`);
+    headerLines.push("Content-Type: text/plain; charset=UTF-8");
+    const raw = Buffer.from(`${headerLines.join("\r\n")}\r\n\r\n${body}`).toString("base64url");
+
+    const sendRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ raw, threadId }),
+    });
+    if (!sendRes.ok) throw new HttpsError("internal", `Gmail API error sending reply (${sendRes.status}): ${await sendRes.text().catch(() => "")}`);
+
+    // Best-effort — a reply having been sent matters more than this
+    // succeeding, so it isn't allowed to fail the whole call.
+    fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}/modify`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ removeLabelIds: ["UNREAD"] }),
+    }).catch(() => {});
+
+    return { ok: true };
+  }
+);
+
 // ---------------------------------------------------------------------
 // Outreach settings — TWO separate concerns sharing one doc:
 //   1. campaignNotes: one global "what are we selling" note (Claude reads
