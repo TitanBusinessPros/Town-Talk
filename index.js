@@ -2437,7 +2437,12 @@ exports.outreachBulkAddCandidates = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "Too many rows at once (500 max per upload, a single Firestore batch's limit) — split the file and upload again.");
   }
 
-  const existingSnap = await db.collection("outreachCandidates").get();
+  // Only dedupe against candidates still actively sitting in review/queue
+  // — NOT "drafted" or "rejected" ones. Those are historical; blocking a
+  // re-upload of the same address because it was already drafted (e.g.
+  // during testing) or already rejected serves no purpose and was the
+  // real cause of "it won't let me re-add addresses I've already used."
+  const existingSnap = await db.collection("outreachCandidates").where("status", "in", ["candidate", "queued"]).get();
   const seenWebsites = new Set();
   const seenEmails = new Set();
   for (const d of existingSnap.docs) {
