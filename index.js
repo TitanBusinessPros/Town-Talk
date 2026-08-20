@@ -2486,12 +2486,30 @@ exports.outreachBulkAddCandidates = onCall(async (request) => {
 // re-search of the same town or a re-upload of the same CSV doesn't
 // re-suggest it. This is for actually cleaning up junk/duplicate/mistaken
 // entries (e.g. a bad CSV upload) — gone for good, not just hidden.
+//
+// Real gap this closes: for a candidate sourced from a real unpaid Town
+// Fuss business listing (source:"unpaid-business-listing"),
+// syncUnpaidBusinessLeadsIntoCandidates() re-creates a "candidate" doc for
+// it on every page load if one doesn't already exist by that email — so
+// deleting it here without also excluding it would make it silently
+// reappear the very next time "Review new businesses" refreshes, looking
+// exactly like the delete button doesn't work. Recording the email in
+// outreachSentLog (same exclusion set the sync already checks) is what
+// makes the deletion actually stick.
 exports.outreachDeleteCandidates = onCall(async (request) => {
   await requireAdmin(request);
   const ids = Array.isArray(request.data?.ids) ? request.data.ids : [];
   if (ids.length === 0) throw new HttpsError("invalid-argument", "ids (non-empty array) is required.");
+  const docs = await Promise.all(ids.map((id) => db.collection("outreachCandidates").doc(id).get()));
   const batch = db.batch();
-  ids.forEach((id) => batch.delete(db.collection("outreachCandidates").doc(id)));
+  for (const snap of docs) {
+    if (!snap.exists) continue;
+    batch.delete(snap.ref);
+    const email = (snap.data().email || "").trim().toLowerCase();
+    if (email) {
+      batch.set(db.collection("outreachSentLog").doc(email), { skippedAt: Timestamp.now(), reason: "deleted from Review new businesses" }, { merge: true });
+    }
+  }
   await batch.commit();
   return { ok: true, deleted: ids.length };
 });
