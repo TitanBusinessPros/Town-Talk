@@ -2043,11 +2043,16 @@ exports.outreachListReplies = onCall(
     // this avoids depending on that at all). Capped and deduped per
     // agent+recipient (keep only the most recent) so a repeat-tested
     // address doesn't get searched more than once.
-    const eventsSnap = await db.collection("outreachSentEvents").where("status", "==", "sent").orderBy("sentAt", "desc").limit(300).get();
+    // Filtering status in JS instead of a second .where() avoids needing a
+    // composite index (status== + orderBy on a different field needs one;
+    // a single orderBy alone doesn't) — outreachSentEvents is small enough
+    // that this costs nothing meaningful.
+    const eventsSnap = await db.collection("outreachSentEvents").orderBy("sentAt", "desc").limit(300).get();
     const seen = new Set();
     const recipients = []; // [{agent, to}]
     eventsSnap.docs.forEach((d) => {
       const data = d.data();
+      if (data.status !== "sent") return;
       const key = `${data.agent}|${data.to}`;
       if (seen.has(key)) return;
       seen.add(key);
@@ -2073,7 +2078,10 @@ exports.outreachListReplies = onCall(
       // Gmail's own search, not a custom label — finds the real
       // conversation with this specific recipient directly.
       const searchRes = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/threads?q=${encodeURIComponent(`to:${to} OR from:${to}`)}&maxResults=3`,
+        // maxResults=3 missed real replies for addresses reused many times
+        // across testing (Gmail's relevance ranking can push the actual
+        // reply thread past the top 3) — 10 is cheap and thorough enough.
+        `https://gmail.googleapis.com/gmail/v1/users/me/threads?q=${encodeURIComponent(`to:${to} OR from:${to}`)}&maxResults=10`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       if (!searchRes.ok) continue;
