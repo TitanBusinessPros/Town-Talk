@@ -2861,49 +2861,53 @@ function firstOfNextMonthCentral() {
   return `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
 }
 
-// Runs at 9 AM and 9 PM Central — a deliberately fixed check-in cadence
-// (not live-updating on every page load) so the number on the page moves
-// on a predictable schedule instead of changing under the admin's cursor.
-exports.outreachUpdateCostSnapshot = onSchedule({ schedule: "0 9,21 * * *", timeZone: "America/Chicago" }, async () => {
+// Shared by both the twice-daily snapshot AND the live fallback below —
+// one real place this gets computed, not two copies that could drift.
+async function computeCostBreakdown() {
   const usageSnap = await db.collection("outreachUsage").doc(`placesApi_${centralYearMonth()}`).get();
   const requestCount = usageSnap.exists ? usageSnap.data().requestCount || 0 : 0;
   const placesApiCostUsd = Math.round(requestCount * PLACES_API_COST_PER_REQUEST_USD * 100) / 100;
 
   const services = [
-    { name: "Google Places API (town search)", detail: `${requestCount} request(s) × $${PLACES_API_COST_PER_REQUEST_USD.toFixed(3)}`, costUsd: placesApiCostUsd },
-    { name: "Cloud Functions", detail: "within free tier at current volume", costUsd: 0 },
-    { name: "Firestore", detail: "within free tier at current volume", costUsd: 0 },
-    { name: "Gmail API", detail: "free (no per-use cost)", costUsd: 0 },
-    { name: "Google Apps Script", detail: "free (no per-use cost)", costUsd: 0 },
+    { name: "Google Places API (town search)", detail: `${requestCount} request(s) this month × $${PLACES_API_COST_PER_REQUEST_USD.toFixed(3)} each`, costUsd: placesApiCostUsd },
+    { name: "Cloud Functions", detail: "within free tier at current volume — $0 unless usage grows a lot", costUsd: 0 },
+    { name: "Firestore (database)", detail: "within free tier at current volume — $0 unless usage grows a lot", costUsd: 0 },
+    { name: "Gmail API (sending/reading)", detail: "no per-use cost, ever", costUsd: 0 },
+    { name: "Google Apps Script (the scheduler)", detail: "no per-use cost, ever", costUsd: 0 },
   ];
   const totalCostUsd = Math.round(services.reduce((sum, s) => sum + s.costUsd, 0) * 100) / 100;
 
-  await db.collection("outreachUsage").doc("costSnapshot").set({
-    generatedAt: Timestamp.now(),
+  return {
     services,
     totalCostUsd,
     monthlyFreeCreditUsd: MAPS_PLATFORM_MONTHLY_FREE_CREDIT_USD,
     remainingCreditUsd: Math.max(0, Math.round((MAPS_PLATFORM_MONTHLY_FREE_CREDIT_USD - placesApiCostUsd) * 100) / 100),
     resetsOn: firstOfNextMonthCentral(),
-  });
+  };
+}
+
+// Runs at 9 AM and 9 PM Central — a deliberately fixed check-in cadence
+// (not live-updating on every page load) so the number on the page moves
+// on a predictable schedule instead of changing under the admin's cursor.
+exports.outreachUpdateCostSnapshot = onSchedule({ schedule: "0 9,21 * * *", timeZone: "America/Chicago" }, async () => {
+  const breakdown = await computeCostBreakdown();
+  await db.collection("outreachUsage").doc("costSnapshot").set({ generatedAt: Timestamp.now(), ...breakdown });
 });
 
 exports.outreachGetCostSnapshot = onCall(async (request) => {
   await requireAdmin(request);
-  const snap = await db.collection("outreachUsage").doc("costSnapshot").get();
-  if (!snap.exists) {
-    // Hasn't run yet (first 9am/9pm check-in hasn't happened since this
-    // was built) — return honest zeros instead of nothing, with today's
-    // real reset date computed live so the page isn't blank.
-    return {
-      generatedAt: null,
-      services: [],
-      totalCostUsd: 0,
-      monthlyFreeCreditUsd: MAPS_PLATFORM_MONTHLY_FREE_CREDIT_USD,
-      remainingCreditUsd: MAPS_PLATFORM_MONTHLY_FREE_CREDIT_USD,
-      resetsOn: firstOfNextMonthCentral(),
-    };
+  try {
+    const snap = await db.collection("outreachUsage").doc("costSnapshot").get();
+    if (snap.exists) return snap.data();
+    // No twice-daily snapshot yet (first 9am/9pm check-in hasn't happened
+    // since this was built) — compute the real breakdown live instead of
+    // showing an empty one. Once the schedule has run at least once, this
+    // branch stops being hit and the cached snapshot takes over.
+    const breakdown = await computeCostBreakdown();
+    return { generatedAt: null, ...breakdown };
+  } catch (err) {
+    console.error("outreachGetCostSnapshot failed:", err);
+    throw new HttpsError("internal", `Couldn't load usage data: ${err.message}`);
   }
-  return snap.data();
 });
 
