@@ -1558,14 +1558,14 @@ const EDITION_HOME_TOWN = "Pauls Valley";
 // object.
 const firebaseConfig = {
   apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
-  // Custom domain, not the default *.firebaseapp.com helper domain — the
-  // Google Sign-In handshake needs to be same-origin with the site itself
-  // or browsers that partition storage per top-level site (Safari ITP,
-  // Firefox 109+, Chrome M115+) reject it with "missing initial state" on
-  // any device/browser that's never visited before. Firebase Hosting
-  // already serves /__/auth/handler and /__/auth/iframe automatically on
-  // this domain since it's a verified custom domain (see CNAME).
-  authDomain: "www.townfuss.com",
+  // REVERTED 2026-08-22: www.townfuss.com is served by GitHub Pages, not
+  // Firebase Hosting, so it does NOT serve Firebase's required
+  // /__/auth/handler and /__/auth/iframe pages (confirmed: that path
+  // 404s there). Pointing authDomain at it broke Google Sign-In entirely
+  // instead of fixing the narrow "missing initial state" edge case it was
+  // meant to address. Reverted to the default helper domain — a real fix
+  // needs a different approach given the GitHub Pages setup.
+  authDomain: "town-talk-87ff7.firebaseapp.com",
   projectId: "town-talk-87ff7",
   storageBucket: "town-talk-87ff7.firebasestorage.app",
   messagingSenderId: "95719537435",
