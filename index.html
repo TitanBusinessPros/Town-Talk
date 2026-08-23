@@ -1558,7 +1558,14 @@ const EDITION_HOME_TOWN = "Pauls Valley";
 // object.
 const firebaseConfig = {
   apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
-  authDomain: "town-talk-87ff7.firebaseapp.com",
+  // Custom domain, not the default *.firebaseapp.com helper domain — the
+  // Google Sign-In handshake needs to be same-origin with the site itself
+  // or browsers that partition storage per top-level site (Safari ITP,
+  // Firefox 109+, Chrome M115+) reject it with "missing initial state" on
+  // any device/browser that's never visited before. Firebase Hosting
+  // already serves /__/auth/handler and /__/auth/iframe automatically on
+  // this domain since it's a verified custom domain (see CNAME).
+  authDomain: "www.townfuss.com",
   projectId: "town-talk-87ff7",
   storageBucket: "town-talk-87ff7.firebasestorage.app",
   messagingSenderId: "95719537435",
@@ -1746,6 +1753,7 @@ const googleProvider = new GoogleAuthProvider();
 // of every committed test file.
 window.adminDeleteProfileCallable = httpsCallable(functions, "adminDeleteProfile");
 window.adminRestoreProfileCallable = httpsCallable(functions, "adminRestoreProfile");
+window.banUserAndIpCallable = httpsCallable(functions, "banUserAndIp");
 
 // Local testing only — never runs against the real production site, which
 // is served from www.townfuss.com, not localhost.
