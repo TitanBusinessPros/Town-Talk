@@ -19,8 +19,8 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-com
 // there. Keep this in sync if you ever rotate the Firebase project.
 firebase.initializeApp({
   apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
-  // 2026-08-23 — kept in sync with index.html. See the comment there.
-  authDomain: "auth.townfuss.com",
+  // 2026-08-24 — kept in sync with index.html. See the comment there.
+  authDomain: "www.townfuss.com",
   projectId: "town-talk-87ff7",
   storageBucket: "town-talk-87ff7.firebasestorage.app",
   messagingSenderId: "95719537435",

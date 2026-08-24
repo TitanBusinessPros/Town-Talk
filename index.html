@@ -1558,18 +1558,17 @@ const EDITION_HOME_TOWN = "Pauls Valley";
 // object.
 const firebaseConfig = {
   apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
-  // 2026-08-23: www.townfuss.com is served by GitHub Pages (confirmed:
-  // it 404s on /__/auth/handler), so it can't host Firebase's auth
-  // handler directly — a dedicated subdomain, auth.townfuss.com, was set
-  // up on Firebase Hosting instead (A record -> 199.36.158.100) purely to
-  // serve /__/auth/handler and /__/auth/iframe. Confirmed before this
-  // change: DNS resolves, the real Firebase handler page serves there
-  // (not a 404), and it's already in Firebase Auth's authorizedDomains
-  // list. This fixes "missing initial state" on browsers/devices that
-  // partition storage per top-level site (Safari ITP, Firefox 109+,
-  // Chrome M115+) without needing the main domain itself on Firebase
-  // Hosting.
-  authDomain: "auth.townfuss.com",
+  // 2026-08-24: www.townfuss.com migrated from GitHub Pages to Firebase
+  // Hosting (CNAME -> town-talk-87ff7.web.app), making the auth handler
+  // same-origin with the app itself. This removes the cross-origin
+  // storage correlation that auth.townfuss.com still needed for
+  // signInWithRedirect specifically (popup worked fine there, but
+  // redirect needs longer-lived cross-origin storage access that strict
+  // browsers/in-app WebViews block). Confirmed before this change: DNS
+  // resolves to Firebase, certStatus is CERT_ACTIVE (not just
+  // propagating), and /__/auth/handler returns Firebase's real handler
+  // page on this domain directly.
+  authDomain: "www.townfuss.com",
   projectId: "town-talk-87ff7",
   storageBucket: "town-talk-87ff7.firebasestorage.app",
   messagingSenderId: "95719537435",
