@@ -1558,14 +1558,18 @@ const EDITION_HOME_TOWN = "Pauls Valley";
 // object.
 const firebaseConfig = {
   apiKey: "AIzaSyC0EfVQypjbEHRswbO-Np4lCQjFhmwEqrA",
-  // REVERTED 2026-08-22: www.townfuss.com is served by GitHub Pages, not
-  // Firebase Hosting, so it does NOT serve Firebase's required
-  // /__/auth/handler and /__/auth/iframe pages (confirmed: that path
-  // 404s there). Pointing authDomain at it broke Google Sign-In entirely
-  // instead of fixing the narrow "missing initial state" edge case it was
-  // meant to address. Reverted to the default helper domain — a real fix
-  // needs a different approach given the GitHub Pages setup.
-  authDomain: "town-talk-87ff7.firebaseapp.com",
+  // 2026-08-23: www.townfuss.com is served by GitHub Pages (confirmed:
+  // it 404s on /__/auth/handler), so it can't host Firebase's auth
+  // handler directly — a dedicated subdomain, auth.townfuss.com, was set
+  // up on Firebase Hosting instead (A record -> 199.36.158.100) purely to
+  // serve /__/auth/handler and /__/auth/iframe. Confirmed before this
+  // change: DNS resolves, the real Firebase handler page serves there
+  // (not a 404), and it's already in Firebase Auth's authorizedDomains
+  // list. This fixes "missing initial state" on browsers/devices that
+  // partition storage per top-level site (Safari ITP, Firefox 109+,
+  // Chrome M115+) without needing the main domain itself on Firebase
+  // Hosting.
+  authDomain: "auth.townfuss.com",
   projectId: "town-talk-87ff7",
   storageBucket: "town-talk-87ff7.firebasestorage.app",
   messagingSenderId: "95719537435",
