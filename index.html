@@ -1508,7 +1508,7 @@ import {
   getAuth,
   onAuthStateChanged, signOut, deleteUser,
   EmailAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, sendEmailVerification, connectAuthEmulator,
-  GoogleAuthProvider, signInWithPopup,
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp,
@@ -2800,17 +2800,18 @@ document.getElementById("google-confirm-modal-backdrop").addEventListener("click
   }
 });
 
-document.getElementById("google-signin-btn").addEventListener("click", async () => {
+// Shared by both sign-in paths below: a completed signInWithPopup (cred
+// available synchronously in the click handler) AND a completed
+// signInWithRedirect (cred only available on a LATER page load, via
+// getRedirectResult() — see that block further down). Same new-vs-
+// returning logic, same profile creation, same error cleanup either way.
+// Caller is responsible for signupInProgress (set true before calling,
+// this function clears it in its own finally) — kept outside so the
+// popup path can set it before the popup even opens, same as before this
+// was split out.
+async function handleGoogleSignInCredential(cred) {
   const msg = document.getElementById("google-signin-message");
-  msg.style.display = "none";
-  let cred;
-  // Same race as the email signup flow above (see signupInProgress's
-  // declaration comment) — set BEFORE the popup, not after, since we don't
-  // yet know whether this will turn out to be a new or a returning account.
-  signupInProgress = true;
   try {
-    cred = await signInWithPopup(auth, googleProvider);
-
     const userRef = doc(db, "users", cred.user.uid);
     const existingSnap = await getDoc(userRef);
     // NOT existingSnap.exists() alone — beforeSignInBlocking (index.js)
@@ -2877,22 +2878,79 @@ document.getElementById("google-signin-btn").addEventListener("click", async () 
     // a fresh one now that there's something real to watch.
     watchUserDoc(cred.user.uid);
   } catch (err) {
-    if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
-      // They just closed the popup themselves — not a real error.
-    } else {
-      // If we got as far as creating the Google-linked Auth account but
-      // something after that failed, don't leave an orphaned Auth account
-      // with no profile behind (same as the email signup flow).
-      if (cred) {
-        await deleteUser(cred.user).catch(() => {});
-        await signOut(auth).catch(() => {});
-      }
-      showMessage(msg, friendlyAuthError(err), "error");
+    // If we got as far as creating the Google-linked Auth account but
+    // something after that failed, don't leave an orphaned Auth account
+    // with no profile behind (same as the email signup flow).
+    if (cred) {
+      await deleteUser(cred.user).catch(() => {});
+      await signOut(auth).catch(() => {});
     }
+    showMessage(msg, friendlyAuthError(err), "error");
   } finally {
     signupInProgress = false;
   }
+}
+
+document.getElementById("google-signin-btn").addEventListener("click", async () => {
+  const msg = document.getElementById("google-signin-message");
+  msg.style.display = "none";
+  let cred;
+  // Same race as the email signup flow above (see signupInProgress's
+  // declaration comment) — set BEFORE the popup, not after, since we don't
+  // yet know whether this will turn out to be a new or a returning account.
+  signupInProgress = true;
+  try {
+    cred = await signInWithPopup(auth, googleProvider);
+  } catch (err) {
+    if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+      // They just closed the popup themselves — not a real error.
+      signupInProgress = false;
+      return;
+    }
+    if (err.code === "auth/popup-blocked" || err.code === "auth/operation-not-supported-in-this-environment") {
+      // Popups are blocked or actively unsupported in this browser —
+      // Samsung Internet and most in-app WebViews (Facebook/Instagram's
+      // built-in browser, etc.) either block window.open() outright or
+      // Google itself refuses to run OAuth inside them at all, regardless
+      // of anything on our end. Fall back to a full-page redirect instead
+      // of just showing an error. This NAVIGATES AWAY — nothing after
+      // this line runs on this page; the flow completes on whatever page
+      // load the browser returns to, via getRedirectResult() below, which
+      // is why signupInProgress is left true here rather than cleared —
+      // the redirect is still "in progress" across that navigation.
+      await signInWithRedirect(auth, googleProvider).catch((redirectErr) => {
+        signupInProgress = false;
+        showMessage(msg, friendlyAuthError(redirectErr), "error");
+      });
+      return;
+    }
+    signupInProgress = false;
+    showMessage(msg, friendlyAuthError(err), "error");
+    return;
+  }
+  await handleGoogleSignInCredential(cred);
 });
+
+// Completes a signInWithRedirect flow started above, on whatever page load
+// the browser actually returns to (a real full-page navigation — nothing
+// in JS memory survives it, which is why this can't just be handled
+// inside the click handler above). Resolves to null on a completely
+// ordinary page load with no pending redirect — that's the normal case
+// and NOT an error, only a non-null result means a redirect just
+// completed. signupInProgress guards this same brief window on every
+// page load (not just redirect completions) for the same reason as the
+// popup path: onAuthStateChanged's self-heal in watchUserDoc must not
+// race a signup that's still being decided as new-vs-returning.
+signupInProgress = true;
+getRedirectResult(auth)
+  .then((result) => {
+    if (result) return handleGoogleSignInCredential(result); // clears signupInProgress itself, in its own finally
+    signupInProgress = false; // no pending redirect — ordinary page load
+  })
+  .catch((err) => {
+    signupInProgress = false;
+    showMessage(document.getElementById("google-signin-message"), friendlyAuthError(err), "error");
+  });
 
 // ============================= DASHBOARD ================================
 function watchUserDoc(uid) {
