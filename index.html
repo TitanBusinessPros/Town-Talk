@@ -2890,14 +2890,42 @@ async function handleGoogleSignInCredential(cred) {
   }
 }
 
+// signInWithPopup's window.open() doesn't reliably fail with a catchable
+// error on mobile browsers — on many of them (confirmed live, 2026-08-24:
+// popup worked on Chrome mobile but non-Chrome mobile browsers bounced
+// straight to a Google page with neither our popup-blocked catch NOR the
+// redirect fallback ever running) it just navigates the CURRENT tab to
+// the popup target instead of opening a real second window. When that
+// happens the page — and the JS context signInWithPopup's promise lives
+// in — is gone before any catch block gets a chance to run, so the
+// try/catch fallback below is fundamentally unreliable specifically on
+// mobile. Desktop doesn't have this problem (real multi-window support),
+// so it's still worth trying popup there first.
+const isMobileBrowser = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
 document.getElementById("google-signin-btn").addEventListener("click", async () => {
   const msg = document.getElementById("google-signin-message");
   msg.style.display = "none";
-  let cred;
   // Same race as the email signup flow above (see signupInProgress's
-  // declaration comment) — set BEFORE the popup, not after, since we don't
-  // yet know whether this will turn out to be a new or a returning account.
+  // declaration comment) — set BEFORE the popup/redirect, not after,
+  // since we don't yet know whether this will turn out to be a new or a
+  // returning account.
   signupInProgress = true;
+
+  if (isMobileBrowser) {
+    // Straight to redirect, no popup attempt — see the comment above.
+    // This NAVIGATES AWAY — nothing after this line runs on this page;
+    // the flow completes on whatever page load the browser returns to,
+    // via getRedirectResult() below, which is why signupInProgress is
+    // left true here rather than cleared.
+    await signInWithRedirect(auth, googleProvider).catch((redirectErr) => {
+      signupInProgress = false;
+      showMessage(msg, friendlyAuthError(redirectErr), "error");
+    });
+    return;
+  }
+
+  let cred;
   try {
     cred = await signInWithPopup(auth, googleProvider);
   } catch (err) {
@@ -2907,16 +2935,8 @@ document.getElementById("google-signin-btn").addEventListener("click", async () 
       return;
     }
     if (err.code === "auth/popup-blocked" || err.code === "auth/operation-not-supported-in-this-environment") {
-      // Popups are blocked or actively unsupported in this browser —
-      // Samsung Internet and most in-app WebViews (Facebook/Instagram's
-      // built-in browser, etc.) either block window.open() outright or
-      // Google itself refuses to run OAuth inside them at all, regardless
-      // of anything on our end. Fall back to a full-page redirect instead
-      // of just showing an error. This NAVIGATES AWAY — nothing after
-      // this line runs on this page; the flow completes on whatever page
-      // load the browser returns to, via getRedirectResult() below, which
-      // is why signupInProgress is left true here rather than cleared —
-      // the redirect is still "in progress" across that navigation.
+      // Real desktop popup blocker (browser extension, strict site
+      // setting) — fall back to redirect same as the mobile path above.
       await signInWithRedirect(auth, googleProvider).catch((redirectErr) => {
         signupInProgress = false;
         showMessage(msg, friendlyAuthError(redirectErr), "error");
