@@ -218,4 +218,34 @@ test.describe.serial("Blackjack — deep functional pass", () => {
     await contextC.close();
     await contextD.close();
   });
+
+  test("Blackjack: direct invite cooldown blocks a second invite, then the original is declined", async () => {
+    // Exercises onBlackjackInvite (index.js) via a real UI-created invite --
+    // same pattern as golf-deep.spec.js's equivalent test.
+    const pairId = [uidA, uidB].sort().join("_");
+    const { FieldValue } = require("firebase-admin/firestore");
+    await admin.firestore().collection("friendRequests").doc(pairId).set({
+      participants: [uidA, uidB].sort(),
+      participantNames: { [uidA]: "BJ Robot A", [uidB]: "BJ Robot B" },
+      requestedBy: uidA,
+      status: "accepted",
+      requestedAt: FieldValue.serverTimestamp(),
+      respondedAt: FieldValue.serverTimestamp(),
+    });
+
+    await pageA.goto("/blackjack.html");
+    await pageA.locator("#mode-tile-online").click();
+    await pageA.locator("#friends-invite-list").waitFor();
+    await pageA.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(pageA.locator(".message, #waiting-message")).toBeVisible({ timeout: 10_000 }).catch(() => {});
+
+    await pageA.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(pageA.locator("#waiting-message")).toContainText("again in about", { timeout: 10_000 });
+
+    await pageB.goto("/blackjack.html");
+    await pageB.locator("#mode-tile-online").click();
+    await pageB.locator("#my-invites-list").waitFor();
+    await pageB.locator('button:has-text("Decline")').first().click();
+    await expect(pageB.locator("#my-invites-empty")).toBeVisible({ timeout: 10_000 });
+  });
 });

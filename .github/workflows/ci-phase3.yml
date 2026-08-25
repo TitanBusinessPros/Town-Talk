@@ -1,0 +1,107 @@
+name: CI Phase 3 — Full Regression Suite
+
+# NOT run on every push -- this is the full ~190-test suite (253 in the
+# 2026-08-24 manual run, minus outreach-admin.spec.js, see below), split
+# across parallel matrix jobs so each one runs in its own fresh runner.
+# That directly targets the failure mode from the 2026-08-24 manual runs:
+# a single long-lived emulator + Playwright process degraded after
+# handling 150+ real sign-ins across a ~19-minute continuous run, on a
+# shared 8GB desktop machine. Splitting by job means no job runs long
+# enough to accumulate that, and each gets a genuinely clean environment --
+# not just a smaller version of the same risk.
+#
+# KNOWN GAP: outreach-admin.spec.js is excluded from every group below.
+# It depends on a second, separate local repo (townfuss-outreach-admin)
+# that this workflow's checkout doesn't have access to -- it's a sibling
+# folder on the local machine, not part of this git repo. Running it in
+# CI would need that repo checked out too (a second `actions/checkout`
+# step pointed at wherever it actually lives), which hasn't been set up.
+# Flagging this rather than silently dropping coverage.
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # nightly, 9am UTC -- adjust as you like
+  workflow_dispatch: {} # adds a manual "Run workflow" button in the Actions tab
+
+jobs:
+  full-suite:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # one group failing shouldn't cancel the others -- we want the full picture
+      matrix:
+        group:
+          - name: platform-and-auth
+            specs: "admin-delete-restore.spec.js ip-blocker.spec.js chatsponsor-townfounder.spec.js sponsor-invite.spec.js tier-limits.spec.js full-platform.spec.js daily-reward-redeem.spec.js"
+          - name: games-1
+            specs: "airhockey-deep.spec.js blackjack-deep.spec.js blocks-deep.spec.js cribbage-deep.spec.js deepsea-deep.spec.js desert-deep.spec.js"
+          - name: games-2
+            specs: "dodge-deep.spec.js fg-deep.spec.js follow-deep.spec.js golf-deep.spec.js gravity-sling-deep.spec.js gtf-deep.spec.js"
+          - name: games-3
+            specs: "hearts-deep.spec.js match3-deep.spec.js neon-drift-deep.spec.js pirates-deep.spec.js pirates-mobile.spec.js pong-deep.spec.js"
+          - name: games-4
+            specs: "sea-war-deep.spec.js stacking-checkers-deep.spec.js sudoku-deep.spec.js titanspace-deep.spec.js war-deep.spec.js"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Java (required by the emulator suite)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install firebase-tools
+        run: npm install -g firebase-tools
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install testing dependencies
+        working-directory: testing
+        run: npm install
+
+      - name: Install Playwright's Chromium
+        working-directory: testing
+        run: npx playwright install --with-deps chromium
+
+      - name: Write .secret.local from GitHub Actions secrets
+        run: |
+          cat > .secret.local <<EOF
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET_1=${{ secrets.STRIPE_WEBHOOK_SECRET_1 }}
+          STRIPE_WEBHOOK_SECRET_2=${{ secrets.STRIPE_WEBHOOK_SECRET_2 }}
+          STRIPE_WEBHOOK_SECRET_3=${{ secrets.STRIPE_WEBHOOK_SECRET_3 }}
+          EOF
+
+      - name: Start Firebase emulators
+        run: firebase emulators:start --project town-talk-87ff7 &
+
+      - name: Wait for emulator to be ready
+        run: |
+          for i in $(seq 1 40); do
+            if curl -s -o /dev/null http://localhost:4000; then
+              echo "emulator ready after ~$((i*3))s"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "emulator did not become ready in time"
+          exit 1
+
+      - name: Run this group's spec files
+        working-directory: testing
+        env:
+          TEST_PROJECT_ID: town-talk-87ff7
+        run: npx playwright test ${{ matrix.group.specs }}
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-suite-results-${{ matrix.group.name }}
+          path: testing/test-results/
