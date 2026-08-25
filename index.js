@@ -241,7 +241,6 @@ const GAME_LABELS = {
   warGames: { label: "War", page: "/war.html" },
   heartsGames: { label: "Hearts", page: "/hearts.html" },
   blackjackGames: { label: "Blackjack", page: "/blackjack.html" },
-  airHockeyGames: { label: "Air Hockey", page: "/airhockey.html" },
 };
 
 function makeGameInviteTrigger(collectionName) {
@@ -316,7 +315,6 @@ exports.onFrisbeeGolfInvite = makeGameInviteTrigger("fgGames");
 exports.onWarInvite = makeGameInviteTrigger("warGames");
 exports.onHeartsInvite = makeGameInviteTrigger("heartsGames");
 exports.onBlackjackInvite = makeGameInviteTrigger("blackjackGames");
-exports.onAirHockeyInvite = makeGameInviteTrigger("airHockeyGames");
 
 // -----------------------------------------------------------------------
 // 2. New signup notification — pushes every admin once a user actually
@@ -650,7 +648,7 @@ exports.onChatMessageDailyRewardQualify = onDocumentCreated(
 //
 // Higher number = better rank, plain descending sort.
 const GAME_POINT_FIELDS_DESC = [
-  "chessPoints", "checkersPoints", "wynneWarsPoints", "airHockeyPoints",
+  "chessPoints", "checkersPoints", "wynneWarsPoints",
   "blackjackPoints", "cribbagePoints", "fgPoints", "golfPoints",
   "heartsPoints", "seaWarPoints", "stackCheckersPoints", "warPoints",
   "blocksHighScore", "deepSeaHighScore", "desertHighScore", "dodgeHighScore",
@@ -1742,25 +1740,46 @@ const gmailRefreshToken = defineSecret("GMAIL_REFRESH_TOKEN"); // titanbusinessp
 // one specific account's permission grant and can't be shared across
 // accounts (see the chat explanation of why this can't be skipped).
 const gmailRefreshToken2 = defineSecret("GMAIL2_REFRESH_TOKEN");
-const OUTREACH_FROM_ADDRESS = "info@titanbusinesspros.com"; // verified Send-As alias under titanbusinesspros@gmail.com
+// Third and fourth sending accounts (kouklainfo@gmail.com,
+// singanewpsalm23@gmail.com), added 2026-08-21 — disguised behind
+// okie@townfuss.com instead of info@titanbusinesspros.com, a different
+// Send-As alias than accounts 1 and 2 use. Same OAuth client id/secret
+// as before; only the refresh token and fromAddress differ per-account.
+const gmailRefreshToken3 = defineSecret("GMAIL3_REFRESH_TOKEN");
+const gmailRefreshToken4 = defineSecret("GMAIL4_REFRESH_TOKEN");
 const OUTREACH_DAILY_BATCH_SIZE = 10;
+// CAN-SPAM requires every commercial email — including a one-time send,
+// there's no "just one email" exemption — to include a valid physical
+// postal address and a working way to opt out of future email. Appended
+// automatically here so it's never accidentally left out of a draft/reply
+// (2026-08-21: previously nothing enforced this at all — whatever the
+// admin happened to type into the body was all that went out).
+const OUTREACH_COMPLIANCE_FOOTER =
+  "\n\n—\nAddress: 9905 S Pennsylvania AVE, STE A, Oklahoma City OK 73159\n" +
+  'Don\'t want to hear from us again? Reply to this email with "UNSUBSCRIBE" and we will never contact this address again.';
 
 // Registry of every sending account this system knows about — the single
 // source of truth the webpage, the lock/status endpoints, and
 // outreachCreateDraft all read from, instead of "primary"/"secondary"
-// being hardcoded in three different places.
+// being hardcoded in three different places. Each agent carries its own
+// fromAddress now (2026-08-21) instead of one shared OUTREACH_FROM_ADDRESS
+// constant, since different sending accounts can be disguised behind
+// different verified Send-As aliases — not every agent has to share the
+// same "info@titanbusinesspros.com"-style front.
 //
 // TO ADD A THIRD (or fourth, etc.) AGENT LATER:
 //   1. `firebase functions:secrets:set GMAIL3_REFRESH_TOKEN` (after that
 //      account's own OAuth authorization, same as accounts 1 and 2).
 //   2. `const gmailRefreshToken3 = defineSecret("GMAIL3_REFRESH_TOKEN");`
-//   3. Add one line below: `tertiary: { label: "...@gmail.com", secret: gmailRefreshToken3 },`
+//   3. Add one line below: `tertiary: { label: "...@gmail.com", secret: gmailRefreshToken3, fromAddress: "..." },`
 //      and add gmailRefreshToken3 to outreachCreateDraft's `secrets: [...]` array.
 // That's it — the settings/lock functions, and the webpage's per-agent
 // controls, all read this list and don't need any other change.
 const OUTREACH_AGENTS = {
-  primary: { label: "titanbusinesspros@gmail.com", secret: gmailRefreshToken },
-  secondary: { label: "pollysfarmok@gmail.com", secret: gmailRefreshToken2 },
+  primary: { label: "titanbusinesspros@gmail.com", secret: gmailRefreshToken, fromAddress: "info@titanbusinesspros.com" },
+  secondary: { label: "pollysfarmok@gmail.com", secret: gmailRefreshToken2, fromAddress: "info@titanbusinesspros.com" },
+  tertiary: { label: "kouklainfo@gmail.com", secret: gmailRefreshToken3, fromAddress: "okie@townfuss.com" },
+  quaternary: { label: "singanewpsalm23@gmail.com", secret: gmailRefreshToken4, fromAddress: "okie@townfuss.com" },
 };
 const OUTREACH_LOCK_STALE_MS = 3 * 60 * 60 * 1000; // 3 hours — see outreachAcquireLock
 
@@ -1963,7 +1982,7 @@ async function ensureApprovedLabelId(accessToken) {
 // sender WILL pick this up and send it once that agent is active and its
 // start time has passed. Review the text before clicking, not after.
 exports.outreachCreateDraft = onCall(
-  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2] },
+  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2, gmailRefreshToken3, gmailRefreshToken4] },
   async (request) => {
     await requireAdmin(request);
 
@@ -1981,17 +2000,28 @@ exports.outreachCreateDraft = onCall(
       throw new HttpsError("invalid-argument", `"${to}" doesn't look like a valid email address — check for typos (like a missing .com) and try again.`);
     }
 
+    // Hard legal block — CAN-SPAM requires an opt-out request actually be
+    // honored, permanently, with no exceptions. outreachSentLog does NOT do
+    // that (it was deliberately changed so a contacted address can be
+    // reused without limit — see outreachListLeads' comment on that), so
+    // this is a genuinely separate collection, checked at the actual
+    // moment of sending, that nothing else in this system can route around.
+    const unsubSnap = await db.collection("outreachUnsubscribed").doc(to.toLowerCase()).get();
+    if (unsubSnap.exists) {
+      throw new HttpsError("failed-precondition", `${to} opted out and can never be emailed again — this system will not draft to that address.`);
+    }
+
     const oAuth2Client = new OAuth2Client(gmailOAuthClientId.value(), gmailOAuthClientSecret.value());
     oAuth2Client.setCredentials({ refresh_token: OUTREACH_AGENTS[sender].secret.value() });
     const { token: accessToken } = await oAuth2Client.getAccessToken();
 
     const headers = [
-      `From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`,
+      `From: Titan Business Pros <${OUTREACH_AGENTS[sender].fromAddress}>`,
       `To: ${to}`,
       `Subject: ${encodeMimeHeader(subject)}`,
       "Content-Type: text/plain; charset=UTF-8",
     ].join("\r\n");
-    const raw = Buffer.from(`${headers}\r\n\r\n${body}`).toString("base64url");
+    const raw = Buffer.from(`${headers}\r\n\r\n${body}${OUTREACH_COMPLIANCE_FOOTER}`).toString("base64url");
 
     const gmailRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts", {
       method: "POST",
@@ -2050,7 +2080,7 @@ async function gmailAccessTokenFor(sender) {
 // sending a reply too, no new authorization needed from the user.
 // ---------------------------------------------------------------------
 exports.outreachListReplies = onCall(
-  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2] },
+  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2, gmailRefreshToken3, gmailRefreshToken4] },
   async (request) => {
     await requireAdmin(request);
 
@@ -2074,7 +2104,6 @@ exports.outreachListReplies = onCall(
       seen.add(key);
       sends.push({ agent: data.agent, to: data.to, subject: data.subject });
     });
-
     const threads = [];
     const seenThreadIds = new Set();
     const tokenCache = {};
@@ -2119,10 +2148,13 @@ exports.outreachListReplies = onCall(
         const headers = last.payload?.headers || [];
         const getHeader = (name) => headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || "";
         const fromAddr = getHeader("From");
-        // Whichever message's From ISN'T info@titanbusinesspros.com is the
-        // lead's own address — works whether the very last message is
-        // their reply (the common case) or our own follow-up.
-        const isLastFromUs = fromAddr.toLowerCase().includes(OUTREACH_FROM_ADDRESS.toLowerCase());
+        // Whichever message's From ISN'T this agent's own disguise address
+        // is the lead's own address — works whether the very last message
+        // is their reply (the common case) or our own follow-up. Checked
+        // against THIS agent's fromAddress specifically, not a single
+        // shared constant, since different agents can use different
+        // disguise addresses.
+        const isLastFromUs = fromAddr.toLowerCase().includes(OUTREACH_AGENTS[agentId].fromAddress.toLowerCase());
         threads.push({
           agent: agentId,
           threadId: t.id,
@@ -2139,10 +2171,31 @@ exports.outreachListReplies = onCall(
 
     // Exclude threads the admin has explicitly dismissed from this view —
     // see outreachDismissReplyThreads. Dismissing doesn't touch Gmail at
-    // all, it's purely "stop showing me this one here."
+    // all, it's purely "stop showing me this one here" — BUT only until
+    // something new happens in that thread. A resend to the same address
+    // with the same subject lands in this exact same Gmail thread (Gmail
+    // groups by subject+participants), so treating a dismiss as permanent
+    // meant a genuinely new reply arriving later in a previously-dismissed
+    // thread stayed invisible forever (found via real diagnostic logging
+    // 2026-08-21: 12 threads had actual replies, 9 of them were hidden this
+    // way). Comparing the thread's own last-message time against when it
+    // was dismissed lets a fresh reply un-hide it automatically.
     const dismissedSnap = await db.collection("outreachDismissedReplyThreads").get();
-    const dismissedIds = new Set(dismissedSnap.docs.map((d) => d.id));
-    const visible = threads.filter((th) => !dismissedIds.has(th.threadId));
+    const dismissedAtByThreadId = new Map(
+      dismissedSnap.docs.map((d) => [d.id, d.data().dismissedAt?.toMillis?.() ?? 0])
+    );
+    const visible = threads.filter((th) => {
+      const dismissedAt = dismissedAtByThreadId.get(th.threadId);
+      const include = dismissedAt === undefined || th.lastMessageAt > dismissedAt;
+      // TEMPORARY diagnostic logging (2026-08-21, round 2) — need to see the
+      // actual numbers behind each include/exclude decision now that the
+      // previous fix alone didn't resolve it. Remove once confirmed working.
+      console.log(
+        `outreachListReplies DIAG2: thread ${th.threadId} (${th.otherParty}) lastMessageAt=${th.lastMessageAt} dismissedAt=${dismissedAt ?? "n/a"} -> ${include ? "VISIBLE" : "hidden"}`
+      );
+      return include;
+    });
+    console.log(`outreachListReplies DIAG2: ${threads.length} threads found, ${visible.length} visible after dismiss filter`);
 
     visible.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
     return { threads: visible };
@@ -2168,8 +2221,24 @@ exports.outreachDismissReplyThreads = onCall(async (request) => {
   return { ok: true, dismissed: threadIds.length };
 });
 
+// The actual legal opt-out enforcement point — genuinely separate from
+// outreachSkipLead/outreachSentLog (see outreachCreateDraft's comment on
+// why that mechanism doesn't satisfy this). Once an email is in here,
+// outreachCreateDraft and outreachSendReply both refuse to send to it,
+// permanently, no matter what path re-adds it as a candidate/lead.
+exports.outreachMarkUnsubscribed = onCall(async (request) => {
+  await requireAdmin(request);
+  const email = (request.data?.email || "").trim().toLowerCase();
+  if (!email || !email.includes("@")) throw new HttpsError("invalid-argument", "A valid email is required.");
+  await db.collection("outreachUnsubscribed").doc(email).set({
+    unsubscribedAt: Timestamp.now(),
+    reason: (request.data?.reason || "").trim() || "opted out",
+  });
+  return { ok: true };
+});
+
 exports.outreachSendReply = onCall(
-  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2] },
+  { secrets: [gmailOAuthClientId, gmailOAuthClientSecret, gmailRefreshToken, gmailRefreshToken2, gmailRefreshToken3, gmailRefreshToken4] },
   async (request) => {
     await requireAdmin(request);
 
@@ -2194,19 +2263,28 @@ exports.outreachSendReply = onCall(
     const lastFrom = getHeader("From");
     const lastMessageId = getHeader("Message-ID");
     const lastReferences = getHeader("References");
-    const isLastFromUs = lastFrom.toLowerCase().includes(OUTREACH_FROM_ADDRESS.toLowerCase());
+    const isLastFromUs = lastFrom.toLowerCase().includes(OUTREACH_AGENTS[agent].fromAddress.toLowerCase());
     // Reply goes to whoever sent the last message — unless that was us,
     // in which case reply to whoever WE last sent it to instead.
     const replyTo = isLastFromUs ? getHeader("To") : lastFrom;
     let subject = getHeader("Subject") || "";
     if (!/^re:/i.test(subject)) subject = `Re: ${subject}`;
 
+    // Same hard legal block as outreachCreateDraft — see its comment for
+    // why this can't just reuse outreachSentLog.
+    const replyToEmailMatch = replyTo.match(/<([^<>]+)>/);
+    const replyToEmail = (replyToEmailMatch ? replyToEmailMatch[1] : replyTo).trim().toLowerCase();
+    const unsubSnap = await db.collection("outreachUnsubscribed").doc(replyToEmail).get();
+    if (unsubSnap.exists) {
+      throw new HttpsError("failed-precondition", `${replyToEmail} opted out and can never be emailed again — this system will not reply to that address.`);
+    }
+
     const references = [lastReferences, lastMessageId].filter(Boolean).join(" ");
-    const headerLines = [`From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`, `To: ${replyTo}`, `Subject: ${encodeMimeHeader(subject)}`];
+    const headerLines = [`From: Titan Business Pros <${OUTREACH_AGENTS[agent].fromAddress}>`, `To: ${replyTo}`, `Subject: ${encodeMimeHeader(subject)}`];
     if (lastMessageId) headerLines.push(`In-Reply-To: ${lastMessageId}`);
     if (references) headerLines.push(`References: ${references}`);
     headerLines.push("Content-Type: text/plain; charset=UTF-8");
-    const raw = Buffer.from(`${headerLines.join("\r\n")}\r\n\r\n${body}`).toString("base64url");
+    const raw = Buffer.from(`${headerLines.join("\r\n")}\r\n\r\n${body}${OUTREACH_COMPLIANCE_FOOTER}`).toString("base64url");
 
     const sendRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
@@ -2263,7 +2341,7 @@ exports.outreachEmailExport = onCall(
     const wrappedBase64 = contentBase64.match(/.{1,76}/g)?.join("\r\n") || contentBase64;
 
     const raw = [
-      `From: Titan Business Pros <${OUTREACH_FROM_ADDRESS}>`,
+      `From: Titan Business Pros <${OUTREACH_AGENTS.primary.fromAddress}>`,
       `To: ${to}`,
       `Subject: ${encodeMimeHeader(subject)}`,
       `Content-Type: multipart/mixed; boundary="${boundary}"`,
@@ -2325,6 +2403,7 @@ exports.outreachGetSettings = onCall(async (request) => {
   const agents = Object.entries(OUTREACH_AGENTS).map(([id, def]) => ({
     id,
     label: def.label,
+    fromAddress: def.fromAddress,
     paused: !!agentsData[id]?.paused,
     startTime: agentsData[id]?.startTime || OUTREACH_DEFAULT_START_TIME,
   }));
@@ -2365,6 +2444,19 @@ function centralTodayAt(hour, minute) {
 exports.outreachSetSettings = onCall(async (request) => {
   await requireAdmin(request);
   const update = {};
+  // clientTs is a strictly-increasing sequence number the page assigns
+  // each save AT THE MOMENT IT ACTUALLY FIRES (after debounce), so it
+  // reflects the real order the admin finished each round of typing —
+  // NOT the order requests happen to arrive at the server. debounce()
+  // only cancels a pending timer, not an already-in-flight request, so a
+  // slow earlier save (cold start, etc.) can otherwise land AFTER a
+  // later, more-complete one and silently overwrite it. The transaction
+  // below drops this write if something newer already landed, guaranteeing
+  // the stored value always ends up being the most-recently-typed one
+  // regardless of network timing (2026-08-22 — this is the second, real
+  // cause behind "reverts to old text," distinct from the load-race
+  // outreachGetSettings/loadSettings already had fixed).
+  const campaignNotesClientTs = Number(request.data?.campaignNotesClientTs) || 0;
   if (typeof request.data?.campaignNotes === "string") update.campaignNotes = request.data.campaignNotes.slice(0, 4000);
 
   const agentId = request.data?.agent;
@@ -2420,7 +2512,22 @@ exports.outreachSetSettings = onCall(async (request) => {
   }
 
   if (Object.keys(update).length === 0) throw new HttpsError("invalid-argument", "Nothing to update.");
-  await OUTREACH_SETTINGS_DOC().set(update, { merge: true });
+
+  await db.runTransaction(async (txn) => {
+    if (typeof update.campaignNotes === "string") {
+      const snap = await txn.get(OUTREACH_SETTINGS_DOC());
+      const storedTs = snap.data()?.campaignNotesClientTs || 0;
+      if (campaignNotesClientTs < storedTs) {
+        // A newer save already landed — drop this stale write entirely
+        // rather than let it clobber it, but still apply any other
+        // (agent) changes in the same call.
+        delete update.campaignNotes;
+      } else {
+        update.campaignNotesClientTs = campaignNotesClientTs;
+      }
+    }
+    if (Object.keys(update).length > 0) txn.set(OUTREACH_SETTINGS_DOC(), update, { merge: true });
+  });
   return { ok: true };
 });
 
@@ -2602,23 +2709,119 @@ exports.outreachRecordSent = onRequest(async (req, res) => {
 const googlePlacesApiKey = defineSecret("GOOGLE_PLACES_API_KEY");
 const OUTREACH_CANDIDATE_BATCH_SIZE = 100; // matches the largest option (20/50/100) the admin page offers
 
-async function tryFindEmailOnWebsite(url) {
-  if (!url) return "";
+// Domains that show up constantly in scraped small-business HTML but are
+// never the business's own contact address — site-builder boilerplate,
+// tracking pixels, embedded widgets, template placeholder text. A bare
+// regex email match with no blocklist was grabbing these and reporting
+// them as the lead's email, which is where most of the "fake" emails
+// were coming from (2026-08-21).
+const JUNK_EMAIL_DOMAINS = [
+  "wixpress.com", "wix.com", "squarespace.com", "godaddy.com", "weebly.com",
+  "sentry.io", "sentry-next.wixpress.com", "cloudflare.com", "shopify.com",
+  "google.com", "googleapis.com", "gstatic.com", "googletagmanager.com",
+  "google-analytics.com", "facebook.com", "fbcdn.net", "mailchimp.com",
+  "list-manage.com", "polyfill.io", "jquery.com", "w3.org", "schema.org",
+  "example.com", "example.org", "example.net", "yourdomain.com", "yourwebsite.com",
+];
+// Local-parts that are almost always template/system addresses, not a
+// real contact — checked regardless of which domain they're on.
+const JUNK_EMAIL_LOCAL_PARTS = ["noreply", "no-reply", "donotreply", "do-not-reply", "webmaster", "postmaster", "test", "sample", "yourname", "youremail"];
+
+function isLikelyJunkEmail(email) {
+  const [localPart, domain] = email.toLowerCase().split("@");
+  if (!domain) return true;
+  if (JUNK_EMAIL_LOCAL_PARTS.includes(localPart)) return true;
+  return JUNK_EMAIL_DOMAINS.some((junk) => domain === junk || domain.endsWith(`.${junk}`));
+}
+
+// A real browser identity instead of Node's default fetch user-agent.
+// Several site-builder platforms and CDNs (Cloudflare especially) quietly
+// block or serve a stripped-down page to non-browser user agents, which
+// was silently costing hits before this existed — this alone raises the
+// scraper's find-rate on sites that were reachable all along.
+const SCRAPER_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+
+// Tries the homepage first (the common case — no slower than before when
+// it works), and only pays the cost of checking a couple of likely
+// contact pages when the homepage doesn't turn up a usable address. Most
+// small businesses that publish an email at all put it on the homepage
+// or a dedicated Contact/About page — this covers all three cheaply
+// instead of only ever looking at whichever URL Places happened to give.
+async function fetchEmailFromOnePage(pageUrl) {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(url, { signal: controller.signal, redirect: "follow" });
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(pageUrl, { signal: controller.signal, redirect: "follow", headers: { "User-Agent": SCRAPER_USER_AGENT } });
     clearTimeout(timeout);
     if (!res.ok) return "";
     const html = await res.text();
-    const mailtoMatch = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-    if (mailtoMatch) return mailtoMatch[1].toLowerCase();
-    const textMatch = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-    return textMatch ? textMatch[0].toLowerCase() : "";
+    // Scans EVERY match on the page, not just the first — a page can have
+    // a junk address (tracking pixel, template placeholder) appear before
+    // the business's real one in raw HTML order. Only checking the first
+    // match meant one junk hit near the top of the page threw away a
+    // legitimate email sitting further down the same page (2026-08-21 bug
+    // — this is why the junk filter made the scraper's fill-rate worse,
+    // not just its accuracy better).
+    for (const m of html.matchAll(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g)) {
+      if (!isLikelyJunkEmail(m[1])) return m[1].toLowerCase();
+    }
+    for (const m of html.matchAll(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)) {
+      if (!isLikelyJunkEmail(m[0])) return m[0].toLowerCase();
+    }
+    return "";
   } catch {
     return ""; // timed out, blocked, broken site, whatever — leave blank, never guess
   }
 }
+
+async function tryFindEmailOnWebsite(url) {
+  if (!url) return "";
+  const homepageEmail = await fetchEmailFromOnePage(url);
+  if (homepageEmail) return homepageEmail;
+
+  for (const path of ["/contact", "/contact-us", "/about"]) {
+    let pageUrl;
+    try {
+      pageUrl = new URL(path, url).toString();
+    } catch {
+      continue; // malformed website URL from Places — skip the extra pages
+    }
+    const email = await fetchEmailFromOnePage(pageUrl);
+    if (email) return email;
+  }
+  return "";
+}
+
+// Google's own official Places API business-type codes (a curated subset
+// relevant to small-town local businesses, out of the ~150 Google
+// publishes) — used as an exact includedType filter instead of guessing
+// at English phrases. See
+// https://developers.google.com/maps/documentation/places/web-service/place-types
+const PLACE_TYPE_LABELS = {
+  restaurant: "restaurants", fast_food_restaurant: "fast food restaurants", cafe: "cafes", bar: "bars",
+  bakery: "bakeries", pizza_restaurant: "pizza restaurants", sandwich_shop: "sandwich shops",
+  coffee_shop: "coffee shops", ice_cream_shop: "ice cream shops", hair_salon: "hair salons",
+  barber_shop: "barber shops", beauty_salon: "beauty salons", nail_salon: "nail salons",
+  car_repair: "auto repair shops", car_dealer: "car dealers", car_wash: "car washes", gas_station: "gas stations",
+  church: "churches", hindu_temple: "Hindu temples", mosque: "mosques", synagogue: "synagogues",
+  doctor: "doctors", dentist: "dentists", hospital: "hospitals", pharmacy: "pharmacies",
+  veterinary_care: "veterinary clinics", lawyer: "lawyers", insurance_agency: "insurance agencies",
+  real_estate_agency: "real estate agencies", bank: "banks", atm: "ATMs", electrician: "electricians",
+  plumber: "plumbers", roofing_contractor: "roofing contractors", painter: "painters",
+  moving_company: "moving companies", storage: "storage facilities", convenience_store: "convenience stores",
+  supermarket: "supermarkets", clothing_store: "clothing stores", shoe_store: "shoe stores",
+  jewelry_store: "jewelry stores", furniture_store: "furniture stores", hardware_store: "hardware stores",
+  home_goods_store: "home goods stores", florist: "florists", gym: "gyms", spa: "spas", hotel: "hotels",
+  motel: "motels", lodging: "lodging", funeral_home: "funeral homes", school: "schools", library: "libraries",
+  movie_theater: "movie theaters", park: "parks", general_contractor: "general contractors",
+};
+// Google's own official Places API business-type codes (a curated subset
+// relevant to small-town local businesses, out of the ~150 Google
+// publishes) — used as an exact includedType filter instead of guessing
+// at English phrases. See
+// https://developers.google.com/maps/documentation/places/web-service/place-types
+const KNOWN_PLACE_TYPES = new Set(Object.keys(PLACE_TYPE_LABELS));
 
 exports.outreachGenerateLeads = onCall({ secrets: [googlePlacesApiKey], timeoutSeconds: 300 }, async (request) => {
   await requireAdmin(request);
@@ -2626,6 +2829,21 @@ exports.outreachGenerateLeads = onCall({ secrets: [googlePlacesApiKey], timeoutS
   const town = (request.data?.town || "").trim();
   if (!town) throw new HttpsError("invalid-argument", "A town/city is required.");
   const count = Math.min(Math.max(parseInt(request.data?.count, 10) || OUTREACH_CANDIDATE_BATCH_SIZE, 1), OUTREACH_CANDIDATE_BATCH_SIZE);
+  // Optional — restricts the search to just this one category/phrase
+  // (e.g. "restaurants") instead of sweeping every category below. The
+  // town field is location-only; this is the only way to actually narrow
+  // to one kind of business, since typing a category into the town field
+  // would just get every category phrase prepended to it too.
+  const singleCategory = (request.data?.category || "").trim();
+  // Optional — Google's own official Places business-type code (from the
+  // portal's dropdown), e.g. "fast_food_restaurant". Filters by Google's
+  // actual categorization metadata (includedType) instead of hoping a
+  // plain-English phrase ranks the way we want in a text search — this is
+  // what actually fixes "restaurants" not reliably surfacing fast-food
+  // chains, rather than just wording around it. Validated against a known
+  // list so a tampered/garbage value can't reach the Places API as-is.
+  const rawPlaceType = (request.data?.placeType || "").trim();
+  const placeType = KNOWN_PLACE_TYPES.has(rawPlaceType) ? rawPlaceType : "";
 
   // Dedup against every business ever found before (any status), keyed by
   // website when available (most reliable), else phone — so re-running a
@@ -2643,43 +2861,126 @@ exports.outreachGenerateLeads = onCall({ secrets: [googlePlacesApiKey], timeoutS
   const apiKey = googlePlacesApiKey.value();
   const fieldMask = "places.id,places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.nationalPhoneNumber,places.websiteUri,nextPageToken";
   const found = [];
-  let pageToken = null;
   let pages = 0;
-  const maxPages = Math.ceil(count / 20);
 
-  while (found.length < count && pages < maxPages) {
-    const reqBody = pageToken ? { textQuery: `businesses in ${town}`, pageToken } : { textQuery: `businesses in ${town}`, pageSize: 20 };
-    const placesRes = await fetch("https://places.googleapis.com/v1/places:searchText", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": fieldMask },
-      body: JSON.stringify(reqBody),
-    });
-    if (!placesRes.ok) {
-      const errText = await placesRes.text().catch(() => "");
-      throw new HttpsError("internal", `Places API error (${placesRes.status}): ${errText}`);
+  // A single generic "businesses in X" query is relevance-ranked and
+  // capped at ~60 total results by Places API, no matter how many real
+  // businesses actually exist — it's a search, not an exhaustive
+  // directory. Worse, once earlier searches have already deduped out
+  // whatever that generic query tends to surface, re-running it returns
+  // fewer and fewer NEW businesses long before the town's real business
+  // count is anywhere close to exhausted (2026-08-21: this is why Pauls
+  // Valley "ran out" while 50+ known real businesses were never found).
+  // Running several category-specific queries instead surfaces a mostly
+  // DIFFERENT set of businesses per category — each gets its own ~60-result
+  // budget — so total real coverage is far higher than one query can reach.
+  // Each entry: { textQuery, includedType? }. includedType filters by
+  // Google's own categorization metadata directly — far more reliable
+  // than hoping a plain-English phrase ranks the way we want (this is
+  // what actually fixes "restaurants" not surfacing fast-food chains like
+  // Sonic/Arby's/Braum's/Subway/Domino's, confirmed missing from every
+  // phrase-based search tonight — 2026-08-21).
+  let SEARCH_CATEGORIES;
+  if (placeType) {
+    // Dropdown pick — still needs a real natural-language phrase for
+    // Places to understand this as "search near/in this town," not just
+    // the bare town name (a bare town name reads as "find a place named
+    // this town," filtered to the type, which finds nothing — this is
+    // exactly why the fast-food-type search returned 0 results before
+    // this fix, 2026-08-21). includedType is layered on top as an exact
+    // filter, so this gets the reliability of the official type code
+    // WITH the location/intent understanding a plain phrase provides.
+    SEARCH_CATEGORIES = [{ textQuery: `${PLACE_TYPE_LABELS[placeType]} in ${town}`, includedType: placeType }];
+  } else if (singleCategory) {
+    // Free-text fallback for anything not in the dropdown — old
+    // phrase-based behavior, unchanged.
+    SEARCH_CATEGORIES = [{ textQuery: `${singleCategory} in ${town}` }];
+  } else {
+    // Full sweep — includedType added wherever a specific Google type is
+    // confidently known; left off for the broader/vaguer categories,
+    // which still work as plain phrase searches like before.
+    SEARCH_CATEGORIES = [
+      { phrase: "restaurants", includedType: "restaurant" },
+      { phrase: "fast food restaurants", includedType: "fast_food_restaurant" },
+      { phrase: "retail stores" },
+      { phrase: "hair salons and barbershops" },
+      { phrase: "auto repair shops", includedType: "car_repair" },
+      { phrase: "churches", includedType: "church" },
+      { phrase: "medical and dental offices" },
+      { phrase: "law firms", includedType: "lawyer" },
+      { phrase: "insurance agencies", includedType: "insurance_agency" },
+      { phrase: "real estate agencies", includedType: "real_estate_agency" },
+      { phrase: "contractors and construction companies", includedType: "general_contractor" },
+      { phrase: "gas stations and convenience stores" },
+      { phrase: "banks and credit unions", includedType: "bank" },
+      { phrase: "daycare and childcare centers" },
+      { phrase: "veterinary clinics", includedType: "veterinary_care" },
+      { phrase: "gyms and fitness centers", includedType: "gym" },
+      { phrase: "hotels and motels" },
+      { phrase: "funeral homes", includedType: "funeral_home" },
+      { phrase: "pharmacies", includedType: "pharmacy" },
+      { phrase: "hardware stores", includedType: "hardware_store" },
+      { phrase: "other businesses" }, // generic catch-all last, to sweep up anything the specific categories missed
+    ].map((c) => ({ textQuery: `${c.phrase} in ${town}`, includedType: c.includedType }));
+  }
+  // When sweeping every category, 2 pages (40 results) each keeps total
+  // cost/runtime bounded across ~20 categories. When searching just one
+  // category on purpose, that cap would wrongly limit you to 40 even if
+  // you asked for 100 — so it scales up to the actual requested count instead.
+  const maxPagesPerCategory = singleCategory || placeType ? Math.ceil(count / 20) : 2;
+
+  for (const { textQuery, includedType } of SEARCH_CATEGORIES) {
+    if (found.length >= count) break;
+    let pageToken = null;
+    let categoryPages = 0;
+
+    try {
+      while (found.length < count && categoryPages < maxPagesPerCategory) {
+        const reqBody = {
+          textQuery,
+          ...(includedType ? { includedType } : {}),
+          ...(pageToken ? { pageToken } : { pageSize: 20 }),
+        };
+        const placesRes = await fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": fieldMask },
+          body: JSON.stringify(reqBody),
+        });
+        if (!placesRes.ok) {
+          // One bad category (or a transient API hiccup) shouldn't abort
+          // an entire multi-category sweep — log it and move on to the
+          // next category instead.
+          const errText = await placesRes.text().catch(() => "");
+          console.error(`outreachGenerateLeads: Places API error for "${textQuery}"${includedType ? ` (includedType=${includedType})` : ""} (${placesRes.status}): ${errText}`);
+          break;
+        }
+        const placesData = await placesRes.json();
+        for (const place of placesData.places || []) {
+          const phone = place.internationalPhoneNumber || place.nationalPhoneNumber || "";
+          const website = place.websiteUri || "";
+          if ((website && seenWebsites.has(website)) || (!website && phone && seenPhones.has(phone))) continue;
+          found.push({
+            companyName: place.displayName?.text || "",
+            phone,
+            website,
+            address: place.formattedAddress || "",
+          });
+          if (website) seenWebsites.add(website);
+          if (phone) seenPhones.add(phone);
+          if (found.length >= count) break;
+        }
+        pageToken = placesData.nextPageToken || null;
+        pages++;
+        categoryPages++;
+        if (!pageToken) break;
+        // Places API pageTokens need a brief moment before they're valid —
+        // same quirk the legacy Places API had; a short delay avoids an
+        // INVALID_ARGUMENT on the very next request.
+        if (pageToken) await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    } catch (err) {
+      console.error(`outreachGenerateLeads: category "${textQuery}" failed unexpectedly:`, err);
     }
-    const placesData = await placesRes.json();
-    for (const place of placesData.places || []) {
-      const phone = place.internationalPhoneNumber || place.nationalPhoneNumber || "";
-      const website = place.websiteUri || "";
-      if ((website && seenWebsites.has(website)) || (!website && phone && seenPhones.has(phone))) continue;
-      found.push({
-        companyName: place.displayName?.text || "",
-        phone,
-        website,
-        address: place.formattedAddress || "",
-      });
-      if (website) seenWebsites.add(website);
-      if (phone) seenPhones.add(phone);
-      if (found.length >= count) break;
-    }
-    pageToken = placesData.nextPageToken || null;
-    pages++;
-    if (!pageToken) break;
-    // Places API pageTokens need a brief moment before they're valid —
-    // same quirk the legacy Places API had; a short delay avoids an
-    // INVALID_ARGUMENT on the very next request.
-    if (pageToken) await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
   // Real, self-tracked usage — not pulled from Google's own billing API,
@@ -2713,6 +3014,166 @@ exports.outreachGenerateLeads = onCall({ secrets: [googlePlacesApiKey], timeoutS
   await batch.commit();
 
   return { created: found.length, requested: count };
+});
+
+// Basic robots.txt check — fetches {origin}/robots.txt and looks for a
+// Disallow rule under User-agent: * that would block the given path. Not
+// a full RFC 9309 parser (no wildcard/$ support, no explicit Allow:
+// override precedence) — good enough to catch the common, explicit "this
+// whole site/section says no bots" case, which is exactly why this check
+// exists: respect a site's stated policy instead of just checking
+// whether scraping it is technically possible. Missing/unreadable
+// robots.txt defaults to allowed, same as how real crawlers treat it.
+async function isAllowedByRobotsTxt(targetUrl) {
+  let origin, targetPath;
+  try {
+    const parsed = new URL(targetUrl);
+    origin = parsed.origin;
+    targetPath = parsed.pathname || "/";
+  } catch {
+    return true; // malformed URL — let the actual fetch fail with a clearer error instead
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(`${origin}/robots.txt`, { signal: controller.signal, headers: { "User-Agent": SCRAPER_USER_AGENT } });
+    clearTimeout(timeout);
+    if (!res.ok) return true;
+    const text = await res.text();
+    let appliesToUs = false;
+    for (const rawLine of text.split("\n")) {
+      const line = rawLine.split("#")[0].trim();
+      if (!line) continue;
+      const [rawKey, ...rest] = line.split(":");
+      const key = rawKey.trim().toLowerCase();
+      const value = rest.join(":").trim();
+      if (key === "user-agent") {
+        appliesToUs = value === "*";
+      } else if (appliesToUs && key === "disallow" && value && targetPath.startsWith(value)) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return true; // couldn't check — don't block a real import over a network hiccup
+  }
+}
+
+// Generic "find businesses on a directory page" importer — for Chamber
+// of Commerce member directories and similar listing pages. There's no
+// unified API across these (every chamber's site looks different), so
+// instead of parsing site-specific structured data, this pulls every
+// mailto: link AND every outbound link to what looks like a business's
+// own website off the page, then runs the SAME homepage/contact/about
+// email-finder outreachGenerateLeads already uses on each website found
+// that didn't already have a direct mailto:. Respects robots.txt — some
+// directory sites (state government ones especially) explicitly disallow
+// automated access, and this refuses rather than silently ignoring that.
+//
+// KNOWN LIMITATION: this only sees whatever HTML the server actually
+// sends back — a directory that renders its member list with
+// client-side JavaScript after the page loads (a lot of modern chamber
+// sites do) will come back essentially empty, since there's no headless
+// browser here to run that JavaScript. Works well on traditional
+// server-rendered directory pages; poorly on JS-heavy ones.
+const DIRECTORY_IGNORE_HOSTS = [
+  "facebook.com", "twitter.com", "x.com", "instagram.com", "linkedin.com",
+  "youtube.com", "google.com", "maps.google.com", "goo.gl", "yelp.com",
+  "tiktok.com", "pinterest.com",
+];
+
+exports.outreachImportFromDirectory = onCall({ timeoutSeconds: 300 }, async (request) => {
+  await requireAdmin(request);
+
+  const directoryUrl = (request.data?.directoryUrl || "").trim();
+  const town = (request.data?.town || "").trim();
+  if (!directoryUrl || !town) throw new HttpsError("invalid-argument", "directoryUrl and town are both required.");
+  let parsedDirectoryUrl;
+  try {
+    parsedDirectoryUrl = new URL(directoryUrl);
+  } catch {
+    throw new HttpsError("invalid-argument", `"${directoryUrl}" isn't a valid URL.`);
+  }
+
+  if (!(await isAllowedByRobotsTxt(directoryUrl))) {
+    throw new HttpsError(
+      "failed-precondition",
+      `${parsedDirectoryUrl.hostname}'s robots.txt says not to automatically crawl this page — skipping out of respect for that.`
+    );
+  }
+
+  const pageRes = await fetch(directoryUrl, { redirect: "follow", headers: { "User-Agent": SCRAPER_USER_AGENT } });
+  if (!pageRes.ok) throw new HttpsError("internal", `Couldn't load that page (HTTP ${pageRes.status}).`);
+  const html = await pageRes.text();
+
+  // Every mailto: link on the page, paired with its visible link text
+  // (usually the business/contact name) as a best-effort company name.
+  const directEmails = []; // [{companyName, email}]
+  const mailtoRe = /<a\b[^>]*href=["']mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = mailtoRe.exec(html))) {
+    const email = m[1].toLowerCase();
+    if (isLikelyJunkEmail(email)) continue;
+    directEmails.push({ companyName: m[2].replace(/<[^>]+>/g, "").trim(), email });
+  }
+
+  // Every outbound link that isn't the directory's own domain or a known
+  // social/utility platform — candidate business websites to check for
+  // an email the same way outreachGenerateLeads does. Capped at 40 to
+  // keep this function's own runtime bounded even if several sites are
+  // slow to respond.
+  const linkRe = /<a\b[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const seenHostnames = new Set();
+  const externalLinks = []; // [{companyName, website}]
+  const directoryHostname = parsedDirectoryUrl.hostname.replace(/^www\./, "");
+  while ((m = linkRe.exec(html)) && externalLinks.length < 40) {
+    let hostname;
+    try {
+      hostname = new URL(m[1]).hostname.replace(/^www\./, "");
+    } catch {
+      continue;
+    }
+    if (hostname === directoryHostname) continue;
+    if (DIRECTORY_IGNORE_HOSTS.some((h) => hostname === h || hostname.endsWith(`.${h}`))) continue;
+    if (seenHostnames.has(hostname)) continue;
+    seenHostnames.add(hostname);
+    externalLinks.push({ companyName: m[2].replace(/<[^>]+>/g, "").trim(), website: m[1] });
+  }
+
+  // Dedup against every candidate ever found, same reasoning as
+  // outreachGenerateLeads.
+  const existingSnap = await db.collection("outreachCandidates").get();
+  const seenWebsites = new Set();
+  const seenEmails = new Set();
+  existingSnap.docs.forEach((d) => {
+    const data = d.data();
+    if (data.website) seenWebsites.add(data.website);
+    if (data.email) seenEmails.add(data.email);
+  });
+
+  const now = Timestamp.now();
+  const batch = db.batch();
+  let created = 0;
+
+  for (const { companyName, email } of directEmails) {
+    if (seenEmails.has(email)) continue;
+    seenEmails.add(email);
+    const ref = db.collection("outreachCandidates").doc();
+    batch.set(ref, { companyName, phone: "", website: "", address: "", email, town, status: "candidate", source: "directory", searchedAt: now });
+    created++;
+  }
+
+  for (const { companyName, website } of externalLinks) {
+    if (seenWebsites.has(website)) continue;
+    seenWebsites.add(website);
+    const email = await tryFindEmailOnWebsite(website);
+    const ref = db.collection("outreachCandidates").doc();
+    batch.set(ref, { companyName, phone: "", website, address: "", email, town, status: "candidate", source: "directory", searchedAt: now });
+    created++;
+  }
+
+  await batch.commit();
+  return { created, directEmailsFound: directEmails.length, websitesChecked: externalLinks.length };
 });
 
 exports.outreachListCandidates = onCall(async (request) => {

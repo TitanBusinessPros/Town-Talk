@@ -28,7 +28,7 @@ const ADMIN_EMAILS = [
 const ALL_FUNCTIONS = [
   "onChessInvite", "onCheckersInvite", "onWynneWarsInvite", "onGolfInvite",
   "onFrisbeeGolfInvite", "onWarInvite", "onHeartsInvite", "onBlackjackInvite",
-  "onAirHockeyInvite", "onNewSignup", "onProfileSubmitted", "onFirstMessageNotify", "onChatReaction",
+  "onNewSignup", "onProfileSubmitted", "onFirstMessageNotify", "onChatReaction",
   "refreshLeaderboardCache", "computeNeighborOfTheWeek", "expireBusinessListings",
   "stripeWebhook", "expireMemberships", "backupAuthAccounts", "ensureMyAdminPerks",
   "adminDeleteProfile", "banUserAndIp", "adminRestoreProfile", "adminGrantGold",

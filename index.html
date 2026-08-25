@@ -517,7 +517,6 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     </div>
     <a href="#" id="nav-dashboard" style="display:none">Your page</a>
     <a href="#" id="nav-admin" style="display:none">Admin</a>
-    <a href="#" id="nav-auth">Sign in</a>
     <a href="#" id="nav-logout" style="display:none">Log out</a>
   </nav>
 </header>
@@ -2355,7 +2354,6 @@ document.addEventListener("click", (e) => {
   const wrap = document.getElementById("notif-bell-wrap");
   if (panel.style.display === "block" && !wrap.contains(e.target)) panel.style.display = "none";
 });
-document.getElementById("nav-auth").addEventListener("click", (e) => { e.preventDefault(); showView("landing"); });
 document.getElementById("nav-logout").addEventListener("click", async (e) => {
   e.preventDefault();
   await signOut(auth);
@@ -2440,7 +2438,6 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById("nav-dashboard").style.display = user ? "inline" : "none";
   updateProtectedNavVisibility(user);
   document.getElementById("nav-logout").style.display = user ? "inline" : "none";
-  document.getElementById("nav-auth").style.display = user ? "none" : "inline";
 
   if (user) {
     // A plain page reload (not just switching back to this tab) restores
@@ -3505,7 +3502,6 @@ const GAME_BADGE_META = {
   chessPoints: { icon: "♟", label: "Chess" },
   checkersPoints: { icon: "⛃", label: "Checkers" },
   wynneWarsPoints: { icon: "🧙", label: "WynneWars" },
-  airHockeyPoints: { icon: "🏒", label: "Air Hockey" },
   blackjackPoints: { icon: "🃏", label: "Blackjack" },
   cribbagePoints: { icon: "🎴", label: "Cribbage" },
   fgPoints: { icon: "🥏", label: "Frisbee Golf" },

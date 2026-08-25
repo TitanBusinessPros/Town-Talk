@@ -507,7 +507,7 @@ function main() {
   // Eufaula Lake: titanspace.html was still pointed at production).
   const SIMPLE_CONFIG_FILES = [
     "chess.html", "checkers.html", "ww.html",
-    "airhockey.html", "blackjack.html", "blocks.html", "deepsea.html",
+    "blackjack.html", "blocks.html", "deepsea.html",
     "desert.html", "dodge.html", "fg.html", "follow.html", "gamezone.html",
     "golf.html", "gravity-sling.html", "gtf.html", "hearts.html",
     "m3game.html", "match3.html", "neon-drift.html", "pong.html",
