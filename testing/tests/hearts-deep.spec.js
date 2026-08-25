@@ -226,4 +226,38 @@ test.describe.serial("Hearts — deep functional pass", () => {
 
     for (const p of r) await p.context.close();
   });
+
+  test("Hearts: direct invite cooldown blocks a second invite, then the original is declined", async () => {
+    // Exercises onHeartsInvite (index.js) via a real UI-created invite --
+    // same pattern as golf-deep.spec.js's equivalent test, using the
+    // original 4-player set's first two accounts (a direct invite only
+    // needs 2, the other 2 seats on a 4-player table stay open regardless).
+    const uidA = players[0].uid;
+    const uidB = players[1].uid;
+    const pairId = [uidA, uidB].sort().join("_");
+    const { FieldValue } = require("firebase-admin/firestore");
+    await admin.firestore().collection("friendRequests").doc(pairId).set({
+      participants: [uidA, uidB].sort(),
+      participantNames: { [uidA]: "Hearts P1", [uidB]: "Hearts P2" },
+      requestedBy: uidA,
+      status: "accepted",
+      requestedAt: FieldValue.serverTimestamp(),
+      respondedAt: FieldValue.serverTimestamp(),
+    });
+
+    await players[0].page.goto("/hearts.html");
+    await players[0].page.locator("#mode-tile-online").click();
+    await players[0].page.locator("#friends-invite-list").waitFor();
+    await players[0].page.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(players[0].page.locator(".message, #waiting-message")).toBeVisible({ timeout: 10_000 }).catch(() => {});
+
+    await players[0].page.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(players[0].page.locator("#waiting-message")).toContainText("again in about", { timeout: 10_000 });
+
+    await players[1].page.goto("/hearts.html");
+    await players[1].page.locator("#mode-tile-online").click();
+    await players[1].page.locator("#my-invites-list").waitFor();
+    await players[1].page.locator('button:has-text("Decline")').first().click();
+    await expect(players[1].page.locator("#my-invites-empty")).toBeVisible({ timeout: 10_000 });
+  });
 });

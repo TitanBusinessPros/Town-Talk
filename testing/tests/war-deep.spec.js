@@ -202,4 +202,38 @@ test.describe.serial("War — deep functional pass", () => {
     await contextC.close();
     await contextD.close();
   });
+
+  test("War: direct invite cooldown blocks a second invite, then the original is declined", async () => {
+    // Exercises onWarInvite (index.js) -- creating the invite via the real
+    // UI is what actually triggers it, not just the cooldown/decline
+    // mechanics this test asserts on. Same pattern as golf-deep.spec.js's
+    // equivalent test, adapted for warGames.
+    const pairId = [uidA, uidB].sort().join("_");
+    const { FieldValue } = require("firebase-admin/firestore");
+    await admin.firestore().collection("friendRequests").doc(pairId).set({
+      participants: [uidA, uidB].sort(),
+      participantNames: { [uidA]: "War Robot A", [uidB]: "War Robot B" },
+      requestedBy: uidA,
+      status: "accepted",
+      requestedAt: FieldValue.serverTimestamp(),
+      respondedAt: FieldValue.serverTimestamp(),
+    });
+
+    await pageA.goto("/war.html");
+    await pageA.locator("#mode-tile-online").click();
+    await pageA.locator("#friends-invite-list").waitFor();
+    await pageA.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(pageA.locator(".message, #waiting-message")).toBeVisible({ timeout: 10_000 }).catch(() => {});
+
+    // Second attempt right away should be blocked by the 1-hour cooldown.
+    await pageA.locator("#friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(pageA.locator("#waiting-message")).toContainText("again in about", { timeout: 10_000 });
+
+    // Robot B declines the still-pending original invite.
+    await pageB.goto("/war.html");
+    await pageB.locator("#mode-tile-online").click();
+    await pageB.locator("#my-invites-list").waitFor();
+    await pageB.locator('button:has-text("Decline")').first().click();
+    await expect(pageB.locator("#my-invites-empty")).toBeVisible({ timeout: 10_000 });
+  });
 });

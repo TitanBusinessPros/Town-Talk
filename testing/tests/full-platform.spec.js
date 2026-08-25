@@ -240,7 +240,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
 
   test("Robot A sends a friend request, Robot B accepts", async () => {
     await pageA.locator("#directory-search").fill(ROBOT_B.name);
-    await pageA.locator(".directory-card", { hasText: ROBOT_B.name }).click();
+    await pageA.locator(".directory-card", { hasText: ROBOT_B.name }).first().click();
     await pageA.locator(".friend-add-btn").click();
     await expect(pageA.locator(".friend-action")).toContainText("Request sent");
 
@@ -252,7 +252,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
   test("Robot A sends Robot B their first message, and it arrives", async () => {
     await pageA.locator("#nav-directory").click();
     await pageA.locator("#directory-search").fill(ROBOT_B.name);
-    await pageA.locator(".directory-card", { hasText: ROBOT_B.name }).click();
+    await pageA.locator(".directory-card", { hasText: ROBOT_B.name }).first().click();
     await pageA.locator(".msg-btn").click();
     await pageA.locator("#thread-input").fill("Hey neighbor, this is an automated test message.");
     await pageA.locator("#thread-form button[type=submit]").click();
@@ -336,6 +336,43 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await expect(pageA.locator(".chat-msg-row").last().locator('[data-action="like"]')).toContainText("1");
   });
 
+  test("Chat room: Robot B replies to Robot A's message, and posting it stamps the daily-reward chat qualifier", async () => {
+    // Exercises two backend triggers on the SAME write (index.js):
+    // onChatReply (only fires for an actual reply, unlike the plain post
+    // above) and onChatMessageDailyRewardQualify (fires on every chat
+    // message create, including this one -- confirmed here explicitly
+    // rather than just assumed as a side effect of the earlier post test).
+    await pageB.locator(".chat-msg-row").last().locator(".chat-reply-btn").click();
+    await pageB.locator("#chatroom-input").fill("Automated reply message");
+    await pageB.locator("#chatroom-form button[type=submit]").click();
+    await expect(pageB.locator(".chat-msg-row").last()).toContainText("Automated reply message");
+    await expect(pageB.locator(".chat-msg-row").last().locator(".chat-reply-quote")).toBeVisible();
+
+    // onChatMessageDailyRewardQualify stamps the SENDER (Robot B here) --
+    // poll rather than a blind sleep, since the trigger runs async.
+    const todayCentral = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date());
+    await expect(async () => {
+      const snap = await admin.firestore().collection("users").doc(uidB).get();
+      expect(snap.data()?.dailyRewards?.chatMessageDate).toBe(todayCentral);
+    }).toPass({ timeout: 10_000 });
+  });
+
+  test("Admin grants Robot B a Gold membership via the directory card", async () => {
+    // Exercises adminGrantGold (index.js). Robot A doubles as this file's
+    // admin (makeAdmin(uidA) in the setup test above).
+    await pageA.locator("#nav-directory").click();
+    await pageA.locator("#directory-search").fill(ROBOT_B.name);
+    await pageA.locator(".directory-card", { hasText: ROBOT_B.name }).first().click();
+
+    pageA.once("dialog", (d) => d.accept());
+    await pageA.locator(".admin-grant-gold-btn").click();
+
+    await expect(async () => {
+      const snap = await admin.firestore().collection("users").doc(uidB).get();
+      expect(snap.data()?.isGoldMember).toBe(true);
+    }).toPass({ timeout: 10_000 });
+  });
+
   test("Browser Back button leaves a chat room instead of navigating away from the app", async () => {
     // See the matching DM-thread test above for the full bug description.
     // pageA is still inside the room it just posted in.
@@ -359,7 +396,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
   test("Blocking: Robot A blocks Robot B, who can no longer message them", async () => {
     await pageA.locator("#nav-directory").click();
     await pageA.locator("#directory-search").fill(ROBOT_B.name);
-    await pageA.locator(".directory-card", { hasText: ROBOT_B.name }).click();
+    await pageA.locator(".directory-card", { hasText: ROBOT_B.name }).first().click();
     pageA.once("dialog", (dialog) => dialog.accept()); // confirm() popup
     await pageA.locator(".block-btn").click();
     await pageA.waitForTimeout(500);
