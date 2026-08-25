@@ -44,7 +44,9 @@ const EDITIONS = {
     ],
     firebaseConfig: {
       apiKey: "AIzaSyAzSpyuWsl_533D24U1J9fYEY0efw30FO0",
-      authDomain: "eufaula-lake.firebaseapp.com",
+      // 2026-08-24: eufaula.townfuss.com is already a real Firebase
+      // Hosting custom domain, same fix as Pauls Valley/OKC.
+      authDomain: "eufaula.townfuss.com",
       projectId: "eufaula-lake",
       storageBucket: "eufaula-lake.firebasestorage.app",
       messagingSenderId: "825364437058",
@@ -87,7 +89,9 @@ const EDITIONS = {
     ],
     firebaseConfig: {
       apiKey: "AIzaSyCDV5bXQ5w57kJ3Y5sQPyo2tkv8YnGpuSY",
-      authDomain: "tulsa-townfuss.firebaseapp.com",
+      // 2026-08-24: tulsa.townfuss.com is already a real Firebase
+      // Hosting custom domain, same fix as Pauls Valley/OKC.
+      authDomain: "tulsa.townfuss.com",
       projectId: "tulsa-townfuss",
       storageBucket: "tulsa-townfuss.firebasestorage.app",
       messagingSenderId: "184420545538",
@@ -122,7 +126,9 @@ const EDITIONS = {
     ],
     firebaseConfig: {
       apiKey: "AIzaSyBtr7np4GIBc4VoXOSi3j5nj44qkqnTwsU",
-      authDomain: "edmond-townfuss.firebaseapp.com",
+      // 2026-08-24: edmond.townfuss.com is already a real Firebase
+      // Hosting custom domain, same fix as Pauls Valley/OKC.
+      authDomain: "edmond.townfuss.com",
       projectId: "edmond-townfuss",
       storageBucket: "edmond-townfuss.firebasestorage.app",
       messagingSenderId: "1010429464536",
@@ -158,7 +164,11 @@ const EDITIONS = {
     ],
     firebaseConfig: {
       apiKey: "AIzaSyCuqGQpiifP7yjBNe5FVlORSNkUgianTI8",
-      authDomain: "okc-townfuss.firebaseapp.com",
+      // 2026-08-24: okc.townfuss.com is already a real Firebase Hosting
+      // custom domain (CERT_ACTIVE, confirmed /__/auth/handler works
+      // there) -- pointing authDomain at it directly makes the auth
+      // handler same-origin with the site, same fix as Pauls Valley.
+      authDomain: "okc.townfuss.com",
       projectId: "okc-townfuss",
       storageBucket: "okc-townfuss.firebasestorage.app",
       messagingSenderId: "1089534300505",
@@ -201,7 +211,9 @@ const EDITIONS = {
     ],
     firebaseConfig: {
       apiKey: "AIzaSyA9SNsAbvnWxwB_fK4VmXC00wORipshFig",
-      authDomain: "poteau-townfuss.firebaseapp.com",
+      // 2026-08-24: poteau.townfuss.com is already a real Firebase
+      // Hosting custom domain, same fix as Pauls Valley/OKC.
+      authDomain: "poteau.townfuss.com",
       projectId: "poteau-townfuss",
       storageBucket: "poteau-townfuss.firebasestorage.app",
       messagingSenderId: "786435750960",
@@ -239,7 +251,9 @@ const EDITIONS = {
     ],
     firebaseConfig: {
       apiKey: "AIzaSyBvWLgGupdzmJAMestDKlqMX-I80hJlAns",
-      authDomain: "prague-townfuss.firebaseapp.com",
+      // 2026-08-24: prague.townfuss.com is already a real Firebase
+      // Hosting custom domain, same fix as Pauls Valley/OKC.
+      authDomain: "prague.townfuss.com",
       projectId: "prague-townfuss",
       storageBucket: "prague-townfuss.firebasestorage.app",
       messagingSenderId: "220339095620",
