@@ -19,6 +19,11 @@ name: CI Phase 3 — Full Regression Suite
 # Flagging this rather than silently dropping coverage.
 
 on:
+  # TEMP: push trigger added only to get one real verified run on this
+  # branch for the new 9-function coverage, since workflow_dispatch
+  # requires the workflow to already be on the default branch. Will be
+  # removed before this goes near main.
+  push:
   schedule:
     - cron: "0 9 * * *" # nightly, 9am UTC -- adjust as you like
   workflow_dispatch: {} # adds a manual "Run workflow" button in the Actions tab
