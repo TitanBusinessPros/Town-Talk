@@ -1,0 +1,102 @@
+name: CI Phase 2 — Targeted Smoke Tests
+
+# Runs on every push/PR, same as Phase 1, but this one boots the full
+# emulator suite and Playwright. Kept deliberately small -- just the two
+# spec files that actually exercise Google Sign-In / the auth-critical
+# path (ip-blocker.spec.js, admin-delete-restore.spec.js) -- so this stays
+# fast enough to run on every push rather than needing the full ~19-minute
+# suite. NOTE: this is a simplified version of "whichever game was just
+# touched" -- that would need real diff-based test selection, which adds
+# real complexity; deferred rather than half-built. Flagging that
+# explicitly rather than silently shipping less than discussed.
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Java (required by the emulator suite)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install firebase-tools
+        run: npm install -g firebase-tools
+
+      - name: Install root dependencies
+        # Needed for the Functions emulator to actually load index.js --
+        # its require() calls (firebase-admin, stripe, etc.) need real
+        # node_modules present, same as running it locally.
+        run: npm install
+
+      - name: Install testing dependencies
+        working-directory: testing
+        run: npm install
+
+      - name: Install Playwright's Chromium
+        # playwright.config.js defines no custom browser projects, so
+        # Chromium (Playwright's default) is the only one this suite
+        # actually uses -- confirmed by reading the config, not assumed.
+        working-directory: testing
+        run: npx playwright install --with-deps chromium
+
+      - name: Write .secret.local from GitHub Actions secrets
+        # Confirmed test-mode (sk_test_...) keys, safe here. GitHub
+        # automatically masks any log output matching a registered
+        # secret's value, so this heredoc is safe even though it looks
+        # like it's "printing" the values.
+        run: |
+          cat > .secret.local <<EOF
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET_1=${{ secrets.STRIPE_WEBHOOK_SECRET_1 }}
+          STRIPE_WEBHOOK_SECRET_2=${{ secrets.STRIPE_WEBHOOK_SECRET_2 }}
+          STRIPE_WEBHOOK_SECRET_3=${{ secrets.STRIPE_WEBHOOK_SECRET_3 }}
+          EOF
+
+      - name: Start Firebase emulators
+        # Real project ID (town-talk-87ff7), not a demo- prefix -- this
+        # matches what's actually been proven working all night, locally,
+        # against these same emulators. Everything already connects via
+        # connectAuthEmulator/connectFirestoreEmulator/etc. to 127.0.0.1,
+        # so no real GCP project is ever actually touched; switching to a
+        # demo- ID here would be an untested change to something that
+        # already works, not a safety improvement.
+        run: firebase emulators:start --project town-talk-87ff7 &
+
+      - name: Wait for emulator to be ready
+        run: |
+          for i in $(seq 1 40); do
+            if curl -s -o /dev/null http://localhost:4000; then
+              echo "emulator ready after ~$((i*3))s"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "emulator did not become ready in time"
+          exit 1
+
+      - name: Run smoke test subset
+        working-directory: testing
+        env:
+          TEST_PROJECT_ID: town-talk-87ff7
+        run: npx playwright test ip-blocker.spec.js admin-delete-restore.spec.js
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results
+          path: testing/test-results/

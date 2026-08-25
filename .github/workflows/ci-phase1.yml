@@ -1,0 +1,65 @@
+name: CI Phase 1 — Fast Safeguards
+
+# Runs on every push (any branch, while this is being built out/reviewed)
+# and on every pull request into main. Fast, cheap checks only -- no
+# Playwright, no full emulator boot beyond a one-shot rules load-check.
+# Meant to catch the failure classes identified in the 2026-08-24 CI risk
+# review before anything more expensive runs: a syntax error that would
+# block all 59 Cloud Functions from deploying, a broken firestore.rules
+# file, and the pirates.html-class silent config-swap gap.
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  fast-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Java (required by the Firestore emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install firebase-tools
+        run: npm install -g firebase-tools
+
+      - name: Syntax-check index.js
+        # Catches the exact failure mode that would block deployment of
+        # all 59 exported Cloud Functions at once -- the whole file has to
+        # parse as one module before any individual function can deploy.
+        run: node --check index.js
+
+      - name: Config parity check
+        # Catches the pirates.html bug class: a new game file with its own
+        # firebaseConfig block that never got added to build-edition.js's
+        # SIMPLE_CONFIG_FILES array, which silently ships production's
+        # config to every other edition with no error anywhere else.
+        run: node testing/validate-config-parity.js
+
+      - name: Dry-run build for all 6 non-Pauls-Valley editions
+        # Every swap in build-edition.js throws loudly on a mismatch, so a
+        # clean exit across all 6 editions IS the check here.
+        run: |
+          set -e
+          for edition in eufaula-lake tulsa-townfuss edmond-townfuss okc-townfuss poteau-townfuss prague-townfuss; do
+            echo "--- Building $edition ---"
+            node testing/build-edition.js "$edition"
+          done
+
+      - name: Firestore rules load-check
+        # "demo-" prefix guarantees this can never touch a real project --
+        # no credentials, no login, no service account needed. Just confirms
+        # firestore.rules parses and the emulator can actually load it,
+        # which is the same rules file every edition deploys unchanged.
+        run: firebase emulators:exec --only firestore --project demo-townfuss "echo Firestore rules loaded successfully"
