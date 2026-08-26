@@ -548,8 +548,8 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
         <div id="town-finder-count" class="town-finder-count"></div>
       </div>
       <div class="view-header">
-        <p class="eyebrow">Pauls Valley · Oklahoma</p>
-        <h1>Sign in to your Pauls Valley area account</h1>
+        <p class="eyebrow" id="landing-eyebrow">Pauls Valley · Oklahoma</p>
+        <h1 id="landing-heading">Sign in to your Pauls Valley area account</h1>
         <p>New accounts sign in with Google. Your profile goes live automatically — a photo only holds for admin review if our automated screening flags it.</p>
         <p><a href="#" id="landing-why-link">New here? See why Town Fuss is different &rarr;</a></p>
       </div>
@@ -1805,6 +1805,26 @@ if (aboutTownsWrap) {
 const bannerSubEl = document.querySelector(".brand-banner-sub");
 if (bannerSubEl) bannerSubEl.textContent = `${EDITION_NAME} · ${EDITION_REGION}`;
 
+// Town-specific landing heading: the town-finder search below appends
+// ?town=<name> to every link, so the destination shows the ACTUAL town
+// someone clicked (e.g. "Sign in to your Wynnewood area account")
+// instead of always showing its edition's fixed home-town name — every
+// one of an edition's towns used to land on the exact same generic
+// heading. Validated against ALL_EDITIONS_TOWNS (case-insensitive) so an
+// unrecognized or tampered ?town= value is ignored and the normal
+// edition-default heading (set in the static HTML, swapped per edition
+// by build-edition.js) is left alone. Added 2026-08-26.
+const clickedTownParam = new URLSearchParams(location.search).get("town");
+const clickedTownMatch = clickedTownParam
+  ? ALL_EDITIONS_TOWNS.find((t) => t.town.toLowerCase() === clickedTownParam.toLowerCase())
+  : null;
+if (clickedTownMatch) {
+  const landingEyebrow = document.getElementById("landing-eyebrow");
+  if (landingEyebrow) landingEyebrow.textContent = `${clickedTownMatch.town} · Oklahoma`;
+  const landingHeading = document.getElementById("landing-heading");
+  if (landingHeading) landingHeading.textContent = `Sign in to your ${clickedTownMatch.town} area account`;
+}
+
 // "Find your town" search — shows every town across every edition,
 // sorted alphabetically. Empty box shows the full A-Z list to browse;
 // typing narrows it down live. Picking a town navigates to that
@@ -1853,7 +1873,12 @@ function renderTownFinder() {
     }
     const item = document.createElement("a");
     item.className = "town-finder-item";
-    item.href = e.url;
+    // ?town=<name> so the destination shows the ACTUAL town clicked (see
+    // the landing-heading override below), not just its edition's fixed
+    // home-town name -- e.g. clicking Wynnewood (a Pauls Valley Edition
+    // town) used to land on the same generic "Sign in to your Pauls
+    // Valley area account" heading as every other one of its 16 towns.
+    item.href = `${e.url}?town=${encodeURIComponent(e.town)}`;
     item.innerHTML = `<span>${highlightMatch(e.town, query)}</span><span class="town-finder-edition-tag">${escapeHtml(e.edition.replace(/ Edition$/, ""))}</span>`;
     townFinderList.appendChild(item);
   });
