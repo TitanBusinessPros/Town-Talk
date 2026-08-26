@@ -1092,14 +1092,14 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     <div class="view-header">
       <p class="eyebrow">Town Fuss</p>
       <h1>A community built for small-town Oklahoma — not the whole internet</h1>
-      <p id="about-hero-copy">Most social platforms try to connect you with everyone, everywhere. Town Fuss does the opposite on purpose: it's built specifically for the people living in and around Pauls Valley — a place to actually meet your neighbors, not scroll past strangers three time zones away.</p>
+      <p id="about-hero-copy">Most social platforms try to connect you with everyone, everywhere. Town Fuss does the opposite on purpose: it's built specifically for the towns and cities of Oklahoma — a place to actually meet your neighbors, not scroll past strangers three time zones away.</p>
     </div>
 
     <div class="about-grid">
       <div class="about-card">
         <div class="about-card-icon">🏡</div>
         <h2>Small towns, not big cities</h2>
-        <p id="about-smalltowns-copy">Town Fuss isn't trying to be a giant social network for the whole planet. It's made for Pauls Valley and the small Oklahoma towns around it — so when you post, message, or join a chat room, the people on the other end actually live nearby.</p>
+        <p id="about-smalltowns-copy">Town Fuss isn't trying to be a giant social network for the whole planet. It's made for the small towns and cities of Oklahoma — so when you post, message, or join a chat room, the people on the other end actually live nearby.</p>
       </div>
       <div class="about-card">
         <div class="about-card-icon">🔞</div>
@@ -1800,19 +1800,6 @@ if (aboutTownsWrap) {
     chip.textContent = town;
     aboutTownsWrap.appendChild(chip);
   });
-}
-
-// Same Pauls-Valley-only scoping as the town chips above: the wording on
-// this page originally named Pauls Valley specifically and read as
-// "built for one town." Overridden here (not edited in the static HTML)
-// so the other 6 editions keep their own "built for the people around
-// [their town]" copy via build-edition.js's existing global "Pauls
-// Valley" text swap, unchanged. Added 2026-08-25.
-if (firebaseConfig.projectId === "town-talk-87ff7") {
-  const heroCopy = document.getElementById("about-hero-copy");
-  if (heroCopy) heroCopy.textContent = "Most social platforms try to connect you with everyone, everywhere. Town Fuss does the opposite on purpose: it's built specifically for the towns and cities of Oklahoma — a place to actually meet your neighbors, not scroll past strangers three time zones away.";
-  const smallTownsCopy = document.getElementById("about-smalltowns-copy");
-  if (smallTownsCopy) smallTownsCopy.textContent = "Town Fuss isn't trying to be a giant social network for the whole planet. It's made for the small towns and cities of Oklahoma — so when you post, message, or join a chat room, the people on the other end actually live nearby.";
 }
 
 const bannerSubEl = document.querySelector(".brand-banner-sub");
