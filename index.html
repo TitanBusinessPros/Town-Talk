@@ -1786,14 +1786,14 @@ populateTownOptions("biz-town");
 
 const aboutTownsWrap = document.getElementById("about-towns");
 if (aboutTownsWrap) {
-  // Pauls Valley's About page shows all 112 towns across every edition
+  // Every edition's About page shows all 112 towns across every edition
   // (from ALL_EDITIONS_TOWNS, defined below after "END EDITION
-  // CONFIGURATION" — see its own comment for why it has to live there) to
-  // make the reach obvious; every other edition still shows just its own
-  // EDITION_TOWNS, unchanged. Added 2026-08-25.
-  const aboutChipTowns = firebaseConfig.projectId === "town-talk-87ff7"
-    ? ALL_EDITIONS_TOWNS.map((t) => t.town)
-    : EDITION_TOWNS;
+  // CONFIGURATION" — see its own comment for why it has to live there),
+  // not just its own EDITION_TOWNS -- universal across all 7 editions.
+  // Originally gated to Pauls Valley only (2026-08-25); corrected to
+  // apply everywhere per explicit instruction (2026-08-26), same as the
+  // hero/feature-card wording above.
+  const aboutChipTowns = ALL_EDITIONS_TOWNS.map((t) => t.town);
   aboutChipTowns.forEach((town) => {
     const chip = document.createElement("span");
     chip.className = "about-town-chip";
