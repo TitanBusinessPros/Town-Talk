@@ -426,7 +426,6 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
 .town-finder-group-label { font-family: var(--font-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 0.55rem 0.9rem 0.3rem; position: sticky; top: 0; background: var(--ink-800); }
 .town-finder-item { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; width: 100%; text-align: left; padding: 0.6rem 0.9rem; border: none; background: none; font-family: var(--font-body); font-size: 0.92rem; color: var(--paper-050); cursor: pointer; text-decoration: none; }
 .town-finder-item:hover, .town-finder-item:focus-visible { background: var(--ink-700); outline: none; }
-.town-finder-item .town-finder-edition-tag { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; }
 .town-finder-item mark { background: none; color: var(--amber-500); font-weight: 600; }
 .town-finder-empty { padding: 1.5rem 0.9rem; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
 .town-finder-count { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); margin-top: 0.6rem; }
@@ -1879,7 +1878,9 @@ function renderTownFinder() {
     // town) used to land on the same generic "Sign in to your Pauls
     // Valley area account" heading as every other one of its 16 towns.
     item.href = `${e.url}?town=${encodeURIComponent(e.town)}`;
-    item.innerHTML = `<span>${highlightMatch(e.town, query)}</span><span class="town-finder-edition-tag">${escapeHtml(e.edition.replace(/ Edition$/, ""))}</span>`;
+    // Just the town/city name now -- the edition/district tag next to it
+    // read as confusing clutter (2026-08-26), removed.
+    item.innerHTML = `<span>${highlightMatch(e.town, query)}</span>`;
     townFinderList.appendChild(item);
   });
 
