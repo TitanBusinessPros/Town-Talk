@@ -1,0 +1,290 @@
+name: CI
+
+# Consolidated from the unmerged ci/phase-1-safeguards branch (phase1 +
+# phase2 + phase3 workflow files), fixed and folded into one pipeline:
+#   - Dropped two broken spec references that would have hard-failed the
+#     matrix on first run: daily-reward-redeem.spec.js and
+#     airhockey-deep.spec.js never existed in testing/tests/ (the latter
+#     was removed along with the Air Hockey game itself).
+#   - Added every spec file that existed in testing/tests/ but was never
+#     wired into any matrix group, including outreach-admin.spec.js, which
+#     needs its own job because it depends on a second repo
+#     (TitanBusinessPros/TF-Email-Agent-1, the townfuss-outreach-admin
+#     static frontend) — see the outreach-admin-test job below.
+#   - test-matrix and outreach-admin-test both gate on fast-checks passing
+#     first, so a trivial syntax/config break fails in under a minute
+#     instead of burning the full ~20-minute matrix.
+#
+# NOT carried over from the branch: its own modified copies of
+# testing/build-edition.js, testing/new-edition-setup.js,
+# testing/tests/blackjack-deep.spec.js, full-platform.spec.js, and
+# hearts-deep.spec.js/war-deep.spec.js. That branch was forked before ~40
+# commits of real work on main (the outreach system, Air Hockey removal,
+# town-finder changes, etc.), so those particular file diffs are stale and
+# were deliberately left out — only testing/validate-config-parity.js (a
+# clean addition, verified to pass against main's current
+# build-edition.js) was pulled in.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  fast-checks:
+    name: Fast safeguards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Java (required by the Firestore emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install firebase-tools
+        run: npm install -g firebase-tools
+
+      - name: Syntax-check index.js
+        # The whole file has to parse as one module before any of its 58
+        # exported Cloud Functions can deploy -- catches that failure class
+        # in seconds instead of mid-deploy.
+        run: node --check index.js
+
+      - name: Config parity check
+        # Catches the pirates.html bug class: a game file with its own
+        # firebaseConfig block that never got added to build-edition.js's
+        # SIMPLE_CONFIG_FILES array, which silently ships production's
+        # config to every other edition with no error anywhere else.
+        run: node testing/validate-config-parity.js
+
+      - name: Dry-run build for all 6 non-Pauls-Valley editions
+        # Every swap in build-edition.js throws loudly on a mismatch, so a
+        # clean exit across all 6 editions IS the check here.
+        run: |
+          set -e
+          for edition in eufaula-lake tulsa-townfuss edmond-townfuss okc-townfuss poteau-townfuss prague-townfuss; do
+            echo "--- Building $edition ---"
+            node testing/build-edition.js "$edition"
+          done
+
+      - name: Firestore rules load-check
+        # "demo-" prefix guarantees this can never touch a real project --
+        # no credentials, no login, no service account needed. Just confirms
+        # firestore.rules parses and the emulator can actually load it,
+        # which is the same rules file every edition deploys unchanged.
+        run: firebase emulators:exec --only firestore --project demo-townfuss "echo Firestore rules loaded successfully"
+
+  test-matrix:
+    name: Playwright (${{ matrix.group.name }})
+    needs: fast-checks
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - name: platform-and-auth
+            specs: "admin-delete-restore.spec.js ip-blocker.spec.js chatsponsor-townfounder.spec.js sponsor-invite.spec.js tier-limits.spec.js full-platform.spec.js"
+          - name: games-1
+            specs: "blackjack-deep.spec.js blocks-deep.spec.js cribbage-deep.spec.js deepsea-deep.spec.js desert-deep.spec.js"
+          - name: games-2
+            specs: "dodge-deep.spec.js fg-deep.spec.js follow-deep.spec.js golf-deep.spec.js gravity-sling-deep.spec.js gtf-deep.spec.js"
+          - name: games-3
+            specs: "hearts-deep.spec.js match3-deep.spec.js neon-drift-deep.spec.js pirates-deep.spec.js pirates-mobile.spec.js pong-deep.spec.js"
+          - name: games-4
+            specs: "sea-war-deep.spec.js stacking-checkers-deep.spec.js sudoku-deep.spec.js titanspace-deep.spec.js war-deep.spec.js"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Java (required by the emulator suite)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install firebase-tools
+        run: npm install -g firebase-tools
+
+      - name: Install root dependencies
+        # Needed for the Functions emulator to actually load index.js --
+        # its require() calls (firebase-admin, stripe, etc.) need real
+        # node_modules present, same as running it locally.
+        run: npm install
+
+      - name: Install testing dependencies
+        working-directory: testing
+        run: npm install
+
+      - name: Install Playwright's Chromium
+        working-directory: testing
+        run: npx playwright install --with-deps chromium
+
+      - name: Write .secret.local from GitHub Actions secrets
+        # Confirmed test-mode (sk_test_...) keys, safe here. GitHub
+        # automatically masks any log output matching a registered
+        # secret's value, so this heredoc is safe even though it looks
+        # like it's "printing" the values.
+        run: |
+          cat > .secret.local <<EOF
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET_1=${{ secrets.STRIPE_WEBHOOK_SECRET_1 }}
+          STRIPE_WEBHOOK_SECRET_2=${{ secrets.STRIPE_WEBHOOK_SECRET_2 }}
+          STRIPE_WEBHOOK_SECRET_3=${{ secrets.STRIPE_WEBHOOK_SECRET_3 }}
+          EOF
+
+      - name: Start Firebase emulators
+        run: firebase emulators:start --project town-talk-87ff7 &
+
+      - name: Wait for emulator to be ready
+        run: |
+          for i in $(seq 1 40); do
+            if curl -s -o /dev/null http://localhost:4000; then
+              echo "emulator ready after ~$((i*3))s"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "emulator did not become ready in time"
+          exit 1
+
+      - name: Run this group's spec files
+        working-directory: testing
+        env:
+          TEST_PROJECT_ID: town-talk-87ff7
+        run: npx playwright test ${{ matrix.group.specs }}
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-matrix-results-${{ matrix.group.name }}
+          path: testing/test-results/
+
+  outreach-admin-test:
+    name: Playwright (outreach-admin)
+    needs: fast-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Town-Talk
+        uses: actions/checkout@v4
+
+      - name: Checkout townfuss-outreach-admin (TF-Email-Agent-1)
+        # Both repos belong to the TitanBusinessPros account, and
+        # TF-Email-Agent-1 is public, so the default GITHUB_TOKEN needs no
+        # extra scopes or PAT setup here.
+        #
+        # NOTE ON REPO NAME: TitanBusinessPros/townfuss-outreach-admin does
+        # not exist -- the actual GitHub repo for this codebase is named
+        # TF-Email-Agent-1 (confirmed via the API before writing this
+        # workflow). It's checked out to ../townfuss-outreach-admin (a
+        # sibling of this repo's own checkout) because that's the exact
+        # relative path testing/serveOutreachAdmin.js hardcodes
+        # (path.join(__dirname, "..", "..", "townfuss-outreach-admin")) --
+        # the checkout path has to match that local-dev convention, not the
+        # remote repo's actual name.
+        uses: actions/checkout@v4
+        with:
+          repository: TitanBusinessPros/TF-Email-Agent-1
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: ../townfuss-outreach-admin
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Java (required by the emulator suite)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Install firebase-tools
+        run: npm install -g firebase-tools
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install testing dependencies
+        working-directory: testing
+        run: npm install
+
+      - name: Install Playwright's Chromium
+        working-directory: testing
+        run: npx playwright install --with-deps chromium
+
+      - name: Write .secret.local from GitHub Actions secrets
+        # index.js declares these at module scope regardless of which
+        # function actually runs, so the emulator needs them present the
+        # same way every other job here does, even though outreach-admin's
+        # own tests never touch Stripe.
+        run: |
+          cat > .secret.local <<EOF
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET_1=${{ secrets.STRIPE_WEBHOOK_SECRET_1 }}
+          STRIPE_WEBHOOK_SECRET_2=${{ secrets.STRIPE_WEBHOOK_SECRET_2 }}
+          STRIPE_WEBHOOK_SECRET_3=${{ secrets.STRIPE_WEBHOOK_SECRET_3 }}
+          EOF
+
+      - name: Start Firebase emulators
+        run: firebase emulators:start --project town-talk-87ff7 &
+
+      - name: Wait for emulator to be ready
+        run: |
+          for i in $(seq 1 40); do
+            if curl -s -o /dev/null http://localhost:4000; then
+              echo "emulator ready after ~$((i*3))s"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "emulator did not become ready in time"
+          exit 1
+
+      - name: Start townfuss-outreach-admin static server
+        # testing/serveOutreachAdmin.js serves ../../townfuss-outreach-admin
+        # (relative to testing/) on 127.0.0.1:5050 -- see the checkout step
+        # above for why that sibling path matters.
+        run: node testing/serveOutreachAdmin.js &
+
+      - name: Wait for outreach-admin server to be ready
+        run: |
+          for i in $(seq 1 20); do
+            if curl -s -o /dev/null http://127.0.0.1:5050; then
+              echo "outreach-admin server ready after ~$((i*2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "outreach-admin server did not become ready in time"
+          exit 1
+
+      - name: Run outreach-admin.spec.js
+        working-directory: testing
+        env:
+          TEST_PROJECT_ID: town-talk-87ff7
+        run: npx playwright test outreach-admin.spec.js
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: outreach-admin-test-results
+          path: testing/test-results/
