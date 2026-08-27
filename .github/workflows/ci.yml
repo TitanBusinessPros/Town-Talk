@@ -181,9 +181,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # Every plain `run:` step below executes inside Town-Talk/ by default —
+    # see the checkout step's own comment for why both repos are checked
+    # out as explicit SIBLING subdirectories instead of the more obvious
+    # `path: ../townfuss-outreach-admin`.
+    defaults:
+      run:
+        working-directory: Town-Talk
     steps:
       - name: Checkout Town-Talk
         uses: actions/checkout@v4
+        with:
+          path: Town-Talk
 
       - name: Checkout townfuss-outreach-admin (TF-Email-Agent-1)
         # Both repos belong to the TitanBusinessPros account, and
@@ -193,17 +202,27 @@ jobs:
         # NOTE ON REPO NAME: TitanBusinessPros/townfuss-outreach-admin does
         # not exist -- the actual GitHub repo for this codebase is named
         # TF-Email-Agent-1 (confirmed via the API before writing this
-        # workflow). It's checked out to ../townfuss-outreach-admin (a
-        # sibling of this repo's own checkout) because that's the exact
-        # relative path testing/serveOutreachAdmin.js hardcodes
-        # (path.join(__dirname, "..", "..", "townfuss-outreach-admin")) --
-        # the checkout path has to match that local-dev convention, not the
-        # remote repo's actual name.
+        # workflow).
+        #
+        # PATH: originally tried `path: ../townfuss-outreach-admin` to land
+        # this as a sibling of Town-Talk's own checkout (matching
+        # testing/serveOutreachAdmin.js's hardcoded
+        # path.join(__dirname, "..", "..", "townfuss-outreach-admin")) --
+        # that failed for real on the first live run with "Repository path
+        # '.../townfuss-outreach-admin' is not under
+        # '.../Town-Talk/Town-Talk'": actions/checkout's `path` can't escape
+        # $GITHUB_WORKSPACE with `..`, contrary to what that comment
+        # originally assumed. Fixed by checking BOTH repos out as explicit
+        # sibling subdirectories directly under $GITHUB_WORKSPACE instead
+        # (Town-Talk/ above, townfuss-outreach-admin/ here) -- still
+        # genuine siblings, so serveOutreachAdmin.js's own relative path
+        # resolves exactly the same way, just without needing either
+        # checkout to leave the workspace.
         uses: actions/checkout@v4
         with:
           repository: TitanBusinessPros/TF-Email-Agent-1
           token: ${{ secrets.GITHUB_TOKEN }}
-          path: ../townfuss-outreach-admin
+          path: townfuss-outreach-admin
 
       - name: Set up Node 20
         uses: actions/setup-node@v4
@@ -223,11 +242,11 @@ jobs:
         run: npm install
 
       - name: Install testing dependencies
-        working-directory: testing
+        working-directory: Town-Talk/testing
         run: npm install
 
       - name: Install Playwright's Chromium
-        working-directory: testing
+        working-directory: Town-Talk/testing
         run: npx playwright install --with-deps chromium
 
       - name: Write .secret.local from GitHub Actions secrets
@@ -260,8 +279,11 @@ jobs:
 
       - name: Start townfuss-outreach-admin static server
         # testing/serveOutreachAdmin.js serves ../../townfuss-outreach-admin
-        # (relative to testing/) on 127.0.0.1:5050 -- see the checkout step
-        # above for why that sibling path matters.
+        # (relative to testing/) on 127.0.0.1:5050 -- with both repos now
+        # checked out as siblings directly under $GITHUB_WORKSPACE (see the
+        # checkout step above), that resolves to exactly
+        # $GITHUB_WORKSPACE/townfuss-outreach-admin, same as this step's own
+        # townfuss-outreach-admin/ checkout path.
         run: node testing/serveOutreachAdmin.js &
 
       - name: Wait for outreach-admin server to be ready
@@ -277,7 +299,7 @@ jobs:
           exit 1
 
       - name: Run outreach-admin.spec.js
-        working-directory: testing
+        working-directory: Town-Talk/testing
         env:
           TEST_PROJECT_ID: town-talk-87ff7
         run: npx playwright test outreach-admin.spec.js
@@ -287,4 +309,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: outreach-admin-test-results
-          path: testing/test-results/
+          path: Town-Talk/testing/test-results/
