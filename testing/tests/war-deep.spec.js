@@ -157,6 +157,46 @@ test.describe.serial("War — deep functional pass", () => {
     expect(snap.docs.some((d) => d.id === uidA)).toBe(true);
   });
 
+  test("War: Robot A invites Robot B directly, triggering onWarInvite", async () => {
+    // Runs down here, not right after signup: findGameIdForCreator(uidA)
+    // (used by the "create an open table" test above) does an unordered
+    // `.where("player1Uid","==",uidA).get()` and takes docs[0] — a direct
+    // invite (a warGames doc with inviteTo set, created below) is a SEPARATE
+    // warGames doc with the same player1Uid, and doesn't show up in the
+    // open-tables list (inviteTo != null is filtered out there), but it's
+    // still a real match for that query. Creating it before that test ran
+    // made docs[0] ambiguous and that test picked up the wrong doc. Every
+    // test above this point that still needs a single unambiguous gameId
+    // has already run, so this is now safe.
+    //
+    // onWarInvite (index.js) only fires on a DIRECT invite (a warGames doc
+    // with inviteTo set), and the UI only offers that against an accepted
+    // friend -- seed the friendRequests doc straight via the admin SDK
+    // rather than driving the whole friend-request UI, matching this
+    // file's own "fast-forward via a direct admin-SDK write" approach.
+    await admin.firestore().collection("friendRequests").add({
+      participants: [uidA, uidB],
+      participantNames: { [uidA]: "War Robot A", [uidB]: "War Robot B" },
+      status: "accepted",
+      respondedAt: admin.firestore.Timestamp.now(),
+    });
+
+    await pageA.goto("/war.html");
+    await pageA.locator("#mode-tile-online").click();
+    await expect(pageA.locator("#view-waiting")).toBeVisible({ timeout: 10_000 });
+    await pageA.locator("#friends-invite-list").waitFor();
+    await pageA.locator("#friends-invite-list button", { hasText: "Invite to War" }).first().click();
+
+    // Proof the Cloud Function actually ran: onWarInvite posts a Messages
+    // thread entry (postGameInviteMessage), same assertion pattern
+    // full-platform.spec.js uses for Chess/Checkers/WynneWars/Golf/Frisbee
+    // Golf invites.
+    await pageB.goto("/index.html");
+    await pageB.locator("#nav-messages").click();
+    await pageB.locator(".conversation-item", { hasText: "War Robot A" }).click();
+    await expect(pageB.locator("#thread-messages")).toContainText("invited you to play War", { timeout: 15_000 });
+  });
+
   test("War: resign ends a 2-player game with the other player credited the win", async ({ browser }) => {
     const contextC = await browser.newContext();
     const contextD = await browser.newContext();

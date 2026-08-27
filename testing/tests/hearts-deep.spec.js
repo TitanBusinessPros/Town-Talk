@@ -190,6 +190,49 @@ test.describe.serial("Hearts — deep functional pass", () => {
     expect(snap.docs.some((d) => d.id === players[3].uid)).toBe(true);
   });
 
+  test("Hearts: Player 1 invites Player 2 directly, triggering onHeartsInvite", async () => {
+    // Runs down here, not right after signup: findGameIdForCreator(p1.uid)
+    // (used by the "create a table, three more players join" test above)
+    // does an unordered `.where("player1Uid","==",p1.uid).get()` and takes
+    // docs[0] — a direct invite (a heartsGames doc with inviteTo set,
+    // created below) is a separate heartsGames doc with the same
+    // player1Uid, and doesn't show up in the open-tables list (inviteTo !=
+    // null is filtered out there), but it's still a real match for that
+    // query. Creating it before that test ran made docs[0] ambiguous and
+    // that test picked up the wrong doc. Every test above this point that
+    // still needs a single unambiguous gameId has already run, so this is
+    // now safe.
+    //
+    // onHeartsInvite (index.js) only fires on a DIRECT invite (a
+    // heartsGames doc with inviteTo set), and the UI only offers that
+    // against an accepted friend -- seed the friendRequests doc straight
+    // via the admin SDK rather than driving the whole friend-request UI,
+    // matching this file's own "fast-forward via a direct admin-SDK write"
+    // approach.
+    const [p1, p2] = players;
+    await admin.firestore().collection("friendRequests").add({
+      participants: [p1.uid, p2.uid],
+      participantNames: { [p1.uid]: "Hearts P1", [p2.uid]: "Hearts P2" },
+      status: "accepted",
+      respondedAt: admin.firestore.Timestamp.now(),
+    });
+
+    await p1.page.goto("/hearts.html");
+    await p1.page.locator("#mode-tile-online").click();
+    await expect(p1.page.locator("#view-waiting")).toBeVisible({ timeout: 10_000 });
+    await p1.page.locator("#friends-invite-list").waitFor();
+    await p1.page.locator("#friends-invite-list button", { hasText: "Invite to Hearts" }).first().click();
+
+    // Proof the Cloud Function actually ran: onHeartsInvite posts a
+    // Messages thread entry (postGameInviteMessage), same assertion
+    // pattern full-platform.spec.js uses for Chess/Checkers/WynneWars/
+    // Golf/Frisbee Golf invites.
+    await p2.page.goto("/index.html");
+    await p2.page.locator("#nav-messages").click();
+    await p2.page.locator(".conversation-item", { hasText: "Hearts P1" }).click();
+    await expect(p2.page.locator("#thread-messages")).toContainText("invited you to play Hearts", { timeout: 15_000 });
+  });
+
   test("Hearts: resign ends the game for everyone with no winner credited", async ({ browser }) => {
     const r = await makeFourPlayers(browser, "r");
     const [r1, r2, r3, r4] = r;
