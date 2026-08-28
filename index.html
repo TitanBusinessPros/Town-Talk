@@ -610,12 +610,24 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
     </div>
 
     <div id="dashboard-gated-content">
+    <!-- Moved to the very top 2026-08-28: on a first-time login this used
+         to be the last card on the page (after Complete your profile,
+         Daily Rewards, and Notifications), and new users often never
+         scrolled far enough to notice a photo could be added at all. -->
+    <section class="card" style="margin-top:2rem">
+      <h2>Your photos</h2>
+      <p>You get 1 profile photo, and you can update it once a week. Every new photo goes live automatically unless our automated screening flags it, in which case an admin reviews it first. No nudity or images showing sensitive body parts will be accepted!</p>
+      <div class="image-slots" id="image-slots"></div>
+      <input type="file" id="image-input" accept="image/*" style="display:none" />
+      <div id="image-message" class="message" style="display:none"></div>
+    </section>
+
     <!-- One form, one button — display name, town, and the intro post all
          save together in a single submit. These used to be two separate
          forms/buttons (profile basics, then the post, submitted
          separately); that let people finish the first and never notice
          the second, leaving signup silently incomplete. Merged 2026-08-07. -->
-    <section class="card" style="margin-top:2rem">
+    <section class="card" style="margin-top:1.5rem">
       <h2>Complete your profile <span id="post-status-badge"></span></h2>
       <p class="field-hint" id="profile-approval-notice" style="display:none"></p>
       <form id="profile-form">
@@ -662,14 +674,6 @@ button.small { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
       </div>
       <p class="field-hint" id="notif-toggle-hint" style="text-align:center; margin-top:0.75rem;"></p>
       <div id="notif-message" class="message" style="display:none"></div>
-    </section>
-
-    <section class="card" style="margin-top:1.5rem">
-      <h2>Your photos</h2>
-      <p>You get 1 profile photo, and you can update it once a week. Every new photo goes live automatically unless our automated screening flags it, in which case an admin reviews it first. No nudity or images showing sensitive body parts will be accepted!</p>
-      <div class="image-slots" id="image-slots"></div>
-      <input type="file" id="image-input" accept="image/*" style="display:none" />
-      <div id="image-message" class="message" style="display:none"></div>
     </section>
 
     <section class="card" style="margin-top:1.5rem">
