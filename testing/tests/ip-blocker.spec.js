@@ -137,4 +137,24 @@ test.describe.serial("IP blocker (banUserAndIp + beforeSignInBlocking)", () => {
     const usersMatch = await admin.firestore().collection("users").where("profile.name", "==", "IpBan Bystander").get();
     expect(usersMatch.empty).toBe(true);
   });
+
+  // Real, previously-undiscovered bug found 2026-08-27: nothing ever
+  // cleared blockedIPs/{victimIp} after this suite's own tests -- and
+  // every Playwright-driven sign-in in a run shares the SAME machine IP
+  // (this file's own header comment already says so). Any spec file that
+  // runs in the same emulator session AFTER this one -- which is every
+  // other spec in this exact CI matrix group, sequentially, in one job --
+  // inherited a permanent ban on its own IP and had EVERY subsequent
+  // sign-in silently rejected by beforeSignInBlocking, surfacing as a
+  // confusing "#google-confirm-modal-backdrop never becomes visible"
+  // timeout with no obvious connection to IP banning at all. Confirmed by
+  // directly inspecting blockedIPs in a local emulator that had already
+  // run this file once -- the entry was still sitting there blocking
+  // every later test. Unban this file's own test IP once its tests are
+  // done so it can't leak into whatever runs after it.
+  test.afterAll(async () => {
+    if (victimIp) {
+      await admin.firestore().collection("blockedIPs").doc(victimIp).delete().catch(() => {});
+    }
+  });
 });

@@ -89,19 +89,25 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await expect(page.locator(".town-finder-group-label").first()).toHaveText("A");
 
     // A town unique to one edition — Wynnewood only exists in Pauls Valley.
+    // The result no longer shows the edition name as visible text (that tag
+    // was deliberately removed later in the same day this test was added —
+    // "remove the 7 city districts... just leave the actual town or city
+    // listed" — so the edition is proven correctly via the href it routes
+    // to instead, which is the part that actually matters functionally).
     await page.locator("#town-finder-input").fill("Wynnewood");
     await expect(page.locator(".town-finder-item")).toHaveCount(1);
     const result = page.locator(".town-finder-item").first();
     await expect(result).toContainText("Wynnewood");
-    await expect(result).toContainText("Pauls Valley");
-    await expect(result).toHaveAttribute("href", "https://www.townfuss.com");
+    await expect(result).toHaveAttribute("href", "https://www.townfuss.com?town=Wynnewood");
 
     // Coweta used to sit on both Eufaula Lake's and Tulsa's lists at once
     // (a real duplicate, fixed 2026-08-11 by moving it to Tulsa only, its
-    // actual home) — confirm it now resolves to exactly one result.
+    // actual home) — confirm it now resolves to exactly one result, routed
+    // to Tulsa's own domain (see the Wynnewood comment above for why this
+    // checks the href, not visible edition-name text).
     await page.locator("#town-finder-input").fill("Coweta");
     await expect(page.locator(".town-finder-item")).toHaveCount(1);
-    await expect(page.locator(".town-finder-item").first()).toContainText("Tulsa");
+    await expect(page.locator(".town-finder-item").first()).toHaveAttribute("href", "https://tulsa.townfuss.com?town=Coweta");
 
     // No match at all.
     await page.locator("#town-finder-input").fill("Notarealtownxyz");
@@ -295,10 +301,19 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     // right after this clear, re-healing Diamond out from under the test.
     // Retry the clear itself, not just the wait, so a late re-heal gets
     // cleared right back out instead of derailing the whole test.
+    //
+    // 20s wasn't actually enough of a window in practice -- reproduced a
+    // real failure 2026-08-27 running this as part of the full
+    // platform-and-auth group (6+ spec files deep, i.e. exactly the "real
+    // load" this comment already called out), where the stale call was
+    // still landing right at or after the 20s retry gave up. Bumped to
+    // 45s: still just a bigger window on the same known race, not a
+    // structural fix, since the fire-and-forget call has no bounded
+    // completion time to wait on directly.
     await expect(async () => {
       await admin.firestore().collection("users").doc(uidA).update({ isDiamondMember: false, diamondExpiresAt: null });
       await expect(pageA.locator("#messages-remaining")).not.toContainText("Unlimited", { timeout: 3_000 });
-    }).toPass({ timeout: 20_000 });
+    }).toPass({ timeout: 45_000 });
 
     for (let i = 0; i < 9; i++) {
       await pageA.locator("#thread-input").fill(`Test message number ${i + 2}`);
