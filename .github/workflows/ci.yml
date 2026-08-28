@@ -141,10 +141,10 @@ jobs:
         # like it's "printing" the values.
         run: |
           cat > .secret.local <<EOF
-          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET_1=${{ secrets.STRIPE_WEBHOOK_SECRET_1 }}
-          STRIPE_WEBHOOK_SECRET_2=${{ secrets.STRIPE_WEBHOOK_SECRET_2 }}
-          STRIPE_WEBHOOK_SECRET_3=${{ secrets.STRIPE_WEBHOOK_SECRET_3 }}
+          STRIPE_SECRET_KEY=sk_test_fixture_ci_only_not_real
+          STRIPE_WEBHOOK_SECRET_1=whsec_fixture_ci_only_not_real_1
+          STRIPE_WEBHOOK_SECRET_2=whsec_fixture_ci_only_not_real_2
+          STRIPE_WEBHOOK_SECRET_3=whsec_fixture_ci_only_not_real_3
           EOF
 
       - name: Start Firebase emulators
@@ -256,10 +256,10 @@ jobs:
         # own tests never touch Stripe.
         run: |
           cat > .secret.local <<EOF
-          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET_1=${{ secrets.STRIPE_WEBHOOK_SECRET_1 }}
-          STRIPE_WEBHOOK_SECRET_2=${{ secrets.STRIPE_WEBHOOK_SECRET_2 }}
-          STRIPE_WEBHOOK_SECRET_3=${{ secrets.STRIPE_WEBHOOK_SECRET_3 }}
+          STRIPE_SECRET_KEY=sk_test_fixture_ci_only_not_real
+          STRIPE_WEBHOOK_SECRET_1=whsec_fixture_ci_only_not_real_1
+          STRIPE_WEBHOOK_SECRET_2=whsec_fixture_ci_only_not_real_2
+          STRIPE_WEBHOOK_SECRET_3=whsec_fixture_ci_only_not_real_3
           EOF
 
       - name: Start Firebase emulators
