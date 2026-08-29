@@ -41,11 +41,23 @@ async function signUp(page, account) {
 // a click on #nav-directory just times out waiting on a link that never
 // becomes visible, since the account is permanently stuck behind the
 // terms-gate screen it never clicked through.
+// Tracked here (not per-test) since every profile this file creates with a
+// "Pauls Valley" neighborhood goes through one of these two helpers — see
+// the file-level afterAll below, added 2026-08-28 after these leaking into
+// the shared emulator was found to be part of why full-platform.spec.js's
+// Feed test intermittently can't find Robot Bob: the Feed only keeps its
+// top 21 profiles per town by friend count (index.html's
+// TOP_PROFILES_LIMIT), and this file alone was leaving 6 unrelated
+// "Pauls Valley" approved profiles competing for those slots in every CI
+// run that included it before full-platform.spec.js.
+const createdUserUids = [];
+
 async function approveWithProfile(uid, name, extraFields = {}) {
   await admin.firestore().collection("users").doc(uid).set(
     { approved: true, agreedToTerms: true, profile: { name, neighborhood: "Pauls Valley" }, ...extraFields },
     { merge: true }
   );
+  createdUserUids.push(uid);
 }
 
 async function seedGamePlayLimit(uid, count) {
@@ -63,6 +75,7 @@ async function seedMessageLimit(uid, count) {
 async function makeFakeApprovedProfile(label, name) {
   const uid = `tier-test-${label}-${Date.now()}`;
   await admin.firestore().collection("users").doc(uid).set({ approved: true, profile: { name, neighborhood: "Pauls Valley" } });
+  createdUserUids.push(uid);
   return uid;
 }
 
@@ -248,4 +261,16 @@ test.describe.serial("Tiered daily limits — Gold cap, Diamond unlimited, local
       await expect(page.locator("#waiting-message")).toContainText("daily limit of online games", { timeout: 10_000 });
     });
   });
+});
+
+// Runs once after every test in this file (all 4 groups above) — removes
+// every profile this file created so it can't compete for the Feed's
+// per-town top-21 slice in whatever spec file runs next against the same
+// shared emulator. None of these uids are referenced anywhere outside this
+// file (each is a throwaway, uniquely timestamped account), so there's
+// nothing later that still needs them.
+test.afterAll(async () => {
+  for (const uid of createdUserUids) {
+    await admin.firestore().collection("users").doc(uid).delete().catch(() => {});
+  }
 });

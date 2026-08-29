@@ -174,4 +174,21 @@ test.describe.serial("Admin profile delete/restore", () => {
     // E must still exist — the blocked attempt must not have partially applied.
     expect((await admin.firestore().collection("users").doc(e.uid).get()).exists).toBe(true);
   });
+
+  // C and D are already gone by this point — the real adminDeleteProfile
+  // flow this file exists to test already removed them (asserted above),
+  // so deleting them again here is just a harmless no-op. B (restored) and
+  // E (delete blocked by cooldown) are the two throwaway profiles this file
+  // actually still leaves behind as live "Pauls Valley" approved users/
+  // docs, which is what was found to be part of why full-platform.spec.js's
+  // Feed test intermittently can't find Robot Bob — the Feed only keeps its
+  // top 21 profiles per town by friend count (index.html's
+  // TOP_PROFILES_LIMIT). None of b/c/d/e are referenced anywhere outside
+  // this file (each is a throwaway, uniquely stamped account), so there's
+  // nothing later that still needs them.
+  test.afterAll(async () => {
+    for (const target of [b, c, d, e]) {
+      if (target) await admin.firestore().collection("users").doc(target.uid).delete().catch(() => {});
+    }
+  });
 });

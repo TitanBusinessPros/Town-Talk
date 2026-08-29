@@ -42,12 +42,35 @@ async function waitForRealSignupDoc(uid, timeoutMs = 15000) {
   throw new Error(`users/${uid} never got its real signup fields (email/createdAt) within ${timeoutMs}ms`);
 }
 
+// Tracked here (not per-test) since every approved profile this file
+// creates goes through this one helper — see the file-level afterAll below,
+// added 2026-08-28 after these leaking into the shared emulator was found
+// to be part of why full-platform.spec.js's Feed test intermittently can't
+// find Robot Bob: the Feed only keeps its top 21 profiles per town by
+// friend count (index.html's TOP_PROFILES_LIMIT), and this file alone was
+// leaving 6 unrelated "Pauls Valley" approved profiles competing for those
+// slots in every CI run that included it before full-platform.spec.js.
+const createdUserUids = [];
+
 async function approve(uid, name, extraFields = {}) {
   await admin.firestore().collection("users").doc(uid).set(
     { approved: true, agreedToTerms: true, profile: { name, neighborhood: "Pauls Valley" }, ...extraFields },
     { merge: true }
   );
+  createdUserUids.push(uid);
 }
+
+// Runs once after every test in this file (both describe blocks below) —
+// removes every profile this file created via approve() so it can't
+// compete for the Feed's per-town top-21 slice in whatever spec file runs
+// next against the same shared emulator. None of these uids are
+// referenced anywhere outside this file (each is a throwaway, uniquely
+// timestamped account), so there's nothing later that still needs them.
+test.afterAll(async () => {
+  for (const uid of createdUserUids) {
+    await admin.firestore().collection("users").doc(uid).delete().catch(() => {});
+  }
+});
 
 test.describe("Chat Room Sponsorship", () => {
   test("submit, admin approve, banner shows for another viewer", async ({ browser }) => {
