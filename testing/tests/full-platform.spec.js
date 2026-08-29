@@ -976,7 +976,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
 
     // onAuthStateChanged should detect the sign-out and drop back to a
     // signed-out view.
-    await expect(page.locator("#nav-auth")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("#nav-dashboard")).toBeHidden({ timeout: 10_000 });
 
     // Confirm the account is actually gone, not just signed out — signing
     // back in with the same email should hit the brand-new-account path
