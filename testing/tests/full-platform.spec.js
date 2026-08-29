@@ -485,35 +485,20 @@ test.describe.serial("Town Fuss — full platform pass", () => {
   });
 
   test("WynneWars: Robot A invites Robot B directly, Robot B accepts, both see the board", async () => {
-    // TEMPORARY DIAGNOSTIC (2026-08-29) — forwards ww.html's own temporary
-    // [WW-DIAG] console markers into the CI log so the invite-flow event
-    // sequence can be inspected. Only lines starting with that exact
-    // prefix are forwarded; nothing else from the browser console is
-    // touched. Detached in `finally` so it can't leak into later tests
-    // even if this one fails/times out. Remove alongside the __wwDiag()
-    // markers in ww.html once the root cause is confirmed.
-    const diagListener = (msg) => {
-      if (msg.text().startsWith("[WW-DIAG]")) console.log(`PAGE-A ${msg.text()}`);
-    };
-    pageA.on("console", diagListener);
-    try {
-      // Like checkers.html, ww.html lands straight on mode-select.
-      await pageA.goto("/ww.html");
-      await pageA.locator("#mode-tile-online").click();
+    // Like checkers.html, ww.html lands straight on mode-select.
+    await pageA.goto("/ww.html");
+    await pageA.locator("#mode-tile-online").click();
 
-      await pageA.locator("#ww-friends-invite-list").waitFor();
-      await pageA.locator("#ww-friends-invite-list button", { hasText: "Invite" }).first().click();
-      await expect(pageA.locator(".message, #ww-waiting-message")).toBeVisible({ timeout: 10_000 }).catch(() => {});
+    await pageA.locator("#ww-friends-invite-list").waitFor();
+    await pageA.locator("#ww-friends-invite-list button", { hasText: "Invite" }).first().click();
+    await expect(pageA.locator(".message, #ww-waiting-message")).toBeVisible({ timeout: 10_000 }).catch(() => {});
 
-      await pageB.goto("/ww.html");
-      await pageB.locator("#mode-tile-online").click();
-      await pageB.locator('button:has-text("Accept")').first().click();
+    await pageB.goto("/ww.html");
+    await pageB.locator("#mode-tile-online").click();
+    await pageB.locator('button:has-text("Accept")').first().click();
 
-      await expect(pageA.locator("#view-game-board")).toBeVisible({ timeout: 15_000 });
-      await expect(pageB.locator("#view-game-board")).toBeVisible({ timeout: 15_000 });
-    } finally {
-      pageA.off("console", diagListener);
-    }
+    await expect(pageA.locator("#view-game-board")).toBeVisible({ timeout: 15_000 });
+    await expect(pageB.locator("#view-game-board")).toBeVisible({ timeout: 15_000 });
   });
 
   test("WynneWars: completing a full turn syncs to the other player without hanging on any phase", async () => {
