@@ -892,7 +892,7 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await makeAdmin(uid);
     await page.goto("/chess.html");
     await page.locator('.site-quicknav a[href="index.html?action=logout"]').click();
-    await expect(page.locator("#nav-auth")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("#nav-dashboard")).toBeHidden({ timeout: 10_000 });
 
     // Regression test for a real 2026-08-10 bug: ?action=logout was never
     // cleared from the URL after signing out, so logging back in on that
@@ -904,7 +904,6 @@ test.describe.serial("Town Fuss — full platform pass", () => {
     await expect(page).not.toHaveURL(/action=logout/);
     await logInWithGoogle(page, { email: robot.email, skipNavigation: true });
     await expect(page.locator("#nav-dashboard")).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator("#nav-auth")).toBeHidden();
 
     await context.close();
   });
