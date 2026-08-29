@@ -88,8 +88,8 @@ module.exports = {
   outreachAddManualLead: "outreach-admin.spec.js",
   outreachListLeads: "outreach-admin.spec.js",
 
-  // adminGrantGold: NO ENTRY -- genuinely uncovered (confirmed 2026-08-28).
-  // markDailyRewardRedeemed: NO ENTRY -- genuinely uncovered (confirmed 2026-08-28).
+  adminGrantGold: "admin-actions.spec.js",
+  markDailyRewardRedeemed: "daily-rewards-verify.spec.js",
 
   // --- Outreach admin actions with no external API dependency ---
   // Group 2's safe half, closed 2026-08-28. The other 6 outreach onCall
