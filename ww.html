@@ -617,7 +617,20 @@ async function checkForActiveWynneGame() {
   return false;
 }
 
+// TEMPORARY DIAGNOSTIC (2026-08-29) — investigating a WynneWars invite-flow
+// race; remove after root cause is confirmed. Logs only a fixed event
+// label, a monotonic sequence number, and Date.now() — never user IDs,
+// emails, names, document IDs/contents, tokens, or secrets. Only fires
+// against the local emulator.
+let __wwDiagSeq = 0;
+function __wwDiag(event) {
+  if (location.hostname !== "localhost") return;
+  __wwDiagSeq++;
+  console.log(`[WW-DIAG] seq=${__wwDiagSeq} event=${event} t=${Date.now()}`);
+}
+
 function watchWynneWaitingRoom() {
+  __wwDiag("watchWynneWaitingRoom:start"); // TEMPORARY DIAGNOSTIC (2026-08-29)
   if (unsubscribeOpenTables) unsubscribeOpenTables();
   if (unsubscribeMyInvites) unsubscribeMyInvites();
   if (unsubscribeMyActiveGame) unsubscribeMyActiveGame();
@@ -695,8 +708,10 @@ function watchWynneWaitingRoom() {
 }
 
 async function loadWynneFriendsToInvite() {
+  __wwDiag("loadWynneFriendsToInvite:start"); // TEMPORARY DIAGNOSTIC (2026-08-29)
   const list = document.getElementById("ww-friends-invite-list");
   const empty = document.getElementById("ww-friends-invite-empty");
+  __wwDiag("loadWynneFriendsToInvite:rebuildStart"); // TEMPORARY DIAGNOSTIC (2026-08-29)
   list.innerHTML = "";
   try {
     const q = query(collection(db, "friendRequests"), where("participants", "array-contains", currentUid));
@@ -713,7 +728,10 @@ async function loadWynneFriendsToInvite() {
       row.innerHTML = `<span>${escapeHtml(otherName)}</span>`;
       const btn = document.createElement("button");
       btn.type = "button"; btn.className = "small"; btn.textContent = "Invite to play";
-      btn.addEventListener("click", () => createWynneTable(otherUid, otherName));
+      btn.addEventListener("click", () => {
+        __wwDiag("inviteBtn:click"); // TEMPORARY DIAGNOSTIC (2026-08-29)
+        createWynneTable(otherUid, otherName);
+      });
       row.appendChild(btn);
       list.appendChild(row);
     });
@@ -805,11 +823,18 @@ async function reserveGamePlaySlot(msg) {
 }
 
 async function createWynneTable(inviteToUid, inviteToName) {
+  __wwDiag("createWynneTable:start"); // TEMPORARY DIAGNOSTIC (2026-08-29)
   const msg = document.getElementById("ww-waiting-message");
   try {
-    if (inviteToUid && !(await checkInviteCooldown("wynneGames", inviteToUid, inviteToName, msg))) return;
+    if (inviteToUid && !(await checkInviteCooldown("wynneGames", inviteToUid, inviteToName, msg))) {
+      __wwDiag("createWynneTable:cooldownRejected"); // TEMPORARY DIAGNOSTIC (2026-08-29)
+      return;
+    }
     const gamePlaySlot = await reserveGamePlaySlot(msg);
-    if (!gamePlaySlot.ok) return;
+    if (!gamePlaySlot.ok) {
+      __wwDiag("createWynneTable:capRejected"); // TEMPORARY DIAGNOSTIC (2026-08-29)
+      return;
+    }
 
     const gameRef = doc(collection(db, "wynneGames"));
     const batch = writeBatch(db);
@@ -836,12 +861,14 @@ async function createWynneTable(inviteToUid, inviteToName) {
     }
     batch.set(gamePlaySlot.limitRef, { day: todayNumber(), count: gamePlaySlot.count });
     await batch.commit();
+    __wwDiag("createWynneTable:committed"); // TEMPORARY DIAGNOSTIC (2026-08-29)
     if (inviteToUid) {
       showWwMessage(msg, `Invite sent to ${inviteToName}.`, "success");
     } else {
       openWynneGame(gameRef.id);
     }
   } catch (err) {
+    __wwDiag(`createWynneTable:error:${err.code || err.name}`); // TEMPORARY DIAGNOSTIC (2026-08-29)
     // checkInviteCooldown()/reserveGamePlaySlot() above already catch the normal
     // case client-side — this only fires if a read raced the limit doc and the
     // server-side rule caught it instead. Same friendly message either way,
