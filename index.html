@@ -3103,6 +3103,7 @@ let profileFormPopulated = false;
 
 function renderDashboard(data) {
   currentUserData = data;
+  renderMessageRemaining();
   const profile = data.profile || {};
   const nameEl = document.getElementById("display-name");
   const neighborhoodEl = document.getElementById("neighborhood");
