@@ -88,7 +88,7 @@ module.exports = {
   outreachAddManualLead: "outreach-admin.spec.js",
   outreachListLeads: "outreach-admin.spec.js",
 
-  adminGrantGold: "admin-actions.spec.js",
+  adminGrantGold: "admin-grant-gold.spec.js",
   markDailyRewardRedeemed: "daily-rewards-verify.spec.js",
 
   // --- Outreach admin actions with no external API dependency ---

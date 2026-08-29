@@ -93,7 +93,7 @@ jobs:
       matrix:
         group:
           - name: platform-and-auth
-            specs: "admin-delete-restore.spec.js admin-actions.spec.js daily-rewards-verify.spec.js ip-blocker.spec.js chatsponsor-townfounder.spec.js sponsor-invite.spec.js tier-limits.spec.js full-platform.spec.js stripe-webhook.spec.js scheduled-functions.spec.js outreach-scheduler.spec.js"
+            specs: "admin-delete-restore.spec.js admin-grant-gold.spec.js daily-rewards-verify.spec.js ip-blocker.spec.js chatsponsor-townfounder.spec.js sponsor-invite.spec.js tier-limits.spec.js full-platform.spec.js stripe-webhook.spec.js scheduled-functions.spec.js outreach-scheduler.spec.js"
           - name: games-1
             specs: "blackjack-deep.spec.js blocks-deep.spec.js cribbage-deep.spec.js deepsea-deep.spec.js desert-deep.spec.js"
           - name: games-2
