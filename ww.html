@@ -624,7 +624,7 @@ async function checkForActiveWynneGame() {
 // against the local emulator.
 let __wwDiagSeq = 0;
 function __wwDiag(event) {
-  if (location.hostname !== "localhost") return;
+  if (location.hostname !== "localhost" && location.hostname !== "127.0.0.1") return;
   __wwDiagSeq++;
   console.log(`[WW-DIAG] seq=${__wwDiagSeq} event=${event} t=${Date.now()}`);
 }
