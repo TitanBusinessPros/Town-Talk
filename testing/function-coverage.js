@@ -30,6 +30,40 @@
 //
 // A function with NO entry here is a real, currently-uncovered function —
 // don't add a placeholder/guessed entry just to make the validator quiet.
+//
+// EXTERNAL_OUTREACH_SUBSYSTEM (2026-08-30, corrected same day): the one
+// exception to "an entry means a real Town Fuss test exists." Six
+// outreach* functions below are mapped to this marker instead of a spec
+// filename. Facts, not opinion:
+//   - Their intended frontend (the "Approve/Send" admin tool) lives in a
+//     SEPARATE GitHub repository, TitanBusinessPros/TF-Email-Agent-1 —
+//     not this one. Checked directly: that repo has NO test files and NO
+//     CI workflow at all (confirmed via its full recursive file tree,
+//     2026-08-30) — so despite living in a separate repo, there is no
+//     verified automated coverage for these 6 anywhere, in either repo.
+//     This marker means "not Town Fuss's job to cover," not "covered."
+//   - Of the 6, only outreachCreateDraft and outreachGenerateLeads are
+//     actually referenced by TF-Email-Agent-1's current frontend source
+//     (checked directly, 2026-08-30). outreachListReplies,
+//     outreachSendReply, outreachEmailExport, and
+//     outreachImportFromDirectory are not referenced by the currently
+//     inspected Town Fuss OR TF-Email-Agent-1 frontend code at all —
+//     flagged for later lifecycle review, not assumed dead.
+//   - The function CODE still lives in this repo's index.js and is still
+//     deployed from Town Fuss source into all 7 Town Fuss Firebase
+//     projects (confirmed live via `firebase functions:list` 2026-08-30)
+//     — nothing about this marker changes where they run.
+//   - They're excluded from Town Fuss's OWN core-coverage count because
+//     no Town Fuss frontend or automation ever calls them (verified:
+//     index.html and every other shipped Town Fuss file contain zero
+//     references) — counting them as "untested Town Fuss product
+//     functionality" would be misleading in the other direction.
+//   - This marker does NOT mean deleted, disabled, safe-by-default, or
+//     covered elsewhere — they're live, callable, admin/sponsor-role-gated
+//     functions like any other in this file, with genuinely no automated
+//     test proving they work, in this repo or the other one.
+const EXTERNAL_OUTREACH_SUBSYSTEM = "EXTERNAL OUTREACH SUBSYSTEM — SEPARATELY TRACKED; COVERAGE NOT YET VERIFIED OR ESTABLISHED";
+
 module.exports = {
   // --- Game invite triggers (makeGameInviteTrigger) ---
   onChessInvite: "full-platform.spec.js",
@@ -92,17 +126,32 @@ module.exports = {
   markDailyRewardRedeemed: "daily-rewards-verify.spec.js",
 
   // --- Outreach admin actions with no external API dependency ---
-  // Group 2's safe half, closed 2026-08-28. The other 6 outreach onCall
-  // functions (outreachCreateDraft, outreachSendReply, outreachListReplies,
-  // outreachEmailExport, outreachGenerateLeads, outreachImportFromDirectory)
-  // are DELIBERATELY left with no entry -- discussed explicitly with the
-  // user, not an oversight. All 6 call a real external API (Gmail send/
-  // draft/list, the paid Google Places API, or an arbitrary admin-supplied
-  // URL) with credentials this test environment doesn't have, and doesn't
-  // have any business acquiring on its own -- creating real Gmail drafts,
-  // sending real email, or spending real Places API budget from an
-  // automated test suite is not a decision to make unilaterally. Revisit
-  // if/when real sandboxed test credentials for those become available.
+  // Group 2's safe half, closed 2026-08-28.
+  //
+  // The other 6 outreach onCall functions call a real external API (Gmail
+  // send/draft/list, the paid Google Places API, or an arbitrary
+  // admin-supplied URL) with credentials this test environment doesn't
+  // have, and doesn't have any business acquiring on its own -- creating
+  // real Gmail drafts, sending real email, or spending real Places API
+  // budget from an automated test suite is not a decision to make
+  // unilaterally. Revisit if/when real sandboxed test credentials for
+  // those become available. As of 2026-08-30 they're additionally
+  // confirmed to belong to a separate product's coverage responsibility --
+  // see EXTERNAL_OUTREACH_SUBSYSTEM above for the full explanation,
+  // including that TF-Email-Agent-1 itself has no tests or CI either.
+  //
+  // Currently referenced by TF-Email-Agent-1's frontend (checked directly,
+  // 2026-08-30):
+  outreachCreateDraft: EXTERNAL_OUTREACH_SUBSYSTEM,
+  outreachGenerateLeads: EXTERNAL_OUTREACH_SUBSYSTEM,
+  // NOT referenced by the currently inspected Town Fuss or
+  // TF-Email-Agent-1 frontend code at all -- not claimed deleted,
+  // disabled, or safe by default; flagged for later lifecycle review.
+  outreachListReplies: EXTERNAL_OUTREACH_SUBSYSTEM,
+  outreachSendReply: EXTERNAL_OUTREACH_SUBSYSTEM,
+  outreachEmailExport: EXTERNAL_OUTREACH_SUBSYSTEM,
+  outreachImportFromDirectory: EXTERNAL_OUTREACH_SUBSYSTEM,
+
   outreachSkipLead: "outreach-admin-actions.spec.js",
   outreachUpdateCandidate: "outreach-admin-actions.spec.js",
   outreachBulkAddCandidates: "outreach-admin-actions.spec.js",
@@ -124,3 +173,13 @@ module.exports = {
   outreachReportSchedule: "outreach-scheduler.spec.js",
   outreachRecordSent: "outreach-scheduler.spec.js",
 };
+
+// Non-enumerable on purpose: validate-function-coverage.js needs the exact
+// same marker string to recognize these 6 entries, but this must NOT show
+// up in Object.keys(module.exports) -- that list is also used to detect
+// STALE entries (a registry entry for a function that no longer exists in
+// index.js), and this key isn't a function name at all.
+Object.defineProperty(module.exports, "EXTERNAL_OUTREACH_SUBSYSTEM", {
+  value: EXTERNAL_OUTREACH_SUBSYSTEM,
+  enumerable: false,
+});

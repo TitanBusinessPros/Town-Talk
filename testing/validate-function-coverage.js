@@ -65,15 +65,29 @@ function getSpecFilesWiredIntoCi() {
 function main() {
   const functionNames = getExportedFunctionNames();
   const coverage = require(path.join(__dirname, "function-coverage.js"));
+  const EXTERNAL_OUTREACH_SUBSYSTEM = coverage.EXTERNAL_OUTREACH_SUBSYSTEM;
   const specFilesOnDisk = new Set(fs.readdirSync(SPEC_DIR).filter((f) => f.endsWith(".spec.js")));
   const specFilesInCi = getSpecFilesWiredIntoCi();
 
   const missingEntry = [];
   const specFileNotOnDisk = [];
   const specFileNotInCi = [];
+  // Functions whose registry entry is the EXTERNAL_OUTREACH_SUBSYSTEM
+  // marker -- a real, deliberate classification (see function-coverage.js's
+  // own comment on it), not a gap. Tracked and reported separately so they
+  // stay fully visible rather than silently vanishing from either count.
+  const externalOutreach = [];
+  // Town Fuss's OWN functions -- everything except the external-outreach
+  // set -- is what "core coverage" below is measured against.
+  const coreFunctionNames = [];
 
   for (const name of functionNames) {
     const specFile = coverage[name];
+    if (specFile === EXTERNAL_OUTREACH_SUBSYSTEM) {
+      externalOutreach.push(name);
+      continue;
+    }
+    coreFunctionNames.push(name);
     if (!specFile) {
       missingEntry.push(name);
       continue;
@@ -128,9 +142,20 @@ function main() {
     process.exit(1);
   }
 
+  // Two counts, always shown separately and in full -- external-outreach
+  // functions are real, deployed, live functions (see
+  // function-coverage.js's EXTERNAL_OUTREACH_SUBSYSTEM comment); they are
+  // deliberately excluded from Town Fuss's OWN coverage count, not hidden
+  // from the report entirely.
+  const coreCoveredCount = coreFunctionNames.length - missingEntry.length;
   console.log(
-    `Function coverage check passed -- all ${functionNames.length} exported functions have a ` +
-    `registered test, and every registered spec file exists and is wired into CI.`
+    `Function coverage check passed.\n\n` +
+    `Town Fuss core Functions: ${coreCoveredCount} / ${coreFunctionNames.length} covered\n` +
+    `External outreach subsystem Functions: 0 / ${externalOutreach.length} with verified automated coverage; separately tracked\n` +
+    (externalOutreach.length > 0
+      ? `  (belongs to the separate TF-Email-Agent-1 repo / townfuss-outreach.web.app -- still deployed live from this repo's index.js in all 7 Town Fuss projects; not deleted, disabled, safe-by-default, or covered elsewhere -- confirmed 2026-08-30 that TF-Email-Agent-1 itself has no tests and no CI)\n` +
+        externalOutreach.map((n) => `  - ${n}`).join("\n") + "\n"
+      : "")
   );
 }
 
