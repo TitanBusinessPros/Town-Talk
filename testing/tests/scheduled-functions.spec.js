@@ -329,6 +329,68 @@ test.describe("Scheduled (cron) Cloud Functions", () => {
     expect(publicToday.winners.some((w) => w.sponsorName === "Scheduled-Function Test Sponsor")).toBe(true);
   });
 
+  test("dailyRewardsDraw: a single draw hands out exactly maxWinnersPerDay winners, not more or fewer", async ({ request }) => {
+    // Same leftover-sponsor contamination risk as the test above -- a
+    // stale "published", still-in-date-range sponsor from an earlier run
+    // can steal slots from THIS test's own qualifying candidates, via the
+    // shared usedUids set inside dailyRewardsDraw (sponsors are processed
+    // one at a time in query order, and once a candidate is claimed by one
+    // sponsor's slot, no other sponsor in the same run can also award
+    // them). Confirmed empirically 2026-08-30: an un-wiped leftover
+    // sponsor from a prior manual run pulled 1 of 10 otherwise-qualified
+    // candidates into its own slot instead of this test's, producing 9/10
+    // instead of 10/10 -- wipe first, same as the sibling test above.
+    await wipeCollection(admin.firestore().collection("dailyRewardSponsors"));
+
+    const stamp = Date.now();
+    const today = centralDateString();
+    const now = admin.firestore.Timestamp.now();
+    const MAX_WINNERS = 10;
+
+    const uids = [];
+    for (let i = 0; i < MAX_WINNERS; i++) {
+      const uid = `sched.drd10.${stamp}.${i}`;
+      uids.push(uid);
+      await admin.firestore().collection("users").doc(uid).set({
+        approved: true,
+        profile: { name: `Ten-Winner Test ${i}` },
+        dailyRewards: {
+          optedIn: true,
+          gamePlayedDate: today,
+          chatMessageDate: today,
+          shareClickDate: today,
+          // lastWonAt intentionally absent, same reasoning as the sibling test.
+        },
+      });
+    }
+
+    const sponsorRef = await admin.firestore().collection("dailyRewardSponsors").add({
+      status: "published",
+      companyName: "Ten-Winner Test Sponsor",
+      prizeDescription: "A free test prize",
+      maxWinnersPerDay: MAX_WINNERS,
+      startDate: admin.firestore.Timestamp.fromMillis(now.toMillis() - 24 * 60 * 60 * 1000),
+      endDate: admin.firestore.Timestamp.fromMillis(now.toMillis() + 24 * 60 * 60 * 1000),
+      quantityAwarded: 0,
+    });
+
+    await triggerScheduled(request, "dailyRewardsDraw");
+
+    const winSnap = await waitForCondition(async () => {
+      const snap = await admin.firestore().collection("dailyRewardWinners").where("sponsorId", "==", sponsorRef.id).get();
+      return snap.size === MAX_WINNERS ? snap : null;
+    });
+    expect(winSnap.size).toBe(MAX_WINNERS);
+
+    // Every winner really is one of THIS test's own seeded candidates, not
+    // a leftover from elsewhere leaking in.
+    const winningUids = new Set(winSnap.docs.map((d) => d.data().uid));
+    for (const uid of uids) expect(winningUids.has(uid)).toBe(true);
+
+    const sponsorAfter = (await sponsorRef.get()).data();
+    expect(sponsorAfter.quantityAwarded).toBe(MAX_WINNERS);
+  });
+
   test("backupAuthAccounts: writes a real Storage export of every Auth user for today", async ({ request }) => {
     // Make sure there's at least one real Auth account for the export to
     // actually contain (earlier specs in a full CI run already guarantee
