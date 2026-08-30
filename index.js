@@ -1142,7 +1142,7 @@ async function mergePublicWinnersToday(todayStr, newWinners) {
 }
 
 exports.dailyRewardsDraw = onSchedule(
-  { schedule: "0 16 * * *", timeZone: "America/Chicago" },
+  { schedule: "00 23 * * *", timeZone: "America/Chicago" },
   async () => {
     const todayStr = centralDateString();
     const now = Timestamp.now();
